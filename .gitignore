@@ -1,0 +1,11 @@
+# captured data lives in the HF dataset repo, never in git
+data/
+discovered_endpoints.json
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+dist/

@@ -1,0 +1,34 @@
+name: capture
+# Every 15-min slot takes 3 API snapshots at 5-min spacing (OpenRouter's finest
+# rolling window is uptime_last_5m), then pushes raw+parquet to the private HF
+# dataset repo. GH cron can lag a few minutes; run_ts timestamps are authoritative.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: "snapshots this run"
+        default: "3"
+
+concurrency:
+  group: capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: capture snapshots
+        run: uv run orcap capture --samples "${{ github.event.inputs.samples || '3' }}" --interval-seconds 300
+      - name: push to HF dataset repo
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "capture ${{ github.run_id }}" --delete-local

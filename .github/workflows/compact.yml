@@ -1,0 +1,39 @@
+name: compact
+# Nightly: consolidate yesterday's ~100 small parquet files per table into one
+# file per table/day in the HF repo, and derive SCD-2 pricing_changes +
+# pricing_current from the endpoint snapshots.
+
+on:
+  schedule:
+    - cron: "43 1 * * *"
+  workflow_dispatch:
+    inputs:
+      dt:
+        description: "day to compact (YYYY-MM-DD, empty = yesterday UTC)"
+        default: ""
+
+concurrency:
+  group: compact
+  cancel-in-progress: false
+
+jobs:
+  compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync
+      - name: run tests
+        run: uv run pytest -q
+      - name: compact + derive pricing changes
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -n "${{ github.event.inputs.dt }}" ]; then
+            uv run python -c "from orcap.compact import main; main(dt='${{ github.event.inputs.dt }}')"
+          else
+            uv run orcap compact
+          fi
