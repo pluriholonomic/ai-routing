@@ -1,23 +1,34 @@
-"""15-minute snapshot job: models + providers + per-provider endpoints.
+"""High-frequency snapshot job: models + providers + per-provider endpoints,
+plus live congestion stats for the hottest models.
 
-Fan-out: 1x /models, 1x /providers, then one /models/{author}/{slug}/endpoints
-call per unique canonical_slug (the `links.details` path in the models response).
-Writes the raw responses (jsonl.gz) and normalized Parquet partitions locally;
-a separate step pushes them to the HF dataset repo.
+Fan-out: 1x /models, 1x /providers, one /models/{slug}/endpoints call per
+unique canonical_slug, and — for the top ORCAP_HOTLIST models by weekly
+volume — the frontend stats/endpoint call, whose `stats` block carries live
+30-minute latency/throughput percentiles and `fortuna` utilization
+(recent_peak_rpm vs capacity_ceiling_rpm). That block is the demand-side
+panel: it lets us measure how aggressively providers move quotes (and their
+shadow price, latency) in response to load.
 """
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from . import normalize
-from .config import API_V1, CURATED_DIR, RAW_DIR, dt_partition, run_timestamp
+from .config import API_V1, BASE_URL, CURATED_DIR, RAW_DIR, dt_partition, run_timestamp
 from .http import Fetcher, make_client, write_raw
 
 log = logging.getLogger(__name__)
+
+HOTLIST_SIZE = int(os.environ.get("ORCAP_HOTLIST", "40"))
+RANKINGS_URL = f"{BASE_URL}/api/frontend/v1/rankings/models?view=week"
+STATS_URL = f"{BASE_URL}/api/frontend/v1/stats/endpoint"
 
 
 def _endpoint_urls(models: list[dict[str, Any]]) -> list[str]:
@@ -33,6 +44,59 @@ def _endpoint_urls(models: list[dict[str, Any]]) -> list[str]:
         url = f"https://openrouter.ai{details}" if details else f"{API_V1}/models/{slug}/endpoints"
         urls.append(url)
     return urls
+
+
+def _hot_permaslugs(rankings: Any, n: int = HOTLIST_SIZE) -> list[str]:
+    rows = (rankings or {}).get("data") or []
+    totals: dict[str, int] = {}
+    for r in rows:
+        slug = r.get("model_permaslug")
+        if slug:
+            tokens = (r.get("total_prompt_tokens") or 0) + (r.get("total_completion_tokens") or 0)
+            totals[slug] = totals.get(slug, 0) + tokens
+    return [s for s, _ in sorted(totals.items(), key=lambda kv: -kv[1])[:n]]
+
+
+def _congestion_rows(body: Any, permaslug: str, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    rows = []
+    for ep in (body or {}).get("data") or []:
+        st = ep.get("stats") or {}
+        f = ep.get("fortuna") or {}
+        sh30 = ep.get("status_heuristics") or {}
+        sh5 = ep.get("status_heuristics_5m") or {}
+        pricing = ep.get("pricing") or {}
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "model_permaslug": permaslug,
+                "endpoint_uuid": ep.get("id"),
+                "provider_name": ep.get("provider_display_name") or ep.get("provider_name"),
+                "price_completion": _sf(pricing.get("completion")),
+                "p50_latency_ms": st.get("p50_latency"),
+                "p90_latency_ms": st.get("p90_latency"),
+                "p99_latency_ms": st.get("p99_latency"),
+                "p50_throughput": st.get("p50_throughput"),
+                "p90_throughput": st.get("p90_throughput"),
+                "request_count_30m": st.get("request_count"),
+                "recent_peak_rpm": f.get("recent_peak_rpm"),
+                "capacity_ceiling_rpm": f.get("capacity_ceiling_rpm"),
+                "success_30m": sh30.get("success"),
+                "rate_limited_30m": sh30.get("rateLimited"),
+                "derankable_error_30m": sh30.get("derankableError"),
+                "success_5m": sh5.get("success"),
+                "rate_limited_5m": sh5.get("rateLimited"),
+                "is_deranked": bool(ep.get("is_deranked")),
+            }
+        )
+    return rows
+
+
+def _sf(x: Any) -> float | None:
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
 
 
 def write_partition(
@@ -66,6 +130,16 @@ async def capture(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) -> d
         endpoint_docs = [d["data"] for d in endpoint_docs_raw if d and "data" in d]
         failures = len(urls) - len(endpoint_docs)
 
+        # live congestion stats for the hottest models (demand-side panel)
+        congestion_rows: list[dict[str, Any]] = []
+        rankings = await fetcher.get_json(RANKINGS_URL)
+        hot = _hot_permaslugs(rankings)
+        if hot:
+            stat_urls = [f"{STATS_URL}?permaslug={quote(s, safe='')}&variant=standard" for s in hot]
+            stat_bodies = await asyncio.gather(*(fetcher.get_json(u) for u in stat_urls))
+            for slug, body in zip(hot, stat_bodies, strict=True):
+                congestion_rows += _congestion_rows(body, slug, run_ts, dt)
+
         write_raw(fetcher.records, "api_v1", raw_dir, run_ts, dt)
 
     models_tbl = normalize.models_table(models, run_ts, dt)
@@ -83,6 +157,14 @@ async def capture(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) -> d
             providers_tbl, "providers_snapshots", run_ts, dt, curated_dir
         ),
     }
+    if congestion_rows:
+        write_partition(
+            pa.Table.from_pylist(congestion_rows),
+            "congestion_intraday",
+            run_ts,
+            dt,
+            curated_dir,
+        )
     summary = {
         "run_ts": run_ts,
         "dt": dt,
@@ -90,6 +172,7 @@ async def capture(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) -> d
         "endpoints": endpoints_tbl.num_rows,
         "providers": providers_tbl.num_rows,
         "endpoint_fetch_failures": failures,
+        "congestion_rows": len(congestion_rows),
         "paths": {k: str(v) for k, v in paths.items()},
     }
     log.info("capture complete: %s", summary)
