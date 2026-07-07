@@ -42,12 +42,22 @@ def test_h10_executable_dispersion_collapses_when_cheap_quotes_fake():
     for m in range(50):
         p = rng.uniform(0.5, 2.0)
         rows.append(
-            {"model_permaslug": f"m{m}", "provider_name": "cheapfake",
-             "price_completion": 0.5 * p, "reject_rate": 0.95, "is_free": False}
+            {
+                "model_permaslug": f"m{m}",
+                "provider_name": "cheapfake",
+                "price_completion": 0.5 * p,
+                "reject_rate": 0.95,
+                "is_free": False,
+            }
         )
         rows.append(
-            {"model_permaslug": f"m{m}", "provider_name": "real",
-             "price_completion": p, "reject_rate": 0.01, "is_free": False}
+            {
+                "model_permaslug": f"m{m}",
+                "provider_name": "real",
+                "price_completion": p,
+                "reject_rate": 0.01,
+                "is_free": False,
+            }
         )
     res = executable_dispersion(pd.DataFrame(rows))
     assert res["mean_cv_executable"] < res["mean_cv_posted"] * 0.5

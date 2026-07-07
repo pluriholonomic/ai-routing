@@ -121,7 +121,10 @@ def quantization_curve(df: pd.DataFrame) -> dict:
     d = d[keep]
     d = d[d.groupby("model_permaslug")["quant"].transform("nunique") >= 2]
     if d["model_permaslug"].nunique() < 5:
-        return {"note": "few models with multiple quantizations", "n_models": int(d["model_permaslug"].nunique())}
+        return {
+            "note": "few models with multiple quantizations",
+            "n_models": int(d["model_permaslug"].nunique()),
+        }
     m = smf.ols("log_p ~ C(model_permaslug) + C(quant, Treatment('bf16'))", data=d).fit()
     discounts = {
         k.split("T.")[1].rstrip("]"): round(float(np.exp(v) - 1), 4)

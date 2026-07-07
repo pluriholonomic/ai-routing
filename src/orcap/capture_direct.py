@@ -78,11 +78,13 @@ async def capture_direct(
 
     rows = deepinfra_rows(deepinfra, run_ts, dt)
     if rows:
-        write_partition(
-            pa.Table.from_pylist(rows), "direct_prices_daily", run_ts, dt, curated_dir
-        )
-    summary = {"run_ts": run_ts, "dt": dt, "deepinfra_models": len(rows),
-               "raw_pages": len(RAW_PAGES)}
+        write_partition(pa.Table.from_pylist(rows), "direct_prices_daily", run_ts, dt, curated_dir)
+    summary = {
+        "run_ts": run_ts,
+        "dt": dt,
+        "deepinfra_models": len(rows),
+        "raw_pages": len(RAW_PAGES),
+    }
     log.info("direct capture complete: %s", summary)
     return summary
 

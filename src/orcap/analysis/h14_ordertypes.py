@@ -40,9 +40,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     latest_day = df["date"].max()
     day = df[df["date"] == latest_day].copy()
     tot = day["tokens"].sum()
-    shares = {
-        r.variant: round(float(r.tokens / tot), 4) for r in day.itertuples(index=False)
-    }
+    shares = {r.variant: round(float(r.tokens / tot), 4) for r in day.itertuples(index=False)}
     results = {
         "date": latest_day,
         "token_share_by_variant": shares,
