@@ -48,17 +48,22 @@ def yesterday_utc() -> str:
 
 
 def consolidate_table_day(table_dir: Path) -> tuple[Path | None, list[Path]]:
-    """Merge all per-run parquet files in curated/{table}/dt=D into part-0.parquet."""
-    files = sorted(p for p in table_dir.glob("*.parquet") if p.name != "part-0.parquet")
-    if not files:
+    """Merge all per-run parquet files in curated/{table}/dt=D into part-0.parquet.
+
+    An existing part-0 (from a prior compaction of the same day) is folded into
+    the merge — otherwise re-compacting a day would drop its rows.
+    """
+    per_run = sorted(p for p in table_dir.glob("*.parquet") if p.name != "part-0.parquet")
+    if not per_run:
         return None, []
+    out = table_dir / "part-0.parquet"
+    files = ([out] if out.exists() else []) + per_run
     # ParquetFile.read avoids dataset-level hive-partition inference, which would
     # collide with the dt column embedded in the files
     tables = [pq.ParquetFile(f).read() for f in files]
     merged = pa.concat_tables(tables, promote_options="default")
-    out = table_dir / "part-0.parquet"
     pq.write_table(merged, out, compression="zstd")
-    return out, files
+    return out, per_run
 
 
 # ------------------------------------------------------- pricing change fold
