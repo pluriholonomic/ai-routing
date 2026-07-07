@@ -1,0 +1,22 @@
+{
+  "n_endpoints": 1832,
+  "reject_rate_median": 0.014821681916255746,
+  "reject_rate_p90": 0.2832953427449528,
+  "share_endpoints_reject_gt_5pct": 0.32041484716157204,
+  "share_deranked": 0.008733624454148471,
+  "fx_last_look_norm": "2-10% reject rates (FX/RFQ literature)",
+  "price_vs_reject": {
+    "n_obs": 1832,
+    "n_models": 301,
+    "reject_on_logprice": 0.03330599877802087,
+    "se": 0.02132803479191581,
+    "pvalue": 0.11838070606597717,
+    "interpretation": "negative slope = cheaper quotes reject more (last-look equilibrium)"
+  },
+  "executable_dispersion": {
+    "n_models": 301,
+    "mean_cv_posted": 0.07745656802019572,
+    "mean_cv_executable": 0.07772119378366801,
+    "dispersion_reduction_pct": -0.3416440596790915
+  }
+}

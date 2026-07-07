@@ -1,0 +1,47 @@
+{
+  "runs": 11,
+  "latest_per_class": {
+    "H200": {
+      "ondemand": null,
+      "bid": 3.485,
+      "basis_ratio": null
+    },
+    "RTX 5090": {
+      "ondemand": null,
+      "bid": 0.336,
+      "basis_ratio": null
+    },
+    "A100 SXM4": {
+      "ondemand": 0.901,
+      "bid": 0.576,
+      "basis_ratio": 1.56
+    },
+    "H100 SXM": {
+      "ondemand": 2.202,
+      "bid": 0.606,
+      "basis_ratio": 3.63
+    },
+    "RTX 4090": {
+      "ondemand": 0.422,
+      "bid": 0.263,
+      "basis_ratio": 1.61
+    },
+    "H100 NVL": {
+      "ondemand": 2.136,
+      "bid": 1.275,
+      "basis_ratio": 1.67
+    },
+    "A100 PCIE": {
+      "ondemand": 0.602,
+      "bid": 0.43,
+      "basis_ratio": 1.4
+    },
+    "RTX 3090": {
+      "ondemand": 0.142,
+      "bid": 0.122,
+      "basis_ratio": 1.16
+    }
+  },
+  "median_basis_ratio_all": 1.4086581001293141,
+  "comparator": "perp funding / spot-forward basis: small, mean-reverting; compute basis is large (interruption risk premium), like pre-2020 futures basis"
+}

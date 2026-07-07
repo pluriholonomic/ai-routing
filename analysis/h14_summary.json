@@ -1,0 +1,10 @@
+{
+  "date": "2026-07-07 00:00:00",
+  "token_share_by_variant": {
+    "free": 0.1474,
+    "standard": 0.8526,
+    "thinking": 0.0
+  },
+  "n_variants": 3,
+  "note": "floor-share vs dispersion interaction pre-registered; needs weeks of variance"
+}

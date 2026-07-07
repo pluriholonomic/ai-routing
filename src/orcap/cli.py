@@ -34,6 +34,8 @@ def main() -> None:
 
     sub.add_parser("capture-gpu", help="snapshot GPU rental offers (vast.ai) + price indices")
 
+    sub.add_parser("capture-direct", help="snapshot direct-provider list prices (H13 basis)")
+
     p_compact = sub.add_parser("compact", help="nightly compaction + pricing_changes derivation")
     p_compact.add_argument("--repo", default=None, help="HF repo id (default from config)")
 
@@ -78,6 +80,10 @@ def main() -> None:
         from .capture_gpu import main as gpu_main
 
         gpu_main()
+    elif args.command == "capture-direct":
+        from .capture_direct import main as direct_main
+
+        direct_main()
     elif args.command == "compact":
         from .compact import main as compact_main
 
@@ -101,6 +107,10 @@ def main() -> None:
             "h4": "h4_routing",
             "h5": "h5_frontends",
             "h6": "h6_fees",
+            "h10": "h10_lastlook",
+            "h11": "h11_quality",
+            "h12": "h12_basis",
+            "h14": "h14_ordertypes",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

@@ -1,0 +1,28 @@
+{
+  "n_matched_endpoints": 628,
+  "hedonic": {
+    "n_obs": 337,
+    "r2_model_fe": 0.9590053023576937,
+    "r2_quality": 0.9720914962314535,
+    "within_model_var_explained_by_delivered_quality": 0.3192167432954786,
+    "coef_log_throughput": 0.06543020302042912,
+    "coef_tool_err": 0.0002893228630293926
+  },
+  "lemons": {
+    "n_obs": 410,
+    "chi2": 9.418254907458103,
+    "pvalue": 0.0021483587644405095,
+    "share_bad_given_cheap": 0.5576923076923077,
+    "share_bad_given_expensive": 0.3790849673202614,
+    "interpretation": "cheap&bad overrepresented + p<0.05 = lemons discount"
+  },
+  "quantization_curve": {
+    "n_obs": 313,
+    "discount_vs_bf16": {
+      "fp16": 0.5796,
+      "fp4": 0.0613,
+      "fp8": 0.0603,
+      "unknown": 0.2949
+    }
+  }
+}
