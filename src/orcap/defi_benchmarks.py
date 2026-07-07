@@ -10,8 +10,8 @@ Series:
                       (solver = tx sender to GPv2Settlement; approximation —
                       some solvers rotate submission EOAs)
   univ3_pool_daily    daily last sqrtPrice for USDC/WETH 5bps & 30bps pools
-                      since 2024 -> cross-pool dispersion for the same pair
-  btc_hashprice_daily BTC difficulty + block subsidy + BTC-USD -> $/TH/day
+                      since 2026 -> cross-pool dispersion for the same pair
+  btc_hashprice_daily blockchain.info hashrate + subsidy + BTC-USD -> $/TH/day
 """
 
 import json
@@ -74,7 +74,8 @@ QUERIES: dict[str, str] = {
                    ORDER BY block_number DESC, log_index DESC
                  ) AS rn
           FROM `bigquery-public-data.crypto_ethereum.logs`
-          WHERE block_timestamp >= '2024-01-01'
+          -- logs' data column is fat; 6 months keeps the scan under the cost cap
+          WHERE block_timestamp >= '2026-01-01'
             AND address IN ('{POOL_USDC_WETH_5}', '{POOL_USDC_WETH_30}')
             AND topics[SAFE_OFFSET(0)] = '{UNIV3_SWAP_TOPIC}'
         )
@@ -82,19 +83,23 @@ QUERIES: dict[str, str] = {
                POW(sqrt_price_x96 / POW(2, 96), 2) * 1e12 AS weth_per_usdc_scaled
         FROM swaps WHERE rn = 1 ORDER BY day, pool
     """,
-    "btc_difficulty_daily": """
-        SELECT DATE(timestamp) AS day,
-               AVG(difficulty) AS difficulty,
-               COUNT(*) AS n_blocks
-        FROM `bigquery-public-data.crypto_bitcoin.blocks`
-        WHERE timestamp >= '2020-01-01'
-        GROUP BY 1 ORDER BY 1
-    """,
 }
 
 
 def _cache_path(name: str) -> Path:
     return EXTERNAL_DIR / f"{name}.parquet"
+
+
+def _bq_project() -> str | None:
+    """Billing project: env var, else the ADC quota project."""
+    import os
+
+    if p := os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        return p
+    adc = Path.home() / ".config/gcloud/application_default_credentials.json"
+    if adc.exists():
+        return json.loads(adc.read_text()).get("quota_project_id")
+    return None
 
 
 def run_bigquery(name: str, force: bool = False) -> Path | None:
@@ -104,7 +109,7 @@ def run_bigquery(name: str, force: bool = False) -> Path | None:
         return cache
     from google.cloud import bigquery
 
-    client = bigquery.Client()
+    client = bigquery.Client(project=_bq_project())
     sql = QUERIES[name]
     dry = client.query(sql, job_config=bigquery.QueryJobConfig(dry_run=True, use_query_cache=False))
     gb = dry.total_bytes_processed / 1024**3
@@ -152,38 +157,59 @@ def fetch_btc_usd_daily(force: bool = False) -> Path:
     return cache
 
 
+def fetch_btc_hashrate_daily(force: bool = False) -> Path:
+    """Daily network hashrate (TH/s) from blockchain.info's public chart API."""
+    cache = _cache_path("btc_hashrate_daily")
+    if cache.exists() and not force:
+        return cache
+    with httpx.Client(timeout=60) as client:
+        r = client.get(
+            "https://api.blockchain.info/charts/hash-rate",
+            params={"timespan": "7years", "format": "json", "sampled": "false"},
+            headers={"User-Agent": "orcap/0.1"},
+        )
+        r.raise_for_status()
+        values = r.json()["values"]
+    df = pd.DataFrame(
+        [
+            {"day": datetime.fromtimestamp(v["x"], UTC).date(), "hashrate_ths": v["y"]}
+            for v in values
+        ]
+    )
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(cache, index=False)
+    return cache
+
+
 def build_hashprice(force: bool = False) -> Path | None:
-    """$/TH/day = (subsidy_btc_per_day * btc_usd) / network_TH."""
-    diff_p, btc_p = _cache_path("btc_difficulty_daily"), _cache_path("btc_usd_daily")
-    if not (diff_p.exists() and btc_p.exists()):
-        log.warning("hashprice needs btc_difficulty_daily + btc_usd_daily first")
+    """$/TH/day = (subsidy_btc_per_day * btc_usd) / network_TH; assumes 144 blocks/day
+    (fees excluded — subsidy-only hashprice, the standard cost-anchor series)."""
+    hr_p, btc_p = _cache_path("btc_hashrate_daily"), _cache_path("btc_usd_daily")
+    if not (hr_p.exists() and btc_p.exists()):
+        log.warning("hashprice needs btc_hashrate_daily + btc_usd_daily first")
         return None
     cache = _cache_path("btc_hashprice_daily")
     if cache.exists() and not force:
         return cache
-    d = pd.read_parquet(diff_p)
+    h = pd.read_parquet(hr_p)
     b = pd.read_parquet(btc_p)
-    d["day"] = pd.to_datetime(d["day"])
+    h["day"] = pd.to_datetime(h["day"])
     b["day"] = pd.to_datetime(b["day"])
-    m = d.merge(b, on="day")
-    m["hashrate_ths"] = m["difficulty"] * 2**32 / 600 / 1e12
-    m["day_dt"] = m["day"]
+    m = h.merge(b, on="day")
     halvings = [
         (pd.Timestamp("2020-05-11"), 6.25),
         (pd.Timestamp("2024-04-20"), 3.125),
-        (pd.Timestamp("2028-01-01"), 1.5625),
     ]
 
     def subsidy(ts):
-        s = 6.25
-        for h, v in halvings:
-            if ts >= h:
+        s = 12.5
+        for hv, v in halvings:
+            if ts >= hv:
                 s = v
         return s
 
-    m["subsidy_btc_day"] = m["day_dt"].map(subsidy) * m["n_blocks"]
-    m["hashprice_usd_per_th_day"] = m["subsidy_btc_day"] * m["btc_usd"] / m["hashrate_ths"]
-    out = m[["day", "difficulty", "hashrate_ths", "btc_usd", "hashprice_usd_per_th_day"]]
+    m["hashprice_usd_per_th_day"] = m["day"].map(subsidy) * 144 * m["btc_usd"] / m["hashrate_ths"]
+    out = m[["day", "hashrate_ths", "btc_usd", "hashprice_usd_per_th_day"]]
     out.to_parquet(cache, index=False)
     return cache
 
@@ -193,6 +219,8 @@ def main(force: bool = False) -> None:
     results = {}
     fetch_btc_usd_daily(force)
     results["btc_usd_daily"] = "ok"
+    fetch_btc_hashrate_daily(force)
+    results["btc_hashrate_daily"] = "ok"
     for name in QUERIES:
         try:
             run_bigquery(name, force)
