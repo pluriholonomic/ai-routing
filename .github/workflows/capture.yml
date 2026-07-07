@@ -5,7 +5,9 @@ name: capture
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    # offset from :00/:15/:30/:45 — those slots are congested on GitHub's
+    # scheduler and get skipped far more often
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
     inputs:
       samples:
