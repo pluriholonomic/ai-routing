@@ -16,6 +16,6 @@
     }
   },
   "gpu_h100_usd_hr": 2.175119168681059,
-  "median_naive_markup": null,
+  "median_naive_markup": 0.11800898254032072,
   "markup_slope_note": "levels overstated (single-stream cost bound); use slope/ordering"
 }

@@ -83,12 +83,56 @@ def br_fit(agg: pd.DataFrame) -> dict:
     return {"n_obs": int(m.nobs), "r2": float(m.rsquared), "price_vs_n1": coefs, "se": ses}
 
 
+def load_scrape_throughput() -> pd.DataFrame:
+    """Median tok/s per (model, provider) from the frontend perf comparisons —
+    much denser than the v1 snapshot's throughput_last_30m."""
+    try:
+        return data.q(
+            f"""
+            with es as (
+              select distinct endpoint_uuid, model_permaslug, provider_slug,
+                     provider_display_name
+              from read_parquet('{data.table_glob("endpoint_stats_daily")}')
+            ),
+            tp as (
+              select endpoint_uuid, median(value) tok_s
+              from read_parquet('{data.table_glob("perf_comparisons_daily")}')
+              where metric = 'throughput-comparison' and value > 0
+              group by 1
+            )
+            select es.model_permaslug, es.provider_display_name as provider_name,
+                   median(tp.tok_s) as tok_s
+            from es join tp using (endpoint_uuid)
+            group by 1, 2
+            """
+        ).df()
+    except Exception as exc:
+        log.warning("scrape throughput unavailable: %s", exc)
+        return pd.DataFrame(columns=["model_permaslug", "provider_name", "tok_s"])
+
+
 def markup_table(df: pd.DataFrame, gpu_usd_hr: float | None) -> pd.DataFrame:
-    d = df[(df["throughput_last_30m"] > 0)].copy()
+    tp = load_scrape_throughput()
+    slug_map = data.q(
+        f"""
+        select distinct canonical_slug, id from {data.models_snapshots()}
+        where run_ts = (select max(run_ts) from {data.models_snapshots()})
+          and id not like '%:%'
+        """
+    ).df()
+    tp = tp.merge(slug_map, left_on="model_permaslug", right_on="canonical_slug")
+    d = df.merge(
+        tp[["id", "provider_name", "tok_s"]],
+        left_on=["model_id", "provider_name"],
+        right_on=["id", "provider_name"],
+        how="left",
+    )
+    d["tok_s"] = d["tok_s"].fillna(d["throughput_last_30m"])
+    d = d[d["tok_s"] > 0].copy()
     if gpu_usd_hr is None:
         d["naive_cost_per_token"] = np.nan
     else:
-        d["naive_cost_per_token"] = gpu_usd_hr / (d["throughput_last_30m"] * 3600)
+        d["naive_cost_per_token"] = gpu_usd_hr / (d["tok_s"] * 3600)
     d["naive_markup"] = d["price_completion"] / d["naive_cost_per_token"]
     return d[
         [
@@ -97,7 +141,7 @@ def markup_table(df: pd.DataFrame, gpu_usd_hr: float | None) -> pd.DataFrame:
             "tag",
             "quantization",
             "price_completion",
-            "throughput_last_30m",
+            "tok_s",
             "naive_cost_per_token",
             "naive_markup",
         ]

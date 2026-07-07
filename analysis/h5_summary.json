@@ -1,22 +1,23 @@
 {
   "global": {
-    "n_apps": 4,
-    "hhi": 4244.091565732946,
-    "top1_share": 0.6087630376720081,
-    "top3_share": 0.8973378674750225,
+    "n_apps": 8,
+    "hhi": 2122.045782866473,
+    "top1_share": 0.30438151883600406,
+    "top3_share": 0.6952223436308069,
     "zipf": {
-      "n": 4,
-      "slope": null
+      "n": 8,
+      "slope": -1.0055308296315033,
+      "r2": 0.8800036777150397
     }
   },
   "per_model": {
-    "n_models": 11,
-    "median_hhi": 2789.563399684164,
-    "p90_hhi": 4542.657858745026
+    "n_models": 304,
+    "median_hhi": 3197.113330768684,
+    "p90_hhi": 5970.910596673283
   },
   "multihoming": {
-    "n_apps_in_any_top_list": 13,
-    "median_models_per_app": 2.0,
-    "max_models_per_app": 9
+    "n_apps_in_any_top_list": 41,
+    "median_models_per_app": 4.0,
+    "max_models_per_app": 155
   }
 }

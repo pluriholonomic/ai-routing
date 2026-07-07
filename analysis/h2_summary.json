@@ -1,0 +1,19 @@
+{
+  "dispersion_fit": {
+    "n_obs": 85,
+    "elasticity_cv_wrt_n": 1.6529109708485779,
+    "se": 0.8119686578035904,
+    "pvalue": 0.041782175256105995,
+    "r2": 0.024361832399513617,
+    "mean_cv_multiprovider": 0.27467844916261214,
+    "median_max_min_ratio": 1.8229166666666667
+  },
+  "hedonic": {
+    "n_obs": 717,
+    "r2_model_fe_only": 0.9537161564294908,
+    "r2_full_hedonic": 0.9562323861541759,
+    "within_model_price_var_explained_by_quality": 0.05436518513964557,
+    "residual_dispersion_approx_cv": 0.35483915171624747
+  },
+  "share_models_multiprovider": 0.4633333333333333
+}
