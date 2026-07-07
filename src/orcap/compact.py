@@ -222,9 +222,17 @@ def compact_local(dt: str, data_dir: Path = DATA_DIR) -> dict[str, Any]:
         save_state(state, state_path)
         changes_dir = data_dir / "derived" / "pricing_changes" / f"dt={dt}"
         changes_dir.mkdir(parents=True, exist_ok=True)
+        changes_path = changes_dir / "part-0.parquet"
+        event_rows = [{"dt": dt, **e} for e in events]
+        # a re-run of an already-folded day computes few/no events (state has
+        # absorbed them); merge with the existing file so events aren't lost
+        if changes_path.exists():
+            existing = pq.ParquetFile(changes_path).read().to_pylist()
+            merged = {json.dumps(r, sort_keys=True): r for r in existing + event_rows}
+            event_rows = list(merged.values())
         pq.write_table(
-            pa.Table.from_pylist([{"dt": dt, **e} for e in events], schema=CHANGES_SCHEMA),
-            changes_dir / "part-0.parquet",
+            pa.Table.from_pylist(event_rows, schema=CHANGES_SCHEMA),
+            changes_path,
             compression="zstd",
         )
 
@@ -256,7 +264,11 @@ def compact_hf(dt: str, repo_id: str = HF_DATASET_REPO, workdir: Path | None = N
         repo_id=repo_id,
         repo_type="dataset",
         local_dir=workdir,
-        allow_patterns=[f"curated/*/dt={dt}/*", "derived/pricing_current.parquet"],
+        allow_patterns=[
+            f"curated/*/dt={dt}/*",
+            "derived/pricing_current.parquet",
+            f"derived/pricing_changes/dt={dt}/*",
+        ],
         token=api.token,
     )
     before = {p.relative_to(workdir) for p in workdir.rglob("*.parquet")}
