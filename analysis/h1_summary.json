@@ -1,0 +1,12 @@
+{
+  "n_models": 682,
+  "n_pairs": 39486,
+  "n_changes": 1082,
+  "share_pairs_changed": 0.027402117206098364,
+  "median_gap_days": 2.548275462962963,
+  "repricing_rate_per_model_month": 0.16631375714909638,
+  "median_abs_dlog": 0.25541281188299536,
+  "share_changes_gt_10pct": 0.7800369685767098,
+  "share_changes_gt_25pct": 0.5508317929759704,
+  "share_price_cuts": 0.5693160813308688
+}

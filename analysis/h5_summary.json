@@ -1,0 +1,22 @@
+{
+  "global": {
+    "n_apps": 4,
+    "hhi": 4244.091565732946,
+    "top1_share": 0.6087630376720081,
+    "top3_share": 0.8973378674750225,
+    "zipf": {
+      "n": 4,
+      "slope": null
+    }
+  },
+  "per_model": {
+    "n_models": 11,
+    "median_hhi": 2789.563399684164,
+    "p90_hhi": 4542.657858745026
+  },
+  "multihoming": {
+    "n_apps_in_any_top_list": 13,
+    "median_models_per_app": 2.0,
+    "max_models_per_app": 9
+  }
+}

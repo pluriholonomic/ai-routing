@@ -37,6 +37,13 @@ def main() -> None:
     p_compact = sub.add_parser("compact", help="nightly compaction + pricing_changes derivation")
     p_compact.add_argument("--repo", default=None, help="HF repo id (default from config)")
 
+    p_defi = sub.add_parser("defi", help="pull DeFi comparator series (BigQuery + Coinbase)")
+    p_defi.add_argument("--force", action="store_true", help="refresh caches")
+
+    p_analyze = sub.add_parser("analyze", help="run the empirical screen (H1-H6)")
+    p_analyze.add_argument("--hypothesis", default=None, help="e.g. h2 (default: all)")
+    p_analyze.add_argument("--out", default="analysis", help="output directory")
+
     p_backfill = sub.add_parser("backfill", help="best-effort historical backfill (model-level)")
     p_backfill.add_argument(
         "--source", choices=["wayback", "orw", "all"], default="all", help="backfill source"
@@ -79,6 +86,33 @@ def main() -> None:
         from .backfill import main as backfill_main
 
         backfill_main(source=args.source)
+    elif args.command == "defi":
+        from .defi_benchmarks import main as defi_main
+
+        defi_main(force=args.force)
+    elif args.command == "analyze":
+        import importlib
+        from pathlib import Path
+
+        modules = {
+            "h1": "h1_spells",
+            "h2": "h2_dispersion",
+            "h3": "h3_entry",
+            "h4": "h4_routing",
+            "h5": "h5_frontends",
+            "h6": "h6_fees",
+        }
+        chosen = [args.hypothesis] if args.hypothesis else list(modules)
+        out = Path(args.out)
+        results = {}
+        for h in chosen:
+            mod = importlib.import_module(f"orcap.analysis.{modules[h]}")
+            try:
+                results[h] = mod.run(out)
+            except Exception as exc:  # keep going; screen reports partial results
+                logging.exception("hypothesis %s failed", h)
+                results[h] = {"error": str(exc)}
+        print(json.dumps(results, indent=2, default=str))
 
 
 if __name__ == "__main__":

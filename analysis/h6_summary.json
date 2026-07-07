@@ -1,0 +1,9 @@
+{
+  "n_pairs": 38,
+  "median_effective_over_listed_input": 0.4520422420271446,
+  "p10": 0.25846646632244263,
+  "p90": 0.9987497713744588,
+  "median_cache_hit_rate": 0.662904706772192,
+  "platform_take_rate_openrouter": 0.055,
+  "note": "comparator take rates (aggregators, LPs, solvers) cited in memo"
+}
