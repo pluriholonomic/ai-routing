@@ -157,6 +157,45 @@ def fetch_btc_usd_daily(force: bool = False) -> Path:
     return cache
 
 
+def fetch_perp_funding(force: bool = False, instrument: str = "BTC-PERPETUAL") -> Path:
+    """Perp funding-rate history (hourly, with 8h rate) from Deribit's public
+    API — the H12 comparator: a market-set basis on a continuously-quoted
+    instrument. (Binance's endpoint is geo-blocked from the US.)"""
+    cache = _cache_path(f"funding_{instrument.lower().replace('-', '_')}")
+    if cache.exists() and not force:
+        return cache
+    rows: list[dict] = []
+    start = pd.Timestamp("2020-01-01", tz="UTC")
+    now = pd.Timestamp.now(tz="UTC")
+    with httpx.Client(timeout=30) as client:
+        while start < now:
+            end = min(start + pd.Timedelta(days=30), now)
+            r = client.get(
+                "https://www.deribit.com/api/v2/public/get_funding_rate_history",
+                params={
+                    "instrument_name": instrument,
+                    "start_timestamp": int(start.timestamp() * 1000),
+                    "end_timestamp": int(end.timestamp() * 1000),
+                },
+                headers={"User-Agent": "orcap/0.1"},
+            )
+            r.raise_for_status()
+            for b in r.json().get("result") or []:
+                rows.append(
+                    {
+                        "funding_time": datetime.fromtimestamp(b["timestamp"] / 1000, UTC),
+                        "funding_8h": float(b["interest_8h"]),
+                        "index_price": float(b["index_price"]),
+                    }
+                )
+            start = end
+            time.sleep(0.25)
+    df = pd.DataFrame(rows).drop_duplicates("funding_time").sort_values("funding_time")
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(cache, index=False)
+    return cache
+
+
 def fetch_btc_hashrate_daily(force: bool = False) -> Path:
     """Daily network hashrate (TH/s) from blockchain.info's public chart API."""
     cache = _cache_path("btc_hashrate_daily")
@@ -221,6 +260,12 @@ def main(force: bool = False) -> None:
     results["btc_usd_daily"] = "ok"
     fetch_btc_hashrate_daily(force)
     results["btc_hashrate_daily"] = "ok"
+    try:
+        fetch_perp_funding(force)
+        results["funding_btc_perpetual"] = "ok"
+    except Exception as exc:  # non-fatal comparator
+        log.warning("perp funding fetch failed: %s", exc)
+        results["funding_btc_perpetual"] = f"failed: {exc}"
     for name in QUERIES:
         try:
             run_bigquery(name, force)

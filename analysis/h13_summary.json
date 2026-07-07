@@ -1,0 +1,10 @@
+{
+  "n_pairs": 62,
+  "n_days": 1,
+  "providers": [
+    "deepinfra"
+  ],
+  "share_exact_zero_basis": 1.0,
+  "max_abs_basis_pct": 2.220446049250313e-14,
+  "rfq_null": "basis \u2261 0 (quote passthrough); deviations = stale-quote windows"
+}

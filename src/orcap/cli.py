@@ -110,6 +110,7 @@ def main() -> None:
             "h10": "h10_lastlook",
             "h11": "h11_quality",
             "h12": "h12_basis",
+            "h13": "h13_venue_basis",
             "h14": "h14_ordertypes",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
