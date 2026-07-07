@@ -32,6 +32,8 @@ def main() -> None:
 
     sub.add_parser("discover", help="sniff a model page and dump internal API endpoints seen")
 
+    sub.add_parser("capture-gpu", help="snapshot GPU rental offers (vast.ai) + price indices")
+
     p_compact = sub.add_parser("compact", help="nightly compaction + pricing_changes derivation")
     p_compact.add_argument("--repo", default=None, help="HF repo id (default from config)")
 
@@ -65,6 +67,10 @@ def main() -> None:
         from .discover import main as discover_main
 
         discover_main()
+    elif args.command == "capture-gpu":
+        from .capture_gpu import main as gpu_main
+
+        gpu_main()
     elif args.command == "compact":
         from .compact import main as compact_main
 

@@ -1,0 +1,30 @@
+name: gpu
+# Hourly GPU rental-price snapshot: vast.ai per-offer prices for major GPU
+# classes + fabryka H100-eq index. Companion series for cost pass-through
+# analysis against OpenRouter token prices.
+
+on:
+  schedule:
+    - cron: "11 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: gpu
+  cancel-in-progress: false
+
+jobs:
+  gpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: capture GPU prices
+        run: uv run orcap capture-gpu
+      - name: push to HF dataset repo
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "gpu ${{ github.run_id }}" --delete-local
