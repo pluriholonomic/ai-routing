@@ -1,18 +1,18 @@
 name: capture
-# Every 15-min slot takes 3 API snapshots at 5-min spacing (OpenRouter's finest
-# rolling window is uptime_last_5m), then pushes raw+parquet to the private HF
-# dataset repo. GH cron can lag a few minutes; run_ts timestamps are authoritative.
+# GitHub throttles sub-hourly crons on this repo to ~1 firing/hour (observed
+# 2026-07-07), so each hourly run takes 11 API snapshots at 5-min spacing
+# (OpenRouter's finest rolling window is uptime_last_5m) — a ~55-min job that
+# reconstructs a 5-minute series from the one slot the scheduler grants.
+# run_ts timestamps in the data are authoritative; hour-boundary gaps are fine.
 
 on:
   schedule:
-    # offset from :00/:15/:30/:45 — those slots are congested on GitHub's
-    # scheduler and get skipped far more often
-    - cron: "7,22,37,52 * * * *"
+    - cron: "7 * * * *"  # off the congested :00 mark
   workflow_dispatch:
     inputs:
       samples:
         description: "snapshots this run"
-        default: "3"
+        default: "11"
 
 concurrency:
   group: capture
@@ -21,7 +21,7 @@ concurrency:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -29,7 +29,7 @@ jobs:
           python-version: "3.12"
       - run: uv sync --no-dev
       - name: capture snapshots
-        run: uv run orcap capture --samples "${{ github.event.inputs.samples || '3' }}" --interval-seconds 300
+        run: uv run orcap capture --samples "${{ github.event.inputs.samples || '11' }}" --interval-seconds 300
       - name: push to HF dataset repo
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
