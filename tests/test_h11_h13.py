@@ -12,7 +12,7 @@ def _quality_frame(lemons: bool, n_models: int = 100) -> pd.DataFrame:
     rows = []
     for m in range(n_models):
         base_p = rng.uniform(0.2, 2.0)
-        for i in range(4):
+        for _i in range(4):
             price = base_p * rng.uniform(0.5, 1.5)
             if lemons:
                 # cheaper than model median -> higher error rate, deterministically
