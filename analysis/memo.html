@@ -94,8 +94,9 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;background:var(--s
 
 <h2>Live status <span class="sans" style="font-size:13px;color:var(--muted);font-weight:400">
 auto-generated from the latest daily reanalysis</span></h2>
-<div class="statrow"><div class="stat"><div class="v">243,554</div><div class="l">endpoint-price observations</div></div><div class="stat"><div class="v">35</div><div class="l">price-field change events</div></div><div class="stat"><div class="v">27.5%</div><div class="l">cross-provider dispersion (CV)</div></div><div class="stat"><div class="v">-1.19</div><div class="l">routing share–price elasticity</div></div><div class="stat"><div class="v">28.3%</div><div class="l">p90 endpoint reject rate</div></div><div class="stat"><div class="v">100.0%</div><div class="l">venue quotes at exactly direct price</div></div><div class="stat"><div class="v">$2.18</div><div class="l">H100 SXM $/hr (vast.ai median)</div></div><div class="stat"><div class="v">54.5%</div><div class="l">live events reversed</div></div></div>
-<table><thead><tr><th>UTC</th><th>Model</th><th>Provider</th><th class="num">$/Mtok out</th></tr></thead>
+<div class="statrow"><div class="stat"><div class="v">253,234</div><div class="l">endpoint-price observations</div></div><div class="stat"><div class="v">35</div><div class="l">price-field change events</div></div><div class="stat"><div class="v">27.5%</div><div class="l">cross-provider dispersion (CV)</div></div><div class="stat"><div class="v">-1.19</div><div class="l">routing share–price elasticity</div></div><div class="stat"><div class="v">28.3%</div><div class="l">p90 endpoint reject rate</div></div><div class="stat"><div class="v">100.0%</div><div class="l">venue quotes at exactly direct price</div></div><div class="stat"><div class="v">$2.18</div><div class="l">H100 SXM $/hr (vast.ai median)</div></div><div class="stat"><div class="v">54.5%</div><div class="l">live events reversed</div></div></div>
+<table><thead><tr><th>UTC</th><th>Model</th><th>Provider</th>
+<th class="num">$/Mtok out</th></tr></thead>
 <tbody><tr><td class='num'>20260707 2203</td><td>google/gemma-4-31b-it</td><td>SambaNova</td><td class='num'>1.15 → 0.59</td></tr><tr><td class='num'>20260707 2023</td><td>minimax/minimax-m2.7</td><td>SambaNova</td><td class='num'>7.0 → 1.5</td></tr><tr><td class='num'>20260707 1656</td><td>z-ai/glm-5.2</td><td>Inceptron</td><td class='num'>2.86 → 3.08</td></tr><tr><td class='num'>20260707 1656</td><td>moonshotai/kimi-k2.7-code</td><td>Ambient</td><td class='num'>3.5 → 3.83</td></tr><tr><td class='num'>20260707 1334</td><td>z-ai/glm-5.2</td><td>Novita</td><td class='num'>3.48 → 3.08</td></tr><tr><td class='num'>20260707 1240</td><td>z-ai/glm-5.2</td><td>Novita</td><td class='num'>2.86 → 3.48</td></tr></tbody></table>
 <p class="small sans">Most recent repricing events. All statistics recomputed nightly from
 the full capture; the narrative sections below are the dated core screen.</p>
@@ -134,6 +135,8 @@ the full capture; the narrative sections below are the dated core screen.</p>
     <tr><td>H11 · Execution quality</td><td>Delivered-quality share; lemons χ²</td><td class="num">31.9%; p = 0.002</td><td>Quality-tiered quoting + a lemons tail — MM execution-quality dispersion</td><td><span class="chip deep">deep</span></td></tr>
     <tr><td>H12 · Compute basis</td><td>On-demand / interruptible</td><td class="num">1.16–1.67×</td><td>Funding-basis-shaped, but orders of magnitude larger (interruption premium)</td><td><span class="chip partial">partial</span></td></tr>
     <tr><td>H13 · Venue basis (RFQ)</td><td>OpenRouter vs direct list</td><td class="num">0.0% (128/128)</td><td>Pure quote-passthrough broker — exactly how RFQ aggregators display maker quotes</td><td><span class="chip deep">deep</span></td></tr>
+    <tr><td>H7 · Cost pass-through</td><td>Token deflation vs GPU rents</td><td class="num">−54% vs −19/−24%</td><td>Tokens deflate 2–3× faster than GPU rents — efficiency &amp; competition, not cost-anchoring (hashprice analog fails so far)</td><td><span class="chip skin">skin-deep · prelim</span></td></tr>
+    <tr><td>H17 · Event drivers</td><td>Live event taxonomy</td><td class="num">73% launch · 55% reversed</td><td>Repricing = launch experimentation + strategic reaction, ~never cost pass-through</td><td><span class="chip partial">mechanism</span></td></tr>
   </tbody>
 </table>
 <div class="prose">
@@ -304,7 +307,25 @@ the full capture; the narrative sections below are the dated core screen.</p>
       <tr><td>Long-tail hosts (n=20)</td><td>SambaNova, Cloudflare, DigitalOcean, io.net</td><td>slow to list, 9% rejects, rarely price-competitive</td></tr>
     </tbody>
   </table>
-  <div class="prose"><p class="sec small">Dealer-market reading: core liquidity = streaming market makers; off-OR premium = bank dealers quoting wide on a secondary venue; boutiques = single-name specialists; long-tail = part-time quoters. The pre-registered layer-2 hazard model becomes type-interacted: firm quoters are expected to respond to demand states; the rest barely reprice at all.</p></div>
+  <div class="prose"><p class="sec small">Dealer-market reading: core liquidity = streaming market makers; off-OR premium = bank dealers quoting wide on a secondary venue; boutiques = single-name specialists; long-tail = part-time quoters. The pre-registered layer-2 hazard model becomes type-interacted: firm quoters are expected to respond to demand states; the rest barely reprice at all.</p>
+  <p class="sec small"><strong>Text refinement (H19b).</strong> Adding website-text features (TF-IDF/SVD embeddings + keyword flags over each provider's homepage) reshuffles the typology (ARI 0.20) and resolves what behavior alone couldn't: foundation-model labs (AI21, MiniMax, Moonshot, Z.ai, xAI — "research/foundation/lab" text axis) separate from neocloud discounters (Chutes, Novita, AtlasCloud — price-led, serverless), and a silicon/infra premium cluster emerges (Groq, Cerebras, SambaNova, Together — the only cluster using own-hardware language). Off-OpenRouter-first businesses remain identifiable purely behaviorally: high price percentile, ~never cheapest, weeks-late listing, rationed capacity.</p></div>
+</section>
+
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H17</span><h3 style="margin:0">What triggers repricing: experimentation and reaction, not costs</h3><span class="chip partial">mechanism</span></div>
+  <div class="prose"><p class="sec">Live event log (5-min resolution, day one n=11 — case evidence): <strong>73% of events hit models under 30 days old</strong> (median age 21 days), <strong>55% were reversed within the day</strong>, 45% followed a competitor's move on the same model within 48h, 27% were provider-wide waves, and movers averaged 2.3× their capacity ceiling in the 6h before moving. Three years of historical changes (n≈1,040, Wayback) add the lifecycle: month-one changes are 66% cuts with median 31% moves (launch premium decaying), falling monotonically to 38% cuts for models over a year old. Cross-provider corroboration from the LiteLLM community price archive (H1b: 56k provider-level pairs, 2023-26, 95 providers) shows the same 66% cut share and an extreme mover/stayer split — most providers never reprice; a small managed-price class does all the moving.</p></div>
+  <div class="statrow">
+    <div class="stat"><div class="v">73%</div><div class="l">of live events on models &lt;30d old</div></div>
+    <div class="stat"><div class="v">55%</div><div class="l">reversed within the day</div></div>
+    <div class="stat"><div class="v">45%</div><div class="l">followed a competitor within 48h</div></div>
+    <div class="stat"><div class="v">66%→38%</div><div class="l">cut share, month-1 vs &gt;1yr (lifecycle)</div></div>
+  </div>
+  <figcaption style="padding:0 2px 8px;">Predictability confirms the structure (H18): a plain logistic on lifecycle + own-history features hits out-of-time ROC-AUC 0.82 (base rate 1.7%); the single most informative feature is the ecosystem's historical repricing propensity (univariate AUC 0.75). Repricing is who-you-are, not what-costs-did. Since 2026-07-08 the capture is event-driven: detected repricings trigger 60-second burst sampling of affected models and an immediate reanalysis (H8 fills automatically from these windows).</figcaption>
+</section>
+
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H7</span><h3 style="margin:0">Cost pass-through: token prices are not anchored to GPU rents</h3><span class="chip skin">skin-deep · preliminary</span></div>
+  <div class="prose"><p class="sec">A chained matched-model token index (BLS-style, ~232 matched models/month, no survivor bias) fell <strong>−53.6%</strong> from 2023-07 to 2026-06 (≈ −22%/yr like-for-like). Over the same era, H100 rents fell −19% (hyperscaler) to −24% (marketplace) per Silicon Data's published medians. Tokens deflate 2–3× faster than the input — the hashprice-style cost-anchor story fails at first pass; the majority of token deflation is serving efficiency and competition. Period-level correlations are underpowered (4–6 periods/segment, unstable signs) — the daily ECM version runs automatically as the vast.ai and 5-min token panels accumulate, and commercial index series (Bloomberg SDH100RT, OCPI-H100) drop into <code>data-static/gpu_index_periods.csv</code> if subscribed.</p></div>
 </section>
 
 <h2>Pre-registered phase 2 (runs as the panel accumulates)</h2>
