@@ -111,8 +111,10 @@ def live_status(analysis_dir: Path) -> str:
     tiles = [
         (f"{counts[0]:,}", "endpoint-price observations"),
         (str(events), "price-field change events"),
-        (_fmt((h2.get("dispersion_fit") or {}).get("mean_cv_multiprovider"), pct=True),
-         "cross-provider dispersion (CV)"),
+        (
+            _fmt((h2.get("dispersion_fit") or {}).get("mean_cv_multiprovider"), pct=True),
+            "cross-provider dispersion (CV)",
+        ),
         (_fmt(h4.get("share_price_elasticity")), "routing share–price elasticity"),
         (_fmt(h10.get("reject_rate_p90"), pct=True), "p90 endpoint reject rate"),
         (_fmt(h13.get("share_exact_zero_basis"), pct=True), "venue quotes at exactly direct price"),

@@ -113,6 +113,7 @@ def main() -> None:
             "h4": "h4_routing",
             "h5": "h5_frontends",
             "h6": "h6_fees",
+            "h7": "h7_passthrough",
             "h10": "h10_lastlook",
             "h11": "h11_quality",
             "h12": "h12_basis",

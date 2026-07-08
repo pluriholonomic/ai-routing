@@ -1,0 +1,33 @@
+{
+  "token_index_span": [
+    "2023-07-01",
+    "2026-06-01"
+  ],
+  "token_index_total_change_pct": -53.559300679605826,
+  "median_matched_models_per_month": 232.0,
+  "by_segment": {
+    "hyperscaler": {
+      "n_periods": 6,
+      "corr_dlog": -0.7606483846276219,
+      "gpu_total_decline_pct": -19.329896907216494,
+      "token_total_decline_pct": -31.366920930849986
+    },
+    "marketplace": {
+      "n_periods": 4,
+      "corr_dlog": 0.11072062802092394,
+      "gpu_total_decline_pct": -24.418604651162788,
+      "token_total_decline_pct": -5.435607469018889
+    },
+    "marketplace_h100eq": {
+      "n_periods": 1,
+      "note": "too few periods"
+    },
+    "neocloud": {
+      "n_periods": 4,
+      "corr_dlog": -0.9981100482115016,
+      "gpu_total_decline_pct": 11.371237458193972,
+      "token_total_decline_pct": -5.435607469018889
+    }
+  },
+  "note": "coarse period-level; daily ECM pre-registered as panels accumulate; commercial series (SDH100RT, OCPI-H100) drop into data-static/gpu_index_periods.csv"
+}

@@ -1,0 +1,17 @@
+period_start,period_end,segment,usd_hr,source
+2023-08-01,2023-12-31,hyperscaler,7.76,silicondata blog h100-rental-price-over-time (median)
+2024-01-01,2024-05-31,hyperscaler,7.92,silicondata blog h100-rental-price-over-time (median)
+2024-06-01,2024-12-31,hyperscaler,9.34,silicondata blog h100-rental-price-over-time (median)
+2024-06-01,2024-12-31,marketplace,2.58,silicondata blog h100-rental-price-over-time (median)
+2024-06-01,2024-12-31,neocloud,2.99,silicondata blog h100-rental-price-over-time (median)
+2025-01-01,2025-05-31,hyperscaler,8.96,silicondata blog h100-rental-price-over-time (median)
+2025-01-01,2025-05-31,marketplace,2.29,silicondata blog h100-rental-price-over-time (median)
+2025-01-01,2025-05-31,neocloud,3.50,silicondata blog h100-rental-price-over-time (median)
+2025-06-01,2025-06-30,hyperscaler,6.94,silicondata blog h100-rental-price-over-time
+2025-06-01,2025-06-30,marketplace,2.00,silicondata blog h100-rental-price-over-time
+2025-06-01,2025-06-30,neocloud,3.29,silicondata blog h100-rental-price-over-time
+2025-07-01,2025-12-31,hyperscaler,6.26,silicondata blog h100-rental-price-over-time (median)
+2025-07-01,2025-12-31,marketplace,1.95,silicondata blog h100-rental-price-over-time (median)
+2025-07-01,2025-12-31,neocloud,3.33,silicondata blog h100-rental-price-over-time (median)
+2026-06-01,2026-06-30,marketplace_h100eq,2.99,fabryka h100-eq index (2026-06-02 median; different basis - excluded from H100 segment)
+2026-07-01,2026-07-31,marketplace,2.18,orcap vast.ai capture (H100 SXM on-demand median 2026-07-07)
