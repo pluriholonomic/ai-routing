@@ -102,10 +102,11 @@ def book_metrics(asks: pd.DataFrame, dem: pd.DataFrame) -> pd.DataFrame:
         exe = g[g["reject_1d"] <= 0.20]
         best, second = g["price"].iat[0], g["price"].iat[1]
         demand = g["demand_tokmin"].iat[0]
-        within = lambda frac: float(g.loc[g["price"] <= best * (1 + frac), "depth_tokmin"].sum())
+        def within(frac: float, g=g, best=best) -> float:
+            return float(g.loc[g["price"] <= best * (1 + frac), "depth_tokmin"].sum())
 
         # walk the book to absorb k x demand
-        def impact(k: float) -> float | None:
+        def impact(k: float, g=g, demand=demand, best=best) -> float | None:
             need = demand * k
             cum = 0.0
             for r in g.itertuples(index=False):
