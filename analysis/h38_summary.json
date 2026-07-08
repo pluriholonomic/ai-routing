@@ -1,0 +1,25 @@
+{
+  "sub30min_pmr": {
+    "n_endpoints": 823,
+    "pmr_median": 0.87,
+    "pmr_p90": 2.03,
+    "pmr_max": 37.5,
+    "share_pmr_gt_5": 0.019
+  },
+  "intraday": {
+    "n_endpoints": 267,
+    "cv_30min_median": 0.454,
+    "cv_30min_p90": 1.091,
+    "fano_median": 1012.2,
+    "fano_note": "Poisson = 1; rolling-window smoothing makes these LOWER bounds",
+    "diurnal_variance_share": 0.025,
+    "residual_burst_share": 0.975
+  },
+  "daily": {
+    "n_models": 286,
+    "daily_cv_median": 0.459,
+    "daily_cv_p90": 1.275,
+    "max_over_median_day_median": 2.29,
+    "share_models_with_2x_day": 0.598
+  }
+}
