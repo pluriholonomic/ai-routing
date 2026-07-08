@@ -11,7 +11,8 @@
       "path_coverage": 0.38,
       "status": "open (marked to date)",
       "short_fwd_pnl_per_hr": -0.316,
-      "short_fwd_pnl_pct": -18.6
+      "short_fwd_pnl_pct": -18.6,
+      "arb_adj_short_pnl_pct": -43.9
     },
     {
       "entered": "2026-03-15",
@@ -24,11 +25,12 @@
       "path_coverage": 0.22,
       "status": "open (marked to date)",
       "short_fwd_pnl_per_hr": 0.169,
-      "short_fwd_pnl_pct": 7.2
+      "short_fwd_pnl_pct": 7.2,
+      "arb_adj_short_pnl_pct": -14.2
     }
   ],
   "mean_abs_short_pnl_pct": 12.9,
-  "inefficiency_read": "persistent |PnL| beyond the delivery-quality band = inefficiency; signed mean = forward risk premium",
+  "inefficiency_read": "NO SPOT RESALE: short-side arb requires reseller ops (redundancy x1.15 + 7.5% drag); long-side has no outside arb at all \u2014 Bessembinder-Lemmon regime: premia = hedging pressure; raw PnL is a risk-premium estimate, arb_adj is what an entrant could earn",
   "quality_band_marketplace_to_hyperscaler_pct": 187.2,
   "n_positions": 2,
   "executability_note": "hypothetical until AIX/ComputeConnect EFP go live; then this book is tradeable"

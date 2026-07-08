@@ -4,11 +4,16 @@ Compute is non-storable, so the executable cash-and-carry is:
   SHORT the tenor-T forward at F, deliver by ROLLING SPOT purchases over
   [t, t+T]. P&L per GPU-hour = F − avg(spot path) − frictions.
 
-Frictions band (the no-arb tolerance): delivery must be contract-grade —
-we price the spot leg at marketplace ON-DEMAND (not interruptible), and
-report the quality band up to the hyperscaler segment. Persistent P&L outside
-the band = inefficiency; its sign estimates the forward risk premium
-(commodity-carry literature: hedgers pay speculators).
+CRITICAL FRICTION — no spot resale: rented GPU-hours cannot be redelivered
+(sublease restrictions, tenancy/SLA transformation), so executing the short
+side requires operating as a reseller: ops drag + redundancy overbuy to reach
+contract-grade uptime. The reverse trade (long forward, sell spot) is only
+available to capacity OWNERS. The no-arb band is therefore asymmetric and
+wide — this is the Bessembinder-Lemmon electricity regime (forward premia set
+by hedging pressure, disciplined by integrated sellers, not arbitrage), not
+gold-style cash-and-carry. We report BOTH raw P&L and arb-adjusted P&L
+(spot leg × redundancy factor + ops drag) for the short side; the long side
+has no outside-arb bound at all.
 
 Inputs: data-static/gpu_forward_anchors.csv (F observations; Compute Desk /
 SemiAnalysis / AIX curves drop in), Silicon Data segment history + our
@@ -92,9 +97,20 @@ def carry_book(spot: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+REDUNDANCY_FACTOR = 1.15  # overbuy to hit contract-grade uptime from marketplace spot
+OPS_DRAG_PCT = 7.5  # reseller operating cost, % of notional (tenancy, rebilling, SLA ops)
+
+
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     spot = daily_spot_path()
     book = carry_book(spot)
+    if len(book):
+        book["arb_adj_short_pnl_pct"] = (
+            100
+            * (book["forward"] - book["realized_avg_spot"] * REDUNDANCY_FACTOR)
+            / book["forward"]
+            - OPS_DRAG_PCT
+        ).round(1)
     save(book, out_dir, "h36_carry_book")
     save(spot, out_dir, "h36_spot_path")
     if book.empty:
@@ -110,8 +126,10 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "positions": book.to_dict("records"),
         "mean_abs_short_pnl_pct": float(book["short_fwd_pnl_pct"].abs().mean()),
         "inefficiency_read": (
-            "persistent |PnL| beyond the delivery-quality band = inefficiency; "
-            "signed mean = forward risk premium"
+            "NO SPOT RESALE: short-side arb requires reseller ops (redundancy x%.2f + %.1f%% drag); "
+            "long-side has no outside arb at all — Bessembinder-Lemmon regime: premia = hedging "
+            "pressure; raw PnL is a risk-premium estimate, arb_adj is what an entrant could earn"
+            % (REDUNDANCY_FACTOR, OPS_DRAG_PCT)
         ),
         "quality_band_marketplace_to_hyperscaler_pct": band,
         "n_positions": int(len(book)),
