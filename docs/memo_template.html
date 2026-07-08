@@ -1,0 +1,494 @@
+<title>Is the Inference Market DeFi-Like? — Empirical Screen</title>
+<style>
+:root{
+  --paper:#fbfbf9; --surface:#fcfcfb; --ink:#141312; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --baseline:#c3c2b7; --hair:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s6:#e34948;
+  --good:#0ca30c; --serious:#ec835a; --critical:#d03b3b;
+  --chip-good-bg:rgba(12,163,12,.10); --chip-mid-bg:rgba(237,161,0,.13); --chip-bad-bg:rgba(208,59,59,.10);
+}
+@media (prefers-color-scheme: dark){:root{
+  --paper:#131418; --surface:#191b20; --ink:#f2f1ec; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --baseline:#383835; --hair:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s6:#e66767;
+  --chip-good-bg:rgba(12,163,12,.16); --chip-mid-bg:rgba(201,133,0,.18); --chip-bad-bg:rgba(230,103,103,.14);
+}}
+:root[data-theme="light"]{
+  --paper:#fbfbf9; --surface:#fcfcfb; --ink:#141312; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --baseline:#c3c2b7; --hair:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s6:#e34948;
+  --chip-good-bg:rgba(12,163,12,.10); --chip-mid-bg:rgba(237,161,0,.13); --chip-bad-bg:rgba(208,59,59,.10);
+}
+:root[data-theme="dark"]{
+  --paper:#131418; --surface:#191b20; --ink:#f2f1ec; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --baseline:#383835; --hair:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s6:#e66767;
+  --chip-good-bg:rgba(12,163,12,.16); --chip-mid-bg:rgba(201,133,0,.18); --chip-bad-bg:rgba(230,103,103,.14);
+}
+html{background:var(--paper);}
+body{
+  font-family:Charter,'Iowan Old Style',Georgia,'Times New Roman',serif;
+  color:var(--ink); line-height:1.55; margin:0; padding:0 20px 96px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:880px;margin:0 auto;}
+.prose{max-width:68ch;}
+.sans{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;}
+.num{font-variant-numeric:tabular-nums;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:.92em;}
+header{padding:64px 0 8px;}
+.eyebrow{font-family:system-ui,sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 14px;}
+h1{font-size:clamp(28px,4.4vw,40px);line-height:1.12;margin:0 0 12px;font-weight:700;text-wrap:balance;}
+.subtitle{color:var(--ink-2);font-size:18px;margin:0 0 4px;max-width:62ch;}
+.meta{font-family:system-ui,sans-serif;font-size:13px;color:var(--muted);margin-top:16px;display:flex;gap:18px;flex-wrap:wrap;}
+h2{font-size:24px;margin:56px 0 10px;font-weight:700;text-wrap:balance;}
+h3{font-size:17px;margin:26px 0 6px;font-weight:700;}
+p{margin:0 0 14px;color:var(--ink);}
+p.sec{color:var(--ink-2);}
+a{color:var(--s1);text-decoration:none;border-bottom:1px solid var(--hair);}
+hr{border:0;border-top:1px solid var(--grid);margin:48px 0;}
+.hypo{border-top:1px solid var(--grid);padding-top:28px;margin-top:40px;}
+.hypo-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+.hid{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--muted);letter-spacing:.06em;}
+.chip{font-family:system-ui,sans-serif;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:3px;padding:3px 9px;letter-spacing:.02em;}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;}
+.chip.deep{background:var(--chip-good-bg);color:var(--good);}   .chip.deep::before{background:var(--good);}
+.chip.partial{background:var(--chip-mid-bg);color:var(--s3);}   .chip.partial::before{background:var(--s3);}
+.chip.skin{background:var(--chip-bad-bg);color:var(--critical);}.chip.skin::before{background:var(--critical);}
+.chip.pending{background:var(--hair);color:var(--muted);}       .chip.pending::before{background:var(--muted);}
+.statrow{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0 6px;}
+.stat{background:var(--surface);border:1px solid var(--grid);border-radius:4px;padding:10px 14px;min-width:120px;flex:0 1 auto;}
+.stat .v{font-family:ui-monospace,Menlo,monospace;font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;}
+.stat .l{font-family:system-ui,sans-serif;font-size:11.5px;color:var(--muted);margin-top:3px;letter-spacing:.02em;}
+figure{margin:22px 0 8px;background:var(--surface);border:1px solid var(--grid);border-radius:6px;padding:18px 18px 10px;overflow-x:auto;}
+figcaption{font-family:system-ui,sans-serif;font-size:12.5px;color:var(--muted);padding:8px 2px 6px;line-height:1.45;}
+.charttitle{font-family:system-ui,sans-serif;font-size:13px;font-weight:600;color:var(--ink);margin:0 0 2px;}
+.chartsub{font-family:system-ui,sans-serif;font-size:12px;color:var(--muted);margin:0 0 10px;}
+svg text{font-family:system-ui,sans-serif;fill:var(--muted);font-size:11px;}
+svg .axis{stroke:var(--baseline);stroke-width:1;}
+svg .gridline{stroke:var(--grid);stroke-width:1;}
+svg .lbl{fill:var(--ink-2);font-size:11px;}
+table{border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;font-size:14px;margin:18px 0;}
+th{text-align:left;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;border-bottom:1px solid var(--baseline);padding:8px 12px 6px 0;}
+td{border-bottom:1px solid var(--grid);padding:9px 12px 9px 0;vertical-align:top;color:var(--ink);}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+.small{font-size:13px;color:var(--ink-2);}
+.foot{font-family:system-ui,sans-serif;font-size:12.5px;color:var(--muted);line-height:1.5;}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;background:var(--surface);border:1px solid var(--grid);border-radius:3px;padding:1px 5px;}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font-family:system-ui,sans-serif;font-size:12px;padding:5px 9px;border-radius:4px;opacity:0;transition:opacity .08s;z-index:10;white-space:nowrap;}
+@media (prefers-reduced-motion: reduce){#tip{transition:none;}}
+.prereg li{margin-bottom:10px;color:var(--ink);}
+.prereg .th{font-family:ui-monospace,Menlo,monospace;font-size:.9em;color:var(--ink-2);}
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">orcap · screening memo · auto-refreshed {{AS_OF}} · core screen dated 2026-07-07</p>
+  <h1>Is the inference market DeFi-like? An empirical screen</h1>
+  <p class="subtitle">Ten pre-specified hypothesis tests on OpenRouter's per-provider pricing, routing, and order-flow data, run before any theory. Verdict: not an AMM — an <em>aggregated RFQ market</em>: firm posted quotes (rejection is capacity, not quote-fading), quality-tiered pricing with a lemons tail, a zero-basis passthrough router with an internal maker scorecard, and free entry at the margin.</p>
+  <div class="meta">
+    <span>Data: OpenRouter capture (873 provider-endpoints, 2023–26 backfill) · vast.ai GPU offers</span>
+    <span>Repo: pluriholonomic/ai-routing · HF: t4run/openrouter-market-history (private)</span>
+  </div>
+</header>
+
+<!--LIVE_STATUS-->
+
+<h2>The analogy under test</h2>
+<div class="prose">
+<p class="sec">The conjecture: open inference routing has crypto market structure — free entry/exit of inference providers like node operators, with a pricing layer that resembles intent solving or AMMs.</p>
+</div>
+<table>
+  <thead><tr><th>Inference market</th><th>Crypto analog</th><th>Tested by</th></tr></thead>
+  <tbody>
+    <tr><td>Price per token</td><td>Asset price</td><td>H1, H2</td></tr>
+    <tr><td>GPU rental price</td><td>Gas / energy cost</td><td>H3 (naive bound); H7 pre-registered</td></tr>
+    <tr><td>OpenRouter (router)</td><td>DEX aggregator / intent auction</td><td>H4</td></tr>
+    <tr><td>Harnesses (Hermes Agent, Cline, …)</td><td>Front-ends / solver order flow</td><td>H5</td></tr>
+    <tr><td>Inference providers (free entry)</td><td>Miners / validators</td><td>H3; H9 pre-registered</td></tr>
+    <tr><td>Platform fees</td><td>Aggregator / LP take rates</td><td>H6</td></tr>
+  </tbody>
+</table>
+<div class="prose">
+<p class="sec"><strong>Falsification rule.</strong> For each dimension we compute the same statistic in both markets, plus a published negative control (online-retail price dispersion à la Baye–Morgan; menu-cost repricing). A dimension is <em>deep</em> only if the inference-market invariant matches its crypto comparator <em>and</em> differs from the generic-retail control. Matching retail is informative failure, not noise.</p>
+</div>
+
+<h2>Verdict table</h2>
+<table>
+  <thead><tr><th>Dimension</th><th>Statistic</th><th class="num">Inference</th><th>Closest regime</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>H1 · Price formation</td><td>Repricing rate; median |Δ|</td><td class="num">0.17/model-mo; 25.5%</td><td>Menu-cost posted prices (retail), not AMM/EIP-1559</td><td><span class="chip skin">skin-deep</span></td></tr>
+    <tr><td>H2 · Law of one price</td><td>Cross-provider CV; quality share</td><td class="num">27.5%; 5.4%</td><td>Search-friction retail (Baye–Morgan), not arb-tight</td><td><span class="chip skin">skin-deep</span></td></tr>
+    <tr><td>H3 · Free entry</td><td>Entry→price gradient</td><td class="num">−33%→−112% by N=5+</td><td>Bresnahan–Reiss competitive limit; hashrate-like entry</td><td><span class="chip deep">deep</span></td></tr>
+    <tr><td>H4 · Routing = aggregation</td><td>Share–price elasticity</td><td class="num">−1.19 ± 0.17</td><td>Between aggregator (−2 rule) and pinned flow (0)</td><td><span class="chip partial">partial</span></td></tr>
+    <tr><td>H5 · Harnesses = front-ends</td><td>HHI (vs CoW solvers)</td><td class="num">2122 ∈ [1001, 2672]</td><td>Inside the CoW solver 12-mo HHI range; fatter Zipf tail (−1.01 vs −3.49)</td><td><span class="chip partial">partial</span></td></tr>
+    <tr><td>H6 · Fee structure</td><td>Platform take rate</td><td class="num">5.5% vs 0–30 bps</td><td>20–100× above DEX-aggregator take</td><td><span class="chip skin">skin-deep</span></td></tr>
+    <tr><td>H10 · Last look (RFQ)</td><td>Reject rate; price→reject slope</td><td class="num">p90 28%; +0.03 (ns)</td><td>Rejection real but capacity-driven, not strategic quote-fading — quotes are firm</td><td><span class="chip partial">partial</span></td></tr>
+    <tr><td>H11 · Execution quality</td><td>Delivered-quality share; lemons χ²</td><td class="num">31.9%; p = 0.002</td><td>Quality-tiered quoting + a lemons tail — MM execution-quality dispersion</td><td><span class="chip deep">deep</span></td></tr>
+    <tr><td>H12 · Compute basis</td><td>On-demand / interruptible</td><td class="num">1.16–1.67×</td><td>Funding-basis-shaped, but orders of magnitude larger (interruption premium)</td><td><span class="chip partial">partial</span></td></tr>
+    <tr><td>H13 · Venue basis (RFQ)</td><td>OpenRouter vs direct list</td><td class="num">0.0% (128/128)</td><td>Pure quote-passthrough broker — exactly how RFQ aggregators display maker quotes</td><td><span class="chip deep">deep</span></td></tr>
+  </tbody>
+</table>
+<div class="prose">
+<p><strong>The deeper thing (v2, sharpened):</strong> OpenRouter is empirically an <em>aggregated RFQ market with posted quotes</em>. Providers quote like PMMs — quality-tiered pricing with a measurable lemons tail (H11), capacity-based rejection in the tail but no strategic quote-fading (H10: rejection uncorrelated with price aggressiveness, so quotes are firm), and the router passes maker quotes through at exactly face value (H13: zero basis on 128/128 matched models) while charging its take off-quote, like an RFQ aggregator and unlike an exchange. The AMM leg of the analogy fails cleanly (H1, H2, H6); the quote-driven OTC leg survives every test run so far. Theory target: search-and-bargaining (Duffie–Gârleanu–Pedersen) plus RFQ aggregation with a reliability-scored router — OpenRouter even maintains a Beta posterior (<code>fortuna</code>) over each quoter's fill reliability, an MM scorecard in production.</p>
+</div>
+
+<!-- ============================ H1 ============================ -->
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H1</span><h3 style="margin:0">Price formation: menu-cost posted prices, not continuous repricing</h3><span class="chip skin">skin-deep vs AMM</span></div>
+  <div class="prose"><p class="sec">Across 682 models and 39,486 snapshot pairs (Wayback 2023-07 → live), listed prices change rarely and in lumps. An AMM or EIP-1559 base fee moves every block; a menu-cost retailer moves ~monthly in ~10% jumps. Inference prices sit firmly in the second family — spells of ~6 months, median jump 25.5%.</p></div>
+  <div class="statrow">
+    <div class="stat"><div class="v">0.17</div><div class="l">changes per model-month</div></div>
+    <div class="stat"><div class="v">25.5%</div><div class="l">median |Δ log p|</div></div>
+    <div class="stat"><div class="v">78%</div><div class="l">of changes &gt; 10%</div></div>
+    <div class="stat"><div class="v">57%</div><div class="l">of changes are cuts</div></div>
+  </div>
+  <figure>
+    <p class="charttitle">Distribution of listed-price changes, conditional on a change</p>
+    <p class="chartsub">Δ log(price per output token) between consecutive snapshots · n = 1,076 changes · 2023-07 → 2026-07</p>
+    <svg id="c-h1" width="820" height="240" viewBox="0 0 820 240" role="img" aria-label="Histogram of log price changes; mass concentrated in jumps larger than ten percent on both sides"></svg>
+    <figcaption>Model-level top-provider listed price (Wayback backfill is model-level; per-provider spells accrue from the live 5-minute panel). Irregular snapshot gaps make the change rate a lower bound. Measured comparators (BigQuery, 2021-08 → now): the EIP-1559 base fee moves every block with a median hourly |Δlog| of <strong>11.7%</strong> (p90 47%) — continuous, high-frequency adjustment. Inference posts 25.5% jumps roughly twice a year. Golosov–Lucas menu-cost retail (~1 change/product-year at ~10%) is the closest published regime — inference reprices a bit faster and in larger lumps, and nothing like continuously.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ H2 ============================ -->
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H2</span><h3 style="margin:0">Law of one price fails; quality explains almost none of it</h3><span class="chip skin">skin-deep vs arb</span></div>
+  <div class="prose"><p class="sec">The same model, often the same weights, sells simultaneously at prices ~1.8× apart (median max/min across multi-provider models). Mean cross-provider CV is 27.5% — Baye–Morgan online-retail territory. If dispersion were vertical differentiation, a hedonic on quantization, context, uptime should absorb it: it absorbs 5.4% of within-model variance. And dispersion <em>rises</em> with entry (elasticity +1.65, p = 0.04) instead of being arbitraged away.</p></div>
+  <div class="statrow">
+    <div class="stat"><div class="v">27.5%</div><div class="l">mean cross-provider CV</div></div>
+    <div class="stat"><div class="v">1.82×</div><div class="l">median max/min price</div></div>
+    <div class="stat"><div class="v">5.4%</div><div class="l">within-model variance explained by quality</div></div>
+    <div class="stat"><div class="v">+1.65</div><div class="l">d log CV / d log N (SE 0.81)</div></div>
+  </div>
+  <figure>
+    <p class="charttitle">Price dispersion vs number of providers, per model</p>
+    <p class="chartsub">Each dot is one model with ≥ 2 providers (n = 85) · latest snapshot · log–log with OLS fit</p>
+    <svg id="c-h2" width="820" height="280" viewBox="0 0 820 280" role="img" aria-label="Scatter of coefficient of variation against provider count with upward sloping fit line"></svg>
+    <figcaption>Measured crypto comparator: the same USDC/WETH pair on two Uniswap v3 pools (5 bps and 30 bps fee tiers) closes a median <strong>14.2 bps</strong> apart (p90 24.6 bps; 186 days of 2026) — arbitrage holds same-asset dispersion ~200× tighter than the inference market holds same-model dispersion. Nuance the router adds: <em>paid</em> dispersion is lower than posted dispersion because H4's routing tilts volume toward cheap endpoints — posted dispersion here is what a search-friction model, not an arbitrage model, predicts.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ H3 ============================ -->
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H3</span><h3 style="margin:0">Free entry drives price to the competitive limit by ~4 entrants</h3><span class="chip deep">deep</span></div>
+  <div class="prose"><p class="sec">Cheapest listed price per model falls monotonically in the number of providers and flattens between N=4 and N=5+ — the classic Bresnahan–Reiss signature of free entry exhausting margins, the same mechanism that makes hashrate track hashprice. This is the strongest evidence for the "free entry/exit of a node" leg of the analogy.</p></div>
+  <div class="statrow">
+    <div class="stat"><div class="v">$2.18</div><div class="l">H100 SXM $/hr (vast.ai median, on-demand)</div></div>
+    <div class="stat"><div class="v">300</div><div class="l">models in entry regression</div></div>
+    <div class="stat"><div class="v">0.57</div><div class="l">R² (author + context controls)</div></div>
+  </div>
+  <figure>
+    <p class="charttitle">Log price of the cheapest endpoint vs provider count</p>
+    <p class="chartsub">OLS coefficients on entrant-count bins, relative to single-provider models · ±1.96 SE · controls: author FE, log context</p>
+    <svg id="c-h3" width="820" height="260" viewBox="0 0 820 260" role="img" aria-label="Dot and interval chart showing price declining with provider count and flattening at four to five providers"></svg>
+    <figcaption>Levels of the markup proxy are not interpretable (a single-stream GPU-cost bound ignores batching — median listed price is 0.12× that bound, i.e. providers need ≥ 8× concurrency to break even at the H100 median). Pre-registered H9 adds entry/exit hazards vs markup once the endpoint panel accumulates.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ H4 ============================ -->
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H4</span><h3 style="margin:0">The router is a real aggregator — but flow is only partly algorithmic</h3><span class="chip partial">partial</span></div>
+  <div class="prose"><p class="sec">Within (day × model), provider volume shares respond to relative transacted prices with elasticity <strong>−1.19 (SE 0.17)</strong>. That rejects pinned order flow (0) decisively — the router genuinely reallocates flow toward cheap providers — but also rejects OpenRouter's own documented inverse-square default (−2) at ~5σ. Reading: roughly a 60/40 blend of algorithmic routing and user-pinned provider choice. An AMM-aggregator equalizing marginal price would show effectively unbounded local elasticity; a pure front-end market would show ~0.</p></div>
+  <div class="statrow">
+    <div class="stat"><div class="v">−1.19</div><div class="l">share–price elasticity (SE 0.17)</div></div>
+    <div class="stat"><div class="v">−1.25</div><div class="l">dropping &lt;1% shares (SE 0.21)</div></div>
+    <div class="stat"><div class="v">147</div><div class="l">day × model groups</div></div>
+    <div class="stat"><div class="v">746</div><div class="l">provider-share observations</div></div>
+  </div>
+  <figure>
+    <p class="charttitle">Where the routing elasticity lands</p>
+    <p class="chartsub">Estimate ±1.96 SE against the three candidate regimes</p>
+    <svg id="c-h4" width="820" height="150" viewBox="0 0 820 150" role="img" aria-label="Number line from minus three to zero showing the elasticity estimate between the inverse square routing null and zero"></svg>
+    <figcaption>Conditional-logit share regression, group-demeaned, clustered by group; controls: cache-hit rate. Pre-registered H8 sharpens this with event studies: after a price cut, algorithmic flow should reallocate within hours, pinned flow over weeks.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ H5 ============================ -->
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H5</span><h3 style="margin:0">Harness order flow is Zipf-distributed, concentrated, and multihomed</h3><span class="chip partial">partial</span></div>
+  <div class="prose"><p class="sec">Global app token share fits a rank-size slope of <strong>−1.01</strong> (R² 0.88) — as clean a Zipf law as order-flow data gets — with HHI 2122 and Hermes Agent at 30% of tracked tokens. Per-model order flow is more concentrated still (median HHI 3197). Apps multihome heavily (median top-list presence: 4 models; one harness appears on 155). The measured intent-market comparator: CoW solver settlements (2021→now, ~43 active solvers/month) run a 12-month median HHI of <strong>1274</strong>, ranging 1001–2672 — OpenRouter's harness concentration sits inside the solver band. The tail shape differs: solver win-shares fall off much faster (Zipf slope −3.49 vs −1.01), i.e. harness order flow has a fatter competitive tail than solver auctions.</p></div>
+  <div class="statrow">
+    <div class="stat"><div class="v">−1.01</div><div class="l">Zipf slope (global apps)</div></div>
+    <div class="stat"><div class="v">2122</div><div class="l">global HHI</div></div>
+    <div class="stat"><div class="v">3197</div><div class="l">median per-model HHI (n=304)</div></div>
+    <div class="stat"><div class="v">30%</div><div class="l">top-1 app share (Hermes Agent)</div></div>
+  </div>
+  <figure>
+    <p class="charttitle">Rank–size of global app order flow</p>
+    <p class="chartsub">Top-8 apps by total tokens (leaderboard depth limit) · log–log · dashed line: exact Zipf (slope −1)</p>
+    <svg id="c-h5" width="820" height="280" viewBox="0 0 820 280" role="img" aria-label="Log log rank size plot of app token volume tracking the Zipf reference line"></svg>
+    <figcaption>Caveat: the public leaderboard exposes only the top 8 globally; the slope is estimated on a short tail. Comparator (measured, BigQuery): CoW solver monthly HHI, 12-mo median 1274 (range 1001–2672), all-time median 1451 — harness concentration is squarely in the solver-market family by level, fatter-tailed by shape.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ H6 ============================ -->
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H6</span><h3 style="margin:0">Fees are structurally different — and listed prices overstate paid prices</h3><span class="chip skin">skin-deep</span></div>
+  <div class="prose"><p class="sec">OpenRouter's take (~5.5% credit fee) is 20–100× a DEX aggregator's (0–30 bps) — the search/switching friction it monetizes is simply larger than in crypto, consistent with H2's persistent dispersion. Separately, transacted prices sit below list: the median effective/listed input-price ratio is 0.93, but the tail is deep — the 10th percentile pair pays 39% of list, driven by prompt caching (median measured cache-hit rate 22%; heavy-agent workloads run far higher). This is the quoted-vs-effective-spread distinction from market microstructure, alive in inference.</p></div>
+  <div class="statrow">
+    <div class="stat"><div class="v">5.5%</div><div class="l">OpenRouter take vs 0–30 bps (aggregators)</div></div>
+    <div class="stat"><div class="v">0.93</div><div class="l">median effective / listed (input)</div></div>
+    <div class="stat"><div class="v">0.39</div><div class="l">p10 effective / listed</div></div>
+    <div class="stat"><div class="v">22%</div><div class="l">median cache-hit rate</div></div>
+  </div>
+  <figure>
+    <p class="charttitle">Effective vs listed input price, per model × provider</p>
+    <p class="chartsub">Ratio of volume-weighted transacted price to listed price · n = 522 pairs · latest day</p>
+    <svg id="c-h6" width="820" height="240" viewBox="0 0 820 240" role="img" aria-label="Histogram of effective to listed price ratios with a spike near one and a long left tail from caching"></svg>
+    <figcaption>Ratios &gt; 1 (clipped at 1.5) arise from intra-day price changes and workload mix. LP-fee and solver-reward comparators enter with the BigQuery pull.</figcaption>
+  </figure>
+</section>
+
+<hr>
+
+<h2>Phase 2b — the RFQ refinement</h2>
+<div class="prose">
+<p class="sec">V1 left "intent/solver market" standing; the sharper hypothesis is that OpenRouter is an <em>aggregated RFQ market</em>: providers as PMM-style quoters (with last look?), the router as an RFQ aggregator keeping a reliability scorecard, harness flow as preferenced order flow. Four tests ran same-day on data already captured.</p>
+</div>
+
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H10</span><h3 style="margin:0">Rejection is rampant — but it is not phantom liquidity</h3><span class="chip partial">partial</span></div>
+  <div class="prose"><p class="sec">RFQ market makers post aggressive quotes and reject toxic fills ("last look"). The inference analog — rate limiting and derankable errors — is real and heavy-tailed: median endpoint rejects 1.5% of requests but the 90th percentile rejects <strong>28%</strong>, and 32% of endpoints exceed the FX last-look norm (2–10%). The RFQ pathology, however, fails both of its tests: the price→reject slope is <em>positive and insignificant</em> (+0.03, p = 0.12) — cheap quotes fill as well as expensive ones — and reweighting dispersion by executability changes it by −0.3%. Rejection is capacity, not strategy: <strong>quotes are firm</strong>, and H2's dispersion is fully executable. OpenRouter runs a live maker scorecard regardless — a Beta posterior (<code>fortuna</code>) plus <code>capacity_ceiling_rpm</code> per endpoint — structurally identical to RFQ aggregators' fill-quality tiering.</p></div>
+  <div class="statrow">
+    <div class="stat"><div class="v">1.5%</div><div class="l">median reject rate (1d, n=1,832)</div></div>
+    <div class="stat"><div class="v">28%</div><div class="l">p90 reject rate</div></div>
+    <div class="stat"><div class="v">+0.03</div><div class="l">reject-on-log-price slope (p=0.12)</div></div>
+    <div class="stat"><div class="v">−0.3%</div><div class="l">dispersion change on executable quotes</div></div>
+  </div>
+  <figure>
+    <p class="charttitle">Distribution of endpoint reject rates (1-day window)</p>
+    <p class="chartsub">rate-limited + derankable errors ÷ total requests · endpoints with ≥100 requests · n = 1,832</p>
+    <svg id="c-h10" width="820" height="240" viewBox="0 0 820 240" role="img" aria-label="Histogram of endpoint reject rates with most mass near zero and a heavy right tail"></svg>
+    <figcaption>FX/RFQ last-look literature puts normal reject rates at 2–10%; a third of inference endpoints exceed that band. Data: OpenRouter's per-endpoint status heuristics (success / rateLimited / derankableError), captured daily.</figcaption>
+  </figure>
+</section>
+
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H11</span><h3 style="margin:0">A lemons tail: cheap quotes deliver worse execution</h3><span class="chip deep">deep</span></div>
+  <div class="prose"><p class="sec">Extending the hedonic to <em>delivered</em> quality (tool-call error rate, structured-output error rate, throughput, latency) explains <strong>31.9%</strong> of within-model price variance — six times what static specs explained in H2 — so a genuine quality frontier exists. And the tail is a lemons market: below-median-price endpoints deliver above-median tool-call error rates 55.8% of the time vs 37.9% for expensive ones (χ² p = 0.002). This is the microstructure distinction between quoted and realized execution quality, alive in inference. Quantization labels, by contrast, carry no clean discount — quality is priced through delivered metrics, not labels.</p></div>
+  <div class="statrow">
+    <div class="stat"><div class="v">31.9%</div><div class="l">within-model variance from delivered quality</div></div>
+    <div class="stat"><div class="v">55.8% vs 37.9%</div><div class="l">bad-quality share, cheap vs expensive</div></div>
+    <div class="stat"><div class="v">p = 0.002</div><div class="l">lemons χ² (n = 410)</div></div>
+  </div>
+</section>
+
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H12</span><h3 style="margin:0">The compute basis: on-demand vs interruptible GPUs</h3><span class="chip partial">partial</span></div>
+  <div class="prose"><p class="sec">vast.ai quotes the same GPU two ways — guaranteed (on-demand) and interruptible (bid) — and the spread is a funding-rate/convenience-yield analog for the industry's input. Latest ratios run 1.16× (RTX 3090) to 1.67× (H100 NVL), median 1.41× across classes. Measured comparator (Deribit BTC-PERPETUAL, 57k hourly points since 2020): median |8h funding| is 0.0024% ≈ <strong>2.6%/yr</strong> — the same economic object (a premium for guaranteed continuous access) at roughly three orders of magnitude lower level. Compute's interruption premium is enormous because arbitraging it requires physical checkpoint/resume, not a funding trade. Dynamics (mean reversion, spikes) accrue with the hourly panel and feed H7's pass-through test.</p></div>
+</section>
+
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H13</span><h3 style="margin:0">Venue basis: exactly zero — the router is a pure quote-passthrough broker</h3><span class="chip deep">deep</span></div>
+  <div class="prose"><p class="sec">For all <strong>128</strong> DeepInfra models matched between OpenRouter's quotes and DeepInfra's own public price list, the basis is <strong>0.0%</strong> — to the digit. OpenRouter displays maker quotes verbatim and levies its 5.5% take off-quote (on credits), exactly how RFQ aggregators present MM quotes, and unlike exchange venues where cross-venue bases fluctuate and get arbitraged. Daily direct-provider capture (DeepInfra parsed; Groq/Together/Novita/Fireworks/Lambda/Hyperbolic/Cerebras pages raw-archived) now watches whether the basis <em>ever</em> deviates — e.g. whether OpenRouter lags provider repricing events, which would create transient bases like stale RFQ quotes.</p></div>
+</section>
+
+<section class="hypo">
+  <div class="hypo-head"><span class="hid">H19</span><h3 style="margin:0">Provider typology: the market has quoter types, like a dealer market</h3><span class="chip deep">deep</span></div>
+  <div class="prose"><p class="sec">H18's dominant predictor was persistent seller heterogeneity, so we clustered the 71 consolidated provider families on 15 behavioral features (quote firmness, price aggressiveness, execution quality, catalog strategy, OR-volume). BIC's top split: <strong>firm quoters</strong> (day-0 listing, full precision, ~0% rejects, usually cheapest) vs <strong>soft quoters</strong> (quantized, ~8% rejects, ~6 weeks to list). Five sub-types emerge — and notably, off-OpenRouter-first businesses are identifiable purely behaviorally: they price high, almost never compete for cheapest, list late, and ration capacity (Baseten/Fireworks reject 37% of requests — a thin OR slice of a large direct business).</p></div>
+  <table>
+    <thead><tr><th>Type</th><th>Examples</th><th>Signature</th></tr></thead>
+    <tbody>
+      <tr><td>Core liquidity (n=21)</td><td>OpenAI, Anthropic, Google, Z.ai, DeepInfra, Novita, Chutes</td><td>huge OR volume, ~1% rejects, day-0 listing, cheapest 45% of the time</td></tr>
+      <tr><td>Off-OR premium (n=10)</td><td>Together, Groq, Cerebras, Nebius, Parasail</td><td>80th-pctile prices, cheapest 6%, ~6 weeks to list</td></tr>
+      <tr><td>Capacity-rationed premium (n=2)</td><td>Baseten, Fireworks</td><td>fastest throughput, expensive, 37% reject rate</td></tr>
+      <tr><td>Boutique labs (n=18)</td><td>Mistral, Cohere, DeepSeek, AI21, Perplexity</td><td>own models only, day-0 listing, small OR volume, zero rejects</td></tr>
+      <tr><td>Long-tail hosts (n=20)</td><td>SambaNova, Cloudflare, DigitalOcean, io.net</td><td>slow to list, 9% rejects, rarely price-competitive</td></tr>
+    </tbody>
+  </table>
+  <div class="prose"><p class="sec small">Dealer-market reading: core liquidity = streaming market makers; off-OR premium = bank dealers quoting wide on a secondary venue; boutiques = single-name specialists; long-tail = part-time quoters. The pre-registered layer-2 hazard model becomes type-interacted: firm quoters are expected to respond to demand states; the rest barely reprice at all.</p></div>
+</section>
+
+<h2>Pre-registered phase 2 (runs as the panel accumulates)</h2>
+<div class="prose">
+<p class="sec">Declared now so later results aren't a garden of forking paths. The 5-minute per-provider panel started 2026-07-07; GPU offers capture (vast.ai, hourly) started the same day.</p>
+<ul class="prereg sans" style="font-size:14.5px;padding-left:20px;">
+  <li><strong>H7 · Cost pass-through.</strong> Cointegration of a token-price index with the H100 rental index. <span class="th">Deep if: ECM half-life &lt; 60 days and long-run β ∈ [0.5, 1.5]</span> — the hashprice-vs-energy signature. Coarse version possible now with published 2023–25 GPU medians; clean version at ~90 days of panel.</li>
+  <li><strong>H8 · Event studies around price changes.</strong> Competitor repricing hazard and share reallocation speed after each <code>pricing_changes</code> event. <span class="th">Aggregator-like if: ≥ 25% of the eventual share shift lands within 24h.</span> Feasible at ~4–6 weeks.</li>
+  <li><strong>H9 · Entry/exit hazards.</strong> Cox hazard of endpoint exit on lagged naive markup; entry response to model-level margins. <span class="th">Deep if: exit hazard rises significantly as markup falls (miner-capitulation analog).</span> Feasible at ~8+ weeks.</li>
+  <li><strong>H13 (panel version) · Venue-basis dynamics.</strong> Daily OpenRouter-vs-direct basis per provider×model. <span class="th">RFQ-consistent if: basis ≡ 0 except transient deviations around provider repricing events (stale-quote windows), which measure the router's quote-refresh latency.</span></li>
+  <li><strong>H18 · Predicting repricing (layer 1 done; layer 2 pre-registered).</strong> Interpretable classifiers for "does this listed price change over the next window?", trained on the 2023-26 Wayback panel (39k pairs), tested strictly out-of-time (Feb–Jul 2026, base rate 1.7%): logistic <span class="th">ROC-AUC 0.82 without exposure features (0.87 with); PR-AUC ≈ 5× base rate</span>. The logit beats the shallow GBT — the structure is additive: repricing is predicted by <em>having repriced before</em> (never-changed −0.90, recency −0.46, count +0.34), <em>youth</em> (−0.37 on log age), and <em>cheapness</em> (−0.58 on log price: premium lab models never move; cheap OSS hosts churn). Layer 2 (pre-registered): endpoint-level with utilization, reject spikes, and competitor-move features from the live panel at ~4-6 weeks; expected to dominate.</li>
+  <li><strong>H16 · Demand→quote aggressiveness via the latency shadow price.</strong> Money quotes are sticky, so demand must clear on other margins — latency, throughput, rejection. New 5-minute panel (<code>congestion_intraday</code>: p50–p99 latency/throughput, requests, <code>recent_peak_rpm</code>/<code>capacity_ceiling_rpm</code> utilization for the top-40 models) identifies: (a) congestion elasticity Δlog p90-latency / Δlog peak-rpm within endpoint; (b) repricing hazard vs lagged utilization — day-one evidence: the 7 intraday price changes on 2026-07-07 clustered on hot models (4 on GLM 5.2, running at 5–10× estimated capacity ceiling); (c) latency converted to implied $/token via H4's routing elasticity (the market's revealed latency–price exchange rate), giving a latency-inclusive effective-quote series whose variance decomposes into money-price vs congestion components. <span class="th">MM-like if most short-run adjustment loads on the congestion component with money quotes following at daily+ lags.</span></li>
+  <li><strong>H15 · Inventory-based repricing (the mechanism behind H1).</strong> Hazard of a pricing change on lagged endpoint stress (reject spikes, uptime dips, throughput drops) vs GPU cost shocks vs competitor moves. <span class="th">RFQ/MM-consistent if: stress terms dominate cost terms (Avellaneda–Stoikov quoting); retail-consistent if cost terms dominate.</span> Feasible at ~4–8 weeks.</li>
+  <li><strong>H14 (reframed) · Order-type mix.</strong> <code>:floor</code>/<code>:nitro</code> flow isn't separately reported in activity data (variants observed: standard 85.3%, free 14.7%); the price-priority-vs-speed-priority test moves to routing-share responses within H8's event studies.</li>
+  <li><strong>Comparators: filled 2026-07-07.</strong> CoW solver HHI (12-mo median 1274), Uniswap cross-pool gap (median 14.2 bps), base-fee change distribution (median 11.7%/hr), and the BTC hashprice series (for H7) are cached under <code>external/</code> in the HF dataset via <code>orcap defi</code>.</li>
+</ul>
+</div>
+
+<h2>Data &amp; reproducibility</h2>
+<div class="prose">
+<p class="small">Every number above traces to a parquet in <code>analysis/</code> (pushed to the HF dataset) produced by <code>uv run orcap analyze</code>. Estimators are unit-tested against planted parameters (dispersion slope, logit elasticity −2, Zipf −1, change rates). Capture: <code>capture</code> (5-min pricing), <code>scrape</code> (daily charts/apps/effective pricing), <code>gpu</code> (hourly vast.ai), <code>compact</code> (nightly SCD-2 price-change log). Known limits: H1 is model-level top-provider pricing on irregular Wayback gaps (change rate = lower bound); H5's global tail is truncated at 8 apps; H4 uses transacted prices as the price signal (listed-price event studies arrive with H8); all cross-sectional results are one-day snapshots dated 2026-07-07.</p>
+</div>
+
+<p class="foot" style="margin-top:48px;">orcap screening memo v1 · generated 2026-07-07 · data: t4run/openrouter-market-history · code: pluriholonomic/ai-routing</p>
+</div>
+
+<div id="tip" role="status"></div>
+
+<script>
+const DATA = /*__DATA__*/;
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const tip = document.getElementById('tip');
+function showTip(evt, text){ tip.textContent = text; tip.style.opacity = 1;
+  tip.style.left = Math.min(window.innerWidth - 160, evt.clientX + 12) + 'px';
+  tip.style.top = (evt.clientY - 30) + 'px'; }
+function hideTip(){ tip.style.opacity = 0; }
+const NS = 'http://www.w3.org/2000/svg';
+function el(svg, tag, attrs){ const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]); svg.appendChild(e); return e; }
+
+function histogram(svgId, values, {xmin, xmax, bins, xlabel, fmt, color}){
+  const svg = document.getElementById(svgId);
+  const W = 820, H = +svg.getAttribute('height'), m = {l: 46, r: 14, t: 8, b: 34};
+  const counts = new Array(bins).fill(0), bw = (xmax - xmin) / bins;
+  values.forEach(v => { if (v >= xmin && v < xmax) counts[Math.floor((v - xmin) / bw)]++; });
+  const ymax = Math.max(...counts) * 1.08;
+  const x = v => m.l + (v - xmin) / (xmax - xmin) * (W - m.l - m.r);
+  const y = c => H - m.b - c / ymax * (H - m.t - m.b);
+  for (let g = 0; g <= 4; g++){ const c = ymax * g / 4;
+    el(svg, 'line', {x1: m.l, x2: W - m.r, y1: y(c), y2: y(c), class: 'gridline'});
+    el(svg, 'text', {x: m.l - 6, y: y(c) + 4, 'text-anchor': 'end'}).textContent = Math.round(c); }
+  counts.forEach((c, i) => { if (!c) return;
+    const x0 = x(xmin + i * bw), wpx = x(xmin + (i + 1) * bw) - x0 - 2;
+    const r = el(svg, 'rect', {x: x0 + 1, y: y(c), width: Math.max(1, wpx), height: y(0) - y(c),
+      fill: color, rx: 2});
+    const lo = xmin + i * bw, hi = lo + bw;
+    r.addEventListener('mousemove', e => showTip(e, `${fmt(lo)} to ${fmt(hi)} — ${c} obs`));
+    r.addEventListener('mouseleave', hideTip); });
+  el(svg, 'line', {x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), class: 'axis'});
+  const ticks = 5;
+  for (let g = 0; g <= ticks; g++){ const v = xmin + (xmax - xmin) * g / ticks;
+    el(svg, 'text', {x: x(v), y: H - m.b + 16, 'text-anchor': 'middle'}).textContent = fmt(v); }
+  el(svg, 'text', {x: (m.l + W - m.r) / 2, y: H - 4, 'text-anchor': 'middle', class: 'lbl'}).textContent = xlabel;
+}
+
+function h2scatter(){
+  const svg = document.getElementById('c-h2');
+  const W = 820, H = 280, m = {l: 56, r: 16, t: 10, b: 40};
+  const pts = DATA.h2_scatter;
+  const xs = pts.map(p => Math.log(p.n)), ys = pts.map(p => Math.log(p.cv));
+  const xmin = Math.log(1.8), xmax = Math.log(Math.max(...pts.map(p => p.n)) * 1.15);
+  const ymin = Math.min(...ys) - .25, ymax = Math.max(...ys) + .25;
+  const x = v => m.l + (v - xmin) / (xmax - xmin) * (W - m.l - m.r);
+  const y = v => H - m.b - (v - ymin) / (ymax - ymin) * (H - m.t - m.b);
+  [0.02, 0.05, 0.1, 0.2, 0.5, 1].forEach(cv => { const yy = y(Math.log(cv)); if (yy < m.t || yy > H - m.b) return;
+    el(svg, 'line', {x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'gridline'});
+    el(svg, 'text', {x: m.l - 7, y: yy + 4, 'text-anchor': 'end'}).textContent = (cv * 100) + '%'; });
+  [2, 3, 4, 6, 8, 12].forEach(n => { const xx = x(Math.log(n)); if (xx < m.l || xx > W - m.r) return;
+    el(svg, 'text', {x: xx, y: H - m.b + 16, 'text-anchor': 'middle'}).textContent = n; });
+  el(svg, 'line', {x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, class: 'axis'});
+  // OLS fit in log-log space (matches reported elasticity)
+  const n = xs.length, mx = xs.reduce((a,b)=>a+b)/n, my = ys.reduce((a,b)=>a+b)/n;
+  const b1 = xs.map((v,i)=>(v-mx)*(ys[i]-my)).reduce((a,b)=>a+b) / xs.map(v=>(v-mx)**2).reduce((a,b)=>a+b);
+  const b0 = my - b1 * mx;
+  el(svg, 'line', {x1: x(xmin), y1: y(b0 + b1 * xmin), x2: x(xmax), y2: y(b0 + b1 * xmax),
+    stroke: css('--s6'), 'stroke-width': 2, 'stroke-dasharray': '6 4'});
+  pts.forEach(p => { const c = el(svg, 'circle', {cx: x(Math.log(p.n)) + (Math.random() - .5) * 7,
+    cy: y(Math.log(p.cv)), r: 4.5, fill: css('--s1'), 'fill-opacity': .62,
+    stroke: css('--surface'), 'stroke-width': 1.5});
+    c.addEventListener('mousemove', e => showTip(e, `${p.n} providers — CV ${(p.cv*100).toFixed(0)}%`));
+    c.addEventListener('mouseleave', hideTip); });
+  el(svg, 'text', {x: x(xmax) - 4, y: y(b0 + b1 * xmax) - 8, 'text-anchor': 'end', class: 'lbl',
+    fill: css('--s6')}).textContent = 'fit: +1.65 (dispersion rises with entry)';
+  el(svg, 'text', {x: (m.l + W) / 2, y: H - 5, 'text-anchor': 'middle', class: 'lbl'}).textContent = 'providers serving the model (log scale)';
+}
+
+function h3dots(){
+  const svg = document.getElementById('c-h3');
+  const W = 820, H = 260, m = {l: 56, r: 20, t: 14, b: 40};
+  const pts = [
+    {lbl: 'N=1', b: 0, se: 0},
+    {lbl: 'N=2', b: -0.329, se: 0.261},
+    {lbl: 'N=3', b: -0.611, se: 0.327},
+    {lbl: 'N=4', b: -1.014, se: 0.398},
+    {lbl: 'N=5+', b: -1.125, se: 0.290},
+  ];
+  const ymin = -1.9, ymax = 0.45;
+  const x = i => m.l + (i + .5) / pts.length * (W - m.l - m.r);
+  const y = v => m.t + (ymax - v) / (ymax - ymin) * (H - m.t - m.b);
+  [-1.5, -1, -.5, 0].forEach(v => { el(svg, 'line', {x1: m.l, x2: W - m.r, y1: y(v), y2: y(v),
+    class: v === 0 ? 'axis' : 'gridline'});
+    el(svg, 'text', {x: m.l - 7, y: y(v) + 4, 'text-anchor': 'end'}).textContent =
+      v === 0 ? 'baseline' : Math.round((Math.exp(v) - 1) * 100) + '%'; });
+  pts.forEach((p, i) => {
+    if (p.se) el(svg, 'line', {x1: x(i), x2: x(i), y1: y(p.b - 1.96 * p.se), y2: y(p.b + 1.96 * p.se),
+      stroke: css('--s1'), 'stroke-width': 2, 'stroke-opacity': .5});
+    const c = el(svg, 'circle', {cx: x(i), cy: y(p.b), r: 6.5, fill: css('--s1'),
+      stroke: css('--surface'), 'stroke-width': 2});
+    c.addEventListener('mousemove', e => showTip(e, `${p.lbl}: ${(100*(Math.exp(p.b)-1)).toFixed(0)}% vs single-provider`));
+    c.addEventListener('mouseleave', hideTip);
+    el(svg, 'text', {x: x(i), y: H - m.b + 18, 'text-anchor': 'middle', class: 'lbl'}).textContent = p.lbl; });
+  el(svg, 'text', {x: (m.l + W) / 2, y: H - 4, 'text-anchor': 'middle', class: 'lbl'}).textContent = 'providers serving the model';
+}
+
+function h4line(){
+  const svg = document.getElementById('c-h4');
+  const W = 820, H = 150, m = {l: 30, r: 30};
+  const yy = 74;
+  const xmin = -3, xmax = 0.35;
+  const x = v => m.l + (v - xmin) / (xmax - xmin) * (W - m.l - m.r);
+  el(svg, 'line', {x1: x(xmin), x2: x(xmax), y1: yy, y2: yy, class: 'axis'});
+  [-3, -2.5, -2, -1.5, -1, -0.5, 0].forEach(v => {
+    el(svg, 'line', {x1: x(v), x2: x(v), y1: yy - 4, y2: yy + 4, class: 'axis'});
+    el(svg, 'text', {x: x(v), y: yy + 22, 'text-anchor': 'middle'}).textContent = v; });
+  const marks = [
+    {v: -2, lbl: 'inverse-square routing (documented default)', col: css('--s2'), dy: -34},
+    {v: 0, lbl: 'fully pinned order flow', col: css('--s6'), dy: -34},
+  ];
+  marks.forEach(mk => { el(svg, 'line', {x1: x(mk.v), x2: x(mk.v), y1: yy - 26, y2: yy - 6,
+      stroke: mk.col, 'stroke-width': 2, 'stroke-dasharray': '4 3'});
+    el(svg, 'text', {x: x(mk.v), y: yy + mk.dy - 6, 'text-anchor': 'middle', class: 'lbl',
+      fill: mk.col}).textContent = mk.lbl; });
+  const est = -1.19, se = 0.168;
+  el(svg, 'rect', {x: x(est - 1.96 * se), y: yy - 7, width: x(est + 1.96 * se) - x(est - 1.96 * se),
+    height: 14, fill: css('--s1'), 'fill-opacity': .25, rx: 3});
+  const c = el(svg, 'circle', {cx: x(est), cy: yy, r: 7.5, fill: css('--s1'),
+    stroke: css('--surface'), 'stroke-width': 2});
+  c.addEventListener('mousemove', e => showTip(e, '−1.19 ± 0.33 (95% CI)'));
+  c.addEventListener('mouseleave', hideTip);
+  el(svg, 'text', {x: x(est), y: yy + 42, 'text-anchor': 'middle', class: 'lbl',
+    fill: css('--s1')}).textContent = 'estimated −1.19';
+}
+
+function h5zipf(){
+  const svg = document.getElementById('c-h5');
+  const W = 820, H = 280, m = {l: 66, r: 200, t: 14, b: 40};
+  const pts = DATA.h5_ranksize;
+  const xs = pts.map((_, i) => Math.log(i + 1)), ys = pts.map(p => Math.log(p.tokens));
+  const xmin = -0.15, xmax = Math.log(pts.length) + .15;
+  const ymin = Math.min(...ys) - .3, ymax = Math.max(...ys) + .3;
+  const x = v => m.l + (v - xmin) / (xmax - xmin) * (W - m.l - m.r);
+  const y = v => m.t + (ymax - v) / (ymax - ymin) * (H - m.t - m.b);
+  const fmtT = t => t >= 1e12 ? (t / 1e12).toFixed(1) + 'T' : (t / 1e9).toFixed(0) + 'B';
+  [1e12, 3e12, 1e13, 3e13].forEach(t => { const yy = y(Math.log(t)); if (yy < m.t || yy > H - m.b) return;
+    el(svg, 'line', {x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'gridline'});
+    el(svg, 'text', {x: m.l - 7, y: yy + 4, 'text-anchor': 'end'}).textContent = fmtT(t); });
+  // Zipf reference through first point
+  el(svg, 'line', {x1: x(0), y1: y(ys[0]), x2: x(Math.log(pts.length)), y2: y(ys[0] - Math.log(pts.length)),
+    stroke: css('--muted'), 'stroke-width': 1.5, 'stroke-dasharray': '5 4'});
+  el(svg, 'text', {x: x(Math.log(pts.length)) - 60, y: y(ys[0] - Math.log(pts.length)) + 16, class: 'lbl'}).textContent = 'Zipf slope −1';
+  pts.forEach((p, i) => { const cx = x(Math.log(i + 1)), cy = y(Math.log(p.tokens));
+    const c = el(svg, 'circle', {cx, cy, r: 6, fill: css('--s1'), stroke: css('--surface'), 'stroke-width': 2});
+    c.addEventListener('mousemove', e => showTip(e, `#${i + 1} ${p.title} — ${fmtT(p.tokens)} tokens`));
+    c.addEventListener('mouseleave', hideTip);
+    if (i < 4) el(svg, 'text', {x: cx + 10, y: cy + 4, class: 'lbl'}).textContent = p.title; });
+  [1, 2, 4, 8].forEach(r => el(svg, 'text', {x: x(Math.log(r)), y: H - m.b + 16, 'text-anchor': 'middle'}).textContent = r);
+  el(svg, 'line', {x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, class: 'axis'});
+  el(svg, 'text', {x: (m.l + W - m.r) / 2, y: H - 4, 'text-anchor': 'middle', class: 'lbl'}).textContent = 'app rank (log scale)';
+}
+
+histogram('c-h1', DATA.h1_dlog, {xmin: -1.5, xmax: 1.5, bins: 40,
+  xlabel: 'Δ log price between consecutive snapshots',
+  fmt: v => (v > 0 ? '+' : '') + Math.round(v * 100) + '%', color: css('--s1')});
+h2scatter();
+h3dots();
+h4line();
+h5zipf();
+histogram('c-h6', DATA.h6_ratios, {xmin: 0, xmax: 1.5, bins: 45,
+  xlabel: 'effective price ÷ listed price (input tokens)',
+  fmt: v => v.toFixed(2), color: css('--s2')});
+histogram('c-h10', DATA.h10_rr.filter(v => v > 0.001), {xmin: 0, xmax: 0.6, bins: 48,
+  xlabel: 'reject rate (endpoints with reject rate > 0.1% shown; 25% reject ~nothing)',
+  fmt: v => Math.round(v * 100) + '%', color: css('--s6')});
+</script>

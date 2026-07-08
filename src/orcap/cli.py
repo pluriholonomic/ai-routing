@@ -46,6 +46,8 @@ def main() -> None:
     p_analyze.add_argument("--hypothesis", default=None, help="e.g. h2 (default: all)")
     p_analyze.add_argument("--out", default="analysis", help="output directory")
 
+    sub.add_parser("memo", help="render the screening memo from latest analysis outputs")
+
     p_backfill = sub.add_parser("backfill", help="best-effort historical backfill (model-level)")
     p_backfill.add_argument(
         "--source", choices=["wayback", "orw", "all"], default="all", help="backfill source"
@@ -92,6 +94,10 @@ def main() -> None:
         from .backfill import main as backfill_main
 
         backfill_main(source=args.source)
+    elif args.command == "memo":
+        from .memo import main as memo_main
+
+        memo_main()
     elif args.command == "defi":
         from .defi_benchmarks import main as defi_main
 

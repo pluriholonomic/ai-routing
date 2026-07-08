@@ -1,0 +1,41 @@
+name: memo
+# Nightly: rerun the full empirical screen (H1-H19) against the accumulated
+# panel and render the memo. Results land in the private HF dataset under
+# analysis/ and reports/memo.html; a local scheduled job redeploys the HTML
+# to the claude.ai artifact (artifact publishing requires a user session).
+
+on:
+  schedule:
+    - cron: "3 5 * * *"  # after the 03:17 scrape and 01:43 compact
+  workflow_dispatch:
+
+concurrency:
+  group: memo
+  cancel-in-progress: false
+
+jobs:
+  memo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: reanalyze
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap analyze
+      - name: render memo
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap memo
+      - name: push analysis + memo to HF
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          mkdir -p data/analysis data/reports
+          cp analysis/*.parquet analysis/*.json data/analysis/
+          cp analysis/memo.html data/reports/memo.html
+          uv run orcap push --message "nightly reanalysis + memo ${{ github.run_id }}" --delete-local
