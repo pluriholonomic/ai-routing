@@ -1,0 +1,181 @@
+{
+  "n_providers": 49,
+  "ari_behavior_vs_combined": 0.19776604697421774,
+  "silhouette_behavior": 0.0875022379833736,
+  "silhouette_combined": 0.08185400925122105,
+  "keyword_rates_by_cluster": [
+    {
+      "cluster_combined": 0,
+      "kw_own_silicon": 0.0,
+      "kw_gpu_marketplace": 0.38,
+      "kw_enterprise": 0.88,
+      "kw_serverless": 0.62,
+      "kw_open_source_focus": 0.62,
+      "kw_price_led": 0.5,
+      "kw_agents_focus": 0.88,
+      "kw_gpu_cloud": 0.5,
+      "kw_research_lab": 0.62
+    },
+    {
+      "cluster_combined": 1,
+      "kw_own_silicon": 0.23,
+      "kw_gpu_marketplace": 0.23,
+      "kw_enterprise": 0.85,
+      "kw_serverless": 0.31,
+      "kw_open_source_focus": 0.62,
+      "kw_price_led": 0.15,
+      "kw_agents_focus": 0.85,
+      "kw_gpu_cloud": 0.38,
+      "kw_research_lab": 0.46
+    },
+    {
+      "cluster_combined": 2,
+      "kw_own_silicon": 0.0,
+      "kw_gpu_marketplace": 0.0,
+      "kw_enterprise": 0.3,
+      "kw_serverless": 0.1,
+      "kw_open_source_focus": 0.2,
+      "kw_price_led": 0.0,
+      "kw_agents_focus": 0.2,
+      "kw_gpu_cloud": 0.2,
+      "kw_research_lab": 0.0
+    },
+    {
+      "cluster_combined": 3,
+      "kw_own_silicon": 0.0,
+      "kw_gpu_marketplace": 0.0,
+      "kw_enterprise": 0.36,
+      "kw_serverless": 0.0,
+      "kw_open_source_focus": 0.36,
+      "kw_price_led": 0.09,
+      "kw_agents_focus": 0.91,
+      "kw_gpu_cloud": 0.09,
+      "kw_research_lab": 0.82
+    },
+    {
+      "cluster_combined": 4,
+      "kw_own_silicon": 0.0,
+      "kw_gpu_marketplace": 0.14,
+      "kw_enterprise": 0.86,
+      "kw_serverless": 0.0,
+      "kw_open_source_focus": 0.0,
+      "kw_price_led": 0.0,
+      "kw_agents_focus": 0.57,
+      "kw_gpu_cloud": 0.0,
+      "kw_research_lab": 0.43
+    }
+  ],
+  "cluster_members_combined": {
+    "0": [
+      "AkashML",
+      "Ambient",
+      "AtlasCloud",
+      "Chutes",
+      "Decart",
+      "GMICloud",
+      "Inceptron",
+      "NovitaAI"
+    ],
+    "1": [
+      "Cerebras",
+      "Cloudflare",
+      "DigitalOcean",
+      "Friendli",
+      "Groq",
+      "MARA",
+      "Morph",
+      "Parasail",
+      "Phala",
+      "SambaNova",
+      "Together",
+      "Venice",
+      "Wafer"
+    ],
+    "2": [
+      "Baidu Qianfan",
+      "Clarifai",
+      "Ionstream",
+      "Mancer",
+      "Nebius Token Factory",
+      "NextBit",
+      "Seed",
+      "StreamLake",
+      "Weights & Biases",
+      "io.net"
+    ],
+    "3": [
+      "AI21",
+      "AionLabs",
+      "Alibaba Cloud",
+      "Arcee AI",
+      "MiniMax",
+      "Moonshot AI",
+      "Poolside",
+      "Sakana",
+      "StepFun",
+      "Z.ai",
+      "xAI"
+    ],
+    "4": [
+      "Infermatic",
+      "Inflection",
+      "Perceptron",
+      "Reka AI",
+      "Relace",
+      "Switchpoint",
+      "Upstage"
+    ]
+  },
+  "text_axis_terms": {
+    "txt_0": [
+      "ai",
+      "models",
+      "model",
+      "inference",
+      "api",
+      "open",
+      "cloud",
+      "platform"
+    ],
+    "txt_1": [
+      "intelligence",
+      "foundation",
+      "research",
+      "creating",
+      "foundation model",
+      "lab",
+      "inspired",
+      "deploy"
+    ],
+    "txt_2": [
+      "api",
+      "cloud",
+      "coding",
+      "minimax",
+      "\u5173\u4e8e\u6211\u4eec",
+      "agent",
+      "openclaw",
+      "computing"
+    ],
+    "txt_3": [
+      "inference",
+      "free",
+      "access",
+      "powerful ai",
+      "foundation model",
+      "foundation",
+      "research",
+      "ai cloud"
+    ],
+    "txt_4": [
+      "\u5173\u4e8e\u6211\u4eec",
+      "en",
+      "\u80fd\u529b",
+      "\u4ea7\u54c1",
+      "openclaw",
+      "minimax",
+      "coding \u80fd\u529b",
+      "ad"
+    ]
+  }
+}
