@@ -1,0 +1,6 @@
+{
+  "n_obs": 144,
+  "n_models": 11,
+  "n_price_change_weeks": 4,
+  "gated": "needs >=50 price-change weeks (have 4)"
+}

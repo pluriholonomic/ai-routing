@@ -67,6 +67,18 @@ def compression(panel: pd.DataFrame) -> pd.DataFrame:
     return daily
 
 
+def provider_paths(model_id: str) -> pd.DataFrame:
+    """Run-level price path per provider for one model (figure feed)."""
+    return data.q(
+        f"""
+        select run_ts, provider_name, min(price_completion) as price
+        from read_parquet('{data.table_glob("endpoints_snapshots")}')
+        where model_id = '{model_id}' and price_completion > 0
+        group by 1, 2 order by 1
+        """
+    ).df()
+
+
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     panel = build_quantile_panel()
     save(panel, out_dir, "h32_quantile_panel")
@@ -81,6 +93,11 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     hot = var_by_model.index[-1] if len(var_by_model) else None
     hot_path = None
     if hot:
+        save(provider_paths(hot), out_dir, "h32_war_paths")
+        hp = panel[panel["model_id"] == hot].sort_values("run_ts")[
+            ["run_ts", "p_min", "p50", "p95"]
+        ]
+        save(hp, out_dir, "h32_hot_quantile_path")
         h = daily[daily["model_id"] == hot].sort_values("dt")
         hot_path = {
             "model": hot,

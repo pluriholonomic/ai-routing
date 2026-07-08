@@ -63,6 +63,58 @@ def chart_data(analysis_dir: Path) -> dict:
             f"select reject_rate from '{analysis_dir}/h10_endpoint_ll.parquet' where not is_free"
         ).fetchall()
     ]
+
+    # evolution figures (all optional — memo renders without them)
+    try:
+        tok = con.sql(
+            f"select month_start, \"index\" from '{analysis_dir}/h7_token_index.parquet' order by 1"
+        ).fetchall()
+        gpu = con.sql(
+            "select segment, period_start, usd_hr from 'data-static/gpu_index_periods.csv' "
+            "where segment in ('marketplace','hyperscaler') order by 2"
+        ).fetchall()
+        series = {
+            "Token index (matched-model)": [{"x": str(r[0])[:10], "y": round(r[1], 2)} for r in tok]
+        }
+        for seg in ("marketplace", "hyperscaler"):
+            pts = [r for r in gpu if r[0] == seg]
+            if pts:
+                base = pts[0][2]
+                series[f"GPU {seg} (H100)"] = [
+                    {"x": str(r[1])[:10], "y": round(100 * r[2] / base, 2)} for r in pts
+                ]
+        d["evo_idx"] = series
+    except Exception as exc:
+        log.warning("evo_idx skipped: %s", exc)
+    try:
+        war = con.sql(
+            f"""select provider_name, run_ts, price from '{analysis_dir}/h32_war_paths.parquet'
+            order by run_ts"""
+        ).fetchall()
+        byp: dict = {}
+        for prov, ts, p in war:
+            byp.setdefault(prov, []).append({"x": ts, "y": round(p * 1e6, 3)})
+
+        def _activity(pts: list) -> float:  # pick the lines that actually moved
+            ys = [q["y"] for q in pts]
+            import statistics
+
+            return statistics.pstdev([__import__("math").log(v) for v in ys if v > 0])
+
+        d["evo_war"] = dict(sorted(byp.items(), key=lambda kv: -_activity(kv[1]))[:6])
+    except Exception as exc:
+        log.warning("evo_war skipped: %s", exc)
+    try:
+        q = con.sql(
+            f"""select run_ts, p_min, p50, p95 from '{analysis_dir}/h32_hot_quantile_path.parquet'
+            order by run_ts"""
+        ).fetchall()
+        d["evo_quant"] = {
+            lab: [{"x": r[0], "y": round(r[i] * 1e6, 3)} for r in q]
+            for i, lab in [(1, "min quote"), (2, "median"), (3, "p95")]
+        }
+    except Exception as exc:
+        log.warning("evo_quant skipped: %s", exc)
     return d
 
 

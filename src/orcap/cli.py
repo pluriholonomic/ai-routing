@@ -137,7 +137,9 @@ def main() -> None:
             "h21": "h21_reactions",
             "h23": "h23_toxicity",
             "h26": "h26_entry",
+            "h29": "h29_demand",
             "h32": "h32_distribution",
+            "h33": "h33_scorecard",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

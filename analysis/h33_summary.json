@@ -1,0 +1,63 @@
+{
+  "n_providers_scored": 68,
+  "n_with_events": 7,
+  "top_elastic": [
+    {
+      "provider_name": "Ambient",
+      "elasticity_score": 0.978,
+      "n_events": 1.0,
+      "reaction_lag_h": NaN,
+      "reaction_slope": NaN,
+      "recapture": NaN
+    },
+    {
+      "provider_name": "Io Net",
+      "elasticity_score": 0.978,
+      "n_events": 1.0,
+      "reaction_lag_h": NaN,
+      "reaction_slope": NaN,
+      "recapture": NaN
+    },
+    {
+      "provider_name": "AtlasCloud",
+      "elasticity_score": 0.926,
+      "n_events": 1.0,
+      "reaction_lag_h": NaN,
+      "reaction_slope": NaN,
+      "recapture": NaN
+    },
+    {
+      "provider_name": "Inceptron",
+      "elasticity_score": 0.911,
+      "n_events": 2.0,
+      "reaction_lag_h": 4.429,
+      "reaction_slope": 0.613,
+      "recapture": 0.059
+    },
+    {
+      "provider_name": "Novita",
+      "elasticity_score": 0.859,
+      "n_events": 2.0,
+      "reaction_lag_h": 3.541,
+      "reaction_slope": 0.53,
+      "recapture": NaN
+    },
+    {
+      "provider_name": "SambaNova",
+      "elasticity_score": 0.739,
+      "n_events": 3.0,
+      "reaction_lag_h": NaN,
+      "reaction_slope": NaN,
+      "recapture": 0.003
+    },
+    {
+      "provider_name": "StreamLake",
+      "elasticity_score": 0.536,
+      "n_events": 1.0,
+      "reaction_lag_h": 4.459,
+      "reaction_slope": 2.085,
+      "recapture": NaN
+    }
+  ],
+  "note": "small-n preliminary; recomputed nightly, hardens with the event log"
+}

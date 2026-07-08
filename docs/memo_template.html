@@ -3,26 +3,26 @@
 :root{
   --paper:#fbfbf9; --surface:#fcfcfb; --ink:#141312; --ink-2:#52514e; --muted:#898781;
   --grid:#e1e0d9; --baseline:#c3c2b7; --hair:rgba(11,11,11,.10);
-  --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s6:#e34948;
+  --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s4:#008300; --s5:#4a3aa7; --s6:#e34948; --s7:#e87ba4;
   --good:#0ca30c; --serious:#ec835a; --critical:#d03b3b;
   --chip-good-bg:rgba(12,163,12,.10); --chip-mid-bg:rgba(237,161,0,.13); --chip-bad-bg:rgba(208,59,59,.10);
 }
 @media (prefers-color-scheme: dark){:root{
   --paper:#131418; --surface:#191b20; --ink:#f2f1ec; --ink-2:#c3c2b7; --muted:#898781;
   --grid:#2c2c2a; --baseline:#383835; --hair:rgba(255,255,255,.10);
-  --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s6:#e66767;
+  --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s4:#008300; --s5:#9085e9; --s6:#e66767; --s7:#d55181;
   --chip-good-bg:rgba(12,163,12,.16); --chip-mid-bg:rgba(201,133,0,.18); --chip-bad-bg:rgba(230,103,103,.14);
 }}
 :root[data-theme="light"]{
   --paper:#fbfbf9; --surface:#fcfcfb; --ink:#141312; --ink-2:#52514e; --muted:#898781;
   --grid:#e1e0d9; --baseline:#c3c2b7; --hair:rgba(11,11,11,.10);
-  --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s6:#e34948;
+  --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s4:#008300; --s5:#4a3aa7; --s6:#e34948; --s7:#e87ba4;
   --chip-good-bg:rgba(12,163,12,.10); --chip-mid-bg:rgba(237,161,0,.13); --chip-bad-bg:rgba(208,59,59,.10);
 }
 :root[data-theme="dark"]{
   --paper:#131418; --surface:#191b20; --ink:#f2f1ec; --ink-2:#c3c2b7; --muted:#898781;
   --grid:#2c2c2a; --baseline:#383835; --hair:rgba(255,255,255,.10);
-  --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s6:#e66767;
+  --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s4:#008300; --s5:#9085e9; --s6:#e66767; --s7:#d55181;
   --chip-good-bg:rgba(12,163,12,.16); --chip-mid-bg:rgba(201,133,0,.18); --chip-bad-bg:rgba(230,103,103,.14);
 }
 html{background:var(--paper);}
@@ -319,6 +319,29 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;background:var(--s
   <div class="prose"><p class="sec">A chained matched-model token index (BLS-style, ~232 matched models/month, no survivor bias) fell <strong>−53.6%</strong> from 2023-07 to 2026-06 (≈ −22%/yr like-for-like). Over the same era, H100 rents fell −19% (hyperscaler) to −24% (marketplace) per Silicon Data's published medians. Tokens deflate 2–3× faster than the input — the hashprice-style cost-anchor story fails at first pass; the majority of token deflation is serving efficiency and competition. Period-level correlations are underpowered (4–6 periods/segment, unstable signs) — the daily ECM version runs automatically as the vast.ai and 5-min token panels accumulate, and commercial index series (Bloomberg SDH100RT, OCPI-H100) drop into <code>data-static/gpu_index_periods.csv</code> if subscribed.</p></div>
 </section>
 
+<h2>How it's moving: evolution figures <span class="sans" style="font-size:13px;color:var(--muted);font-weight:400">auto-refreshed with each reanalysis</span></h2>
+
+<figure>
+  <p class="charttitle">Token prices vs GPU rents, 2023 → now (indexed to 100 at first observation)</p>
+  <p class="chartsub">Matched-model token index (monthly, chained) · Silicon Data H100 segment medians + orcap vast.ai capture</p>
+  <svg id="c-evo-idx" width="820" height="280" viewBox="0 0 820 280" role="img" aria-label="Token price index falling much faster than GPU rental indices"></svg>
+  <figcaption>The H7 finding as a picture: like-for-like token prices deflate 2–3× faster than the input — efficiency and competition, not cost pass-through.</figcaption>
+</figure>
+
+<figure>
+  <p class="charttitle">The most price-active model: per-provider quote paths (5-min resolution)</p>
+  <p class="chartsub">Each line = one provider's listed output price · auto-selects the model with the highest min-quote variance</p>
+  <svg id="c-evo-war" width="820" height="300" viewBox="0 0 820 300" role="img" aria-label="Per provider price paths showing a cascading price war"></svg>
+  <figcaption>Routing-feedback repricing made visible: undercuts, tick-matched follows, and partial reversals. Currently GLM 5.2's launch price war.</figcaption>
+</figure>
+
+<figure>
+  <p class="charttitle">Same model, the whole quote distribution: min / median / p95</p>
+  <p class="chartsub">Distributional dynamics (H32): the min is the live margin; the p95 barely moves — compression from below</p>
+  <svg id="c-evo-quant" width="820" height="260" viewBox="0 0 820 260" role="img" aria-label="Quantile paths showing the minimum quote falling while p95 stays flat"></svg>
+  <figcaption>The micro→macro bridge: aggregate "the model got cheaper" decomposes into which quantile moved — repricing at the bottom vs inertia at the top.</figcaption>
+</figure>
+
 <h2>Pre-registered phase 2 (runs as the panel accumulates)</h2>
 <div class="prose">
 <p class="sec">Declared now so later results aren't a garden of forking paths. The 5-minute per-provider panel started 2026-07-07; GPU offers capture (vast.ai, hourly) started the same day.</p>
@@ -519,4 +542,56 @@ histogram('c-h6', DATA.h6_ratios, {xmin: 0, xmax: 1.5, bins: 45,
 histogram('c-h10', DATA.h10_rr.filter(v => v > 0.001), {xmin: 0, xmax: 0.6, bins: 48,
   xlabel: 'reject rate (endpoints with reject rate > 0.1% shown; 25% reject ~nothing)',
   fmt: v => Math.round(v * 100) + '%', color: css('--s6')});
+
+const SERIES_COLORS = ['--s1','--s6','--s2','--s3','--s5','--s7','--s4'];
+function parseX(x){
+  if (/^\d{8}T/.test(x)) return Date.UTC(+x.slice(0,4), +x.slice(4,6)-1, +x.slice(6,8), +x.slice(9,11), +x.slice(11,13));
+  return new Date(x + 'T00:00:00Z').getTime();
+}
+function lineChart(svgId, seriesObj, {ylabel, fmtY}){
+  const svg = document.getElementById(svgId);
+  if (!svg || !seriesObj) return;
+  const names = Object.keys(seriesObj).filter(k => seriesObj[k].length > 1);
+  if (!names.length) return;
+  const W = 820, H = +svg.getAttribute('height'), m = {l: 52, r: 150, t: 12, b: 34};
+  let xmin = 1/0, xmax = -1/0, ymin = 1/0, ymax = -1/0;
+  const pts = {};
+  names.forEach(n => { pts[n] = seriesObj[n].map(p => ({t: parseX(p.x), y: p.y}));
+    pts[n].forEach(p => { xmin = Math.min(xmin, p.t); xmax = Math.max(xmax, p.t);
+      ymin = Math.min(ymin, p.y); ymax = Math.max(ymax, p.y); }); });
+  const pad = (ymax - ymin) * 0.08 || 1; ymin -= pad; ymax += pad;
+  const x = t => m.l + (t - xmin) / Math.max(1, xmax - xmin) * (W - m.l - m.r);
+  const y = v => m.t + (ymax - v) / (ymax - ymin) * (H - m.t - m.b);
+  for (let g = 0; g <= 4; g++){ const v = ymin + (ymax - ymin) * g / 4;
+    el(svg, 'line', {x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: 'gridline'});
+    el(svg, 'text', {x: m.l - 6, y: y(v) + 4, 'text-anchor': 'end'}).textContent = fmtY(v); }
+  const span = xmax - xmin;
+  for (let g = 0; g <= 4; g++){ const t = xmin + span * g / 4; const d = new Date(t);
+    const lbl = span > 200 * 864e5 ? d.toISOString().slice(0, 7)
+      : span > 3 * 864e5 ? d.toISOString().slice(5, 10)
+      : d.toISOString().slice(5, 16).replace('T', ' ');
+    el(svg, 'text', {x: x(t), y: H - m.b + 16, 'text-anchor': 'middle'}).textContent = lbl; }
+  el(svg, 'line', {x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, class: 'axis'});
+  const usedY = [];
+  names.forEach((n, i) => {
+    const col = css(SERIES_COLORS[i % SERIES_COLORS.length]);
+    const P = pts[n];
+    el(svg, 'path', {d: P.map((p, j) => (j ? 'L' : 'M') + x(p.t).toFixed(1) + ',' + y(p.y).toFixed(1)).join(''),
+      fill: 'none', stroke: col, 'stroke-width': 2, 'stroke-linejoin': 'round'});
+    const last = P[P.length - 1];
+    el(svg, 'circle', {cx: x(last.t), cy: y(last.y), r: 3.5, fill: col});
+    let ly = y(last.y) + 4;
+    while (usedY.some(u => Math.abs(u - ly) < 13)) ly += 13;
+    usedY.push(ly);
+    el(svg, 'text', {x: W - m.r + 8, y: ly, class: 'lbl', fill: col}).textContent =
+      n.length > 24 ? n.slice(0, 23) + '…' : n;
+    P.forEach(p => { const c = el(svg, 'circle', {cx: x(p.t), cy: y(p.y), r: 6, fill: 'transparent'});
+      c.addEventListener('mousemove', e => showTip(e, `${n}: ${fmtY(p.y)} · ${new Date(p.t).toISOString().slice(0,16).replace('T',' ')}`));
+      c.addEventListener('mouseleave', hideTip); });
+  });
+  if (ylabel) el(svg, 'text', {x: m.l, y: m.t + 2, class: 'lbl'}).textContent = ylabel;
+}
+if (DATA.evo_idx) lineChart('c-evo-idx', DATA.evo_idx, {ylabel: 'index (100 = first obs)', fmtY: v => v.toFixed(0)});
+if (DATA.evo_war) lineChart('c-evo-war', DATA.evo_war, {ylabel: '$ / Mtok output', fmtY: v => '$' + v.toFixed(2)});
+if (DATA.evo_quant) lineChart('c-evo-quant', DATA.evo_quant, {ylabel: '$ / Mtok output', fmtY: v => '$' + v.toFixed(2)});
 </script>
