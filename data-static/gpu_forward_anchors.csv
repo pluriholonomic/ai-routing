@@ -1,0 +1,3 @@
+obs_date,gpu_class,tenor,usd_hr,source
+2025-10-15,H100,1y,1.70,semianalysis public post (1yr contract low Oct 2025)
+2026-03-15,H100,1y,2.35,semianalysis public post (1yr contract Mar 2026)

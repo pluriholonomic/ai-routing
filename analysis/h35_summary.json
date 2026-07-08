@@ -1,0 +1,50 @@
+{
+  "current_spot": {
+    "spot_ondemand": 2.247166958406268,
+    "spot_interruptible": 0.9362962962962962
+  },
+  "vast_duration_curve": [
+    {
+      "bucket": "1w-1mo",
+      "usd_hr": 2.136,
+      "n": 9
+    },
+    {
+      "bucket": "1-3mo",
+      "usd_hr": 2.269,
+      "n": 7
+    },
+    {
+      "bucket": "3mo+",
+      "usd_hr": 2.283,
+      "n": 6
+    }
+  ],
+  "carry_history": [
+    {
+      "obs_date": "2025-10-15",
+      "gpu_class": "H100",
+      "tenor": "1y",
+      "forward": 1.7,
+      "spot_marketplace": 1.95,
+      "carry_annualized_pct": -13.7,
+      "regime": "backwardation"
+    },
+    {
+      "obs_date": "2026-03-15",
+      "gpu_class": "H100",
+      "tenor": "1y",
+      "forward": 2.35,
+      "spot_marketplace": 2.18,
+      "carry_annualized_pct": 7.5,
+      "regime": "contango"
+    }
+  ],
+  "current_vs_latest_anchor": {
+    "forward_1y": 2.35,
+    "spot_now": 2.247166958406268,
+    "carry_annualized_pct": 4.5,
+    "regime": "contango",
+    "caveat": "forward anchor and spot are different venues/segments; directional only until a same-venue curve (Compute Desk / AIX) is added"
+  }
+}

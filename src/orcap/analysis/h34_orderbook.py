@@ -102,6 +102,7 @@ def book_metrics(asks: pd.DataFrame, dem: pd.DataFrame) -> pd.DataFrame:
         exe = g[g["reject_1d"] <= 0.20]
         best, second = g["price"].iat[0], g["price"].iat[1]
         demand = g["demand_tokmin"].iat[0]
+
         def within(frac: float, g=g, best=best) -> float:
             return float(g.loc[g["price"] <= best * (1 + frac), "depth_tokmin"].sum())
 
