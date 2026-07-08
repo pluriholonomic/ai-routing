@@ -1,0 +1,98 @@
+{
+  "dataset": {
+    "n_pairs": 39179,
+    "n_positives": 1069,
+    "base_rate": 0.027285025141019423
+  },
+  "with_exposure": {
+    "n_train": 25513,
+    "n_test": 13666,
+    "test_base_rate": 0.016610566369091175,
+    "auc_logit": 0.8737611258966522,
+    "auc_tree": 0.8421229815387066,
+    "pr_auc_logit": 0.1590718945266027,
+    "pr_auc_tree": 0.10950793526939058,
+    "logit_coefs_std": {
+      "never_changed": -1.0428776728351876,
+      "log_gap_days": 0.9868016136343094,
+      "log_price": -0.6956831283124071,
+      "log_days_since_change": -0.5920905426595644,
+      "n_snapshots_seen": -0.4064137714696841,
+      "n_prior_changes": 0.3735737680197465,
+      "log_age_days": -0.3063980654452013,
+      "author_n_models": -0.16313308078969485,
+      "price_pctile_author": 0.13235181763586437,
+      "is_young_30d": 0.12433474212690665,
+      "month_index": 0.07567266162203899,
+      "log_days_since_author_launch": -0.06996412003875241,
+      "price_pctile_market": 0.06948881349248581,
+      "market_launches_30d": -0.05044450361963652,
+      "tokens_missing": -0.04424205964793781,
+      "log_weekly_tokens": -0.03216077624430287,
+      "author_prior_change_rate": -0.0201752782969701
+    },
+    "tree_perm_importance": {
+      "log_gap_days": 0.12945136664183038,
+      "n_prior_changes": 0.07329358665177584,
+      "log_age_days": 0.053696929804864665,
+      "price_pctile_market": 0.04722136539291746,
+      "author_prior_change_rate": 0.020289852697110988,
+      "log_days_since_change": 0.00857491822242642,
+      "log_price": 0.008539679865261541,
+      "price_pctile_author": 0.006965656205409077
+    }
+  },
+  "no_exposure_headline": {
+    "n_train": 25513,
+    "n_test": 13666,
+    "test_base_rate": 0.016610566369091175,
+    "auc_logit": 0.8167438250105796,
+    "auc_tree": 0.7555502051527985,
+    "pr_auc_logit": 0.08997065295613013,
+    "pr_auc_tree": 0.04981654846594941,
+    "logit_coefs_std": {
+      "tokens_missing": -1.3121889747272535,
+      "log_weekly_tokens": -1.2673850218057452,
+      "never_changed": -0.8957804899777604,
+      "log_price": -0.5770211012535694,
+      "log_days_since_change": -0.4604207510608683,
+      "log_age_days": -0.3744390634145401,
+      "month_index": -0.3385615714651791,
+      "n_prior_changes": 0.3352901871137595,
+      "n_snapshots_seen": -0.2981153172278868,
+      "author_n_models": -0.13952828077269636,
+      "price_pctile_author": 0.12544765555616832,
+      "market_launches_30d": -0.10975251428016385,
+      "is_young_30d": 0.09986125131822614,
+      "author_prior_change_rate": 0.0342978620428462,
+      "log_days_since_author_launch": -0.02063881627341816,
+      "price_pctile_market": -0.010690557827764494
+    },
+    "tree_perm_importance": {
+      "n_prior_changes": 0.09468592462007315,
+      "log_age_days": 0.078758154401697,
+      "price_pctile_market": 0.04346859508439673,
+      "author_prior_change_rate": 0.04044111211599619,
+      "log_days_since_change": 0.01906808148943855,
+      "n_snapshots_seen": 0.013471837013255916,
+      "price_pctile_author": 0.00678671091074603,
+      "author_n_models": 0.0047189896720473135
+    }
+  },
+  "direction_given_change": {
+    "n_train": 842,
+    "n_test": 227,
+    "test_cut_share": 0.5638766519823789,
+    "auc_direction": 0.656328914141414,
+    "coefs_std": {
+      "log_price": 0.9668293725227907,
+      "price_pctile_market": -0.49606765440131945,
+      "n_prior_changes": 0.3377000643417185,
+      "month_index": -0.28640665793492415,
+      "n_snapshots_seen": -0.285717088979602,
+      "log_days_since_change": -0.26067773294566055,
+      "price_pctile_author": -0.1910688723808229,
+      "market_launches_30d": -0.16670165243907822
+    }
+  }
+}
