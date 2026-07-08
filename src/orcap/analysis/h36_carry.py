@@ -126,10 +126,10 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "positions": book.to_dict("records"),
         "mean_abs_short_pnl_pct": float(book["short_fwd_pnl_pct"].abs().mean()),
         "inefficiency_read": (
-            "NO SPOT RESALE: short-side arb requires reseller ops (redundancy x%.2f + %.1f%% drag); "
-            "long-side has no outside arb at all — Bessembinder-Lemmon regime: premia = hedging "
-            "pressure; raw PnL is a risk-premium estimate, arb_adj is what an entrant could earn"
-            % (REDUNDANCY_FACTOR, OPS_DRAG_PCT)
+            f"NO SPOT RESALE: short-side arb requires reseller ops (redundancy "
+            f"x{REDUNDANCY_FACTOR:.2f} + {OPS_DRAG_PCT:.1f}% drag); long-side has no outside "
+            "arb at all — Bessembinder-Lemmon regime: premia = hedging pressure; raw PnL is a "
+            "risk-premium estimate, arb_adj is what an entrant could earn"
         ),
         "quality_band_marketplace_to_hyperscaler_pct": band,
         "n_positions": int(len(book)),
