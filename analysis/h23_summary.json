@@ -1,0 +1,53 @@
+{
+  "n_model_days": 9483,
+  "n_matched_defense_days": 579,
+  "n_days": 33,
+  "validation": {
+    "reject_on_toxicity": 0.00975558409978004,
+    "se": 0.004471678778087787,
+    "pvalue": 0.02913626410477128,
+    "interpretation": "positive & significant = quoters ration flow the index calls toxic"
+  },
+  "most_toxic_model_days": [
+    {
+      "model_permaslug": "qwen/qwen3.5-27b-20260224",
+      "toxicity": 3.039,
+      "reject_rate": 0.044
+    },
+    {
+      "model_permaslug": "qwen/qwen3.5-27b-20260224",
+      "toxicity": 2.958,
+      "reject_rate": 0.029
+    },
+    {
+      "model_permaslug": "nvidia/nemotron-3-nano-30b-a3b",
+      "toxicity": 2.315,
+      "reject_rate": 0.028
+    },
+    {
+      "model_permaslug": "poolside/laguna-m.1-20260312",
+      "toxicity": 2.204,
+      "reject_rate": 0.0
+    },
+    {
+      "model_permaslug": "nvidia/nemotron-3-nano-30b-a3b",
+      "toxicity": 2.058,
+      "reject_rate": 0.055
+    },
+    {
+      "model_permaslug": "poolside/laguna-xs-2.1-20260625",
+      "toxicity": 1.966,
+      "reject_rate": 0.0
+    },
+    {
+      "model_permaslug": "poolside/laguna-m.1-20260312",
+      "toxicity": 1.854,
+      "reject_rate": 0.0
+    },
+    {
+      "model_permaslug": "tencent/hy3-20260706",
+      "toxicity": 1.564,
+      "reject_rate": 0.001
+    }
+  ]
+}

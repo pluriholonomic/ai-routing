@@ -1,0 +1,19 @@
+{
+  "phase3_readiness": {
+    "h21_follow_pairs": "13/100",
+    "h22_events": "11/200",
+    "h25_cut_events": "4/30"
+  },
+  "n_events": 11,
+  "preliminary": {
+    "n_follow_pairs": 13,
+    "median_lag_hours": 4.268055555555556,
+    "share_within_24h": 1.0,
+    "share_same_direction": 0.5384615384615384,
+    "fastest_followers": {
+      "Novita": 3.5,
+      "Inceptron": 4.4,
+      "StreamLake": 4.5
+    }
+  }
+}

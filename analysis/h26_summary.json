@@ -1,0 +1,15 @@
+{
+  "historical": {
+    "n_entry_events": 532,
+    "mean_incumbent_dlog_after_entry": 0.001624431681273527,
+    "se": 0.007422560883722572,
+    "share_incumbent_cuts": 0.03759398496240601,
+    "unconditional_90d_dlog_baseline": -0.014353074254379648,
+    "excess_entry_effect": 0.015977505935653176
+  },
+  "prospective": {
+    "gated": true,
+    "entry_events_since_day1": 0,
+    "unlocks_at": "100 entry events with 30-day post windows (~6-10 weeks)"
+  }
+}
