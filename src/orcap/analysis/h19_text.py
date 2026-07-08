@@ -35,12 +35,12 @@ log = logging.getLogger(__name__)
 PAGES_CACHE = DATA_DIR / "external" / "provider_pages.parquet"
 
 KEYWORDS = {
-    "own_silicon": r"\b(our (chip|silicon|hardware)|lpu|rdu|wafer[- ]scale|custom (chip|silicon|accelerator)|asic)\b",
-    "gpu_marketplace": r"\b(marketplace|rent (a )?gpu|spot (instance|pricing)|bid|decentralized|depin|peer[- ]to[- ]peer)\b",
+    "own_silicon": r"\b(our (chip|silicon|hardware)|lpu|rdu|wafer[- ]scale|custom (chip|silicon|accelerator)|asic)\b",  # noqa: E501
+    "gpu_marketplace": r"\b(marketplace|rent (a )?gpu|spot (instance|pricing)|bid|decentralized|depin|peer[- ]to[- ]peer)\b",  # noqa: E501
     "enterprise": r"\b(enterprise|soc ?2|hipaa|compliance|sla|dedicated (capacity|instances))\b",
     "serverless": r"\b(serverless|autoscal\w+|scale to zero)\b",
     "open_source_focus": r"\b(open[- ]?source|open[- ]?weight)\b",
-    "price_led": r"\b(cheapest|lowest (cost|price)|affordable|cost[- ]effective|per[- ]token pricing)\b",
+    "price_led": r"\b(cheapest|lowest (cost|price)|affordable|cost[- ]effective|per[- ]token pricing)\b",  # noqa: E501
     "agents_focus": r"\b(agents?|agentic)\b",
     "gpu_cloud": r"\b(gpu cloud|bare[- ]metal|clusters?|h100|b200|nvidia)\b",
     "research_lab": r"\b(frontier|research lab|foundation model|we train|our model)\b",

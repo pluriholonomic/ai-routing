@@ -136,7 +136,8 @@ def live_status(analysis_dir: Path) -> str:
 <h2>Live status <span class="sans" style="font-size:13px;color:var(--muted);font-weight:400">
 auto-generated from the latest daily reanalysis</span></h2>
 <div class="statrow">{tile_html}</div>
-<table><thead><tr><th>UTC</th><th>Model</th><th>Provider</th><th class="num">$/Mtok out</th></tr></thead>
+<table><thead><tr><th>UTC</th><th>Model</th><th>Provider</th>
+<th class="num">$/Mtok out</th></tr></thead>
 <tbody>{rows}</tbody></table>
 <p class="small sans">Most recent repricing events. All statistics recomputed nightly from
 the full capture; the narrative sections below are the dated core screen.</p>
