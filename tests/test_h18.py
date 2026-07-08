@@ -10,7 +10,7 @@ rng = np.random.default_rng(18)
 
 def _synthetic(n=6000):
     rows = []
-    for i in range(n):
+    for _i in range(n):
         age = rng.uniform(1, 700)
         # planted: change hazard decays smoothly with age
         p = 0.35 * np.exp(-age / 60) + 0.01
