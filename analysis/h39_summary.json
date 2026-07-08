@@ -1,0 +1,17 @@
+{
+  "n_endpoints_fit": 255,
+  "ingarch_persistence_median": 0.746,
+  "ingarch_persistence_p90": 0.912,
+  "share_near_critical_gt_0.9": 0.133,
+  "alpha_median": 0.65,
+  "hurst": {
+    "n_endpoints": 255,
+    "hurst_median": 0.84,
+    "hurst_iqr": [
+      0.748,
+      0.911
+    ],
+    "read": "H=0.5 short memory; H\u21921 self-similar (heavy-tailed sessions); preliminary at current panel length"
+  },
+  "data_caveat": "interval-censored counts, 30-min windows; within-bin overdispersion pushes Poisson-INGARCH persistence UP \u2014 NegBin variant and MMPP gate at ~2 weeks of panel"
+}
