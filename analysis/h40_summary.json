@@ -1,0 +1,23 @@
+{
+  "aggregate": {
+    "latest_week_tokens_T": 54.31,
+    "avg_4w_tokens_T": 188.69,
+    "yoy_growth_pct": 388.7,
+    "weeks": 52
+  },
+  "channels": {
+    "union_incremental_share_lower_bound": 0.2347,
+    "total_tokens_last_complete_day_T": 10.446,
+    "subsidy_created_share": 0.2144,
+    "access_created_share_lower_bound": 0.2203,
+    "first_party_authors_n": 32,
+    "note_access": "models whose author runs no first-party API \u2014 host/router-only tail"
+  },
+  "failover": {
+    "gated": "needs >=7 days of share panel (have 2)"
+  },
+  "price_response": {
+    "gated": "H29 demand elasticity \u00d7 routing surplus; unlocks with H29"
+  },
+  "pre_registered": "listing DiD: HF-download trajectories around OpenRouter listing events vs unlisted peers (hf_model_stats_daily), ~6-8 weeks of listings"
+}
