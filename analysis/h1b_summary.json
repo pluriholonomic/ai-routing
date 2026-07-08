@@ -1,0 +1,28 @@
+{
+  "n_pairs": 56459,
+  "n_providers": 64,
+  "market_share_pairs_changed": 0.004622823641934855,
+  "market_median_abs_dlog": 1.0033021088637848,
+  "market_cut_share": 0.6590038314176245,
+  "most_active_providers": {
+    "watsonx": 0.094,
+    "databricks": 0.047,
+    "deepseek": 0.047,
+    "vertex_ai-vision-models": 0.04,
+    "vertex_ai-language-models": 0.04,
+    "deepinfra": 0.036,
+    "minimax": 0.035,
+    "nlp_cloud": 0.03
+  },
+  "least_active_providers": {
+    "lambda_ai": 0.0,
+    "llamagate": 0.0,
+    "nebius": 0.0,
+    "aleph_alpha": 0.0,
+    "novita": 0.0,
+    "nscale": 0.0,
+    "ovhcloud": 0.0,
+    "zai": 0.0
+  },
+  "mover_stayer_ratio": 33384640.949554913
+}

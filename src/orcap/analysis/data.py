@@ -72,3 +72,9 @@ def gpu_offers() -> str:
 
 def models_snapshots() -> str:
     return f"read_parquet('{table_glob('models_snapshots')}')"
+
+
+def external(name: str) -> str:
+    source = os.environ.get("ORCAP_ANALYSIS_SOURCE", "hf")
+    base = str(DATA_DIR) if source == "local" else _hf_base()
+    return f"read_parquet('{base}/external/{name}.parquet')"

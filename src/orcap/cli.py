@@ -111,7 +111,9 @@ def main() -> None:
 
         modules = {
             "h1": "h1_spells",
+            "h1b": "h1b_litellm",
             "h2": "h2_dispersion",
+            "h8": "h8_events",
             "h3": "h3_entry",
             "h4": "h4_routing",
             "h5": "h5_frontends",
