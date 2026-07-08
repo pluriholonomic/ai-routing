@@ -143,6 +143,7 @@ def main() -> None:
             "h34": "h34_orderbook",
             "h35": "h35_term",
             "h36": "h36_carry",
+            "h37": "h37_inventory",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
