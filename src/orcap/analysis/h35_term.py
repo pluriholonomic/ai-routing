@@ -36,7 +36,8 @@ TENOR_YEARS = {"1m": 1 / 12, "3m": 0.25, "6m": 0.5, "1y": 1.0, "2y": 2.0, "3y": 
 def current_spot(gpu_class: str = "H100 SXM") -> dict:
     row = data.q(
         f"""
-        with latest as (select max(run_ts) m from read_parquet('{data.table_glob("gpu_offers_snapshots")}'))
+        with latest as (select max(run_ts) m
+          from read_parquet('{data.table_glob("gpu_offers_snapshots")}'))
         select median(dph_total) filter (where offer_type = 'on-demand') as ondemand,
                median(dph_total) filter (where offer_type = 'bid') as bid
         from read_parquet('{data.table_glob("gpu_offers_snapshots")}'), latest
@@ -52,7 +53,8 @@ def current_spot(gpu_class: str = "H100 SXM") -> dict:
 def vast_duration_curve(gpu_class: str = "H100 SXM") -> list[dict]:
     rows = data.q(
         f"""
-        with latest as (select max(run_ts) m from read_parquet('{data.table_glob("gpu_offers_snapshots")}'))
+        with latest as (select max(run_ts) m
+          from read_parquet('{data.table_glob("gpu_offers_snapshots")}'))
         select case when duration < 86400*7 then '<1w'
                     when duration < 86400*30 then '1w-1mo'
                     when duration < 86400*90 then '1-3mo'
