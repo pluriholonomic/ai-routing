@@ -1,0 +1,16 @@
+{
+  "n_model_days": 180,
+  "n_models_latest": 69,
+  "median_top_gap_pct": 8.333333333333348,
+  "median_book_pressure": 0.3987504191928212,
+  "share_books_pressure_gt_1": 0.391304347826087,
+  "median_impact_2x": 1.0,
+  "median_effective_spread_pct": 21.641381086011478,
+  "largest_book": {
+    "model": "deepseek/deepseek-v4-flash-20260423",
+    "best_ask_per_mtok": 0.18,
+    "top_gap_pct": 8.89,
+    "book_pressure": 4.515,
+    "impact_2x": 1.556
+  }
+}
