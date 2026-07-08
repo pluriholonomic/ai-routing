@@ -17,6 +17,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -85,11 +86,92 @@ async def backfill_wayback(
     return summary
 
 
+def backfill_litellm(sample_days: int = 14, workdir: Path | None = None) -> Path:
+    """Cross-provider DIRECT price history from the git history of LiteLLM's
+    community price file (model_prices_and_context_window.json) — dated price
+    observations per (model, litellm_provider) back to 2023. Blobless clone;
+    one commit sampled per `sample_days`."""
+    import subprocess
+    import tempfile
+
+    workdir = workdir or Path(tempfile.mkdtemp(prefix="litellm-"))
+    repo = workdir / "litellm"
+    fname = "model_prices_and_context_window.json"
+    subprocess.run(
+        [
+            "git",
+            "clone",
+            "--filter=blob:none",
+            "--no-checkout",
+            "https://github.com/BerriAI/litellm.git",
+            str(repo),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    log_out = subprocess.run(
+        ["git", "-C", str(repo), "log", "--format=%H %cs", "--", fname],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    # newest-first; keep one commit per sample window
+    picked, last_date = [], None
+    for line in log_out:
+        sha, cs = line.split()
+        d = pd.Timestamp(cs)
+        if last_date is None or (last_date - d).days >= sample_days:
+            picked.append((sha, cs))
+            last_date = d
+    log.info("litellm: %d commits sampled from %d", len(picked), len(log_out))
+
+    rows = []
+    for sha, cs in picked:
+        try:
+            blob = subprocess.run(
+                ["git", "-C", str(repo), "show", f"{sha}:{fname}"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            doc = json.loads(blob)
+        except Exception as exc:
+            log.warning("litellm %s (%s): %s", sha[:8], cs, str(exc)[:80])
+            continue
+        for model, spec in doc.items():
+            if model == "sample_spec" or not isinstance(spec, dict):
+                continue
+            cin, cout = spec.get("input_cost_per_token"), spec.get("output_cost_per_token")
+            if cin is None and cout is None:
+                continue
+            rows.append(
+                {
+                    "obs_date": cs,
+                    "commit": sha[:12],
+                    "model": model,
+                    "litellm_provider": spec.get("litellm_provider"),
+                    "input_cost_per_token": cin,
+                    "output_cost_per_token": cout,
+                    "max_tokens": spec.get("max_tokens"),
+                }
+            )
+    out = DATA_DIR / "external" / "litellm_price_history.parquet"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_parquet(out, index=False)
+    log.info("litellm history: %d rows -> %s", len(rows), out)
+    return out
+
+
 def main(source: str = "all", limit: int | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     if source in ("wayback", "all"):
         print(json.dumps(asyncio.run(backfill_wayback(limit=limit)), indent=2))
+    if source in ("litellm", "all"):
+        try:
+            backfill_litellm()
+        except Exception as exc:
+            log.error("litellm backfill failed: %s", exc)
     if source in ("orw", "all"):
         log.warning(
             "orw backfill unavailable: public instance offline, repo has no dump "

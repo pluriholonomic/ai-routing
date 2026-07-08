@@ -50,7 +50,10 @@ def main() -> None:
 
     p_backfill = sub.add_parser("backfill", help="best-effort historical backfill (model-level)")
     p_backfill.add_argument(
-        "--source", choices=["wayback", "orw", "all"], default="all", help="backfill source"
+        "--source",
+        choices=["wayback", "orw", "litellm", "all"],
+        default="all",
+        help="backfill source",
     )
 
     args = parser.parse_args()

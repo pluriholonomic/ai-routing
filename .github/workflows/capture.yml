@@ -18,6 +18,10 @@ concurrency:
   group: capture
   cancel-in-progress: false
 
+permissions:
+  actions: write  # lets a detected price event trigger the memo reanalysis
+  contents: read
+
 jobs:
   capture:
     runs-on: ubuntu-latest
@@ -34,3 +38,10 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: uv run orcap push --message "capture ${{ github.run_id }}" --delete-local
+      - name: trigger reanalysis on price events
+        if: ${{ hashFiles('events_detected') != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "price events on: $(cat events_detected)"
+          gh workflow run memo.yml --repo ${{ github.repository }}

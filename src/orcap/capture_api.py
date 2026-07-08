@@ -179,22 +179,102 @@ async def capture(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) -> d
     return summary
 
 
+def price_map(summary_paths: dict[str, Any]) -> dict[tuple, float]:
+    """(model, provider, tag, fingerprint) -> completion price from a snapshot file."""
+    tbl = pq.ParquetFile(summary_paths["endpoints_snapshots"]).read(
+        columns=[
+            "model_id",
+            "provider_name",
+            "tag",
+            "endpoint_fingerprint",
+            "price_completion",
+        ]
+    )
+    out = {}
+    for r in tbl.to_pylist():
+        if r["price_completion"] is not None:
+            out[(r["model_id"], r["provider_name"], r["tag"], r["endpoint_fingerprint"])] = r[
+                "price_completion"
+            ]
+    return out
+
+
+def diff_models(prev: dict[tuple, float], cur: dict[tuple, float]) -> set[str]:
+    """Models whose any endpoint changed price between consecutive samples."""
+    changed = set()
+    for k, v in cur.items():
+        if ":" in k[0]:  # variant ids share the base model's endpoints
+            continue
+        if k in prev and prev[k] != v:
+            changed.add(k[0])
+    return changed
+
+
+async def burst_sample(
+    models: set[str], curated_dir: Path = CURATED_DIR, raw_dir: Path = RAW_DIR
+) -> int:
+    """One focused 60s-cadence tick: endpoints + live stats for changed models.
+
+    Captures the minutes right after a repricing event — competitor reactions
+    and congestion response at 1-min resolution (H8 event studies).
+    """
+    run_ts = run_timestamp()
+    dt = dt_partition()
+    async with make_client() as client:
+        fetcher = Fetcher(client, rps=8)
+        ep_urls = [f"{API_V1}/models/{m}/endpoints" for m in models]
+        stat_urls = [f"{STATS_URL}?permaslug={quote(m, safe='')}&variant=standard" for m in models]
+        bodies = await asyncio.gather(*(fetcher.get_json(u) for u in ep_urls + stat_urls))
+        write_raw(fetcher.records, "event_bursts", raw_dir, run_ts, dt)
+    ep_docs = [b["data"] for b in bodies[: len(ep_urls)] if b and "data" in b]
+    rows = normalize.endpoints_table(ep_docs, run_ts, dt)
+    cong_rows: list[dict[str, Any]] = []
+    for m, b in zip(sorted(models), bodies[len(ep_urls) :], strict=True):
+        cong_rows += _congestion_rows(b, m, run_ts, dt)
+    if rows.num_rows:
+        write_partition(rows, "event_bursts", run_ts, dt, curated_dir)
+    if cong_rows:
+        write_partition(
+            pa.Table.from_pylist(cong_rows), "event_bursts_congestion", run_ts, dt, curated_dir
+        )
+    return rows.num_rows
+
+
 async def capture_loop(samples: int, interval_seconds: float) -> list[dict[str, Any]]:
     """Take N snapshots spaced interval_seconds apart within one job.
 
-    GitHub Actions cron below 15 min is unreliable, but OpenRouter exposes
-    5-minute rolling windows (uptime_last_5m) — so a */15 job taking 3 samples
-    at 5-min spacing yields an effective 5-minute time series.
+    EVENT-DRIVEN LAYER: consecutive samples are diffed in-flight; when an
+    endpoint's price changes, the inter-sample sleep is replaced by 60-second
+    burst sampling of the affected models (endpoints + congestion), and a
+    marker file is written so CI can trigger the reanalysis workflow.
     """
     import time
 
-    summaries = []
+    summaries: list[dict[str, Any]] = []
+    prev: dict[tuple, float] = {}
+    hot: set[str] = set()
     for i in range(samples):
         start = time.monotonic()
-        summaries.append(await capture())
+        summary = await capture()
+        summaries.append(summary)
+        cur = price_map(summary["paths"])
+        changed = diff_models(prev, cur) if prev else set()
+        if changed:
+            hot |= changed
+            log.warning("PRICE EVENT detected: %s", sorted(changed))
+            Path("events_detected").write_text("\n".join(sorted(hot)))
+        prev = cur
         if i < samples - 1:
-            elapsed = time.monotonic() - start
-            await asyncio.sleep(max(0.0, interval_seconds - elapsed))
+            deadline = start + interval_seconds
+            if hot:
+                while time.monotonic() < deadline - 65:
+                    tick = time.monotonic()
+                    try:
+                        await burst_sample(hot)
+                    except Exception:
+                        log.exception("burst tick failed")
+                    await asyncio.sleep(max(0.0, 60 - (time.monotonic() - tick)))
+            await asyncio.sleep(max(0.0, deadline - time.monotonic()))
     return summaries
 
 
