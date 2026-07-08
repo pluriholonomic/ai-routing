@@ -1,0 +1,28 @@
+{
+  "n_model_runs": 44362,
+  "n_models": 149,
+  "share_of_runs_each_margin_moved": {
+    "p_min": 0.00011,
+    "p25": 0.00018,
+    "p50": 0.00014,
+    "p75": 7e-05,
+    "p95": 0.00023
+  },
+  "median_p95_over_min": 1.0999999999999999,
+  "most_active_model": {
+    "model": "z-ai/glm-5.2",
+    "min_path": [
+      3.0,
+      3.0
+    ],
+    "p95_path": [
+      5.83,
+      5.981
+    ],
+    "days": [
+      "2026-07-07",
+      "2026-07-08"
+    ]
+  },
+  "note": "DFL decomposition (repricing vs composition vs reweighting) gates on events"
+}
