@@ -39,3 +39,15 @@ jobs:
           cp analysis/*.parquet analysis/*.json data/analysis/
           cp analysis/memo.html data/reports/memo.html
           uv run orcap push --message "nightly reanalysis + memo ${{ github.run_id }}" --delete-local
+      - name: publish memo to private HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'EOF'
+          import os
+          from huggingface_hub import HfApi
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="analysis/memo.html", path_in_repo="index.html",
+              repo_id="t4run/openrouter-memo", repo_type="space",
+              commit_message="daily memo refresh")
+          EOF

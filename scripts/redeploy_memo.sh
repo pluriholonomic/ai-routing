@@ -1,12 +1,14 @@
 #!/bin/zsh
-# Daily local job: pull the CI-rendered memo from the private HF dataset and
-# redeploy it to the canonical claude.ai artifact. Artifact publishing needs a
-# user Claude session, which is why this runs locally (launchd) rather than CI.
+# Helper for refreshing the claude.ai artifact copy of the memo from inside an
+# interactive Claude Code session (the Artifact tool is not available headlessly,
+# so this cannot be cron'd — the always-fresh copy lives at the private HF Space
+# https://huggingface.co/spaces/t4run/openrouter-memo, updated nightly by CI).
+#
+# Usage: run this to fetch the latest CI-rendered memo to /tmp/orcap-memo.html,
+# then ask Claude in-session to redeploy it to the canonical artifact URL:
+#   https://claude.ai/code/artifact/e7e8f667-3534-4145-a6b9-6663a74c51e3
 set -euo pipefail
 cd "$(dirname "$0")/.."
-
-MEMO_URL="https://claude.ai/code/artifact/e7e8f667-3534-4145-a6b9-6663a74c51e3"
-OUT=/tmp/orcap-memo.html
 
 uv run python - <<'EOF'
 import shutil
@@ -16,12 +18,5 @@ p = hf_hub_download(
     repo_type="dataset", force_download=True,
 )
 shutil.copy(p, "/tmp/orcap-memo.html")
-print("downloaded", p)
+print("latest memo at /tmp/orcap-memo.html")
 EOF
-
-claude -p "Call the Artifact tool exactly once with file_path=$OUT, favicon 🧮, \
-url $MEMO_URL, label auto-$(date +%Y%m%d), description 'Empirical screening memo: \
-inference-market/DeFi analogy — aggregated RFQ verdict, provider typology, live \
-daily-refreshed statistics.' Then stop. Do not modify any files." \
-  --allowedTools "Artifact" --max-turns 3
-echo "redeployed $(date)"
