@@ -36,6 +36,8 @@ def main() -> None:
 
     sub.add_parser("capture-direct", help="snapshot direct-provider list prices (H13 basis)")
 
+    sub.add_parser("capture-hf", help="snapshot HF Hub model stats (demand leading indicator)")
+
     p_compact = sub.add_parser("compact", help="nightly compaction + pricing_changes derivation")
     p_compact.add_argument("--repo", default=None, help="HF repo id (default from config)")
 
@@ -89,6 +91,10 @@ def main() -> None:
         from .capture_direct import main as direct_main
 
         direct_main()
+    elif args.command == "capture-hf":
+        from .capture_hf_stats import main as hf_main
+
+        hf_main()
     elif args.command == "compact":
         from .compact import main as compact_main
 

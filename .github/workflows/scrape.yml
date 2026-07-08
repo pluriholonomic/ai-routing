@@ -35,6 +35,8 @@ jobs:
           fi
       - name: capture direct-provider prices
         run: uv run orcap capture-direct
+      - name: capture HF model stats
+        run: uv run orcap capture-hf
       - name: push to HF dataset repo
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
