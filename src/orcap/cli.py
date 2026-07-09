@@ -38,6 +38,8 @@ def main() -> None:
 
     sub.add_parser("capture-hf", help="snapshot HF Hub model stats (demand leading indicator)")
 
+    sub.add_parser("capture-devrel", help="snapshot npm/pypi/github/HN developer-adoption stats")
+
     p_compact = sub.add_parser("compact", help="nightly compaction + pricing_changes derivation")
     p_compact.add_argument("--repo", default=None, help="HF repo id (default from config)")
 
@@ -95,6 +97,10 @@ def main() -> None:
         from .capture_hf_stats import main as hf_main
 
         hf_main()
+    elif args.command == "capture-devrel":
+        from .capture_devrel import main as devrel_main
+
+        devrel_main()
     elif args.command == "compact":
         from .compact import main as compact_main
 

@@ -37,6 +37,10 @@ jobs:
         run: uv run orcap capture-direct
       - name: capture HF model stats
         run: uv run orcap capture-hf
+      - name: capture devrel stats
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: uv run orcap capture-devrel
       - name: push to HF dataset repo
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}

@@ -83,6 +83,13 @@ QUERIES: dict[str, str] = {
                POW(sqrt_price_x96 / POW(2, 96), 2) * 1e12 AS weth_per_usdc_scaled
         FROM swaps WHERE rn = 1 ORDER BY day, pool
     """,
+    "pypi_downloads_daily": """
+        SELECT DATE(timestamp) AS day, file.project AS project, COUNT(*) AS downloads
+        FROM `bigquery-public-data.pypi.file_downloads`
+        WHERE timestamp >= '2025-07-01'
+          AND file.project IN ('openai','anthropic','litellm','vllm','langchain')
+        GROUP BY 1, 2 ORDER BY 1, 2
+    """,
 }
 
 
