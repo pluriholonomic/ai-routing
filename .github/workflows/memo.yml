@@ -27,9 +27,14 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          uv run hf download t4run/openrouter-market-history --repo-type dataset \
-            --include "curated/*" "derived/*" "external/*" "backfill/*" "data-static/*" \
-            --local-dir data
+          uv run python - <<'PY'
+          from huggingface_hub import snapshot_download
+          snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset", local_dir="data",
+              allow_patterns=["curated/*", "derived/*", "external/*", "backfill/*"],
+              max_workers=8,
+          )
+          PY
       - name: reanalyze
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
