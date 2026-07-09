@@ -278,10 +278,33 @@ async def capture_loop(samples: int, interval_seconds: float) -> list[dict[str, 
     return summaries
 
 
+def consolidate_local(curated_dir: Path = CURATED_DIR) -> int:
+    """Merge this job's per-sample parquet files into one file per table/day
+    before pushing — an 11-sample job otherwise ships ~100 small files, which
+    multiplies both HF upload and later hydration request counts (rate limits).
+    """
+    merged = 0
+    for dt_dir in curated_dir.glob("*/dt=*"):
+        files = sorted(dt_dir.glob("*.parquet"))
+        if len(files) < 2:
+            continue
+        tables = [pq.ParquetFile(f).read() for f in files]
+        out = dt_dir / files[-1].name
+        combined = pa.concat_tables(tables, promote_options="default")
+        for f in files:
+            f.unlink()
+        pq.write_table(combined, out, compression="zstd")
+        merged += len(files)
+    log.info("consolidated %d per-sample files", merged)
+    return merged
+
+
 def main(samples: int = 1, interval_seconds: float = 300.0) -> list[dict[str, Any]]:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    return asyncio.run(capture_loop(samples, interval_seconds))
+    out = asyncio.run(capture_loop(samples, interval_seconds))
+    consolidate_local()
+    return out
 
 
 if __name__ == "__main__":

@@ -109,8 +109,8 @@ def latest_features() -> pd.DataFrame:
     m = a.merge(slug, left_on="model_permaslug", right_on="canonical_slug")
     m = m.merge(px, left_on="id", right_on="model_id", how="left")
     m = m.merge(hf, on="model_permaslug", how="left")
-    m["short"] = m["model_permaslug"].str.split("/").str[-1].str.replace(
-        r"-202[56].*", "", regex=True
+    m["short"] = (
+        m["model_permaslug"].str.split("/").str[-1].str.replace(r"-202[56].*", "", regex=True)
     )
     m = m.merge(hn, left_on="short", right_on="name", how="left")
     m["age_days"] = (pd.Timestamp.now().timestamp() - m["created"]) / 86400
