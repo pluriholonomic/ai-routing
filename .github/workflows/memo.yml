@@ -13,6 +13,10 @@ concurrency:
   group: memo
   cancel-in-progress: false
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   memo:
     runs-on: ubuntu-latest
@@ -35,6 +39,10 @@ jobs:
               max_workers=2,  # gentle under rate limits
           )
           PY
+      - name: overlay fresh intraday buffers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_artifacts.sh 26 data
       - name: reanalyze
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}

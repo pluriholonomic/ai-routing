@@ -16,6 +16,10 @@ concurrency:
   group: compact
   cancel-in-progress: false
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   compact:
     runs-on: ubuntu-latest
@@ -28,6 +32,13 @@ jobs:
       - run: uv sync
       - name: run tests
         run: uv run pytest -q
+      - name: assemble buffered artifacts and push once to HF
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          ./scripts/assemble_artifacts.sh 26 data
+          uv run orcap push --message "daily consolidated push ${{ github.run_id }}" --delete-local
       - name: compact + derive pricing changes
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
