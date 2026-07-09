@@ -23,21 +23,31 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --no-dev
+      - name: hydrate dataset (one bulk download beats thousands of hf:// reads)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run hf download t4run/openrouter-market-history --repo-type dataset \
+            --include "curated/*" "derived/*" "external/*" "backfill/*" "data-static/*" \
+            --local-dir data
       - name: reanalyze
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_ANALYSIS_SOURCE: local
         run: uv run orcap analyze
       - name: render memo
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_ANALYSIS_SOURCE: local
         run: uv run orcap memo
       - name: push analysis + memo to HF
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_DATA_DIR: pushdata  # clean staging dir — data/ holds the hydrated mirror
         run: |
-          mkdir -p data/analysis data/reports
-          cp analysis/*.parquet analysis/*.json data/analysis/
-          cp analysis/memo.html data/reports/memo.html
+          mkdir -p pushdata/analysis pushdata/reports
+          cp analysis/*.parquet analysis/*.json pushdata/analysis/
+          cp analysis/memo.html pushdata/reports/memo.html
           uv run orcap push --message "nightly reanalysis + memo ${{ github.run_id }}" --delete-local
       - name: publish memo to private HF Space
         env:

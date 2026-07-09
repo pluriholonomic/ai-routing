@@ -140,6 +140,7 @@ def main() -> None:
             "h18": "h18_predict",
             "h19": "h19_provider_types",
             "h19b": "h19_text",
+            "h20": "h20_demand_price",
             "h21": "h21_reactions",
             "h23": "h23_toxicity",
             "h26": "h26_entry",
