@@ -32,7 +32,7 @@ jobs:
           snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset", local_dir="data",
               allow_patterns=["curated/*", "derived/*", "external/*", "backfill/*"],
-              max_workers=8,
+              max_workers=2,  # gentle under rate limits
           )
           PY
       - name: reanalyze
