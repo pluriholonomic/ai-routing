@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -31,9 +32,11 @@ from orcap.capture_markets import (
     akash_market_snapshot_metadata,
     akash_open_bid_rows,
     akash_registry_summary,
+    akash_provider_aggregate_rows,
     capture_akash_open_market,
     capture_nosana_job_activity,
     capture_nosana_node_registry,
+    capture_akash_provider_aggregates,
     chutes_capacity_rows,
     cow_amm_preblock_quote_rows,
     cow_competition_rows,
@@ -46,6 +49,7 @@ from orcap.capture_markets import (
     instrument_map_rows,
     nosana_job_activity_rows,
     nosana_node_registry_rows,
+    main as market_main,
     uniswap_pool_specs,
     uniswap_quoter_impact_capacity_rows,
     uniswap_quoter_quote_rows,
@@ -917,6 +921,85 @@ def test_akash_dashboard_rows_keep_network_aggregates_separate_from_price_or_uti
     assert all(row["source_block_height"] == 27_653_769 for row in rows)
     assert all(row["source_compare_block_height"] == 27_639_049 for row in rows)
     assert all("utilization" not in row["metric"] for row in rows)
+
+
+def test_akash_provider_aggregate_rows_retain_recent_lease_history_without_tenant_data():
+    now = datetime.now(UTC)
+    recent = (now - timedelta(days=1)).isoformat().replace("+00:00", "Z")
+    stale = (now - timedelta(days=31)).isoformat().replace("+00:00", "Z")
+    observed = now.isoformat().replace("+00:00", "Z")
+    rows = akash_provider_aggregate_rows(
+        [
+            {
+                "provider_id": "akash1provider",
+                "active_leases_graph": {
+                    "snapshots": [{"date": recent, "value": 7}, {"date": stale, "value": 9}]
+                },
+                "provider_dashboard": {
+                    "current": {
+                        "date": observed,
+                        "height": 27_653_769,
+                        "activeLeaseCount": 7,
+                        "activeGPU": 4,
+                        "totalUUsdcEarned": 11,
+                        "dailyUUsdcEarned": 2,
+                    }
+                },
+            }
+        ],
+        "20260710T120000Z",
+        "2026-07-10",
+        history_days=8,
+    )
+    metrics = {row["metric"] for row in rows}
+    history = [
+        row
+        for row in rows
+        if row["metric"] == "source_reported_provider_active_lease_count_history"
+    ]
+
+    assert len(rows) == 5
+    assert len(history) == 1
+    assert history[0]["value"] == 7.0
+    assert history[0]["provider_id"] == "akash1provider"
+    assert "source_reported_provider_current_active_gpu_count" in metrics
+    assert "source_reported_provider_source_day_uusdc_earned" in metrics
+    assert all("tenant" not in row for row in rows)
+
+
+def test_akash_provider_aggregate_capture_fails_closed_on_an_incomplete_provider_response():
+    class Fetcher:
+        async def get_json(self, url, headers=None):
+            if "active-leases-graph-data" in url:
+                return None if "provider-b" in url else {"snapshots": []}
+            return {
+                "current": {
+                    "date": "2026-07-10T00:00:00Z",
+                    "height": 42,
+                }
+            }
+
+    payloads, detail = asyncio.run(
+        capture_akash_provider_aggregates(Fetcher(), ["provider-a", "provider-b"])
+    )
+
+    assert payloads == []
+    assert detail["coverage_complete"] is False
+    assert detail["reason"] == "provider_aggregate_response_incomplete"
+    assert detail["incomplete_provider_count"] == 1
+
+
+def test_market_main_forwards_akash_provider_aggregate_flag(monkeypatch, capsys):
+    async def fake_capture_markets(**kwargs):
+        return kwargs
+
+    monkeypatch.setitem(market_main.__globals__, "capture_markets", fake_capture_markets)
+
+    result = market_main(with_akash=True, with_akash_provider_aggregates=True)
+
+    assert result["with_akash"] is True
+    assert result["with_akash_provider_aggregates"] is True
+    assert "with_akash_provider_aggregates" in capsys.readouterr().out
 
 
 def test_akash_lease_lifecycle_preserves_native_rate_without_claiming_workload_success():

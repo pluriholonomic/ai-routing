@@ -12,10 +12,10 @@ import json
 import logging
 import os
 import tomllib
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import pyarrow as pa
 
@@ -37,6 +37,11 @@ AKASH_LEASES_URL = (
 )
 AKASH_DASHBOARD_URL = "https://console-api.akash.network/v1/dashboard-data"
 AKASH_NETWORK_CAPACITY_URL = "https://console-api.akash.network/v1/network-capacity"
+AKASH_PROVIDER_ACTIVE_LEASES_GRAPH_URL = (
+    "https://console-api.akash.network/v1/providers/{provider}/active-leases-graph-data"
+)
+AKASH_PROVIDER_DASHBOARD_URL = "https://console-api.akash.network/v1/provider-dashboard/{provider}"
+DEFAULT_AKASH_PROVIDER_HISTORY_DAYS = 8
 AKASH_RPC_URL = "https://rpc.akashnet.net:443"
 AKASH_MARKET_API_URL = "https://api.akashnet.net/akash/market/v1beta5"
 AKASH_LATEST_BLOCK_URL = "https://api.akashnet.net/cosmos/base/tendermint/v1beta1/blocks/latest"
@@ -1958,6 +1963,230 @@ async def capture_akash_open_market(
     }
 
 
+def _akash_provider_graph_url(provider: str) -> str:
+    return AKASH_PROVIDER_ACTIVE_LEASES_GRAPH_URL.format(provider=quote(provider, safe=""))
+
+
+def _akash_provider_dashboard_url(provider: str) -> str:
+    return AKASH_PROVIDER_DASHBOARD_URL.format(provider=quote(provider, safe=""))
+
+
+async def capture_akash_provider_aggregates(
+    fetcher: Fetcher,
+    provider_ids: list[str],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Fetch aggregate-only provider history for the current GPU-provider universe.
+
+    The Console endpoints expose source-defined active-lease histories and
+    provider aggregate cards. They do not require tenant, deployment, or
+    workload records. All providers must return both documented aggregate
+    payloads; otherwise the collector writes no partial canonical panel.
+    """
+    providers = sorted(set(provider_ids))
+    if not providers:
+        return [], {
+            "coverage_complete": False,
+            "reason": "no_live_gpu_providers",
+            "provider_count": 0,
+        }
+
+    async def capture_provider(provider: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        graph, dashboard = await asyncio.gather(
+            fetcher.get_json(_akash_provider_graph_url(provider)),
+            fetcher.get_json(_akash_provider_dashboard_url(provider)),
+        )
+        snapshots = graph.get("snapshots") if isinstance(graph, dict) else None
+        current = dashboard.get("current") if isinstance(dashboard, dict) else None
+        if not isinstance(snapshots, list) or not all(
+            isinstance(point, dict) for point in snapshots
+        ):
+            return None, {
+                "provider": provider,
+                "complete": False,
+                "reason": "active_leases_graph_unavailable",
+            }
+        if (
+            not isinstance(current, dict)
+            or not current.get("date")
+            or current.get("height") is None
+        ):
+            return None, {
+                "provider": provider,
+                "complete": False,
+                "reason": "provider_dashboard_unavailable",
+            }
+        return {
+            "provider_id": provider,
+            "active_leases_graph": graph,
+            "provider_dashboard": dashboard,
+        }, {
+            "provider": provider,
+            "complete": True,
+            "source_history_points": len(snapshots),
+        }
+
+    results = await asyncio.gather(*(capture_provider(provider) for provider in providers))
+    incomplete = [detail for _, detail in results if not detail["complete"]]
+    if incomplete:
+        return [], {
+            "coverage_complete": False,
+            "reason": "provider_aggregate_response_incomplete",
+            "provider_count": len(providers),
+            "incomplete_provider_count": len(incomplete),
+            "incomplete_provider_details": incomplete,
+        }
+    payloads = [payload for payload, _ in results if payload is not None]
+    return payloads, {
+        "coverage_complete": True,
+        "provider_count": len(providers),
+        "provider_queries_complete": len(payloads),
+        "source_history_points_fetched": sum(
+            detail["source_history_points"] for _, detail in results
+        ),
+    }
+
+
+def _akash_source_time(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
+
+
+def akash_provider_aggregate_rows(
+    payloads: list[dict[str, Any]],
+    run_ts: str,
+    dt: str,
+    *,
+    history_days: int = DEFAULT_AKASH_PROVIDER_HISTORY_DAYS,
+) -> list[dict[str, Any]]:
+    """Normalize recent provider aggregates without claiming demand or utilization.
+
+    The public graph can contain a long source history. Retaining only the
+    recent rolling window prevents hourly re-publication of an unchanged full
+    back-history while preserving revisions around the dynamic panel's edge.
+    """
+    if not isinstance(history_days, int) or not 1 <= history_days <= 30:
+        raise ValueError("history_days must be an integer between 1 and 30")
+    cutoff = datetime.now(UTC) - timedelta(days=history_days)
+    rows: list[dict[str, Any]] = []
+
+    for payload in payloads:
+        provider = payload.get("provider_id") if isinstance(payload, dict) else None
+        graph = payload.get("active_leases_graph") if isinstance(payload, dict) else None
+        dashboard = payload.get("provider_dashboard") if isinstance(payload, dict) else None
+        snapshots = graph.get("snapshots") if isinstance(graph, dict) else None
+        current = dashboard.get("current") if isinstance(dashboard, dict) else None
+        if not isinstance(provider, str) or not provider or not isinstance(current, dict):
+            continue
+        observed_at = _akash_source_time(current.get("date"))
+        height = _integer(current.get("height"))
+        if observed_at is None or height is None or height <= 0:
+            continue
+        common = {
+            "run_ts": run_ts,
+            "dt": dt,
+            "source": "akash_provider_aggregates",
+            "venue": "akash-console-network-data",
+            "provider_id": provider,
+            "source_observed_at": observed_at.isoformat().replace("+00:00", "Z"),
+            "source_block_height": height,
+            "quality_tier": "public indexed provider aggregate; source-defined metric",
+        }
+
+        if isinstance(snapshots, list):
+            for point in snapshots:
+                if not isinstance(point, dict):
+                    continue
+                bucket_at = _akash_source_time(point.get("date"))
+                value = _float(point.get("value"))
+                if bucket_at is None or bucket_at < cutoff or value is None or value < 0:
+                    continue
+                rows.append(
+                    common
+                    | {
+                        "observation_type": "source_reported_provider_history",
+                        "source_bucket_at": bucket_at.isoformat().replace("+00:00", "Z"),
+                        "metric": "source_reported_provider_active_lease_count_history",
+                        "value": value,
+                        "source_reported_unit": "leases",
+                        "metric_definition": (
+                            "Akash Console source-defined provider active-lease history for a "
+                            "provider in the current live-GPU universe; not completed workloads, "
+                            "GPU-hours, demand, utilization, price, or delivery."
+                        ),
+                        "record_json": _json(
+                            {
+                                "endpoint": _akash_provider_graph_url(provider),
+                                "point": point,
+                            }
+                        ),
+                    }
+                )
+
+        for field, metric, unit, definition in (
+            (
+                "activeLeaseCount",
+                "source_reported_provider_current_active_lease_count",
+                "leases",
+                "Akash Console current provider active-lease count; not completed workloads "
+                "or demand.",
+            ),
+            (
+                "activeGPU",
+                "source_reported_provider_current_active_gpu_count",
+                "gpus",
+                "Akash Console current provider active GPU count; source-indexed state, not "
+                "utilization.",
+            ),
+        ):
+            value = _float(current.get(field))
+            if value is None or value < 0:
+                continue
+            rows.append(
+                common
+                | {
+                    "observation_type": "source_reported_provider_snapshot",
+                    "source_bucket_at": None,
+                    "metric": metric,
+                    "value": value,
+                    "source_reported_unit": unit,
+                    "metric_definition": definition,
+                    "record_json": _json(
+                        {"endpoint": _akash_provider_dashboard_url(provider), "field": field}
+                    ),
+                }
+            )
+        for denom in ("UAkt", "UAct", "UUsdc", "UUsd"):
+            for prefix, horizon in (("total", "cumulative"), ("daily", "source_day")):
+                field = f"{prefix}{denom}Earned"
+                value = _float(current.get(field))
+                if value is None or value < 0:
+                    continue
+                rows.append(
+                    common
+                    | {
+                        "observation_type": "source_reported_provider_snapshot",
+                        "source_bucket_at": None,
+                        "metric": f"source_reported_provider_{horizon}_{denom.lower()}_earned",
+                        "value": value,
+                        "source_reported_unit": denom.lower(),
+                        "metric_definition": (
+                            f"Akash Console provider {horizon} {denom} earned aggregate in the "
+                            "literal source unit; not audited revenue, provider profit, a "
+                            "GPU-hour price, or welfare."
+                        ),
+                        "record_json": _json(
+                            {"endpoint": _akash_provider_dashboard_url(provider), "field": field}
+                        ),
+                    }
+                )
+    return rows
+
+
 def _akash_order_id(identifier: Any) -> str | None:
     if not isinstance(identifier, dict):
         return None
@@ -3199,11 +3428,14 @@ async def capture_markets(
     *,
     with_uniswap: bool = False,
     with_akash: bool = False,
+    with_akash_provider_aggregates: bool = False,
     with_nosana: bool = False,
     raw_dir: Path = RAW_DIR,
     curated_dir: Path = CURATED_DIR,
 ) -> dict[str, Any]:
     run_ts, dt = run_timestamp(), dt_partition()
+    if with_akash_provider_aggregates and not with_akash:
+        raise ValueError("with_akash_provider_aggregates requires with_akash")
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
         ethereum_rpc_url, ethereum_rpc_record_url, ethereum_rpc_mode = _ethereum_rpc_config()
@@ -3342,6 +3574,11 @@ async def capture_markets(
         akash_leases = None
         akash_dashboard_body = None
         akash_network_capacity_body = None
+        akash_provider_aggregate_payloads: list[dict[str, Any]] = []
+        akash_provider_aggregate_detail: dict[str, Any] = {
+            "coverage_complete": False,
+            "reason": "flag_not_set",
+        }
         akash_open_bids: list[dict[str, Any]] = []
         akash_market_detail: dict[str, Any] = {
             "coverage_complete": False,
@@ -3370,9 +3607,22 @@ async def capture_markets(
                     _configured_url("ORCAP_AKASH_NETWORK_CAPACITY_URL", AKASH_NETWORK_CAPACITY_URL)
                 ),
             )
+            live_gpu_providers = akash_live_gpu_provider_ids(akash)
             akash_open_bids, akash_market_detail = await capture_akash_open_market(
-                fetcher, akash_live_gpu_provider_ids(akash)
+                fetcher, live_gpu_providers
             )
+            if with_akash_provider_aggregates:
+                history_days = _bounded_int_env(
+                    "ORCAP_AKASH_PROVIDER_HISTORY_DAYS",
+                    DEFAULT_AKASH_PROVIDER_HISTORY_DAYS,
+                    minimum=1,
+                    maximum=30,
+                )
+                (
+                    akash_provider_aggregate_payloads,
+                    akash_provider_aggregate_detail,
+                ) = await capture_akash_provider_aggregates(fetcher, live_gpu_providers)
+                akash_provider_aggregate_detail["history_days"] = history_days
             lease_records = _as_list(akash_leases, "leases", "data")
             heights = sorted(
                 {
@@ -3447,6 +3697,14 @@ async def capture_markets(
     akash_dashboard = akash_dashboard_rows(
         akash_dashboard_body, akash_network_capacity_body, run_ts, dt
     )
+    akash_provider_aggregates = akash_provider_aggregate_rows(
+        akash_provider_aggregate_payloads,
+        run_ts,
+        dt,
+        history_days=int(
+            akash_provider_aggregate_detail.get("history_days", DEFAULT_AKASH_PROVIDER_HISTORY_DAYS)
+        ),
+    )
     akash_open_bid_book = akash_open_bid_rows(
         akash_open_bids, akash_market_detail, run_ts, dt
     )
@@ -3498,6 +3756,13 @@ async def capture_markets(
     _write(
         akash_dashboard,
         "akash_dashboard",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        akash_provider_aggregates,
+        "akash_provider_aggregates",
         run_ts,
         dt,
         curated_dir,
@@ -3709,6 +3974,30 @@ async def capture_markets(
             },
             curated_dir,
         )
+        if with_akash_provider_aggregates:
+            provider_aggregate_complete = (
+                akash_provider_aggregate_detail.get("coverage_complete") is True
+                and len(akash_provider_aggregates) > 0
+            )
+            write_source_run(
+                "akash_provider_aggregates",
+                status="success" if provider_aggregate_complete else "degraded",
+                rows=len(akash_provider_aggregates),
+                run_ts=run_ts,
+                dt=dt,
+                detail={
+                    "active_leases_graph_url": AKASH_PROVIDER_ACTIVE_LEASES_GRAPH_URL,
+                    "provider_dashboard_url": AKASH_PROVIDER_DASHBOARD_URL,
+                    "rows_written": {"akash_provider_aggregates": len(akash_provider_aggregates)},
+                    "metric_boundary": (
+                        "public provider aggregate lease history and cards for the current "
+                        "live-GPU universe only; not tenant/workload activity, GPU-hours, "
+                        "utilization, price, delivery, audited revenue, profit, or welfare"
+                    ),
+                    **akash_provider_aggregate_detail,
+                },
+                curated_dir=curated_dir,
+            )
         market_rows = int(akash_market_detail.get("bid_records_fetched") or 0)
         write_source_run(
             "akash_market_book",
@@ -3837,6 +4126,8 @@ async def capture_markets(
         "akash_coverage": akash_coverage,
         "akash_lease_lifecycle_rows": len(akash_leases_rows),
         "akash_dashboard_rows": len(akash_dashboard),
+        "akash_provider_aggregate_rows": len(akash_provider_aggregates),
+        "akash_provider_aggregates": akash_provider_aggregate_detail,
         "akash_open_gpu_bid_rows": len(akash_open_bid_book),
         "akash_market_book": akash_market_detail,
         "nosana_node_registry_rows": len(nosana_nodes),
@@ -3849,7 +4140,10 @@ async def capture_markets(
 
 
 def main(
-    with_uniswap: bool = False, with_akash: bool = False, with_nosana: bool = False
+    with_uniswap: bool = False,
+    with_akash: bool = False,
+    with_akash_provider_aggregates: bool = False,
+    with_nosana: bool = False,
 ) -> dict[str, Any]:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -3857,6 +4151,7 @@ def main(
         capture_markets(
             with_uniswap=with_uniswap,
             with_akash=with_akash,
+            with_akash_provider_aggregates=with_akash_provider_aggregates,
             with_nosana=with_nosana,
         )
     )

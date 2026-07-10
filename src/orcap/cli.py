@@ -110,6 +110,11 @@ def main() -> None:
         "--with-akash", action="store_true", help="query configured Akash network endpoint"
     )
     p_market.add_argument(
+        "--with-akash-provider-aggregates",
+        action="store_true",
+        help="capture public Akash aggregate provider lease-history and dashboard metrics",
+    )
+    p_market.add_argument(
         "--with-nosana",
         action="store_true",
         help="query public on-chain Nosana registered-node state",
@@ -318,6 +323,7 @@ def main() -> None:
         market_main(
             with_uniswap=args.with_uniswap,
             with_akash=args.with_akash,
+            with_akash_provider_aggregates=args.with_akash_provider_aggregates,
             with_nosana=args.with_nosana,
         )
     elif args.command == "register-routing-study":
@@ -414,6 +420,7 @@ def main() -> None:
             "h58": "h58_nosana_node_registry",
             "h59": "h59_nosana_job_activity",
             "h61": "h61_akash_dashboard",
+            "h62": "h62_akash_provider_activity",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

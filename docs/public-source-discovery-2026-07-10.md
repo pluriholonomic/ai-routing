@@ -16,6 +16,27 @@ and records an optional source-health row beside the other Akash observations.
 H61 exposes the retained aggregate snapshot panel and is power-gated until it
 has seven source-observation days and 20 source timestamps.
 
+## Provider aggregate extension
+
+The same public API also exposes unauthenticated, aggregate-only endpoints for
+a provider: `GET /v1/providers/{provider}/active-leases-graph-data` and
+`GET /v1/provider-dashboard/{provider}`. The collector queries those endpoints
+only for the current live-GPU-provider universe already returned by the public
+provider endpoint. It records source-defined active-lease history, current
+active GPU and lease counts, and the literal source-unit earning-card fields.
+It does not query tenant, deployment, workload, or order records.
+
+The resulting `akash_provider_aggregates` table is designed for a once-daily
+run, retaining an eight-day rolling overlap so that source revisions can be
+deduplicated. It fails closed: if either aggregate endpoint is malformed or
+unavailable for any current universe member, it writes no canonical provider
+panel and emits a degraded source-health row. H62 converts the retained source
+history into descriptive daily totals and concentration measures only after a
+30-day / 10-provider coverage gate. Its universe is explicitly current rather
+than a historical census, and an active lease is not a completed workload,
+GPU-hour, utilization, price, demand, delivery, revenue, profit, allocation,
+or welfare measure.
+
 ## Read-only schema validation
 
 On 2026-07-10, both endpoints returned JSON without credentials. The dashboard
