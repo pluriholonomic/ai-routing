@@ -164,6 +164,7 @@ def live_status(analysis_dir: Path) -> str:
     h45 = _j(analysis_dir, "h45_shadow_execution_summary")
     h51 = _j(analysis_dir, "h51_summary")
     h52 = _j(analysis_dir, "h52_summary")
+    h53 = _j(analysis_dir, "h53_summary")
     h3 = _j(analysis_dir, "h3_summary")
     h42_data = h42.get("data") or {}
     h42_r2 = h42.get("r2_undercut_capture") or {}
@@ -223,6 +224,11 @@ def live_status(analysis_dir: Path) -> str:
             "H52 CoW-over-AMM gross basis",
         ),
         (f"{h52.get('n_unique_cow_fills', '—')}/500", "H52 exact CoW fills"),
+        (
+            _fmt(h53.get("median_invocation_rate_per_hour")),
+            "H53 Chutes invocation rate/hour",
+        ),
+        (f"{h53.get('n_valid_deltas', '—')}/250", "H53 valid counter deltas"),
     ]
     tile_html = "".join(
         f'<div class="stat"><div class="v">{html.escape(str(v))}</div>'

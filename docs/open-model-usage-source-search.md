@@ -16,6 +16,7 @@ does not invite an unsupported conversion into inference tokens or revenue.
 | What is actual routed demand? | OpenRouter frontend model activity, rankings, effective-pricing, and endpoint-stat captures | Existing `model_activity_daily`, `rankings_weekly`, `effective_pricing_daily`, and `congestion_intraday` | These are the only captured token/request measures. They cover the OpenRouter marketplace, not all model consumption. |
 | What decentralized compute capacity, posted GPU quotes, and contract lifecycle are publicly observable? | [Akash Console Network Data API](https://akash.network/docs/api-documentation/rest-api/) plus official [RPC](https://akash.network/docs/node-operators/architecture/api-layer/) block headers | `market_capacity` contains only live, version-valid provider-level GPU totals; `market_quotes` contains public model-level USD/hour aggregates; `market_executions` contains timestamped lease lifecycle contracts | GPU-model mix is not allocated to provider capacity counts. A lease close is not a successful workload, GPU-hours consumed, or USD execution price. |
 | Are decentralized Gateway routing adjustments publicly observable? | [Livepeer Gateway Introspection](https://docs.livepeer.org/v1/orchestrators/guides/gateway-introspection) | `livepeer_gateway_metrics`: aggregate regional swap/reuse counters over rolling five-minute windows | External routing control only. The collector requests aggregate LogQL counts and excludes stream/session/client/orchestrator IDs; it does not identify LLM routing, prices, capacity, or delivery. |
+| Is any decentralized inference consumption counter publicly available? | Chutes public chute-detail API | H53 first-differences the public per-chute cumulative invocation counter across adjacent hourly snapshots and keeps active configured GPUs as a separate deployment-state denominator | This is a source-defined public counter delta, not successful completions, tokens, unique users, revenue, market-wide demand, GPU utilization, available capacity, or a causal estimate. |
 
 ## Sources rejected or held behind explicit gates
 
@@ -44,6 +45,10 @@ does not invite an unsupported conversion into inference tokens or revenue.
    at least four weekly snapshots; use levels only within a source.
 5. Treat new source counters as covariates for H20/H40 and as validation for
    routing-share shifts, never as a replacement for OpenRouter token counts.
+6. H53 requires 250 adjacent counter deltas across seven days and five chutes
+   before reporting even a source-bounded descriptive time series. Counter
+   decreases are explicit reset diagnostics and snapshot gaps longer than three
+   hours are discarded rather than bridged.
 
 ## Remaining data work
 
