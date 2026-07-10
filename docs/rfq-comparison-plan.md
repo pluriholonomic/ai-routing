@@ -56,11 +56,16 @@ harness flow is preferenced order flow.
   funding history (public REST) as the quantitative comparator series.
 - Feeds H7: which leg (spot or on-demand) do token prices cointegrate with?
 
-**H13 — Venue basis (needs new capture).** *New: `capture_direct.py` daily.*
-- Scrape public direct list prices for the top OpenRouter providers
-  (DeepInfra, Together, Fireworks, Novita, Groq, Cerebras, Lambda, Hyperbolic,
-  Parasail, …) from their public model/pricing APIs or pages; wayback-backfill
-  where the page is JSON-stable.
+**H13 — Venue basis (daily panel; coverage still limited).**
+*`capture_direct.py` now captures DeepInfra's structured public model API and
+Together's public serverless catalog table.*
+- Both adapters preserve the exact provider API model ID and raw source.
+  DeepInfra is labeled `structured_public_api`; Together is labeled
+  `published_docs_table`, so it is a posted list quote—not an executable API
+  quote or a fill. Their model IDs join to OpenRouter only by exact equality.
+- Groq, Novita, Fireworks, Cerebras, Lambda, Hyperbolic, Parasail, and others
+  remain raw-archived until a stable, source-specific normalizer is validated.
+  Do not use the raw pages as observations or fuzzy-map names into H13.
 - Test: basis = OpenRouter listed − direct listed, per provider×model×day.
   CEX/DEX basis is arb'd to bps; a persistent nonzero inference venue basis
   measures the aggregator's convenience premium / take pass-through.
@@ -90,10 +95,11 @@ harness flow is preferenced order flow.
 3. `analysis/h12_basis.py` — GPU basis level/vol/term structure.
 4. `analysis/h14_ordertypes.py` — variant shares (dispersion interaction needs
    a few weeks of variance; ship shares now).
-5. `capture_direct.py` + wire into scrape.yml (daily) — provider registry with
-   per-provider fetcher (JSON API where public, page-parse fallback), raw +
-   `direct_prices_daily` table. H13 analysis lands after ~1 week of capture +
-   wayback backfill for majors.
+5. `capture_direct.py` is wired into `scrape.yml` daily.  It writes raw
+   evidence, typed `direct_prices_daily` rows, and distinct DeepInfra/Together
+   source-run health records.  Expand only with per-provider source-schema
+   tests; H13 remains a narrow venue test until several more structured or
+   explicitly labeled published-price sources accumulate.
 6. Synthetic-data tests per module (planted slopes/frontiers) in tests/.
 7. Memo v2: RFQ section with H10–H14 results, updated verdict table +
    pre-registration (H13 basis, H15 mechanism).
@@ -107,5 +113,6 @@ harness flow is preferenced order flow.
 - `uv run orcap analyze --hypothesis h10` (…h11/h12/h14) produce parquet+JSON
   under analysis/, pushed to HF.
 - `capture_direct` dispatched once on CI; `direct_prices_daily` partitions in HF;
-  spot-check DeepInfra direct price vs their site.
+  source-health confirms both `direct_deepinfra_api` and
+  `direct_together_docs`; spot-check an exact-ID quote from each source.
 - Memo redeployed at the same artifact URL; every new number traceable.
