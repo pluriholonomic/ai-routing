@@ -20,6 +20,7 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 - [`docs/routing-mev-research-plan.md`](docs/routing-mev-research-plan.md) — falsifiable routing-volume-capture hypotheses, event-study designs, data gates, and the boundary between quote competition and MEV-like claims.
 - [`docs/routing-simulation-monitor.md`](docs/routing-simulation-monitor.md) — zero-spend 15-minute public-quote route-surface assay, its 24-hour decision rule, and the boundary from realized routing.
 - [`docs/cross-router-data.md`](docs/cross-router-data.md) — Hugging Face public-router comparator, cross-router policy analysis, and the redacted contract for controlled route telemetry.
+- [`docs/router-shadow-execution.md`](docs/router-shadow-execution.md) — one shadow-execution interface for OpenRouter, Hugging Face, Cloudflare AI Gateway, Portkey, and LiteLLM.
 
 ## Cadence
 
@@ -61,6 +62,7 @@ source record, so OpenRouter schema drift never loses data):
 | `routing_simulation_runs` | run | simulation coverage plus free/zero-cost/single-provider exclusion ledger |
 | `hf_router_endpoint_snapshots` | run × HF model × provider | public cross-router price, context, performance, and capability metadata; not routed volume |
 | `hf_router_policy_simulation` | run × HF model × workload shape × provider × policy | simulated cheapest and reported-fastest selection surfaces; never actual route fills |
+| `router_policy_snapshots` | owned config × model × provider | redacted Cloudflare AI Gateway, Portkey, or LiteLLM routing configuration; not a traffic log |
 | `router_route_attempts` | owned request attempt | redacted controlled-study provider outcomes/retries; private telemetry, not public market flow |
 | `open_model_usage_daily` | day × source × open model | public HF rolling downloads and Ollama cumulative pulls; adoption proxies, never inference tokens |
 | `oss_runtime_adoption_daily` | day × serving runtime image | public Docker Hub cumulative pulls for Ollama/vLLM/SGLang; deployment proxy, not model consumption |
@@ -100,6 +102,9 @@ uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-
 ORCAP_ANALYSIS_SOURCE=local uv run orcap route-sim-report --out analysis  # 24h public-quote route-surface test
 uv run orcap capture-hf-router --samples 4 --interval-seconds 900  # public HF router surface, no orders
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h44  # public cross-router quote/policy screen
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h45  # cross-router shadow routing + outage stress
+uv run orcap import-router-policy --input redacted-router-policy.json
+uv run orcap ingest-route-attempts --input redacted-gateway-events.jsonl --format portkey --study-id routing-v1
 uv run orcap quality --profile core
 uv run orcap push                     # -> HF dataset repo (uses cached HF login)
 uv run orcap compact                  # compacts yesterday in the HF repo

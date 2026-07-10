@@ -1,7 +1,7 @@
 import pytest
 from pyarrow.parquet import ParquetFile
 
-from orcap.route_telemetry import validate_attempt, write_attempts
+from orcap.route_telemetry import normalize_export, validate_attempt, write_attempts
 
 
 def _attempt():
@@ -49,3 +49,34 @@ def test_route_telemetry_write_uses_immutable_source_event_key(tmp_path):
     row = ParquetFile(path).read().to_pylist()[0]
     assert row["event_id"] == "generation-123:0"
     assert row["payload_retained"] is False
+
+
+def test_native_openrouter_export_maps_only_redacted_route_fields():
+    records = [
+        {
+            "id": "gen-abc",
+            "created_at": "2026-07-10T00:00:00Z",
+            "model": "z-ai/glm-5.2",
+            "provider_name": "deepinfra",
+            "total_cost": 0.0001,
+            "usage": {"prompt_tokens": 12, "completion_tokens": 4},
+            "status_code": 200,
+            "metadata": {"scenario": "short_chat"},
+        }
+    ]
+    normalized = normalize_export(
+        records, export_format="openrouter-generation", study_id="routing-v1"
+    )
+    row = validate_attempt(normalized[0])
+    assert row["source"] == "openrouter_generation"
+    assert row["selected_provider"] == "deepinfra"
+    assert row["metadata_json"] == '{"scenario":"short_chat","status_code":200}'
+
+
+def test_native_export_rejects_payload_before_persistence():
+    with pytest.raises(ValueError, match="redacted"):
+        normalize_export(
+            [{"id": "gen", "messages": [{"content": "do not ingest"}]}],
+            export_format="openrouter-generation",
+            study_id="routing-v1",
+        )

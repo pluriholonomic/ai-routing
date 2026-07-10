@@ -156,6 +156,7 @@ def live_status(analysis_dir: Path) -> str:
     h13 = _j(analysis_dir, "h13_summary")
     h17 = _j(analysis_dir, "h17_summary")
     h42 = _j(analysis_dir, "h42_summary")
+    h45 = _j(analysis_dir, "h45_shadow_execution_summary")
     h3 = _j(analysis_dir, "h3_summary")
     h42_data = h42.get("data") or {}
     h42_r2 = h42.get("r2_undercut_capture") or {}
@@ -200,6 +201,7 @@ def live_status(analysis_dir: Path) -> str:
             f"{h42_r2.get('n_events_with_balanced_intraday_window', '—')}/20",
             "H42 clean undercut windows",
         ),
+        (str(h45.get("policy_groups", "—")), "H45 shadow-policy groups"),
     ]
     tile_html = "".join(
         f'<div class="stat"><div class="v">{html.escape(str(v))}</div>'

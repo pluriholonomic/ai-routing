@@ -19,6 +19,7 @@ from .config import CURATED_DIR, dt_partition, run_timestamp
 
 SUPPORTED_SOURCES = {
     "openrouter_generation",
+    "huggingface_inference_providers",
     "portkey",
     "cloudflare_ai_gateway",
     "litellm",
@@ -34,6 +35,10 @@ FORBIDDEN_PAYLOAD_KEYS = {
     "raw_request",
     "raw_response",
     "response",
+    "api_key",
+    "authorization",
+    "secret",
+    "token",
 }
 REQUIRED_FIELDS = {
     "event_id",
@@ -158,3 +163,152 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
             raise ValueError(f"route telemetry row at {path}:{line_number} is not an object")
         events.append(item)
     return events
+
+
+def _value(record: dict[str, Any], *paths: str) -> Any:
+    """Return the first non-empty dotted path from a redacted export row."""
+    for path in paths:
+        current: Any = record
+        for key in path.split("."):
+            if not isinstance(current, dict):
+                current = None
+                break
+            current = current.get(key)
+        if current is not None and current != "":
+            return current
+    return None
+
+
+def _source_metadata(record: dict[str, Any]) -> dict[str, Any]:
+    """Keep a small, explicit allow-list of non-payload observability fields."""
+    fields = {
+        "scenario",
+        "status_code",
+        "cache_status",
+        "deployment",
+        "gateway",
+        "region",
+        "trace_id",
+        "request_type",
+    }
+    metadata = record.get("metadata")
+    if not isinstance(metadata, dict):
+        metadata = {}
+    result = {key: metadata[key] for key in fields if key in metadata}
+    for key in fields - {"scenario"}:
+        if key in record:
+            result[key] = record[key]
+    return result
+
+
+def _outcome(record: dict[str, Any]) -> str:
+    raw = str(_value(record, "outcome", "status", "result") or "").lower()
+    if raw in OUTCOMES:
+        return raw
+    status_code = _number(_value(record, "status_code", "response_status"))
+    if status_code is not None:
+        return "succeeded" if 200 <= status_code < 400 else "failed"
+    return "failed" if record.get("error") else "unknown"
+
+
+def _boolean(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y"}
+    return bool(value)
+
+
+def _native_event(
+    record: dict[str, Any],
+    *,
+    source: str,
+    study_id: str,
+    router: str,
+) -> dict[str, Any]:
+    """Map a *redacted* source export into the canonical owned-attempt contract.
+
+    The aliases cover common OpenRouter generation and gateway export labels.
+    Source exports which retain messages, response bodies, credentials, or raw
+    request/response objects are rejected before any record is persisted.
+    """
+    forbidden = sorted(_forbidden_payload_keys(record))
+    if forbidden:
+        raise ValueError(
+            "native route export must be redacted before import; found: " + ", ".join(forbidden)
+        )
+    event_id = _value(record, "event_id", "id", "generation_id", "request_id", "trace_id")
+    observed_at = _value(record, "observed_at", "created_at", "timestamp", "time")
+    model_id = _value(record, "model_id", "model", "request.model", "model_name")
+    selected_provider = _value(
+        record,
+        "selected_provider",
+        "provider_name",
+        "provider.name",
+        "provider",
+        "upstream_provider",
+    )
+    requested_provider = _value(record, "requested_provider", "requested_provider_name")
+    return {
+        "event_id": event_id,
+        "observed_at": observed_at,
+        "router": router,
+        "source": source,
+        "study_id": study_id,
+        "request_ref": _value(record, "request_ref", "request_hash", "request_id"),
+        "model_id": model_id,
+        "requested_provider": requested_provider,
+        "selected_provider": selected_provider,
+        "attempt_index": _value(record, "attempt_index", "retry_index") or 0,
+        "outcome": _outcome(record),
+        "retry_reason": _value(record, "retry_reason", "fallback_reason", "error_type"),
+        "fallback_triggered": _boolean(
+            _value(record, "fallback_triggered", "is_fallback", "fallback") or False
+        ),
+        "policy": _value(record, "policy", "routing_policy"),
+        "quote_snapshot_id": _value(record, "quote_snapshot_id", "pricing_snapshot_id"),
+        "input_tokens": _value(record, "input_tokens", "usage.prompt_tokens"),
+        "output_tokens": _value(record, "output_tokens", "usage.completion_tokens"),
+        "cost_usd": _value(record, "cost_usd", "total_cost", "usage.cost"),
+        "latency_ms": _value(record, "latency_ms", "latency", "duration_ms", "response_time_ms"),
+        "metadata": _source_metadata(record),
+    }
+
+
+def normalize_export(
+    events: list[dict[str, Any]],
+    *,
+    export_format: str,
+    study_id: str | None = None,
+    router: str | None = None,
+) -> list[dict[str, Any]]:
+    """Normalize canonical or redacted native router logs before validation.
+
+    ``canonical`` requires records already conforming to :func:`validate_attempt`.
+    The source-specific formats deliberately accept only a narrow, redacted
+    common subset.  They are adapters, not raw-log archivers.
+    """
+    if export_format == "canonical":
+        return events
+    formats = {
+        "openrouter-generation": ("openrouter_generation", "openrouter"),
+        "huggingface-inference-providers": (
+            "huggingface_inference_providers",
+            "huggingface_inference_providers",
+        ),
+        "cloudflare-ai-gateway": ("cloudflare_ai_gateway", "cloudflare_ai_gateway"),
+        "portkey": ("portkey", "portkey"),
+        "litellm": ("litellm", "litellm"),
+    }
+    if export_format not in formats:
+        raise ValueError(f"unsupported route export format: {export_format}")
+    if not study_id:
+        raise ValueError("--study-id is required for non-canonical route exports")
+    source, default_router = formats[export_format]
+    return [
+        _native_event(
+            record,
+            source=source,
+            study_id=study_id,
+            router=router or default_router,
+        )
+        for record in events
+    ]

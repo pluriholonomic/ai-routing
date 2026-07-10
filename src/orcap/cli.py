@@ -131,6 +131,37 @@ def main() -> None:
         help="validate and ingest redacted owned-router attempt telemetry from JSONL",
     )
     p_ingest_route.add_argument("--input", required=True, help="redacted JSONL export path")
+    p_ingest_route.add_argument(
+        "--format",
+        default="canonical",
+        choices=[
+            "canonical",
+            "openrouter-generation",
+            "huggingface-inference-providers",
+            "cloudflare-ai-gateway",
+            "portkey",
+            "litellm",
+        ],
+        help="redacted source export format (default: canonical)",
+    )
+    p_ingest_route.add_argument(
+        "--study-id",
+        default=None,
+        help="controlled-study identifier; required for source-native formats",
+    )
+    p_ingest_route.add_argument(
+        "--router",
+        default=None,
+        help="optional canonical router name override for source-native formats",
+    )
+
+    p_import_policy = sub.add_parser(
+        "import-router-policy",
+        help="validate and snapshot a redacted Cloudflare, Portkey, or LiteLLM policy JSON",
+    )
+    p_import_policy.add_argument(
+        "--input", required=True, help="redacted normalized policy JSON path"
+    )
 
     sub.add_parser("memo", help="render the screening memo from latest analysis outputs")
 
@@ -272,6 +303,7 @@ def main() -> None:
             "h42": "h42_routing_mev",
             "h43": "h43_routing_simulation",
             "h44": "h44_cross_router",
+            "h45": "h45_shadow_execution",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
@@ -297,11 +329,39 @@ def main() -> None:
     elif args.command == "ingest-route-attempts":
         from pathlib import Path
 
-        from .route_telemetry import load_jsonl, write_attempts
+        from .route_telemetry import load_jsonl, normalize_export, write_attempts
 
         events = load_jsonl(Path(args.input))
-        output = write_attempts(events)
-        print(json.dumps({"rows": len(events), "path": str(output) if output else None}, indent=2))
+        normalized = normalize_export(
+            events,
+            export_format=args.format,
+            study_id=args.study_id,
+            router=args.router,
+        )
+        output = write_attempts(normalized)
+        print(
+            json.dumps(
+                {
+                    "rows": len(normalized),
+                    "format": args.format,
+                    "path": str(output) if output else None,
+                },
+                indent=2,
+            )
+        )
+    elif args.command == "import-router-policy":
+        from pathlib import Path
+
+        from .router_policy import (
+            load_policy_document,
+            normalize_policy_document,
+            write_policy_snapshot,
+        )
+
+        document = load_policy_document(Path(args.input))
+        rows = normalize_policy_document(document)
+        output = write_policy_snapshot(document)
+        print(json.dumps({"rows": len(rows), "path": str(output)}, indent=2))
 
 
 if __name__ == "__main__":
