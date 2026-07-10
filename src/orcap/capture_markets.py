@@ -32,6 +32,11 @@ AKASH_LEASES_URL = (
     "?pagination.limit=50&pagination.reverse=true"
 )
 AKASH_RPC_URL = "https://rpc.akashnet.net:443"
+GECKOTERMINAL_POOL_URL = "https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_id}"
+GECKOTERMINAL_POOLS = (
+    "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+    "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8",
+)
 GRAPH_GATEWAY = "https://gateway.thegraph.com/api/{key}/subgraphs/id/{subgraph_id}"
 INSTRUMENTS_PATH = Path(__file__).resolve().parents[2] / "config" / "instruments.toml"
 
@@ -208,6 +213,45 @@ def uniswap_rows(
                 }
             )
     return quotes, executions, events
+
+
+def geckoterminal_quote_rows(
+    body_by_pool: dict[str, Any], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize third-party indexed pool state without calling it execution data."""
+    rows = []
+    for pool_id, body in body_by_pool.items():
+        data = body.get("data") if isinstance(body, dict) else None
+        attrs = data.get("attributes") if isinstance(data, dict) else None
+        if not isinstance(attrs, dict):
+            continue
+        base_usd = _float(attrs.get("base_token_price_usd"))
+        quote_usd = _float(attrs.get("quote_token_price_usd"))
+        reserve_usd = _float(attrs.get("reserve_in_usd"))
+        if base_usd is None and reserve_usd is None:
+            continue
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "geckoterminal",
+                "venue": attrs.get("dex_id") or "indexed-dex-pool",
+                "instrument_id": pool_id.lower(),
+                "quote_id": (data or {}).get("id") or pool_id.lower(),
+                "quote_side": "indexed_pool_state",
+                "price_usd": base_usd,
+                "native_price": base_usd / quote_usd if quote_usd not in (None, 0) else None,
+                "depth_usd": reserve_usd,
+                "volume_usd_m5": _float((attrs.get("volume_usd") or {}).get("m5")),
+                "volume_usd_h1": _float((attrs.get("volume_usd") or {}).get("h1")),
+                "volume_usd_h24": _float((attrs.get("volume_usd") or {}).get("h24")),
+                "quality_tier": (
+                    "third-party-indexed-pool-state; reserve proxy, not executable depth or fills"
+                ),
+                "record_json": _json(data),
+            }
+        )
+    return rows
 
 
 def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
@@ -545,6 +589,12 @@ async def capture_markets(
             fetcher.get_json(DEFILLAMA_PROTOCOLS_URL),
             fetcher.get_json(os.environ.get("ORCAP_GOLEM_STATS_URL", GOLEM_ONLINE_URL)),
         )
+        geckoterminal_bodies = await asyncio.gather(
+            *(
+                fetcher.get_json(GECKOTERMINAL_POOL_URL.format(pool_id=pool))
+                for pool in GECKOTERMINAL_POOLS
+            )
+        )
         cow = await fetcher.get_json(cow_url) if cow_url else None
 
         uniswap = None
@@ -616,6 +666,9 @@ async def capture_markets(
         write_raw(fetcher.records, "market_sources", raw_dir, run_ts, dt)
 
     participants = defillama_participant_rows(defillama, run_ts, dt)
+    geckoterminal_quotes = geckoterminal_quote_rows(
+        dict(zip(GECKOTERMINAL_POOLS, geckoterminal_bodies, strict=True)), run_ts, dt
+    )
     cow_executions = cow_execution_rows(cow, run_ts, dt)
     golem_capacity = golem_capacity_rows(golem, run_ts, dt)
     uni_quotes, uni_executions, uni_events = uniswap_rows(uniswap, run_ts, dt)
@@ -632,7 +685,13 @@ async def capture_markets(
         dt,
         curated_dir,
     )
-    _write(uni_quotes + akash_quotes, "market_quotes", run_ts, dt, curated_dir)
+    _write(
+        uni_quotes + akash_quotes + geckoterminal_quotes,
+        "market_quotes",
+        run_ts,
+        dt,
+        curated_dir,
+    )
     _write(golem_capacity + akash_capacity, "market_capacity", run_ts, dt, curated_dir)
     _write(
         execution_events(cow_executions, "trade")
@@ -670,6 +729,14 @@ async def capture_markets(
         run_ts,
         dt,
         {"url": os.environ.get("ORCAP_GOLEM_STATS_URL", GOLEM_ONLINE_URL)},
+        curated_dir,
+    )
+    _run_status(
+        "geckoterminal",
+        len(geckoterminal_quotes),
+        run_ts,
+        dt,
+        {"network": "eth", "pools": list(GECKOTERMINAL_POOLS)},
         curated_dir,
     )
     if with_uniswap:
@@ -723,6 +790,7 @@ async def capture_markets(
         "defillama_participants": len(participants),
         "cow_executions": len(cow_executions),
         "golem_capacity": len(golem_capacity),
+        "geckoterminal_quotes": len(geckoterminal_quotes),
         "uniswap_quotes": len(uni_quotes),
         "uniswap_executions": len(uni_executions),
         "akash_capacity": len(akash_capacity),
