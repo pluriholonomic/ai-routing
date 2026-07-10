@@ -1,5 +1,6 @@
 import pandas as pd
 
+from orcap.analysis import h41_market_comparison as h41
 from orcap.analysis.h41_market_comparison import metric_panel
 
 
@@ -114,3 +115,37 @@ def test_participant_count_does_not_coerce_non_comparable_metadata_into_a_value(
         pd.DataFrame(),
     )
     assert set(panel["metric"]) == {"participants"}
+
+
+def test_h41_does_not_treat_indexed_uniswap_depth_as_finalized_depth(monkeypatch, tmp_path):
+    tables = {
+        "market_participants": pd.DataFrame(),
+        "market_executions": pd.DataFrame(
+            [{"dt": "2026-07-10", "source": "cow", "execution_id": "cow-a", "success": True}]
+        ),
+        "market_quotes": pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "depth_usd": 100.0,
+                    "finalized": False,
+                }
+            ]
+        ),
+        "market_capacity": pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "akash",
+                    "participant_id": "provider-a",
+                    "total": 8.0,
+                }
+            ]
+        ),
+    }
+    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables[name])
+    summary = h41.run(tmp_path)
+    assert summary["finalized_uniswap_swap_observed"] is False
+    assert summary["finalized_uniswap_depth_observed"] is False
+    assert "no finalized Uniswap swap" in summary["comparison_status"]

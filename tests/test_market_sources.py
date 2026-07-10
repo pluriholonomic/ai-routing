@@ -1,7 +1,12 @@
+import asyncio
+import json
+
+import httpx
 from pyarrow.parquet import ParquetFile
 
 from orcap.capture_markets import (
     _block_time,
+    _capture_uniswap_rpc_logs,
     _configured_url,
     _union_table,
     _write,
@@ -11,12 +16,17 @@ from orcap.capture_markets import (
     akash_registry_summary,
     cow_competition_rows,
     cow_execution_rows,
+    cow_rpc_log_rows,
+    cow_rpc_participant_rows,
     defillama_participant_rows,
     geckoterminal_quote_rows,
     golem_capacity_rows,
     instrument_map_rows,
+    uniswap_pool_specs,
     uniswap_rows,
+    uniswap_rpc_log_rows,
 )
+from orcap.http import Fetcher
 
 
 def test_defillama_rows_preserve_source_identity():
@@ -163,6 +173,165 @@ def test_uniswap_rows_keep_quote_and_execution_separate():
     assert quotes[0]["quote_id"] == "pool"
     assert executions[0]["execution_id"] == "swap"
     assert events[0]["event_type"] == "swap"
+    assert executions[0]["finalized"] is False
+
+
+def _abi_word(value: int, *, signed: bool = False) -> str:
+    return value.to_bytes(32, byteorder="big", signed=signed).hex()
+
+
+def test_uniswap_rpc_logs_normalize_finalized_swaps_and_liquidity_events():
+    specs = uniswap_pool_specs()
+    pool = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+    sender = "0x" + "11" * 20
+    recipient = "0x" + "22" * 20
+
+    def pad(address: str) -> str:
+        return "0x" + "00" * 12 + address.removeprefix("0x")
+
+    logs = [
+        {
+            "address": pool,
+            "transactionHash": "0xabc",
+            "logIndex": "0x2",
+            "blockNumber": "0x7b",
+            "blockHash": "0xblock",
+            "topics": [
+                "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+                pad(sender),
+                pad(recipient),
+            ],
+            "data": "0x"
+            + _abi_word(2_000_000, signed=True)
+            + _abi_word(-1_000_000_000_000_000_000, signed=True)
+            + _abi_word(123)
+            + _abi_word(456)
+            + _abi_word(-5, signed=True),
+        },
+        {
+            "address": pool,
+            "transactionHash": "0xdef",
+            "logIndex": "0x3",
+            "blockNumber": "0x7b",
+            "blockHash": "0xblock",
+            "topics": [
+                "0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde",
+                pad(sender),
+            ],
+            "data": "0x" + _abi_word(100) + _abi_word(2_000_000) + _abi_word(10**18),
+        },
+    ]
+    executions, events = uniswap_rpc_log_rows(
+        logs,
+        {123: "2026-07-10T00:00:00Z"},
+        "20260710T000000Z",
+        "2026-07-10",
+        pool_specs=specs,
+    )
+    assert len(executions) == 1
+    execution = executions[0]
+    assert execution["finalized"] is True
+    assert execution["execution_id"] == "uniswap:0xabc:2"
+    assert execution["side"] == "token0_to_token1"
+    assert execution["requested_size"] == 2.0
+    assert execution["filled_size"] == 1.0
+    assert execution["native_price"] == 0.5
+    assert execution["participant_id"] == sender
+    assert {event["event_type"] for event in events} == {"swap", "liquidity_mint"}
+    assert all(event["finalized"] is True for event in events)
+
+
+def test_uniswap_rpc_capture_uses_a_bounded_finalized_window_and_redacts_url(monkeypatch):
+    monkeypatch.setenv("ORCAP_ETHEREUM_FINALITY_BLOCKS", "64")
+    monkeypatch.setenv("ORCAP_UNISWAP_LOG_WINDOW_BLOCKS", "3")
+    requests = []
+
+    async def run():
+        async def handler(request):
+            payload = json.loads(request.content)
+            requests.append(payload)
+            if payload["method"] == "eth_blockNumber":
+                return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": "0x100"})
+            assert payload["method"] == "eth_getLogs"
+            query = payload["params"][0]
+            assert query["fromBlock"] == "0xbe"
+            assert query["toBlock"] == "0xc0"
+            assert len(query["address"]) == 2
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": 1, "result": []})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            fetcher = Fetcher(client)
+            logs, block_times, detail = await _capture_uniswap_rpc_logs(
+                fetcher, "https://rpc.example/secret-key"
+            )
+        return logs, block_times, detail, fetcher.records
+
+    logs, block_times, detail, records = asyncio.run(run())
+    assert len(requests) == 2
+    assert logs == []
+    assert block_times == {}
+    assert detail["finalized_through_block"] == 192
+    assert detail["from_block"] == 190
+    assert {record["url"] for record in records} == {"configured:ORCAP_ETHEREUM_RPC_URL"}
+
+
+def test_cow_rpc_logs_match_solver_only_from_same_transaction_settlement_event():
+    owner = "0x" + "11" * 20
+    solver = "0x" + "22" * 20
+    sell_token = "0x" + "aa" * 20
+    buy_token = "0x" + "bb" * 20
+
+    def pad(address: str) -> str:
+        return "0x" + "00" * 12 + address.removeprefix("0x")
+
+    order_uid = "01" * 56
+    trade_data = (
+        _abi_word(int(sell_token, 16))
+        + _abi_word(int(buy_token, 16))
+        + _abi_word(2_000_000)
+        + _abi_word(10**18)
+        + _abi_word(0)
+        + _abi_word(192)
+        + _abi_word(56)
+        + order_uid.ljust(64 * 2, "0")
+    )
+    logs = [
+        {
+            "transactionHash": "0xtx",
+            "logIndex": "0x1",
+            "blockNumber": "0x7b",
+            "blockHash": "0xblock",
+            "topics": [
+                "0xa07a543ab8a018198e99ca0184c93fe9050a79400a0a723441f84de1d972cc17",
+                pad(owner),
+            ],
+            "data": "0x" + trade_data,
+        },
+        {
+            "transactionHash": "0xtx",
+            "logIndex": "0x2",
+            "blockNumber": "0x7b",
+            "blockHash": "0xblock",
+            "topics": [
+                "0x40338ce1a7c49204f0099533b1e9a7ee0a3d261f84974ab7af36105b8c4e9db4",
+                pad(solver),
+            ],
+            "data": "0x",
+        },
+    ]
+    executions, events = cow_rpc_log_rows(
+        logs, {123: "2026-07-10T00:00:00Z"}, "20260710T000000Z", "2026-07-10"
+    )
+    assert len(executions) == 1
+    execution = executions[0]
+    assert execution["finalized"] is True
+    assert execution["participant_id"] == owner
+    assert execution["solver_id"] == solver
+    assert execution["sell_amount_raw"] == "2000000"
+    assert execution["buy_amount_raw"] == str(10**18)
+    assert {event["event_type"] for event in events} == {"trade", "settlement"}
+    participant_rows = cow_rpc_participant_rows(executions)
+    assert participant_rows[0]["participant_id"] == solver
 
 
 def test_geckoterminal_rows_preserve_indexed_state_boundary():

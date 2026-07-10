@@ -69,6 +69,27 @@ the current Golem endpoint, `ORCAP_AKASH_NETWORK_URL` and optional
 subgraph/cohort. Until configured and producing data, they remain visibly
 degraded rather than being treated as a complete comparison.
 
+For finalized Uniswap event collection, set the `ORCAP_ETHEREUM_RPC_URL`
+secret to an archive-capable Ethereum JSON-RPC endpoint. The monitor queries a
+bounded window of the two registered USDC/WETH pools only after a 64-block
+default reorg buffer; operators may set `ORCAP_ETHEREUM_FINALITY_BLOCKS` and
+`ORCAP_UNISWAP_LOG_WINDOW_BLOCKS` within the documented 1--10,000 bounds. It
+normalizes `Swap`, `Mint`, and `Burn` logs with an immutable
+transaction-hash/log-index identity. The endpoint itself is redacted from the
+raw evidence layer. Swap logs identify finalized execution and liquidity-event
+incidence, not USD executable depth; depth still needs a position/tick
+construction at explicit notional buckets.
+
+The same archive-capable RPC path also queries the verified mainnet
+`GPv2Settlement` contract for `Trade` and `Settlement` events in a separate
+bounded window (`ORCAP_COW_LOG_WINDOW_BLOCKS`, with the same finality buffer).
+A `Trade` is an executed order with exact raw token quantities; a solver is
+recorded only when the contract emits a `Settlement` event in that same
+transaction. Transaction sender is never substituted for solver identity.
+Token decimals, USD price, gas-inclusive cost, surplus, and global order
+coverage remain separate missing inputs rather than being inferred from this
+event pair.
+
 ### Tier 3: contextual series
 
 Keep Ethereum base fee, BTC funding, BTC hashprice, and static forward anchors

@@ -116,8 +116,16 @@ class Fetcher:
         url: str,
         payload: Any,
         headers: Mapping[str, str] | None = None,
+        *,
+        record_url: str | None = None,
     ) -> Any | None:
-        """POST JSON while preserving the same raw-response evidence as GET."""
+        """POST JSON while preserving raw evidence without persisting credentials.
+
+        Some API credentials are embedded in a provider URL rather than a
+        header (for example a Graph gateway key or managed JSON-RPC URL).
+        Callers can keep the real request URL private while storing a stable,
+        redacted provenance label in the raw layer.
+        """
         fetched_at = datetime.now(UTC).isoformat()
         try:
             await self.limiter.wait()
@@ -142,7 +150,7 @@ class Fetcher:
         self.records.append(
             {
                 "fetched_at": fetched_at,
-                "url": url,
+                "url": record_url or url,
                 "method": "POST",
                 "request_json": payload,
                 "status": resp.status_code,
