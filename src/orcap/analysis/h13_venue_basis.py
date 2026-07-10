@@ -79,18 +79,36 @@ def load_routed() -> pd.DataFrame:
 
 
 def load_direct() -> pd.DataFrame:
+    glob = data.table_glob("direct_prices_daily")
+    try:
+        schema = data.q(
+            f"describe select * from read_parquet('{glob}', union_by_name=true)"
+        ).df()
+        columns = set(schema["column_name"])
+    except Exception:
+        columns = set()
+    source_type = (
+        "coalesce(direct.source_type, 'structured_public_api')"
+        if "source_type" in columns
+        else "'structured_public_api'"
+    )
+    source_url = "direct.source_url" if "source_url" in columns else "cast(null as varchar)"
     return data.q(
         f"""
         with latest_per_day as (
-            select cast(dt as varchar) as dt, run_ts, provider, model_name,
-                   price_input_usd as direct_in, price_output_usd as direct_out,
-                   coalesce(source_type, 'structured_public_api') as source_type,
-                   source_url,
+            select cast(direct.dt as varchar) as dt, direct.run_ts, direct.provider,
+                   direct.model_name, direct.price_input_usd as direct_in,
+                   direct.price_output_usd as direct_out,
+                   {source_type} as source_type,
+                   {source_url} as source_url,
                    row_number() over (
-                       partition by dt, provider, model_name order by run_ts desc
+                       partition by direct.dt, direct.provider, direct.model_name
+                       order by direct.run_ts desc
                    ) as recency_rank
-            from read_parquet('{data.table_glob("direct_prices_daily")}', union_by_name=true)
-            where not deprecated and price_input_usd > 0 and price_output_usd > 0
+            from read_parquet('{glob}', union_by_name=true) as direct
+            where not direct.deprecated
+              and direct.price_input_usd > 0
+              and direct.price_output_usd > 0
         )
         select * exclude (recency_rank) from latest_per_day where recency_rank = 1
         """
