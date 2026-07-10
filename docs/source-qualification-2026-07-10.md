@@ -101,3 +101,19 @@ response as zero Uniswap activity.  The needed collector must use one of:
 
 That remains a Tier-1 blocker for the DeFi versus open-compute paper: public
 dashboard price/TVL data cannot replace event-level swaps or liquidity changes.
+
+## Rejected for market-wide execution: unscoped CoW trades endpoint
+
+CoW's official OpenAPI advertises a paginated `GET /api/v2/trades` route, but
+the live public request to
+`https://api.cow.fi/mainnet/api/v2/trades?limit=10` returned HTTP 400 and an
+`InvalidTradeFilter` response: the request must identify either one owner or
+one order UID. That is useful for an account- or order-specific lookup, but it
+is not a market-wide execution census.
+
+Do not point `ORCAP_COW_TRADES_URL` at that bare public endpoint, paginate over
+known owners, or concatenate order-level responses and call the result market
+coverage. The existing live solver-competition monitor remains a bounded
+snapshot only. The Tier-1 path is still an archive-capable GPv2Settlement log
+index or a properly scoped official/Dune execution feed with a documented
+watermark and coverage universe.
