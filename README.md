@@ -23,6 +23,7 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 - [`docs/router-shadow-execution.md`](docs/router-shadow-execution.md) — one shadow-execution interface for OpenRouter, Hugging Face, Cloudflare AI Gateway, Portkey, and LiteLLM.
 - [`docs/capacity-certified-routing-mechanism.md`](docs/capacity-certified-routing-mechanism.md) — pre-registered RFQ-style routing mechanism, propositions, and empirical calibration gates.
 - [`docs/controlled-routing-study.md`](docs/controlled-routing-study.md) — payload-free model-epoch randomized study protocol and H50 causal estimator for the proposed mechanism.
+- [`docs/livepeer-gateway-data.md`](docs/livepeer-gateway-data.md) — aggregate public decentralized-Gateway routing control, its privacy boundary, and H51 gate.
 
 ## Cadence
 
@@ -33,6 +34,7 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 | `compact` | nightly 01:43 UTC | consolidates pricing-critical endpoint snapshots and derives SCD-2 `pricing_changes` + `pricing_current` |
 | `route-simulation-monitor` | hourly | evaluates the latest 26 hours of 15-minute public-quote routing simulations; publishes only after its coverage gate |
 | `hf-router` | hourly, 4 samples at 15-min spacing | public Hugging Face Inference Providers model/provider price and performance surface; no inference requests |
+| `livepeer-gateway` | hourly, 11 samples at 5-min spacing | aggregate public decentralized-Gateway swap/reuse messages by region; no stream, session, client, or orchestrator identifiers |
 
 ## Data layout (HF dataset repo)
 
@@ -68,6 +70,7 @@ source record, so OpenRouter schema drift never loses data):
 | `router_route_attempts` | owned request attempt | redacted controlled-study provider outcomes/retries; private telemetry, not public market flow |
 | `open_model_usage_daily` | day × source × open model | public HF rolling downloads and Ollama cumulative pulls; adoption proxies, never inference tokens |
 | `oss_runtime_adoption_daily` | day × serving runtime image | public Docker Hub cumulative pulls for Ollama/vLLM/SGLang; deployment proxy, not model consumption |
+| `livepeer_gateway_metrics` | five-minute window × Gateway region | aggregate public swap/reuse routing-adjustment messages; external control only, never provider allocation or delivery |
 
 ## Querying
 
@@ -108,6 +111,7 @@ ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h50  # randomized 
 uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-like hypotheses)
 ORCAP_ANALYSIS_SOURCE=local uv run orcap route-sim-report --out analysis  # 24h public-quote route-surface test
 uv run orcap capture-hf-router --samples 4 --interval-seconds 900  # public HF router surface, no orders
+uv run orcap capture-livepeer --samples 2 --interval-seconds 300  # aggregate public Gateway route adjustments, no stream IDs
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h44  # public cross-router quote/policy screen
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h45  # cross-router shadow routing + outage stress
 uv run orcap import-router-policy --input redacted-router-policy.json

@@ -82,6 +82,15 @@ def main() -> None:
         "--interval-seconds", type=float, default=900.0, help="spacing between snapshots"
     )
 
+    p_livepeer = sub.add_parser(
+        "capture-livepeer",
+        help="capture aggregate public Livepeer Gateway routing-adjustment metrics",
+    )
+    p_livepeer.add_argument("--samples", type=int, default=1, help="snapshots to take")
+    p_livepeer.add_argument(
+        "--interval-seconds", type=float, default=300.0, help="spacing between snapshots"
+    )
+
     sub.add_parser(
         "capture-open-usage",
         help="capture public open-model download/pull and serving-runtime adoption proxies",
@@ -264,6 +273,16 @@ def main() -> None:
                 default=str,
             )
         )
+    elif args.command == "capture-livepeer":
+        from .capture_livepeer import main as livepeer_main
+
+        print(
+            json.dumps(
+                livepeer_main(samples=args.samples, interval_seconds=args.interval_seconds),
+                indent=2,
+                default=str,
+            )
+        )
     elif args.command == "capture-open-usage":
         from .capture_open_usage import main as open_usage_main
 
@@ -351,6 +370,7 @@ def main() -> None:
             "h48": "h48_capacity_mechanism",
             "h49": "h49_solver_competition",
             "h50": "h50_controlled_routing",
+            "h51": "h51_livepeer_gateway",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

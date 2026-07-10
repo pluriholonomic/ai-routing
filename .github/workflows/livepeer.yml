@@ -1,0 +1,45 @@
+name: livepeer-gateway
+
+# GitHub cron reliably supplies about one hourly slot on this repository. Each
+# run therefore records eleven non-overlapping five-minute aggregate Gateway
+# windows; public LogQL metrics contain no stream/session/client identifiers.
+on:
+  schedule:
+    - cron: "53 * * * *"
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: "aggregate five-minute windows to capture"
+        default: "11"
+
+concurrency:
+  group: livepeer-gateway
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: capture aggregate public Gateway routing adjustments
+        run: |
+          uv run orcap capture-livepeer \
+            --samples "${{ github.event.inputs.samples || '11' }}" \
+            --interval-seconds 300
+      - name: validate Livepeer source health
+        run: uv run orcap quality --profile livepeer
+      - name: buffer output as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: livepeer-${{ github.run_id }}
+          path: data/
+          retention-days: 7
+          compression-level: 0
