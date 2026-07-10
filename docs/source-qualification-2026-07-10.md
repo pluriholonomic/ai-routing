@@ -284,3 +284,15 @@ availability, utilization, region, realized workload, discount, or execution
 fields. It must not be merged with Vast individual offers or used as evidence
 of Lambda's token inference price; Lambda's public page states that its
 Inference API is winding down.
+
+## Not qualified: Runpod public Serverless GPU pricing
+
+Runpod's indexed documentation showed a detailed public GPU-family table, but
+the live documentation HTML no longer contains those rows and the live public
+marketing page exposes only broad price ranges. The account GraphQL
+availability and billing APIs require a key, so they are not a substitute.
+
+Do not scrape prose ranges into a hardware-price panel or use an account key to
+obtain utilization/billing data. Reconsider only if Runpod restores a stable
+literal public table or unauthenticated structured feed with GPU, contract,
+and price fields.
