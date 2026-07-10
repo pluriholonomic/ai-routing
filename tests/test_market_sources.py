@@ -1,5 +1,8 @@
 from orcap.capture_markets import (
+    _block_time,
     akash_capacity_rows,
+    akash_lease_execution_rows,
+    akash_registry_summary,
     cow_execution_rows,
     defillama_participant_rows,
     golem_capacity_rows,
@@ -95,6 +98,9 @@ def test_akash_console_provider_rows_use_public_gpu_stats():
                 "owner": "akash1x",
                 "hostUri": "https://provider.example",
                 "ipRegion": "us-east",
+                "isOnline": True,
+                "isValidVersion": True,
+                "gpuModels": [{"vendor": "nvidia", "model": "h100", "ram": "80Gi"}],
                 "stats": {
                     "gpu": {"active": 2, "available": 6, "total": 8},
                     "cpu": {"total": 64},
@@ -109,8 +115,74 @@ def test_akash_console_provider_rows_use_public_gpu_stats():
     assert rows[0]["available"] == 6.0
     assert rows[0]["used"] == 2.0
     assert rows[0]["total"] == 8.0
-    assert rows[0]["cpu_cores"] == 64.0
+    # Akash's current Console field is not documented as cores, so it remains
+    # in raw provenance rather than being relabeled as a physical CPU count.
+    assert rows[0]["cpu_cores"] is None
     assert rows[0]["region"] == "us-east"
+    assert rows[0]["resource_kind"] == "gpu"
+    assert rows[0]["resource_class"] == "nvidia:h100:80Gi"
+
+
+def test_akash_registry_entries_without_live_gpu_capacity_are_excluded():
+    body = [
+        {
+            "owner": "offline",
+            "isOnline": False,
+            "isValidVersion": True,
+            "stats": {"gpu": {"total": 8}},
+        },
+        {
+            "owner": "no-gpu",
+            "isOnline": True,
+            "isValidVersion": True,
+            "stats": {"gpu": {"total": 0}},
+        },
+    ]
+    assert akash_capacity_rows(body, "20260710T000000Z", "2026-07-10") == []
+    assert akash_registry_summary(body) == {
+        "registry_providers": 2,
+        "online_providers": 1,
+        "online_version_valid_providers": 1,
+        "online_gpu_capacity_providers": 0,
+    }
+
+
+def test_akash_lease_lifecycle_preserves_native_rate_without_claiming_workload_success():
+    rows = akash_lease_execution_rows(
+        {
+            "leases": [
+                {
+                    "lease": {
+                        "id": {
+                            "owner": "owner",
+                            "dseq": "1",
+                            "gseq": 2,
+                            "oseq": 3,
+                            "provider": "provider",
+                            "bseq": 4,
+                        },
+                        "state": "closed",
+                        "closed_on": "99",
+                        "price": {"denom": "uakt", "amount": "12.5"},
+                    },
+                    "escrow_payment": {
+                        "state": {"withdrawn": {"denom": "uakt", "amount": "20"}}
+                    },
+                }
+            ]
+        },
+        {99: "2026-07-10T00:00:00Z"},
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["execution_id"] == "owner/1/2/3/provider/4"
+    assert rows[0]["executed_at"] == "2026-07-10T00:00:00Z"
+    assert rows[0]["rate_denom"] == "uakt"
+    assert rows[0]["rate_amount_native"] == 12.5
+    assert rows[0]["success"] is None
+    assert _block_time({"result": {"header": {"time": "2026-07-10T00:00:00Z"}}}) == (
+        "2026-07-10T00:00:00Z"
+    )
 
 
 def test_instrument_map_is_versioned_and_source_scoped():
