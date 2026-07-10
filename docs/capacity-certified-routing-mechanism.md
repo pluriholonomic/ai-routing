@@ -189,14 +189,32 @@ AMM welfare results.
     result is a boundary, not an impossibility of using an externally audited
     certificate, an outcome-contingent scoring mechanism with different
     transfers, or a restricted type space.
+15. **Audited clipped-grid reliability scoring, conditional DSIC.** Let the
+    true reliability and report lie in a finite grid
+    `R subset [epsilon,1-epsilon]`, and suppose an independently assigned
+    audit succeeds with Bernoulli probability `q_i` and occurs with probability
+    `rho>0`. Retain the report-sensitive allocation payoff and add the
+    non-negative bounded transfer
+    `A[-log(epsilon)+Y log(r_i)+(1-Y)log(1-r_i)]` when audited. For any true
+    `q` and distinct report `r`, truth gains
+    `rho A KL(Bern(q)||Bern(r))` in expected score. Thus a scale exceeding the
+    largest report-induced allocation gain divided by this positive KL term
+    (plus a desired strict margin) makes truth-telling uniquely optimal on the
+    finite grid. `audited_reliability_minimum_score_scale` computes that exact
+    threshold and `audited_reliability_report_diagnostic` checks every report
+    pair. This resolves neither continuous/private reliability, audit
+    selection, correlated outcomes, budget balance, nor funding: it is a
+    conditional audit-subsidy construction, not a claim that a finite bond can
+    elicit reliability.
 
 The next theory step is still to extend these certified-input results to jointly
 private capacity and reliability under a stochastic health process, then
-connect the cost-curve procurement and shortfall collateral in one delivery
-mechanism and extend welfare to heterogeneous request values and controlled
-observations. H54 supplies a defensible *exogenous input* under a controlled
-design; the limited-liability boundary explains why it cannot simply be
-replaced by a provider self-report under the current payment rule.
+connect the cost-curve procurement, shortfall collateral, and (if used) funded
+audit score in one delivery mechanism and extend welfare to heterogeneous
+request values and controlled observations. H54 supplies a defensible
+*exogenous input* under a controlled design; the finite-bond boundary and the
+finite-grid audit construction together explain why an unsupported direct
+provider score is not enough.
 
 ### Proof details and assumptions
 
@@ -355,6 +373,22 @@ certificates, a carefully funded scoring transfer, or a mechanism with a
 restricted report domain. It does rule out presenting a finite shortfall bond
 as a general direct-reliability DSIC solution.
 
+The finite-grid audited construction changes the transfer, not that boundary.
+Write the allocation-side expected payoff at true reliability `q` and report
+`r` as `x(r)[q m-(1-q)ell]`, and let an independent audit occur with
+probability `rho`. On the clipped grid, the shifted log score is finite and
+non-negative. Its expected truthful-report advantage over `r` is exactly
+`rho A KL(Bern(q)||Bern(r))`; the additive shift cancels. For each finite pair,
+this KL is strictly positive. Choosing `A` larger than the positive
+allocation-side gain divided by that quantity (with any positive desired
+margin) makes truthful reporting strictly preferred for every pair. The proof
+requires the audit outcome to be generated from the declared population and
+independent of the allocation decision. It also requires an external funding
+source for the bounded score payment. It is not budget balanced, does not cover
+types outside the grid, and cannot use selectively retained router traffic as
+its audit outcome; H54's direct, pre-assigned audit design is the appropriate
+measurement prerequisite.
+
 For the robust correlated-outage proposition, fix a finite, declared set of
 joint states with positive probability. The linear program's feasible set is
 nonempty (`x=0,z=0`) and bounded by demand and hard commitments, so it has an
@@ -376,6 +410,7 @@ the observed or declared joint-outage support.
 | `s_i` | public inverse-square simulated share | observed proxy; H43/H45/H48 explicitly label it non-realized |
 | `q_i` | uptime, error, latency, throughput, router scorecard | public proxy only; private live eligibility remains unobserved |
 | `q_i` lower certificate | pre-registered direct provider/model audit with completed outcomes | H54 contract and exact lower-bound estimator exist; no published audit rows yet. Its result is workload- and design-specific, not a platform-wide score. |
+| audited reliability score | independent audit outcome, clipped report grid, audit probability, and funded transfer scale | conditional finite-grid theorem only; H54 supplies the intended independent-audit design, but no score-transfer study or funding evidence exists |
 | `x_i, y_i` | allocated and served controlled-study requests | public panels do not identify them; payload-free `router_capacity_epoch_outcomes` can record controlled provider/model/epoch aggregates, but has no published rows yet |
 | `k_i` | provider/model/time commitment | public inference capacity remains unobserved; `router_capacity_commitments` can record a redacted controlled-study declaration, but has no published rows yet; Akash/Vast capacity is an external supply comparator |
 | `a_i, b_i` | declared linear reservation cost and positive capacity-cost curvature | optional redacted controlled-study fields exist on `router_capacity_commitments`; no published or independently verified observations yet. The VCG cost-curve benchmark needs a separately versioned full convex schedule and does not treat these declarations as verified. |
