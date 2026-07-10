@@ -61,3 +61,20 @@ def test_removed_endpoint_emits_removed_event():
     assert len(removed) == 1
     assert removed[0]["tag"] == "b/fp8"
     assert len(state) == 1
+
+
+def test_consolidate_merges_int64_double_schema_flap(tmp_path):
+    # per-sample schema inference can type a stat column int64 in one file and
+    # double in another; consolidation must unify instead of raising
+    import pyarrow.parquet as pq
+
+    from orcap.capture_api import consolidate_local
+
+    day = tmp_path / "endpoints_stats" / "dt=2026-07-10"
+    day.mkdir(parents=True)
+    pq.write_table(pa.table({"run_ts": ["a"], "p50_throughput": pa.array([45], pa.int64())}), day / "s1.parquet")
+    pq.write_table(pa.table({"run_ts": ["b"], "p50_throughput": pa.array([45.3], pa.float64())}), day / "s2.parquet")
+    assert consolidate_local(tmp_path) == 2
+    merged = pq.ParquetFile(day / "s2.parquet").read()
+    assert merged.num_rows == 2
+    assert merged.schema.field("p50_throughput").type == pa.float64()

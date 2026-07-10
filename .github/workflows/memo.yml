@@ -43,7 +43,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/assemble_artifacts.sh 26 data
-      - name: validate required source health
+      - name: report source health (non-blocking for publication)
+        # red sources warn in the log; the memo still publishes with stale data
+        # rather than not at all. Strict gating lives in the capture jobs, which
+        # validate the ledger rows they just wrote.
+        continue-on-error: true
         run: uv run orcap quality --profile core
       - name: reanalyze
         env:

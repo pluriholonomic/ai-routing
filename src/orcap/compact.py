@@ -67,7 +67,8 @@ def consolidate_table_day(table_dir: Path) -> tuple[Path | None, list[Path]]:
     # ParquetFile.read avoids dataset-level hive-partition inference, which would
     # collide with the dt column embedded in the files
     tables = [pq.ParquetFile(f).read() for f in files]
-    merged = pa.concat_tables(tables, promote_options="default")
+    # permissive: schema inference can flap int64/double across runs for stat columns
+    merged = pa.concat_tables(tables, promote_options="permissive")
     pq.write_table(merged, out, compression="zstd")
     return out, per_run
 

@@ -400,7 +400,9 @@ def consolidate_local(curated_dir: Path = CURATED_DIR) -> int:
             continue
         tables = [pq.ParquetFile(f).read() for f in files]
         out = dt_dir / files[-1].name
-        combined = pa.concat_tables(tables, promote_options="default")
+        # permissive: per-sample schema inference can flap int64/double for stat
+        # columns (e.g. p50_throughput) when one sample's values are all integral
+        combined = pa.concat_tables(tables, promote_options="permissive")
         for f in files:
             f.unlink()
         pq.write_table(combined, out, compression="zstd")
