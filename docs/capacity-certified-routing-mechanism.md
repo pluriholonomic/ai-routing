@@ -34,6 +34,29 @@ Provider payoff is
 The proposal does not assume that OpenRouter, Hugging Face, or another router
 currently runs this mechanism.
 
+### Capacity-certified allocation
+
+For epoch demand `D`, define the score weight `w_i=q_i p_i^{-eta}`. Instead of
+first assigning `D s_i` and checking capacity afterward, the proposed rule
+chooses
+
+`x_i = min(k_i, tau w_i)`,
+
+where `tau` makes `sum_i x_i = D` whenever total eligible commitment covers
+demand. This is capped score water-filling. If `sum_i k_i < D`, it allocates
+all committed capacity and reports `D-sum_i x_i` as unfilled demand; it never
+creates a fictional assignment above a commitment.
+
+For `D <= sum_i k_i`, the allocation is the unique solution of the strictly
+concave entropy-regularized score problem
+
+`max_x sum_i x_i log(w_i) - sum_i x_i log(x_i)`
+
+subject to `sum_i x_i=D` and `0 <= x_i <= k_i`. The KKT conditions give the
+water-fill form above. This is a mathematical link to score-based liquidity
+allocation, not a claim that inference routing is an AMM or that it inherits
+AMM welfare results.
+
 ## Propositions to prove under the stated reduced-form assumptions
 
 1. **Price incentive.** Holding eligibility and reliability fixed,
@@ -48,6 +71,12 @@ currently runs this mechanism.
    the allocation without bond loss. The practical design question is how to
    verify or insure `k_i`; the model makes that missing object observable
    rather than assuming it away.
+4. **No commitment over-allocation.** Under capacity-certified water-filling,
+   `x_i <= k_i` for every eligible provider. If aggregate commitment covers
+   demand, all demand is allocated; otherwise the residual is measured as
+   unfilled instead of attributed to a provider. The code-level
+   `allocation_counterfactual` reports the mechanical shortfall that an
+   uncapped inverse-price rule would have assigned beyond commitments.
 
 The next theory step is to extend this one-period result to private capacity
 and a stochastic health process, then prove an individually rational

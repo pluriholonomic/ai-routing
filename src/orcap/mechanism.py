@@ -42,6 +42,92 @@ def allocation_shares(offers: list[ProviderOffer], eta: float = 2.0) -> pd.Serie
     return pd.Series({provider: weight / total for provider, weight in weights.items()})
 
 
+def capacity_constrained_allocation(
+    offers: list[ProviderOffer], demand: float, eta: float = 2.0
+) -> pd.Series:
+    """Allocate demand by score while never exceeding certified capacity.
+
+    Let ``w_i = q_i p_i^{-eta}``.  When total usable commitment covers demand,
+    this is the unique capped water-fill ``x_i = min(k_i, tau w_i)`` whose
+    allocations sum to demand. Equivalently, it is the entropy-regularized
+    score allocation subject to ``x_i <= k_i``. If commitments are jointly
+    insufficient, it allocates every feasible unit and leaves residual demand
+    explicit rather than manufacturing a route assignment.
+    """
+    if demand < 0:
+        raise ValueError("demand must be non-negative")
+    if eta <= 0:
+        raise ValueError("eta must be positive")
+    if len({offer.provider for offer in offers}) != len(offers):
+        raise ValueError("provider names must be unique")
+    capacities = {
+        offer.provider: max(0.0, offer.committed_capacity)
+        for offer in offers
+        if offer.price > 0 and offer.reliability > 0
+    }
+    weights = {
+        offer.provider: offer.reliability * offer.price ** (-eta)
+        for offer in offers
+        if offer.provider in capacities and capacities[offer.provider] > 0
+    }
+    allocation = {provider: 0.0 for provider in capacities}
+    remaining = min(float(demand), sum(capacities.values()))
+    active = set(weights)
+    while remaining > 0 and active:
+        total_weight = sum(weights[provider] for provider in active)
+        if total_weight <= 0:
+            break
+        proposal = {
+            provider: remaining * weights[provider] / total_weight for provider in active
+        }
+        saturated = [
+            provider
+            for provider, quantity in proposal.items()
+            if quantity >= capacities[provider] - allocation[provider]
+        ]
+        if not saturated:
+            for provider, quantity in proposal.items():
+                allocation[provider] += quantity
+            remaining = 0.0
+            break
+        for provider in saturated:
+            residual_capacity = capacities[provider] - allocation[provider]
+            allocation[provider] += residual_capacity
+            remaining -= residual_capacity
+            active.remove(provider)
+    return pd.Series(allocation, dtype="float64")
+
+
+def allocation_counterfactual(
+    offers: list[ProviderOffer], demand: float, eta: float = 2.0
+) -> pd.DataFrame:
+    """Compare uncapped score allocation with its capacity-certified form.
+
+    ``uncapped_capacity_shortfall`` is a mechanical commitment mismatch, not a
+    realized failure probability. It exposes the telemetry primitive needed to
+    translate the theory into welfare or bond estimates.
+    """
+    if demand < 0:
+        raise ValueError("demand must be non-negative")
+    uncapped = allocation_shares(offers, eta) * demand
+    capped = capacity_constrained_allocation(offers, demand, eta)
+    commitment = pd.Series(
+        {offer.provider: max(0.0, offer.committed_capacity) for offer in offers}, dtype="float64"
+    )
+    providers = uncapped.index.union(capped.index).union(commitment.index)
+    result = pd.DataFrame(index=providers)
+    result["uncapped_allocated"] = uncapped.reindex(providers, fill_value=0.0)
+    result["committed_capacity"] = commitment.reindex(providers, fill_value=0.0)
+    result["uncapped_capacity_shortfall"] = (
+        result["uncapped_allocated"] - result["committed_capacity"]
+    ).clip(lower=0.0)
+    result["capacity_certified_allocated"] = capped.reindex(providers, fill_value=0.0)
+    result["capacity_certified_unfilled_demand"] = max(
+        0.0, demand - float(result["capacity_certified_allocated"].sum())
+    )
+    return result.reset_index(names="provider")
+
+
 def own_price_share_elasticity(share: float, eta: float = 2.0) -> float:
     """d log(router share) / d log(own price) for the allocation rule."""
     if not 0 <= share <= 1:
