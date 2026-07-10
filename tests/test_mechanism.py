@@ -1,12 +1,15 @@
 import math
 
 from orcap.mechanism import (
+    OutageScenario,
     ProviderOffer,
     allocation_counterfactual,
     allocation_shares,
     capacity_bond_floor,
     capacity_constrained_allocation,
     declared_capacity_payoff,
+    expected_delivered_under_outage_scenarios,
+    limited_liability_delivery_gain,
     own_price_share_elasticity,
     procurement_payment,
     procurement_report_diagnostic,
@@ -55,6 +58,28 @@ def test_capacity_bond_covers_negative_serving_margin_to_deter_shortfall():
     )
     assert served > rationed
     assert under_bonded > served
+
+
+def test_limited_liability_caps_the_delivery_incentive_from_a_nominal_bond():
+    assert limited_liability_delivery_gain(-1.0, 2.0, 0.4) == -0.6
+    assert math.isclose(limited_liability_delivery_gain(-1.0, 2.0, 1.1), 0.1)
+
+
+def test_joint_outage_scenarios_need_not_follow_marginal_uptime():
+    allocation = allocation_shares(
+        [
+            ProviderOffer("a", price=1, reliability=1, committed_capacity=10, marginal_cost=0.5),
+            ProviderOffer("b", price=1, reliability=1, committed_capacity=10, marginal_cost=0.5),
+        ]
+    ) * 10
+    expected = expected_delivered_under_outage_scenarios(
+        allocation,
+        [
+            OutageScenario(0.8, frozenset()),
+            OutageScenario(0.2, frozenset({"a", "b"})),
+        ],
+    )
+    assert expected == 8.0
 
 
 def test_zero_margin_requires_positive_bond_for_strict_delivery_preference():

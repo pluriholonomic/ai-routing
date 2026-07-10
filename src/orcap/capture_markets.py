@@ -52,6 +52,9 @@ GPV2_SETTLEMENT_ADDRESS = "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
 GPV2_TRADE_TOPIC = "0xa07a543ab8a018198e99ca0184c93fe9050a79400a0a723441f84de1d972cc17"
 GPV2_SETTLEMENT_TOPIC = "0x40338ce1a7c49204f0099533b1e9a7ee0a3d261f84974ab7af36105b8c4e9db4"
 PUBLIC_ETHEREUM_RPC_URL = "https://eth.drpc.org"
+UNISWAP_V3_QUOTER_V2_ADDRESS = "0x61ffe014ba17989e743c5f6cb21bf9697530b21e"
+UNISWAP_V3_QUOTE_EXACT_INPUT_SINGLE_SELECTOR = "c6a5026a"
+UNISWAP_USDC_QUOTE_BUCKETS = (100, 1_000, 10_000, 100_000)
 
 
 def _json(value: Any) -> str:
@@ -104,6 +107,23 @@ def _hex_int(value: Any) -> int | None:
 
 def _hex_quantity(value: int) -> str:
     return hex(value)
+
+
+def _abi_address(value: str) -> str:
+    normalized = value.lower().removeprefix("0x")
+    if len(normalized) != 40:
+        raise ValueError("Ethereum address must have 20 bytes")
+    try:
+        int(normalized, 16)
+    except ValueError as exc:
+        raise ValueError("Ethereum address must be hexadecimal") from exc
+    return normalized.rjust(64, "0")
+
+
+def _abi_uint(value: int, *, bits: int = 256) -> str:
+    if not isinstance(value, int) or not 0 <= value < 2**bits:
+        raise ValueError(f"unsigned {bits}-bit ABI value is out of range")
+    return f"{value:064x}"
 
 
 def _word(data: Any, index: int) -> int | None:
@@ -191,7 +211,14 @@ def uniswap_pool_specs() -> dict[str, dict[str, Any]]:
     with INSTRUMENTS_PATH.open("rb") as handle:
         instruments = tomllib.load(handle)["instruments"]
     result: dict[str, dict[str, Any]] = {}
-    required = ("source_id", "canonical_instrument", "quality_tier")
+    required = (
+        "source_id",
+        "canonical_instrument",
+        "quality_tier",
+        "token0_address",
+        "token1_address",
+        "fee",
+    )
     for map_id, raw in instruments.items():
         if raw.get("source") != "uniswap":
             continue
@@ -204,6 +231,16 @@ def uniswap_pool_specs() -> dict[str, dict[str, Any]]:
             raise ValueError(f"Uniswap instrument {map_id} needs token decimals") from exc
         if any(value < 0 or value > 36 for value in decimals):
             raise ValueError(f"Uniswap instrument {map_id} has invalid token decimals")
+        try:
+            fee = int(raw["fee"])
+            if not 0 < fee < 2**24:
+                raise ValueError
+            token0_address = "0x" + _abi_address(str(raw["token0_address"]))[-40:]
+            token1_address = "0x" + _abi_address(str(raw["token1_address"]))[-40:]
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Uniswap instrument {map_id} has invalid token addresses or fee"
+            ) from exc
         address = str(raw["source_id"]).lower()
         result[address] = {
             "map_id": map_id,
@@ -211,8 +248,11 @@ def uniswap_pool_specs() -> dict[str, dict[str, Any]]:
             "quality_tier": str(raw["quality_tier"]),
             "token0_symbol": str(raw.get("token0_symbol") or "token0"),
             "token0_decimals": decimals[0],
+            "token0_address": token0_address,
             "token1_symbol": str(raw.get("token1_symbol") or "token1"),
             "token1_decimals": decimals[1],
+            "token1_address": token1_address,
+            "fee": fee,
         }
     return result
 
@@ -562,6 +602,84 @@ def uniswap_rows(
                 }
             )
     return quotes, executions, events
+
+
+def _uniswap_quoter_calldata(spec: dict[str, Any], amount_in_raw: int) -> str:
+    """Encode QuoterV2's one-tuple exact-input quote without a web3 dependency."""
+    return "0x" + UNISWAP_V3_QUOTE_EXACT_INPUT_SINGLE_SELECTOR + "".join(
+        (
+            _abi_address(spec["token0_address"]),
+            _abi_address(spec["token1_address"]),
+            _abi_uint(amount_in_raw),
+            _abi_uint(int(spec["fee"]), bits=24),
+            _abi_uint(0, bits=160),
+        )
+    )
+
+
+def uniswap_quoter_quote_rows(
+    quote_records: list[dict[str, Any]], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize finalized-block QuoterV2 simulations as a price-impact curve.
+
+    A QuoterV2 response is an exact-input state simulation at a fixed block,
+    not a trade, firm RFQ, or total executable market depth. It is still a
+    substantially stronger fixed-notional price-impact object than indexed
+    TVL, so retain the raw simulation and block identity separately.
+    """
+    rows = []
+    for record in quote_records:
+        spec = record.get("spec") if isinstance(record.get("spec"), dict) else {}
+        result = record.get("result")
+        amount_out_raw = _word(result, 0)
+        if amount_out_raw is None:
+            continue
+        try:
+            amount_in_raw = int(record["amount_in_raw"])
+            input_amount = amount_in_raw / 10 ** int(spec["token0_decimals"])
+            output_amount = amount_out_raw / 10 ** int(spec["token1_decimals"])
+            block_number = int(record["block_number"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if input_amount <= 0 or output_amount <= 0:
+            continue
+        sqrt_after = _word(result, 1)
+        ticks_crossed = _word(result, 2)
+        gas_estimate = _word(result, 3)
+        pool_id = str(record.get("pool_id") or "").lower()
+        bucket = record.get("input_bucket_usdc")
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "uniswap",
+                "venue": "uniswap-v3",
+                "instrument_id": spec.get("canonical_instrument"),
+                "quote_id": f"{pool_id}:quoter-v2:{block_number}:{amount_in_raw}",
+                "quote_side": "usdc_to_weth_exact_input_simulation",
+                "quote_unit": "usdc_per_weth",
+                "price_usd": None,
+                "price_usdc_per_weth": input_amount / output_amount,
+                "native_price": output_amount / input_amount,
+                "depth_usd": None,
+                "input_amount": input_amount,
+                "input_amount_raw": str(amount_in_raw),
+                "output_amount": output_amount,
+                "output_amount_raw": str(amount_out_raw),
+                "input_bucket_usdc": bucket,
+                "block_number": block_number,
+                "sqrt_price_x96_after": str(sqrt_after) if sqrt_after is not None else None,
+                "initialized_ticks_crossed": ticks_crossed,
+                "gas_estimate": gas_estimate,
+                "finalized": True,
+                "quality_tier": (
+                    "onchain-quoter-v2 simulation at finality-buffered block; fixed-notional "
+                    "price-impact point, not a fill guarantee or market-wide executable depth"
+                ),
+                "record_json": _json(record),
+            }
+        )
+    return rows
 
 
 def uniswap_rpc_log_rows(
@@ -1367,6 +1485,62 @@ async def _capture_uniswap_rpc_logs(
     return logs, block_times, detail
 
 
+async def _capture_uniswap_quoter_quotes(
+    fetcher: Fetcher,
+    url: str,
+    finalized_block: int | None,
+    *,
+    record_url: str = "configured:ORCAP_ETHEREUM_RPC_URL",
+    rpc_mode: str = "operator_configured",
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Query official QuoterV2 at a finality-buffered block for fixed USDC sizes."""
+    if finalized_block is None or finalized_block < 0:
+        return [], {"error": "no finalized block available for QuoterV2 simulation"}
+    records = []
+    errors = 0
+    for pool_id, spec in sorted(uniswap_pool_specs().items()):
+        if spec["token0_symbol"] != "USDC" or spec["token1_symbol"] != "WETH":
+            continue
+        for bucket in UNISWAP_USDC_QUOTE_BUCKETS:
+            amount_in_raw = bucket * 10 ** int(spec["token0_decimals"])
+            result, error = await _ethereum_rpc(
+                fetcher,
+                url,
+                "eth_call",
+                [
+                    {
+                        "to": UNISWAP_V3_QUOTER_V2_ADDRESS,
+                        "data": _uniswap_quoter_calldata(spec, amount_in_raw),
+                    },
+                    _hex_quantity(finalized_block),
+                ],
+                record_url=record_url,
+            )
+            if error:
+                errors += 1
+                continue
+            records.append(
+                {
+                    "pool_id": pool_id,
+                    "spec": spec,
+                    "block_number": finalized_block,
+                    "input_bucket_usdc": bucket,
+                    "amount_in_raw": amount_in_raw,
+                    "result": result,
+                }
+            )
+    detail = {
+        "quoter_v2_address": UNISWAP_V3_QUOTER_V2_ADDRESS,
+        "rpc_mode": rpc_mode,
+        "recent_bounded_only": rpc_mode == "public_bounded_live",
+        "finalized_block": finalized_block,
+        "input_buckets_usdc": list(UNISWAP_USDC_QUOTE_BUCKETS),
+        "quoter_quote_rows": len(records),
+        "quoter_quote_errors": errors,
+    }
+    return records, detail
+
+
 async def _capture_cow_rpc_logs(
     fetcher: Fetcher,
     url: str,
@@ -1539,6 +1713,8 @@ async def capture_markets(
         uniswap = None
         uniswap_rpc_logs: list[dict[str, Any]] = []
         uniswap_block_times: dict[int, str | None] = {}
+        uniswap_quoter_records: list[dict[str, Any]] = []
+        uniswap_quoter_detail: dict[str, Any] = {}
         uniswap_rpc_detail: dict[str, Any] = {
             "rpc_configured": True,
             "rpc_mode": ethereum_rpc_mode,
@@ -1583,6 +1759,13 @@ async def capture_markets(
                     record_url=ethereum_rpc_record_url,
                     rpc_mode=ethereum_rpc_mode,
                 )
+            )
+            uniswap_quoter_records, uniswap_quoter_detail = await _capture_uniswap_quoter_quotes(
+                fetcher,
+                ethereum_rpc_url,
+                uniswap_rpc_detail.get("finalized_through_block"),
+                record_url=ethereum_rpc_record_url,
+                rpc_mode=ethereum_rpc_mode,
             )
         cow_rpc_logs, cow_block_times, cow_rpc_detail = await _capture_cow_rpc_logs(
             fetcher,
@@ -1646,7 +1829,11 @@ async def capture_markets(
     )
     golem_capacity = golem_capacity_rows(golem, run_ts, dt)
     chutes_capacity = chutes_capacity_rows(chutes_models, chutes_details, run_ts, dt)
-    uni_quotes, graph_uni_executions, graph_uni_events = uniswap_rows(uniswap, run_ts, dt)
+    graph_uni_quotes, graph_uni_executions, graph_uni_events = uniswap_rows(
+        uniswap, run_ts, dt
+    )
+    quoter_uni_quotes = uniswap_quoter_quote_rows(uniswap_quoter_records, run_ts, dt)
+    uni_quotes = graph_uni_quotes + quoter_uni_quotes
     rpc_uni_executions, rpc_uni_events = uniswap_rpc_log_rows(
         uniswap_rpc_logs, uniswap_block_times, run_ts, dt
     )
@@ -1777,7 +1964,7 @@ async def capture_markets(
             dt,
             {
                 "graph_configured": bool(graph_key and subgraph_id and pool_ids),
-                "graph_quote_rows": len(uni_quotes),
+                "graph_quote_rows": len(graph_uni_quotes),
                 "graph_execution_rows_ignored_for_finalized_path": (
                     len(graph_uni_executions) if uniswap_rpc_detail["rpc_configured"] else 0
                 ),
@@ -1787,6 +1974,7 @@ async def capture_markets(
                     for event in rpc_uni_events
                 ),
                 **uniswap_rpc_detail,
+                **uniswap_quoter_detail,
             },
             curated_dir,
         )
@@ -1839,6 +2027,7 @@ async def capture_markets(
         "chutes_capacity": len(chutes_capacity),
         "geckoterminal_quotes": len(geckoterminal_quotes),
         "uniswap_quotes": len(uni_quotes),
+        "uniswap_finalized_quote_curve_points": len(quoter_uni_quotes),
         "uniswap_executions": len(uni_executions),
         "uniswap_finalized_executions": len(rpc_uni_executions),
         "uniswap_finalized_liquidity_events": sum(

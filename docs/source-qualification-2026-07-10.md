@@ -145,6 +145,22 @@ depth, or turn GPv2 Trade events into market-wide order/fill/surplus coverage.
 An operator-selected archive RPC remains the preferred source for a paper-grade
 historical panel.
 
+## Qualified with a bounded scope: Uniswap QuoterV2 price-impact curve
+
+Uniswap's official Ethereum deployment list identifies QuoterV2 at
+`0x61fFE014bA17989E743c5F6cB21bF9697530B21e`, and its official interface says
+that exact-input calls calculate expected swap amounts without executing a
+swap. The collector calls that contract through the same RPC at the
+finality-buffered block for USDC inputs of 100, 1,000, 10,000, and 100,000 on
+each registered USDC/WETH pool. The live probe returned eight finalized-block
+simulation rows, with non-zero outputs and explicit ticks-crossed fields.
+
+This is a fixed-notional state-simulation curve, not an executed fill, a firm
+RFQ, or a market-wide depth measure. It can measure a repeatable price impact
+at the registered buckets, but it does not account for a subsequent block,
+transaction ordering, wallet approvals, gas, cross-pool routing, or wider
+market liquidity. H41 continues to keep the full Uniswap depth gate closed.
+
 ## Qualified in this run: Novita public SSR pricing catalog
 
 Novita's public pricing page embeds a named `initialFullLLMModels` catalog in

@@ -173,6 +173,22 @@ def main() -> None:
         "--input", required=True, help="redacted JSONL capacity-outcome export"
     )
 
+    p_register_study = sub.add_parser(
+        "register-routing-study",
+        help="validate and register a payload-free randomized routing-study manifest",
+    )
+    p_register_study.add_argument(
+        "--input", required=True, help="pre-outcome randomized-study manifest JSON"
+    )
+
+    p_ingest_assignments = sub.add_parser(
+        "ingest-routing-assignments",
+        help="validate and ingest pre-assigned payload-free model-epoch treatment arms",
+    )
+    p_ingest_assignments.add_argument(
+        "--input", required=True, help="pre-assigned treatment-arm JSONL export"
+    )
+
     p_import_policy = sub.add_parser(
         "import-router-policy",
         help="validate and snapshot a redacted Cloudflare, Portkey, or LiteLLM policy JSON",
@@ -260,6 +276,14 @@ def main() -> None:
         from .capture_markets import main as market_main
 
         market_main(with_uniswap=args.with_uniswap, with_akash=args.with_akash)
+    elif args.command == "register-routing-study":
+        from .study_registry import register_main
+
+        register_main(args.input)
+    elif args.command == "ingest-routing-assignments":
+        from .study_registry import assignments_main
+
+        assignments_main(args.input)
     elif args.command == "quality":
         from .quality import main as quality_main
 
@@ -326,6 +350,7 @@ def main() -> None:
             "h47": "h47_gpu_venue_basis",
             "h48": "h48_capacity_mechanism",
             "h49": "h49_solver_competition",
+            "h50": "h50_controlled_routing",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

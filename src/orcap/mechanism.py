@@ -10,7 +10,7 @@ mechanism-design proposal, not a claim about any existing router's policy.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import isfinite
+from math import isclose, isfinite
 
 import pandas as pd
 
@@ -22,6 +22,19 @@ class ProviderOffer:
     reliability: float
     committed_capacity: float
     marginal_cost: float
+
+
+@dataclass(frozen=True)
+class OutageScenario:
+    """One joint provider-availability state for a fixed allocation epoch.
+
+    The state is intentionally joint: a shared GPU, cloud, or routing outage
+    can remove several providers together. Independence must not be inferred
+    from marginal uptime scores.
+    """
+
+    probability: float
+    unavailable_providers: frozenset[str]
 
 
 def allocation_shares(offers: list[ProviderOffer], eta: float = 2.0) -> pd.Series:
@@ -158,6 +171,63 @@ def capacity_bond_floor(marginal_margin_per_request: float) -> float:
     if not isfinite(marginal_margin_per_request):
         raise ValueError("marginal margin must be finite")
     return max(0.0, -marginal_margin_per_request)
+
+
+def limited_liability_delivery_gain(
+    marginal_margin_per_request: float,
+    nominal_bond_per_missed_request: float,
+    collectible_liability_cap: float,
+) -> float:
+    """Payoff gain from serving rather than rationing under limited liability.
+
+    A promised bond above the provider's collectible collateral does not make
+    delivery more attractive. For a feasible request, the exact gain is
+    ``p - c + min(b, L)`` where ``L`` is the liability cap. Strict delivery
+    preference requires this value to be positive. This does not apply to a
+    physical outage, where delivery is infeasible rather than strategically
+    withheld.
+    """
+    values = {
+        "marginal_margin_per_request": marginal_margin_per_request,
+        "nominal_bond_per_missed_request": nominal_bond_per_missed_request,
+        "collectible_liability_cap": collectible_liability_cap,
+    }
+    if any(not isfinite(value) for value in values.values()):
+        raise ValueError("limited-liability inputs must be finite")
+    if nominal_bond_per_missed_request < 0 or collectible_liability_cap < 0:
+        raise ValueError("bond and liability cap must be non-negative")
+    return marginal_margin_per_request + min(
+        nominal_bond_per_missed_request, collectible_liability_cap
+    )
+
+
+def expected_delivered_under_outage_scenarios(
+    allocation: pd.Series, scenarios: list[OutageScenario]
+) -> float:
+    """Expected delivered requests under an explicitly joint outage law.
+
+    This is a measurement primitive, not an optimal robust-routing solver.
+    The capacity-certified allocation maximizes deterministic delivered count
+    under hard commitments; correlated physical failures require this separate
+    joint availability input before any reliability or welfare statement.
+    """
+    numeric_allocation = pd.to_numeric(allocation, errors="coerce")
+    if numeric_allocation.isna().any() or (numeric_allocation < 0).any():
+        raise ValueError("allocation must be finite and non-negative")
+    if not scenarios:
+        raise ValueError("at least one outage scenario is required")
+    total_probability = sum(scenario.probability for scenario in scenarios)
+    if not isclose(total_probability, 1.0, rel_tol=0.0, abs_tol=1e-9):
+        raise ValueError("outage scenario probabilities must sum to one")
+    delivered = 0.0
+    for scenario in scenarios:
+        if not isfinite(scenario.probability) or scenario.probability < 0:
+            raise ValueError("outage scenario probabilities must be finite and non-negative")
+        available = numeric_allocation.drop(
+            labels=list(scenario.unavailable_providers), errors="ignore"
+        )
+        delivered += scenario.probability * float(available.sum())
+    return delivered
 
 
 def realized_provider_payoff(

@@ -6,8 +6,11 @@ venue = "uniswap-v3"
 quality_tier = "ethereum-5bps"
 token0_symbol = "USDC"
 token0_decimals = 6
+token0_address = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 token1_symbol = "WETH"
 token1_decimals = 18
+token1_address = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+fee = 500
 
 [instruments.uniswap_usdc_weth_30]
 source = "uniswap"
@@ -17,8 +20,11 @@ venue = "uniswap-v3"
 quality_tier = "ethereum-30bps"
 token0_symbol = "USDC"
 token0_decimals = 6
+token0_address = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 token1_symbol = "WETH"
 token1_decimals = 18
+token1_address = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+fee = 3000
 
 [instruments.vast_h100_sxm]
 source = "vast"

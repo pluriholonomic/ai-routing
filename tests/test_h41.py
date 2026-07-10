@@ -193,3 +193,52 @@ def test_h41_requires_capacity_from_the_compute_market(monkeypatch, tmp_path):
     monkeypatch.setattr(h41, "_table", lambda name, _columns: tables[name])
     summary = h41.run(tmp_path)
     assert "no non-null decentralized-compute capacity" in summary["comparison_status"]
+
+
+def test_h41_labels_fixed_notional_quote_curve_as_distinct_from_depth(monkeypatch, tmp_path):
+    tables = {
+        "market_participants": pd.DataFrame(),
+        "market_executions": pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "execution_id": "swap-a",
+                    "success": True,
+                    "finalized": True,
+                },
+                {
+                    "dt": "2026-07-10",
+                    "source": "cow",
+                    "execution_id": "cow-a",
+                    "success": True,
+                },
+            ]
+        ),
+        "market_quotes": pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "quote_side": "usdc_to_weth_exact_input_simulation",
+                    "depth_usd": None,
+                    "finalized": True,
+                }
+            ]
+        ),
+        "market_capacity": pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "akash",
+                    "participant_id": "provider-a",
+                    "total": 8.0,
+                }
+            ]
+        ),
+    }
+    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables[name])
+    summary = h41.run(tmp_path)
+    assert summary["finalized_uniswap_quote_curve_observed"] is True
+    assert summary["finalized_uniswap_depth_observed"] is False
+    assert "fixed-notional quote curves" in summary["comparison_status"]

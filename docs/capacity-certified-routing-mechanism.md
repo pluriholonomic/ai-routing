@@ -103,6 +103,18 @@ AMM welfare results.
    is a direct-revelation benchmark, not a claim that public router quotes are
    private costs, a budget-balanced mechanism, or a solution to private
    capacity.
+7. **Limited liability.** If at most `L_i` of a nominal per-missed-request
+   bond `b_i` is collectible, the payoff gain from serving a feasible assigned
+   request is `p_i-c_i+min(b_i,L_i)`. Thus a nominal bond larger than
+   collectible collateral does not strengthen the delivery incentive. This is
+   a strict-condition extension of the one-period delivery lemma, not a
+   capacity-reporting or physical-outage solution.
+8. **Correlated outages.** With a joint outage state `omega` and fixed
+   allocation `x`, expected delivery is `sum_omega pi(omega) sum_i
+   1{i available in omega} x_i`. The deterministic water-fill result does not
+   establish a reliability or welfare ranking under correlated physical
+   outages. `OutageScenario` therefore requires a joint availability law;
+   marginal uptime cannot be substituted for it.
 
 The next theory step is to extend this one-period result to private capacity
 and a stochastic health process, then prove an individually rational
@@ -171,6 +183,17 @@ held fixed, the transfer may require a subsidy, delivery is assumed, and
 quality/reliability cannot be privately manipulated. The separate shortfall
 bond is still required to make delivery incentives credible.
 
+The limited-liability calculation is immediate: under a feasible deliberate
+refusal, the provider can lose no more than `min(b_i,L_i)`, so delivery minus
+refusal is exactly `p_i-c_i+min(b_i,L_i)`. A design requiring a positive
+delivery incentive must therefore verify collateral above the negative-margin
+gap; increasing a merely nominal bond past the cap has no effect. Physical
+outages remain distinct. For any recorded joint availability scenarios,
+expected delivered requests are the probability-weighted available allocation.
+The function `expected_delivered_under_outage_scenarios` records that quantity,
+but it intentionally does not infer independent failures or choose a robust
+portfolio without an empirical joint-outage panel.
+
 ## Empirical mapping and gates
 
 | model object | measurement | current status |
@@ -201,6 +224,13 @@ three-way match: selected route attempts, a capacity commitment, and an epoch
 outcome. It keeps attempt outcomes and epoch aggregates distinct, so the
 contract supports controlled-study calibration rather than a claim about a
 router's global allocation or a provider's total delivered capacity.
+
+`docs/controlled-routing-study.md` adds the necessary causal layer: a
+pre-outcome manifest and non-overlapping randomized model-epoch assignment
+ledger. H50 estimates registered policy contrasts only after its validity and
+power gates clear. This upgrades the empirical path from a matched accounting
+panel to an owned-study design; it does not create observed commitments,
+delivery, or a welfare result by itself.
 
 ## EC paper path
 

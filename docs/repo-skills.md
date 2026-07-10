@@ -118,6 +118,11 @@ provider-selection calibration study.
 5. Before paid probes, pre-register workload shapes, randomization, rate and
    spend limits, retry handling, and a stop condition. Do not use a gateway's
    outer upstream label as the final provider inside another router.
+6. For a causal policy comparison, register a `model_epoch` manifest through
+   `register-routing-study`, retain a private seed commitment, and ingest the
+   complete pre-assigned epoch ledger before reading H50. Treat a policy-field
+   mismatch, overlap, post-start assignment, or failed negative control as a
+   design failure rather than a usable treatment observation.
 
 Completion check: public source health is green, quote/policy output joins only
 through the versioned alias map, and owned telemetry contains no payload fields.

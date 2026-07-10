@@ -21,7 +21,7 @@ does not invite an unsupported conversion into inference tokens or revenue.
 | Source | Finding | Decision |
 |---|---|---|
 | CoW Protocol trade endpoint | The public trade endpoint requires an owner or order UID, so it cannot supply a market-wide execution feed. The separate public `solver_competition/latest` endpoint is captured as a bounded live solver-competition snapshot. | Use it for current candidate-solver participation only; keep the market-wide CoW execution/fill gate closed until a bounded official aggregate/subgraph feed is configured. |
-| Uniswap depth and swaps | The configured Graph path requires a subgraph id and API key. | Keep credential-gated; do not substitute an undocumented third-party feed. |
+| Uniswap historical tick/position depth | Full historical position reconstruction still needs an archive source or a pinned subgraph. | The hourly monitor now has finalized swaps plus official QuoterV2 fixed-notional simulations; keep the full depth gate closed because a quote curve is not historical market-wide depth. |
 | Golem Stats | The documented public API exposes provider and utilization series, but the live API hostname failed DNS resolution from the collector environment. | Keep `golem` degraded and monitor; do not create zero-capacity records. |
 | GitHub repository traffic | GitHub traffic endpoints require repository write/admin access and only retain 14 days of clone history. | Do not treat public stars/forks as model consumption. Existing devrel metrics remain adoption proxies only. |
 | Ollama local API | The documented API operates on a user's local server. | Do not probe third-party servers or infer user behavior. Only aggregate Library pulls are collected. |
