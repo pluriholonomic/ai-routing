@@ -34,8 +34,8 @@ jobs:
           uv run orcap capture-hf-router \
             --samples "${{ github.event.inputs.samples || '4' }}" \
             --interval-seconds 900
-      - name: validate router-comparator source health
-        run: uv run orcap quality --profile router_comparator
+      - name: validate Hugging Face router source health
+        run: uv run orcap quality --profile hf_router
       - name: buffer output as workflow artifact
         uses: actions/upload-artifact@v4
         with:

@@ -45,3 +45,22 @@ def test_stale_required_source_is_red(tmp_path):
         )
     result = check("core", curated_dir=tmp_path, now=now + timedelta(days=1))
     assert result["overall"] == "red"
+
+
+def test_hf_router_profile_accepts_a_fresh_independent_capture(tmp_path):
+    now = datetime(2026, 7, 9, tzinfo=UTC)
+    write_source_run(
+        "huggingface_inference_providers",
+        status="success",
+        rows=100,
+        run_ts="20260709T000000Z",
+        dt="2026-07-09",
+        curated_dir=tmp_path,
+    )
+
+    result = check("hf_router", curated_dir=tmp_path, now=now)
+
+    assert result["overall"] == "green"
+    assert [source["source"] for source in result["sources"]] == [
+        "huggingface_inference_providers"
+    ]

@@ -1,5 +1,7 @@
+from pathlib import Path
+
 from orcap.capture_hf_router import policy_simulation_rows, provider_endpoint_rows
-from orcap.observability import source_spec
+from orcap.observability import registry, source_spec
 
 
 def _body():
@@ -70,3 +72,13 @@ def test_hf_router_is_required_in_its_own_source_profile():
     spec = source_spec("huggingface_inference_providers")
     assert spec.required
     assert spec.min_rows == 100
+
+    _, profiles = registry()
+    assert profiles["hf_router"] == ["huggingface_inference_providers"]
+    assert "openrouter_api" in profiles["router_comparator"]
+
+
+def test_hf_router_workflow_validates_its_independent_profile():
+    workflow = (Path(__file__).parents[1] / ".github/workflows/hf-router.yml").read_text()
+    assert "orcap quality --profile hf_router" in workflow
+    assert "orcap quality --profile router_comparator" not in workflow
