@@ -1,40 +1,69 @@
 """Daily capture of DIRECT provider list prices, for the venue-basis test (H13):
 what does the same model cost from the provider's own API vs via OpenRouter?
 
-Two tiers:
-  - Parsed now: DeepInfra (public JSON with per-token pricing) ->
-    direct_prices_daily rows.
-  - Raw-archived for later parsing: pricing pages of other majors (Groq,
-    Novita, Together, Fireworks, Lambda, Hyperbolic, Parasail) — stored
-    verbatim in the raw layer so history exists from today even before a
-    parser does.
+Two tiers, kept explicitly separate in the curated provenance:
+  - Structured public API: DeepInfra's model-list JSON.
+  - Published docs table: Together's public serverless catalog.  It has exact
+    API model IDs and per-million-token list prices, but it is a rendered
+    documentation table rather than a versioned pricing API.  A header change
+    yields zero Together rows (and a degraded source-run) rather than a
+    best-effort or fuzzy parse.
+
+The remaining provider pages are raw-archived for later parser work.  Raw
+evidence alone is not a usable H13 list-price observation.
 """
 
 import asyncio
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
+from lxml import etree, html
 
 from .capture_api import write_partition
 from .config import CURATED_DIR, RAW_DIR, dt_partition, run_timestamp
 from .http import Fetcher, make_client, write_raw
+from .observability import write_source_run
 
 log = logging.getLogger(__name__)
 
 DEEPINFRA_URL = "https://api.deepinfra.com/models/list"
+TOGETHER_SERVERLESS_MODELS_URL = "https://docs.together.ai/docs/serverless/models"
 
 RAW_PAGES = {
     "groq": "https://groq.com/pricing",
     "novita_llm": "https://novita.ai/pricing",
-    "together": "https://www.together.ai/pricing",
+    "together": TOGETHER_SERVERLESS_MODELS_URL,
     "fireworks": "https://fireworks.ai/pricing",
     "lambda": "https://lambda.ai/inference",
     "hyperbolic": "https://hyperbolic.ai/pricing",
     "cerebras": "https://www.cerebras.ai/pricing",
 }
+
+_MILLION = 1_000_000
+_USD_PRICE = re.compile(r"^\$(\d+(?:\.\d+)?)$")
+
+
+def _text(node: Any) -> str:
+    return " ".join(node.text_content().replace("\xa0", " ").split())
+
+
+def _header(value: str) -> str:
+    return re.sub(r"\s+", " ", value.strip().lower())
+
+
+def _usd_per_token(value: str) -> float | None:
+    """Convert a literal public ``$X per 1M tokens`` cell to USD/token.
+
+    The parser deliberately accepts only a single dollar price.  Ranges,
+    marketing copy, blank cells, and changed table formats are excluded rather
+    than silently interpreted as executable list quotes.
+    """
+    match = _USD_PRICE.fullmatch(value.strip())
+    return float(match.group(1)) / _MILLION if match else None
 
 
 def deepinfra_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
@@ -57,9 +86,88 @@ def deepinfra_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
                 if pricing.get("rate_per_input_token_cached") is not None
                 else None,
                 "deprecated": bool(m.get("deprecated")),
+                "quote_unit": "usd_per_token",
+                "source_type": "structured_public_api",
+                "source_url": DEEPINFRA_URL,
+                "source_schema_version": "deepinfra_models_list_v1",
                 "record_json": json.dumps(m, separators=(",", ":"), sort_keys=True),
             }
         )
+    return rows
+
+
+def together_rows(body: str | None, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize only Together's explicit chat price table.
+
+    The source labels these columns as prices per 1M tokens.  We require the
+    exact API-model and input/output-token columns, retain their original cells
+    in ``record_json``, and keep Together's published docs provenance distinct
+    from an API quote.  We deliberately do not fuzzy-match product names.
+    """
+    if not body:
+        return []
+    try:
+        tree = html.fromstring(body)
+    except (TypeError, ValueError, etree.ParserError):
+        return []
+
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for table in tree.xpath("//table"):
+        table_rows = table.xpath(".//tr")
+        if not table_rows:
+            continue
+        headers = [_header(_text(cell)) for cell in table_rows[0].xpath("./th|./td")]
+        try:
+            model_idx = headers.index("api model string")
+            input_idx = headers.index("input pricing (per 1m tokens)")
+            output_idx = headers.index("output pricing (per 1m tokens)")
+        except ValueError:
+            continue
+        cached_idx = next(
+            (
+                i
+                for i, label in enumerate(headers)
+                if label == "cached input pricing (per 1m tokens)"
+            ),
+            None,
+        )
+        required_width = max(model_idx, input_idx, output_idx) + 1
+        for tr in table_rows[1:]:
+            cells = [_text(cell) for cell in tr.xpath("./td")]
+            if len(cells) < required_width:
+                continue
+            model_name = cells[model_idx].strip()
+            price_input = _usd_per_token(cells[input_idx])
+            price_output = _usd_per_token(cells[output_idx])
+            if not model_name or model_name in seen or price_input is None or price_output is None:
+                continue
+            cached = (
+                _usd_per_token(cells[cached_idx])
+                if cached_idx is not None and cached_idx < len(cells)
+                else None
+            )
+            seen.add(model_name)
+            rows.append(
+                {
+                    "run_ts": run_ts,
+                    "dt": dt,
+                    "provider": "together",
+                    "model_name": model_name,
+                    "model_type": "chat",
+                    "price_input_usd": price_input,
+                    "price_output_usd": price_output,
+                    "price_cached_input_usd": cached,
+                    "deprecated": False,
+                    "quote_unit": "usd_per_token",
+                    "source_type": "published_docs_table",
+                    "source_url": TOGETHER_SERVERLESS_MODELS_URL,
+                    "source_schema_version": "together_serverless_chat_v1",
+                    "record_json": json.dumps(
+                        {"headers": headers, "cells": cells}, separators=(",", ":"), sort_keys=True
+                    ),
+                }
+            )
     return rows
 
 
@@ -70,19 +178,46 @@ async def capture_direct(
     dt = dt_partition()
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
-        deepinfra = await fetcher.get_json(DEEPINFRA_URL)
-        # raw-archive pricing pages (HTML lands in the record body)
-        for _name, url in RAW_PAGES.items():
-            await fetcher.get_json(url)
+        deepinfra, *raw_pages = await asyncio.gather(
+            fetcher.get_json(DEEPINFRA_URL),
+            *(fetcher.get_text(url) for url in RAW_PAGES.values()),
+        )
         write_raw(fetcher.records, "direct_providers", raw_dir, run_ts, dt)
 
-    rows = deepinfra_rows(deepinfra, run_ts, dt)
+    raw_by_provider = dict(zip(RAW_PAGES, raw_pages, strict=True))
+    deepinfra = deepinfra_rows(deepinfra, run_ts, dt)
+    together = together_rows(raw_by_provider.get("together"), run_ts, dt)
+    rows = deepinfra + together
     if rows:
         write_partition(pa.Table.from_pylist(rows), "direct_prices_daily", run_ts, dt, curated_dir)
+    write_source_run(
+        "direct_deepinfra_api",
+        status="success" if deepinfra else "degraded",
+        rows=len(deepinfra),
+        run_ts=run_ts,
+        dt=dt,
+        curated_dir=curated_dir,
+        detail={"url": DEEPINFRA_URL, "source_type": "structured_public_api"},
+    )
+    write_source_run(
+        "direct_together_docs",
+        status="success" if together else "degraded",
+        rows=len(together),
+        run_ts=run_ts,
+        dt=dt,
+        curated_dir=curated_dir,
+        detail={
+            "url": TOGETHER_SERVERLESS_MODELS_URL,
+            "source_type": "published_docs_table",
+            "schema_version": "together_serverless_chat_v1",
+        },
+    )
     summary = {
         "run_ts": run_ts,
         "dt": dt,
-        "deepinfra_models": len(rows),
+        "deepinfra_models": len(deepinfra),
+        "together_models": len(together),
+        "direct_price_rows": len(rows),
         "raw_pages": len(RAW_PAGES),
     }
     log.info("direct capture complete: %s", summary)

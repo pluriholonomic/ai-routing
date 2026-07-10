@@ -25,12 +25,12 @@ controls, but are not the primary comparison dataset.
 |---|---|---|
 | OpenRouter quotes | all endpoints sampled at five-minute resolution, plus provider price changes | young live panel; posted list prices are not guaranteed executable fills |
 | OpenRouter execution | daily frontend effective pricing, uptime, comparisons; hot-model congestion | no client-level fills, no request timestamps, and only router-estimated capacity |
-| Direct inference basis | structured daily DeepInfra prices | seven other provider pages are raw HTML only; no stable ID-mapping or quote-quality coverage |
+| Direct inference basis | structured daily DeepInfra prices plus Together's exact-ID public serverless docs table | Together is explicitly a posted-doc quote; other provider pages remain raw HTML only, so coverage is still too narrow for a market-wide conclusion |
 | Open GPU supply | hourly Vast offer books, on-demand and bid | single marketplace; no region/quality-normalized cross-venue index or observed utilization |
 | Forward/carry | Vast duration buckets plus static anchors | heterogeneous, sparse forward anchors; no tradable same-venue curve |
 | DeFi macro controls | base fee, two Uniswap V3 pool prices, CoW sender counts, BTC funding/hashprice | no event-level depth, volume, gas-inclusive execution, solver identity, or time-aligned cross-venue universe |
 | DeFi monitoring | manual `orcap defi` fetch and cached parquet | no workflow, freshness SLO, source status, raw archive, or downstream analysis integration |
-| Reproducibility | raw capture exists for core collectors; synthetic estimator tests | no source registry, no run manifest, no schema/freshness checks, and analysis errors can publish partial results |
+| Reproducibility | raw capture, source registry/run ledger, and synthetic estimator tests for core collectors | DeFi feeds still lack complete production schemas and freshness coverage; analyses need final matched-data gates before any full-market claim |
 
 ## Source plan
 
