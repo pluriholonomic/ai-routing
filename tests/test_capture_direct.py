@@ -6,11 +6,14 @@ import pandas as pd
 
 from orcap.analysis import h13_venue_basis
 from orcap.capture_direct import (
+    CEREBRAS_MODELS_URL,
     DEEPINFRA_URL,
     FIREWORKS_MODEL_PAGES,
     GROQ_MODELS_URL,
     TOGETHER_SERVERLESS_MODELS_URL,
+    cerebras_rows,
     deepinfra_rows,
+    direct_price_table,
     fireworks_rows,
     groq_rows,
     together_rows,
@@ -44,6 +47,75 @@ GROQ_MODELS_TABLE = """
 <tbody><tr><td>meta-llama/llama-4-scout-17b-16e-instruct</td>
 <td>$0.11 input $0.34 output</td></tr></tbody></table>
 """
+
+
+def test_cerebras_rows_keep_provider_api_and_first_party_canonical_ids():
+    rows = cerebras_rows(
+        {
+            "object": "list",
+            "data": [
+                {
+                    "id": "gpt-oss-120b",
+                    "hugging_face_id": "openai/gpt-oss-120b",
+                    "pricing": {"prompt": "0.00000035", "completion": "0.00000075"},
+                    "deprecated": False,
+                }
+            ],
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["model_name"] == "openai/gpt-oss-120b"
+    assert row["direct_provider_model_id"] == "gpt-oss-120b"
+    assert row["model_identifier_type"] == "first_party_hugging_face_id"
+    assert row["price_input_usd"] == 0.00000035
+    assert row["price_output_usd"] == 0.00000075
+    assert row["source_url"] == CEREBRAS_MODELS_URL
+
+
+def test_cerebras_rows_reject_missing_or_non_positive_prices():
+    assert cerebras_rows(
+        {"data": [{"id": "m", "pricing": {"prompt": "0", "completion": "1"}}]},
+        "20260710T000000Z",
+        "2026-07-10",
+    ) == []
+
+
+def test_direct_price_table_keeps_later_provider_provenance_columns():
+    deepinfra = deepinfra_rows(
+        [
+            {
+                "model_name": "meta-llama/Llama-3",
+                "type": "chat",
+                "pricing": {
+                    "type": "tokens",
+                    "cents_per_input_token": 0.0001,
+                    "cents_per_output_token": 0.0002,
+                },
+            }
+        ],
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    cerebras = cerebras_rows(
+        {
+            "data": [
+                {
+                    "id": "gpt-oss-120b",
+                    "hugging_face_id": "openai/gpt-oss-120b",
+                    "pricing": {"prompt": "0.00000035", "completion": "0.00000075"},
+                }
+            ]
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    table = direct_price_table(deepinfra + cerebras)
+    row = table.to_pylist()[1]
+    assert row["direct_provider_model_id"] == "gpt-oss-120b"
+    assert row["model_identifier_type"] == "first_party_hugging_face_id"
 
 
 def test_deepinfra_rows_label_structured_api_provenance():
@@ -146,6 +218,30 @@ def test_h13_accepts_rest_model_id_but_keeps_exact_model_identifier(monkeypatch)
             "routed_out": 0.0000002,
         }
     ]
+
+
+def test_h13_maps_cerebras_to_first_party_canonical_model_key(monkeypatch):
+    class Relation:
+        def df(self):
+            return pd.DataFrame(
+                [
+                    {
+                        "dt": "2026-07-10",
+                        "provider_display_name": "Cerebras",
+                        "record_json": json.dumps(
+                            {
+                                "model_id": "openai/gpt-oss-120b",
+                                "pricing": {"prompt": "0.00000035", "completion": "0.00000075"},
+                            }
+                        ),
+                    }
+                ]
+            )
+
+    monkeypatch.setattr(h13_venue_basis.data, "q", lambda _sql: Relation())
+    routed = h13_venue_basis.load_routed()
+    assert routed.loc[0, "provider"] == "cerebras"
+    assert routed.loc[0, "model_name"] == "openai/gpt-oss-120b"
 
 
 def test_h13_maps_fireworks_only_by_exact_provider_model_id(monkeypatch):

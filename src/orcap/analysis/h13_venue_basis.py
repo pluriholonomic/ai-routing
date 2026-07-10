@@ -30,10 +30,12 @@ MIN_PAIRS = 50
 MIN_PROVIDERS = 3
 MIN_PAIRS_PER_PROVIDER = 10
 
-# OpenRouter display name -> capture_direct provider key.  The model identifier
-# is joined exactly: provider aliases or product-name similarities never count
-# as a venue-basis match.
+# OpenRouter display name -> capture_direct provider key. The model key is
+# joined exactly: it is usually the provider API id, and for Cerebras can be a
+# literal first-party ``hugging_face_id`` supplied by its model API. Provider
+# aliases or product-name similarities never count as a venue-basis match.
 PROVIDER_MAP = {
+    "Cerebras": "cerebras",
     "DeepInfra": "deepinfra",
     "Together": "together",
     "Fireworks": "fireworks",
