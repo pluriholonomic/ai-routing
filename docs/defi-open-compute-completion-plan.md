@@ -61,7 +61,8 @@ context and must never substitute for Tier 1.
 
 The implementation records public DefiLlama data immediately. Configure the
 other feeds through environment-only settings: `ORCAP_COW_TRADES_URL` for a
-properly scoped or market-wide official CoW feed, `ORCAP_GOLEM_STATS_URL` for
+properly scoped market-wide CoW feed (not the identity-scoped public
+`/api/v2/trades` route), `ORCAP_GOLEM_STATS_URL` for
 the current Golem endpoint, `ORCAP_AKASH_NETWORK_URL` and optional
 `AKASH_API_KEY` for the chosen Akash network-data feed, and `GRAPH_API_KEY`,
 `ORCAP_UNISWAP_SUBGRAPH_ID`, and `ORCAP_UNISWAP_POOLS` for the pinned Uniswap
