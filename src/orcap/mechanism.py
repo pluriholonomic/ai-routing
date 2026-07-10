@@ -168,6 +168,54 @@ def realized_provider_payoff(
     return (offer.price - offer.marginal_cost) * served - bond_per_missed_request * shortfall
 
 
+def declared_capacity_payoff(
+    offers: list[ProviderOffer],
+    *,
+    provider: str,
+    actual_capacity: float,
+    reported_capacity: float,
+    demand: float,
+    bond_per_missed_request: float,
+    eta: float = 2.0,
+) -> float:
+    """Payoff from a capacity report when physical capacity is lower or equal.
+
+    This is a counterfactual diagnostic for the hard-capacity reduced form:
+    the report changes water-fill allocation, but delivery cannot exceed
+    ``actual_capacity``. It does not model capacity acquisition, side payments,
+    stochastic outages, or a provider's ability to manipulate reliability.
+    """
+    if actual_capacity < 0 or reported_capacity < 0:
+        raise ValueError("actual and reported capacity must be non-negative")
+    if bond_per_missed_request < 0:
+        raise ValueError("bond_per_missed_request must be non-negative")
+    by_provider = {offer.provider: offer for offer in offers}
+    if provider not in by_provider:
+        raise ValueError(f"unknown provider: {provider}")
+    reported_offers = [
+        (
+            ProviderOffer(
+                provider=offer.provider,
+                price=offer.price,
+                reliability=offer.reliability,
+                committed_capacity=reported_capacity,
+                marginal_cost=offer.marginal_cost,
+            )
+            if offer.provider == provider
+            else offer
+        )
+        for offer in offers
+    ]
+    allocation = capacity_constrained_allocation(reported_offers, demand, eta)
+    allocated = float(allocation.get(provider, 0))
+    return realized_provider_payoff(
+        by_provider[provider],
+        allocated_requests=allocated,
+        served_requests=min(allocated, actual_capacity),
+        bond_per_missed_request=bond_per_missed_request,
+    )
+
+
 def capacity_feasible(offer: ProviderOffer, allocated_requests: float) -> bool:
     """Whether the commitment covers the router's allocated request quantity."""
     return allocated_requests <= offer.committed_capacity

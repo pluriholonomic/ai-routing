@@ -109,6 +109,19 @@ commitment is lower, allocating each `k_i` leaves the residual explicitly
 unfilled. This proves feasibility conditional on verified commitments, not
 truthful commitment revelation or optimality under private information.
 
+There is one narrower reporting result. Suppose a provider's physical capacity
+is a hard `K_i`, it reports `k_i`, price and reliability are held fixed, and a
+fully collectible `b_i>0` applies to every unserved assigned request. If it
+reports `k_i>K_i`, it cannot increase served quantity above `K_i`: when the
+truthful cap is slack, raising it does not change the water-fill allocation;
+when it binds, any additional allocation is unserved and loses the bond.
+Thus over-reporting is weakly unprofitable and strictly worse whenever it
+creates extra unserved allocation. The code-level `declared_capacity_payoff`
+checks this counterfactual. This is **not** full truthful-reporting
+implementation: endogenous capacity investment, limited collateral, private
+reliability, correlated outages, and price/reliability manipulation still need
+a Bayesian mechanism and empirical inputs.
+
 ## Empirical mapping and gates
 
 | model object | measurement | current status |
