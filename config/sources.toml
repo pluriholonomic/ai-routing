@@ -8,6 +8,10 @@ gpu = ["vast", "ornn", "lambda_gpu_pricing"]
 market = ["defillama", "cow", "golem", "akash", "chutes", "uniswap", "geckoterminal"]
 usage = ["huggingface_open_models", "ollama_library", "docker_hub"]
 router_comparator = ["openrouter_api", "huggingface_inference_providers"]
+# The hourly Hugging Face collector is buffered independently and only needs to
+# validate the source it has just captured.  Keep router_comparator for analyses
+# that require both routers to be available.
+hf_router = ["huggingface_inference_providers"]
 livepeer = ["livepeer_gateway"]
 router_shadow = [
   "openrouter_api",
