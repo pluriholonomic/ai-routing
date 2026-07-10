@@ -104,12 +104,20 @@ seven days, and both registered pools.
 
 The monitor additionally calls the official mainnet
 [Uniswap V3 QuoterV2](https://developers.uniswap.org/docs/protocols/v3/deployments/v3-ethereum-deployments)
-with four exact-USDC input buckets for each registered pool, pinned to the
-same finality-buffered block. These rows are a reproducible fixed-notional
-price-impact curve (amount out, post-quote price state, initialized ticks
-crossed, and quoted gas), not a transaction, firm quote, fill guarantee, or
-market-wide executable depth. They strengthen the AMM comparison but do not
-clear the depth gate on their own.
+with six exact-USDC input buckets (100 through 10 million USDC) for each
+registered pool, pinned to the same finality-buffered block. These rows are a
+reproducible fixed-notional price-impact curve (amount out, post-quote price
+state, initialized ticks crossed, and quoted gas), not a transaction, firm
+quote, fill guarantee, or market-wide executable depth. They strengthen the
+AMM comparison but do not clear the depth gate on their own.
+
+Across a sparse fixed USDC ladder, the monitor also records the largest
+successful input point within 100 and 500 basis points of the smallest
+same-block all-in simulation. These are explicitly **state-derived,
+discrete lower bounds** on local price-impact capacity: they do not reconstruct
+the complete tick book, represent total or market-wide liquidity, or guarantee
+a subsequent fill. They are retained separately from both the fixed-notional
+curve and the finalized-depth gate.
 
 The same archive-capable RPC path also queries the verified mainnet
 `GPv2Settlement` contract for `Trade` and `Settlement` events in a separate

@@ -241,7 +241,56 @@ def test_h41_labels_fixed_notional_quote_curve_as_distinct_from_depth(monkeypatc
     summary = h41.run(tmp_path)
     assert summary["finalized_uniswap_quote_curve_observed"] is True
     assert summary["finalized_uniswap_depth_observed"] is False
+    assert summary["finalized_uniswap_impact_capacity_observed"] is False
     assert "fixed-notional quote curves" in summary["comparison_status"]
+
+
+def test_h41_reports_state_impact_capacity_separately_from_full_depth(monkeypatch, tmp_path):
+    tables = {
+        "market_participants": pd.DataFrame(),
+        "market_executions": pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "execution_id": "swap-a",
+                    "success": True,
+                    "finalized": True,
+                },
+                {"dt": "2026-07-10", "source": "cow", "execution_id": "cow-a", "success": True},
+            ]
+        ),
+        "market_quotes": pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "pool_id": "pool-a",
+                    "quote_side": "usdc_to_weth_all_in_impact_capacity_lower_bound",
+                    "impact_target_bps": 100,
+                    "impact_capacity_lower_bound_usdc": 100_000.0,
+                    "depth_usd": None,
+                    "finalized": True,
+                }
+            ]
+        ),
+        "market_capacity": pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "akash",
+                    "participant_id": "provider-a",
+                    "total": 8.0,
+                }
+            ]
+        ),
+    }
+    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables.get(name, pd.DataFrame()))
+    summary = h41.run(tmp_path)
+    panel = pd.read_parquet(tmp_path / "h41_market_comparison.parquet")
+    assert summary["finalized_uniswap_impact_capacity_observed"] is True
+    assert summary["finalized_uniswap_depth_observed"] is False
+    assert "state_impact_capacity_lower_bound_usdc" in set(panel["metric"])
 
 
 def test_h41_finalized_log_coverage_counts_gaps_between_query_windows():

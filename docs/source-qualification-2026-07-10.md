@@ -180,8 +180,8 @@ Uniswap's official Ethereum deployment list identifies QuoterV2 at
 `0x61fFE014bA17989E743c5F6cB21bF9697530B21e`, and its official interface says
 that exact-input calls calculate expected swap amounts without executing a
 swap. The collector calls that contract through the same RPC at the
-finality-buffered block for USDC inputs of 100, 1,000, 10,000, and 100,000 on
-each registered USDC/WETH pool. The live probe returned eight finalized-block
+finality-buffered block for USDC inputs from 100 through 10 million on each
+registered USDC/WETH pool. The live probe returned 12 finalized-block
 simulation rows, with non-zero outputs and explicit ticks-crossed fields.
 
 This is a fixed-notional state-simulation curve, not an executed fill, a firm
@@ -189,6 +189,12 @@ RFQ, or a market-wide depth measure. It can measure a repeatable price impact
 at the registered buckets, but it does not account for a subsequent block,
 transaction ordering, wallet approvals, gas, cross-pool routing, or wider
 market liquidity. H41 continues to keep the full Uniswap depth gate closed.
+
+The six-point ladder additionally yields 100- and 500-bps all-in
+price-deterioration *lower bounds*: the largest successful declared input that
+remains within the threshold versus the smallest same-block probe. This is a
+state-derived, discrete capacity proxy only; it does not reconstruct complete
+tick liquidity, total or market-wide depth, or a firm fill.
 
 The collector also uses QuoterV2 only as a parent-block simulation for the
 exact input amount in an observed USDC-to-WETH CoW Trade. That makes the H52

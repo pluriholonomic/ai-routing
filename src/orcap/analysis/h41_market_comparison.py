@@ -224,6 +224,33 @@ def metric_panel(
             )
             for pool, bucket in zip(pools, buckets, strict=True)
         ]
+        if "impact_capacity_lower_bound_usdc" in quoted:
+            impact_capacity = pd.to_numeric(
+                quoted["impact_capacity_lower_bound_usdc"], errors="coerce"
+            )
+            impact_target = pd.to_numeric(quoted.get("impact_target_bps"), errors="coerce")
+            impact_pool = quoted.get("pool_id", pd.Series(index=quoted.index, dtype="object"))
+            impact = quoted.assign(
+                impact_capacity_lower_bound_usdc=impact_capacity,
+                impact_target_bps=impact_target,
+                impact_pool=impact_pool,
+            )
+            impact = impact.dropna(subset=["impact_capacity_lower_bound_usdc", "impact_target_bps"])
+            for (dt, source, pool, target_bps), group in impact.groupby(
+                ["dt", "source", "impact_pool", "impact_target_bps"], dropna=False
+            ):
+                pool_label = "unknown" if pd.isna(pool) else str(pool)
+                rows.append(
+                    _row(
+                        dt,
+                        source,
+                        "state_impact_capacity_lower_bound_usdc",
+                        group["impact_capacity_lower_bound_usdc"].median(),
+                        len(group),
+                        quote_unit="usdc",
+                        cohort=f"pool:{pool_label};impact_target_bps:{target_bps:g}",
+                    )
+                )
         for (dt, source, quote_unit, cohort), group in quoted.groupby(
             ["dt", "source", "quote_unit", "cohort"], dropna=False
         ):
@@ -429,6 +456,14 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             & uniswap_quote_side.eq("usdc_to_weth_exact_input_simulation")
         ).any()
     )
+    impact_capacity = (
+        pd.to_numeric(uniswap_quotes["impact_capacity_lower_bound_usdc"], errors="coerce")
+        if "impact_capacity_lower_bound_usdc" in uniswap_quotes
+        else pd.Series(float("nan"), index=uniswap_quotes.index)
+    )
+    finalized_uniswap_impact_capacity = bool(
+        (impact_capacity.notna() & uniswap_depth_finalized.eq(True)).any()
+    )
     has_rfq_executions = bool((execution_sources == "cow").any())
     if not sources:
         comparison_status = "gated: no canonical market-source tables available"
@@ -467,6 +502,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "finalized_uniswap_swap_observed": bool(finalized_uniswap),
         "finalized_uniswap_depth_observed": bool(finalized_uniswap_depth),
         "finalized_uniswap_quote_curve_observed": finalized_uniswap_quote_curve,
+        "finalized_uniswap_impact_capacity_observed": finalized_uniswap_impact_capacity,
         "cow_execution_observed": has_rfq_executions,
         "finalized_log_window_coverage": log_coverage,
         "finalized_log_panel_ready": finalized_log_panel_ready,
@@ -474,6 +510,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "required_next": [
             "at least seven days of contiguous finalized Uniswap and CoW log windows",
             "finalized Uniswap depth and swap events",
+            "state-derived Uniswap impact-capacity lower bounds remain distinct from full depth",
             "market-wide CoW auction/settlement feed",
             "at least seven daily Akash GPU-capacity snapshots before dynamic estimates",
             (
