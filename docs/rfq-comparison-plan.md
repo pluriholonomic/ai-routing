@@ -57,9 +57,10 @@ harness flow is preferenced order flow.
 - Feeds H7: which leg (spot or on-demand) do token prices cointegrate with?
 
 **H13 — Venue basis (daily panel; coverage still limited).**
-*`capture_direct.py` now captures DeepInfra's structured public model API,
-Groq and Together exact-ID public catalog tables, and two Fireworks exact-ID
-serverless model pages.*
+*`capture_direct.py` now captures DeepInfra, Cerebras, and SambaNova structured
+public model APIs; Groq and Together exact-ID public catalog tables; Novita's
+literal-ID public SSR pricing catalog; and two Fireworks exact-ID serverless
+model pages.*
 - All adapters preserve the exact provider API model ID and raw source.
   DeepInfra is labeled `structured_public_api`; Together is labeled
   `published_docs_table`, so it is a posted list quote—not an executable API

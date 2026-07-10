@@ -143,3 +143,29 @@ and `openai/gpt-oss-120b` use the same literal IDs at provider `Novita`, with
 the same displayed list prices. This supports only exact-ID direct-versus-routed
 posted-quote comparisons. It does not identify executions, provider cost,
 route-selection probability, or realized consumer spend.
+
+## Not qualified: Hyperbolic public inference pricing
+
+On 2026-07-10, an unauthenticated request to Hyperbolic's documented
+OpenAI-compatible `GET https://api.hyperbolic.xyz/v1/models` returned HTTP 401
+with `Not authenticated`. Its older public pricing/inference documentation URLs
+also now redirect to the generic platform overview, rather than a stable,
+model-level price catalog. The existing raw archive remains useful for future
+manual evidence review, but there is no unauthenticated, exact-ID direct-price
+source to add to H13 at present. Do not substitute an account-specific billing
+view or inference request for market-wide public price evidence.
+
+## Qualified in this run: Lambda public GPU instance list prices
+
+Lambda's public instances page server-renders four labeled instance-size tables
+(`1x`, `2x`, `4x`, and `8x`). The collector requires the literal headers
+`Plan`, `VRAM/GPU`, and `PRICE/GPU/HR*`; each retained row preserves the exact
+GPU plan, VRAM, instance size, and USD-per-GPU-hour list price. The live page
+yielded 21 valid rows on 2026-07-10, including a `1x` NVIDIA H100 SXM quote of
+$4.29 per GPU-hour.
+
+This is a commercial posted-price control only. It has no offer-book depth,
+availability, utilization, region, realized workload, discount, or execution
+fields. It must not be merged with Vast individual offers or used as evidence
+of Lambda's token inference price; Lambda's public page states that its
+Inference API is winding down.

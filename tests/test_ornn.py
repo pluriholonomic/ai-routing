@@ -1,7 +1,9 @@
+import json
+
 import pandas as pd
 
 from orcap.analysis.h7_passthrough import align_ornn_h100
-from orcap.capture_gpu import _ornn_index_rows
+from orcap.capture_gpu import LAMBDA_GPU_PRICING_URL, _lambda_gpu_price_rows, _ornn_index_rows
 from orcap.observability import source_spec
 
 
@@ -64,3 +66,29 @@ def test_ornn_is_required_for_gpu_source_health():
     spec = source_spec("ornn")
     assert spec.required is True
     assert spec.min_rows == 5
+
+
+def test_lambda_rows_require_labeled_tabular_gpu_prices():
+    body = """
+    <button role="tab" aria-controls="one">1x</button>
+    <div role="tabpanel" id="one"><table><thead><tr>
+      <th>Plan</th><th>VRAM/GPU</th><th>vCPUs</th><th>RAM</th><th>STORAGE</th><th>PRICE/GPU/HR*</th>
+    </tr></thead><tbody><tr>
+      <th>NVIDIA H100 SXM</th><td>80 GB</td><td>26</td><td>225 GiB</td>
+      <td>2.75 TiB SSD</td><td>$4.29</td>
+    </tr></tbody></table></div>
+    """
+    rows = _lambda_gpu_price_rows(body, "20260710T000000Z", "2026-07-10")
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["source"] == "lambda"
+    assert row["gpu_class"] == "NVIDIA H100 SXM"
+    assert row["instance_gpu_count"] == 1
+    assert row["gpu_vram_gb"] == 80.0
+    assert row["usd_per_gpu_hour"] == 4.29
+    assert row["source_url"] == LAMBDA_GPU_PRICING_URL
+    assert json.loads(row["record_json"])["price_per_gpu_hour"] == "$4.29"
+
+
+def test_lambda_rows_reject_unlabeled_price_or_changed_headers():
+    assert _lambda_gpu_price_rows("<html></html>", "20260710T000000Z", "2026-07-10") == []

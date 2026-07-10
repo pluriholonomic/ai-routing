@@ -418,6 +418,89 @@ def test_h13_maps_novita_by_the_literal_direct_provider_model_id(monkeypatch):
     assert routed.loc[0, "model_name"] == "openai/gpt-oss-20b"
 
 
+def test_h13_api_snapshot_preserves_exact_novita_provider_and_model_id(monkeypatch):
+    class Relation:
+        def df(self):
+            return pd.DataFrame(
+                [
+                    {
+                        "dt": "2026-07-10",
+                        "run_ts": "20260710T065500Z",
+                        "provider_name": "Novita",
+                        "model_id": "openai/gpt-oss-20b",
+                        "price_prompt": 0.00000004,
+                        "price_completion": 0.00000015,
+                    }
+                ]
+            )
+
+    monkeypatch.setattr(h13_venue_basis.data, "q", lambda _sql: Relation())
+    routed = h13_venue_basis._load_api_routed()
+    assert routed.to_dict("records") == [
+        {
+            "dt": "2026-07-10",
+            "run_ts": "20260710T065500Z",
+            "provider": "novita",
+            "model_name": "openai/gpt-oss-20b",
+            "routed_in": 0.00000004,
+            "routed_out": 0.00000015,
+            "routed_source": "api_endpoint_snapshot",
+        }
+    ]
+
+
+def test_h13_selects_nearest_quote_and_rejects_stale_same_day_quote():
+    direct = pd.DataFrame(
+        [
+            {
+                "dt": "2026-07-10",
+                "run_ts": "20260710T120000Z",
+                "provider": "novita",
+                "model_name": "openai/gpt-oss-20b",
+                "direct_in": 0.00000004,
+                "direct_out": 0.00000015,
+                "source_type": "published_ssr_pricing_catalog",
+                "source_url": NOVITA_PRICING_URL,
+            }
+        ]
+    )
+    routed = pd.DataFrame(
+        [
+            {
+                "dt": "2026-07-10",
+                "run_ts": "20260710T115500Z",
+                "provider": "novita",
+                "model_name": "openai/gpt-oss-20b",
+                "routed_in": 0.00000004,
+                "routed_out": 0.00000015,
+                "routed_source": "api_endpoint_snapshot",
+            },
+            {
+                "dt": "2026-07-10",
+                "run_ts": "20260710T121000Z",
+                "provider": "novita",
+                "model_name": "openai/gpt-oss-20b",
+                "routed_in": 0.00000005,
+                "routed_out": 0.00000020,
+                "routed_source": "frontend_endpoint_stats",
+            },
+            {
+                "dt": "2026-07-10",
+                "run_ts": "20260710T060000Z",
+                "provider": "novita",
+                "model_name": "openai/gpt-oss-20b",
+                "routed_in": 0.00000007,
+                "routed_out": 0.00000030,
+                "routed_source": "api_endpoint_snapshot",
+            },
+        ]
+    )
+    matched = h13_venue_basis.nearest_same_day_quotes(direct, routed)
+    assert len(matched) == 1
+    assert matched.loc[0, "routed_run_ts"] == "20260710T115500Z"
+    assert matched.loc[0, "quote_time_gap_minutes"] == 5.0
+
+
 def test_h13_market_wide_claim_is_power_gated_without_breadth():
     m = pd.DataFrame(
         {

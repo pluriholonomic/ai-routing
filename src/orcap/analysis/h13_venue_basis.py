@@ -4,13 +4,14 @@ RFQ-consistent null: basis ≡ 0 (aggregator displays maker quotes verbatim,
 take levied off-quote). Panel version (pre-registered): transient deviations
 around provider repricing events measure the router's quote-refresh latency.
 
-Providers covered = whatever ``capture_direct`` parses (currently DeepInfra's
-structured API, Together's published serverless-price table, and a bounded
-Fireworks first-party model-page list).  Source type is retained in the output:
-published-page observations are posted list quotes, not evidence of an
-API-level firm quote or a fill.
+Providers covered = whatever ``capture_direct`` parses (currently DeepInfra,
+Cerebras, and SambaNova structured APIs; Groq and Together published tables;
+Novita's literal-ID public SSR catalog; and a bounded Fireworks first-party
+model-page list). Source type is retained in the output: published-page and
+SSR-catalog observations are posted list quotes, not evidence of an API-level
+firm quote or a fill.
 
-  h13_basis          per provider × model × day: routed vs direct price, basis
+  h13_basis          per provider × model × day: nearest routed vs direct price, basis
   h13_summary        share of exact matches, basis distribution
 """
 
@@ -29,6 +30,7 @@ MIN_DAYS = 7
 MIN_PAIRS = 50
 MIN_PROVIDERS = 3
 MIN_PAIRS_PER_PROVIDER = 10
+MAX_ROUTED_QUOTE_GAP_MINUTES = 180
 
 # OpenRouter display name -> capture_direct provider key. The model key is
 # joined exactly: it is usually the provider API id, can be a literal
@@ -46,10 +48,25 @@ PROVIDER_MAP = {
 }
 
 
-def load_routed() -> pd.DataFrame:
+ROUTED_COLUMNS = [
+    "dt",
+    "run_ts",
+    "provider",
+    "model_name",
+    "routed_in",
+    "routed_out",
+    "routed_source",
+]
+
+
+def _empty_routed() -> pd.DataFrame:
+    return pd.DataFrame(columns=ROUTED_COLUMNS)
+
+
+def _load_frontend_routed() -> pd.DataFrame:
     rows = data.q(
         f"""
-        select cast(dt as varchar) as dt, provider_display_name, record_json
+        select cast(dt as varchar) as dt, run_ts, provider_display_name, record_json
         from read_parquet('{data.table_glob("endpoint_stats_daily")}')
         where variant = 'standard'
         """
@@ -74,13 +91,75 @@ def load_routed() -> pd.DataFrame:
         out.append(
             {
                 "dt": r.dt,
+                "run_ts": getattr(r, "run_ts", None),
                 "provider": PROVIDER_MAP[r.provider_display_name],
                 "model_name": model_name,
                 "routed_in": pin,
                 "routed_out": pout,
+                "routed_source": "frontend_endpoint_stats",
             }
         )
-    return pd.DataFrame(out).drop_duplicates(["dt", "provider", "model_name"])
+    return pd.DataFrame(out, columns=ROUTED_COLUMNS)
+
+
+def load_routed() -> pd.DataFrame:
+    """Return frontend routed quotes, preserving the legacy narrow interface.
+
+    ``load_routed_observations`` below adds API snapshots for H13's timestamp
+    matching. This function remains the narrow frontend adapter because its
+    exact-ID handling is independently unit-tested and used as the stable
+    source-level diagnostic.
+    """
+    routed = _load_frontend_routed()
+    return routed[["dt", "provider", "model_name", "routed_in", "routed_out"]].drop_duplicates(
+        ["dt", "provider", "model_name"]
+    )
+
+
+def _load_api_routed() -> pd.DataFrame:
+    """Read exact-ID router endpoint quotes from the high-frequency API panel.
+
+    The API snapshot reports literal OpenRouter model IDs and provider names,
+    so it needs no display-name or model-name crosswalk. If a local staging
+    mirror has not captured this optional table yet, retain the frontend path
+    rather than failing the entire H13 diagnostic.
+    """
+    try:
+        rows = data.q(
+            f"""
+            select cast(dt as varchar) as dt, run_ts, provider_name, model_id,
+                   price_prompt, price_completion
+            from read_parquet('{data.table_glob("endpoints_snapshots")}')
+            where provider_name in ({", ".join(repr(name) for name in PROVIDER_MAP)})
+              and price_prompt > 0
+              and price_completion > 0
+            """
+        ).df()
+    except Exception as exc:
+        log.info("H13 API endpoint snapshots unavailable: %s", exc)
+        return _empty_routed()
+    out = []
+    for row in rows.itertuples(index=False):
+        provider = PROVIDER_MAP.get(row.provider_name)
+        if provider is None or not isinstance(row.model_id, str) or not row.model_id:
+            continue
+        out.append(
+            {
+                "dt": row.dt,
+                "run_ts": row.run_ts,
+                "provider": provider,
+                "model_name": row.model_id,
+                "routed_in": float(row.price_prompt),
+                "routed_out": float(row.price_completion),
+                "routed_source": "api_endpoint_snapshot",
+            }
+        )
+    return pd.DataFrame(out, columns=ROUTED_COLUMNS)
+
+
+def load_routed_observations() -> pd.DataFrame:
+    """Combine independent frontend and API quote observations for H13."""
+    return pd.concat([_load_frontend_routed(), _load_api_routed()], ignore_index=True)
 
 
 def load_direct() -> pd.DataFrame:
@@ -132,6 +211,36 @@ def load_direct() -> pd.DataFrame:
     ).df()
 
 
+def nearest_same_day_quotes(direct: pd.DataFrame, routed: pd.DataFrame) -> pd.DataFrame:
+    """Match direct observations to the closest same-day router quote.
+
+    H13 is a posted-quote comparison, so timestamp proximity is a data-quality
+    control, not a claim of an executable quote. Quotes farther than three
+    hours apart are excluded rather than attributed to a stale-quote effect.
+    """
+    if direct.empty or routed.empty:
+        return pd.DataFrame()
+    m = routed.merge(direct, on=["dt", "provider", "model_name"])
+    if m.empty:
+        return m
+    routed_at = pd.to_datetime(m["run_ts_x"], format="%Y%m%dT%H%M%SZ", utc=True, errors="coerce")
+    direct_at = pd.to_datetime(m["run_ts_y"], format="%Y%m%dT%H%M%SZ", utc=True, errors="coerce")
+    m["routed_run_ts"] = m.pop("run_ts_x")
+    m["direct_run_ts"] = m.pop("run_ts_y")
+    m["quote_time_gap_minutes"] = (routed_at - direct_at).abs().dt.total_seconds() / 60
+    m = m[m["quote_time_gap_minutes"].notna()].copy()
+    m = m[m["quote_time_gap_minutes"] <= MAX_ROUTED_QUOTE_GAP_MINUTES].copy()
+    # On an equally close tie prefer the direct REST endpoint source over a
+    # frontend rendering of the same quote, then apply a stable timestamp sort.
+    m["_source_rank"] = m["routed_source"].map(
+        {"api_endpoint_snapshot": 0, "frontend_endpoint_stats": 1}
+    ).fillna(2)
+    m = m.sort_values(
+        ["dt", "provider", "model_name", "quote_time_gap_minutes", "_source_rank", "routed_run_ts"]
+    )
+    return m.drop_duplicates(["dt", "provider", "model_name"]).drop(columns="_source_rank")
+
+
 def summarize(m: pd.DataFrame) -> dict:
     """Report H13 coverage before interpreting a broker-basis estimate.
 
@@ -162,7 +271,7 @@ def summarize(m: pd.DataFrame) -> dict:
             "providers below "
             f"{MIN_PAIRS_PER_PROVIDER} pairs: {', '.join(thin.index.tolist())}"
         )
-    return {
+    result = {
         "n_pairs": int(len(m)),
         "n_days": days,
         "providers": sorted(m["provider"].unique()),
@@ -190,11 +299,20 @@ def summarize(m: pd.DataFrame) -> dict:
             "routing decisions, or market-wide quote passthrough"
         ),
     }
+    if "routed_source" in m:
+        result["routed_quote_sources"] = {
+            provider: sorted(group["routed_source"].dropna().unique())
+            for provider, group in m.groupby("provider")
+        }
+    if "quote_time_gap_minutes" in m:
+        result["max_quote_time_gap_minutes"] = float(m["quote_time_gap_minutes"].max())
+    return result
 
 
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
-    routed, direct = load_routed(), load_direct()
-    m = routed.merge(direct, on=["dt", "provider", "model_name"])
+    direct = load_direct()
+    routed = load_routed_observations()
+    m = nearest_same_day_quotes(direct, routed)
     m = m[(m["routed_out"] > 0) & (m["direct_out"] > 0)].copy()
     m["basis_out_pct"] = (m["routed_out"] / m["direct_out"] - 1) * 100
     m["basis_in_pct"] = (m["routed_in"] / m["direct_in"] - 1) * 100
