@@ -1,0 +1,58 @@
+name: route-simulation-monitor
+
+# The capture workflow already obtains the public endpoint snapshots every five
+# minutes.  This job makes the 24-hour public-quote experiment operational: it
+# assembles the last 26 hours of buffered captures, evaluates the 15-minute
+# routing surface, and only publishes a decision once the coverage gate passes.
+on:
+  schedule:
+    - cron: "31 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: route-simulation-monitor
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: assemble the latest public quote snapshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_artifacts.sh 26 data
+      - name: evaluate simulated routing changes
+        env:
+          ORCAP_ANALYSIS_SOURCE: local
+        run: uv run orcap route-sim-report --out analysis
+      - name: inspect the coverage gate
+        id: gate
+        run: |
+          verdict=$(uv run python -c "import json; print(json.load(open('analysis/h43_routing_simulation_summary.json'))['verdict'])")
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+      - name: retain the current assay output
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-simulation-${{ github.run_id }}
+          path: analysis/h43_routing_simulation_*
+          retention-days: 14
+          compression-level: 0
+      - name: publish the first complete 24-hour decision
+        if: ${{ steps.gate.outputs.verdict != 'insufficient_24h_coverage' }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_DATA_DIR: pushdata
+        run: |
+          mkdir -p pushdata/analysis
+          cp analysis/h43_routing_simulation_*.parquet analysis/h43_routing_simulation_summary.json pushdata/analysis/
+          uv run orcap push --message "route simulation monitor ${{ github.run_id }}" --delete-local

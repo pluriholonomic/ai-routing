@@ -111,6 +111,12 @@ def main() -> None:
         "--allow-partial", action="store_true", help="report analysis exceptions without failing"
     )
 
+    p_route_report = sub.add_parser(
+        "route-sim-report",
+        help="evaluate whether public quote snapshots changed simulated routing",
+    )
+    p_route_report.add_argument("--out", default="analysis", help="output directory")
+
     sub.add_parser("memo", help="render the screening memo from latest analysis outputs")
 
     p_backfill = sub.add_parser("backfill", help="best-effort historical backfill (model-level)")
@@ -234,6 +240,7 @@ def main() -> None:
             "h40": "h40_router_demand",
             "h41": "h41_market_comparison",
             "h42": "h42_routing_mev",
+            "h43": "h43_routing_simulation",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
@@ -250,6 +257,12 @@ def main() -> None:
         print(json.dumps(results, indent=2, default=str))
         if failures and not args.allow_partial:
             raise RuntimeError(f"required analyses failed: {', '.join(failures)}")
+    elif args.command == "route-sim-report":
+        from pathlib import Path
+
+        from .analysis.h43_routing_simulation import run as route_simulation_report
+
+        print(json.dumps(route_simulation_report(Path(args.out)), indent=2, default=str))
 
 
 if __name__ == "__main__":

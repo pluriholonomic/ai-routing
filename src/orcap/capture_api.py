@@ -27,6 +27,12 @@ from .http import Fetcher, make_client, write_raw
 log = logging.getLogger(__name__)
 
 HOTLIST_SIZE = int(os.environ.get("ORCAP_HOTLIST", "40"))
+# The normal capture job samples every five minutes.  The quote-routing assay
+# keeps a 15-minute panel (four observations/hour) without additional HTTP
+# calls or inference spend.
+ROUTE_SIMULATION_EVERY_N_SNAPSHOTS = max(
+    1, int(os.environ.get("ORCAP_ROUTE_SIMULATION_EVERY_N_SNAPSHOTS", "3"))
+)
 RANKINGS_URL = f"{BASE_URL}/api/frontend/v1/rankings/models?view=week"
 STATS_URL = f"{BASE_URL}/api/frontend/v1/stats/endpoint"
 
@@ -144,7 +150,12 @@ def write_event_burst_manifest(
     )
 
 
-async def capture(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) -> dict[str, Any]:
+async def capture(
+    raw_dir: Path = RAW_DIR,
+    curated_dir: Path = CURATED_DIR,
+    *,
+    with_route_simulation: bool = True,
+) -> dict[str, Any]:
     run_ts = run_timestamp()
     dt = dt_partition()
     async with make_client() as client:
@@ -192,6 +203,35 @@ async def capture(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) -> d
             providers_tbl, "providers_snapshots", run_ts, dt, curated_dir
         ),
     }
+    simulation_summary: dict[str, Any] | None = None
+    if with_route_simulation:
+        from .routing_simulation import simulate_snapshot
+
+        simulation_rows, simulation_summary = simulate_snapshot(
+            endpoints_tbl.to_pylist(), run_ts=run_ts, dt=dt
+        )
+        # Both the granular surface and the run ledger are needed: a missing
+        # model/scenario can mean a free quote or a single-provider market, not
+        # necessarily a zero allocation change.
+        paths["routing_simulation_runs"] = str(
+            write_partition(
+                pa.Table.from_pylist([simulation_summary]),
+                "routing_simulation_runs",
+                run_ts,
+                dt,
+                curated_dir,
+            )
+        )
+        if simulation_rows:
+            paths["routing_simulation"] = str(
+                write_partition(
+                    pa.Table.from_pylist(simulation_rows),
+                    "routing_simulation",
+                    run_ts,
+                    dt,
+                    curated_dir,
+                )
+            )
     if congestion_rows:
         write_partition(
             pa.Table.from_pylist(congestion_rows),
@@ -208,6 +248,7 @@ async def capture(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) -> d
         "providers": providers_tbl.num_rows,
         "endpoint_fetch_failures": failures,
         "congestion_rows": len(congestion_rows),
+        "routing_simulation_rows": 0 if simulation_summary is None else simulation_summary["rows"],
         "paths": {k: str(v) for k, v in paths.items()},
     }
     log.info("capture complete: %s", summary)
@@ -313,7 +354,9 @@ async def capture_loop(samples: int, interval_seconds: float) -> list[dict[str, 
     hot_canonical_slugs: dict[str, str] = {}
     for i in range(samples):
         start = time.monotonic()
-        summary = await capture()
+        summary = await capture(
+            with_route_simulation=(i % ROUTE_SIMULATION_EVERY_N_SNAPSHOTS == 0)
+        )
         summaries.append(summary)
         cur = price_map(summary["paths"])
         changed = diff_models(prev, cur) if prev else set()
