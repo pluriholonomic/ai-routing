@@ -14,7 +14,7 @@ does not invite an unsupported conversion into inference tokens or revenue.
 | Which local-model families are being acquired? | [Ollama Library](https://ollama.com/library) | `open_model_usage_daily`, 236 ranked families and cumulative pulls | Pulls are model acquisition, not completions, active installs, or distinct users. The public page is HTML rather than a documented aggregate API, so the parser has a row-count health gate and raw HTML retention. |
 | Is self-hosted serving adoption growing? | [Docker Hub API](https://docs.docker.com/reference/api/hub/latest/) | `oss_runtime_adoption_daily` for Ollama, vLLM, and SGLang images | Image pulls are a deployment proxy, not model usage. Docker notes that pulls include some version checks in its [pull definition](https://docs.docker.com/docker-hub/usage/pulls/). |
 | What is actual routed demand? | OpenRouter frontend model activity, rankings, effective-pricing, and endpoint-stat captures | Existing `model_activity_daily`, `rankings_weekly`, `effective_pricing_daily`, and `congestion_intraday` | These are the only captured token/request measures. They cover the OpenRouter marketplace, not all model consumption. |
-| What decentralized compute capacity is publicly observable? | [Akash Console API](https://akash.network/docs/api-documentation/rest-api/) | `market_capacity` provider rows from `/v1/providers` | Indexed provider GPU availability/capacity, not proof of completed workloads or GPU-hours consumed. |
+| What decentralized compute capacity and contract lifecycle are publicly observable? | [Akash Console Network Data API](https://akash.network/docs/api-documentation/rest-api/) plus official [RPC](https://akash.network/docs/node-operators/architecture/api-layer/) block headers | `market_capacity` contains only live, version-valid provider-level GPU totals; `market_executions` contains timestamped lease lifecycle contracts | GPU-model mix is not allocated to capacity counts. A lease close is not a successful workload, GPU-hours consumed, or USD execution price. |
 
 ## Sources rejected or held behind explicit gates
 
@@ -31,8 +31,12 @@ does not invite an unsupported conversion into inference tokens or revenue.
 1. Run `orcap capture-open-usage` daily. The first run produced 500 Hugging
    Face rows, 236 Ollama rows, and 3 runtime-image rows. The `usage` health
    profile validates row minima and freshness before publication.
-2. Run `market-capture --with-akash` hourly. The first public run produced
-   1,780 Akash capacity rows and 7,812 DefiLlama participant rows.
+2. Run `market-capture --with-akash` hourly. On the 2026-07-10 live probe the
+   public Akash registry had 1,780 providers, of which 62 were online and 34
+   reported live, version-valid GPU capacity: 258 GPUs total, 133 available,
+   and 115 active. The same probe captured 50 newest lease contracts and
+   matched every one to an official RPC block timestamp. These are source
+   observations, not a historical estimate.
 3. Preserve source identity. Do not merge Hugging Face repository ids, Ollama
    family slugs, and OpenRouter permaslugs without an explicit versioned map.
 4. Use cross-source rank correlation and family-level event studies only after
@@ -48,5 +52,8 @@ does not invite an unsupported conversion into inference tokens or revenue.
   table-scoped fold; the old all-table hydration exhausts the Hub API quota.
 - Configure a finalized Uniswap source and a market-wide CoW feed before
   claiming a full DeFi liquidity/execution comparison.
+- H31 now records the Vast on-demand rented-share/rent association with a
+  seven-day, three-GPU-class power gate. It remains descriptive until an
+  exogenous supply or demand instrument is added.
 - Accumulate at least 6–8 weeks of daily public adoption snapshots before
   estimating cross-source lead/lag relationships.

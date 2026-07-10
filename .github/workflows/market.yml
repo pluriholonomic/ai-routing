@@ -1,9 +1,9 @@
 name: market-comparison
 
 # The comparison monitor keeps raw source evidence and status records even when
-# optional credentialed feeds are absent. DefiLlama is the required public
-# source; CoW, Golem, Akash, and Uniswap remain visibly degraded until their
-# configured feed or credential is available.
+# optional credentialed feeds are absent. DefiLlama and the public Akash
+# provider/lease feeds run without credentials; CoW, Golem, and Uniswap remain
+# visibly degraded until a live or configured feed is available.
 on:
   schedule:
     - cron: "29 * * * *"

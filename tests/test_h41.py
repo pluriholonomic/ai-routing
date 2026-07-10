@@ -20,3 +20,37 @@ def test_common_metric_panel_keeps_source_and_market_boundaries():
         "decentralized_compute",
     }
     assert panel.loc[panel["metric"] == "reported_capacity", "value"].iat[0] == 8.0
+
+
+def test_capacity_panel_preserves_resource_units_and_does_not_turn_missing_into_zero():
+    panel = metric_panel(
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "akash",
+                    "participant_id": "gpu-provider",
+                    "resource_kind": "gpu",
+                    "total": 8,
+                    "available": 6,
+                    "used": 2,
+                },
+                {
+                    "dt": "2026-07-10",
+                    "source": "akash",
+                    "participant_id": "registry-only",
+                    "resource_kind": "gpu",
+                    "total": None,
+                    "available": None,
+                    "used": None,
+                },
+            ]
+        ),
+    )
+    gpu = panel[panel["resource_kind"] == "gpu"].set_index("metric")
+    assert gpu.loc["reported_capacity", "value"] == 8.0
+    assert gpu.loc["reported_utilization", "value"] == 0.25
+    assert gpu.loc["capacity_reporting_share", "value"] == 0.5

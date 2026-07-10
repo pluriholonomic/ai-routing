@@ -290,6 +290,7 @@ def main() -> None:
             "h23": "h23_toxicity",
             "h26": "h26_entry",
             "h29": "h29_demand",
+            "h31": "h31_gpu_supply",
             "h32": "h32_distribution",
             "h33": "h33_scorecard",
             "h34": "h34_orderbook",

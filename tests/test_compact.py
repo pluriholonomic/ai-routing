@@ -72,8 +72,14 @@ def test_consolidate_merges_int64_double_schema_flap(tmp_path):
 
     day = tmp_path / "endpoints_stats" / "dt=2026-07-10"
     day.mkdir(parents=True)
-    pq.write_table(pa.table({"run_ts": ["a"], "p50_throughput": pa.array([45], pa.int64())}), day / "s1.parquet")
-    pq.write_table(pa.table({"run_ts": ["b"], "p50_throughput": pa.array([45.3], pa.float64())}), day / "s2.parquet")
+    pq.write_table(
+        pa.table({"run_ts": ["a"], "p50_throughput": pa.array([45], pa.int64())}),
+        day / "s1.parquet",
+    )
+    pq.write_table(
+        pa.table({"run_ts": ["b"], "p50_throughput": pa.array([45.3], pa.float64())}),
+        day / "s2.parquet",
+    )
     assert consolidate_local(tmp_path) == 2
     merged = pq.ParquetFile(day / "s2.parquet").read()
     assert merged.num_rows == 2

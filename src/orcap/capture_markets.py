@@ -26,6 +26,11 @@ log = logging.getLogger(__name__)
 DEFILLAMA_PROTOCOLS_URL = "https://api.llama.fi/protocols"
 GOLEM_ONLINE_URL = "https://api.stats.golem.network/v1/network/online"
 AKASH_CONSOLE_PROVIDERS_URL = "https://console-api.akash.network/v1/providers"
+AKASH_LEASES_URL = (
+    "https://console-api.akash.network/akash/market/v1beta5/leases/list"
+    "?pagination.limit=50&pagination.reverse=true"
+)
+AKASH_RPC_URL = "https://rpc.akashnet.net:443"
 GRAPH_GATEWAY = "https://gateway.thegraph.com/api/{key}/subgraphs/id/{subgraph_id}"
 INSTRUMENTS_PATH = Path(__file__).resolve().parents[2] / "config" / "instruments.toml"
 
@@ -205,6 +210,15 @@ def uniswap_rows(
 
 
 def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Return live, version-valid *GPU* capacity observations from Akash.
+
+    ``/v1/providers`` is a registry as well as a capacity view.  Most registry
+    records are offline and report all-zero stats, which must not become a
+    zero-supply market observation.  The endpoint reports provider-level GPU
+    totals but does not allocate those totals across a provider's listed GPU
+    models, so model mix is retained as metadata rather than manufactured as
+    per-model capacity.
+    """
     records = _as_list(body, "providers", "data", "items")
     rows = []
     for item in records:
@@ -219,8 +233,31 @@ def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]
         )
         stats = item.get("stats") or {}
         gpu = stats.get("gpu") or {}
-        cpu = stats.get("cpu") or {}
-        memory = stats.get("memory") or {}
+        total = _first_number(gpu.get("total"), item.get("total"), item.get("capacity"))
+        available = _first_number(
+            gpu.get("available"), item.get("available"), item.get("capacity")
+        )
+        used = _first_number(gpu.get("active"), item.get("used"))
+        # Missing boolean flags occur in lightweight test fixtures and older
+        # responses.  Explicit false is a meaningful exclusion; missing is
+        # left eligible only if a positive GPU total is actually reported.
+        if item.get("isOnline") is False or item.get("isValidVersion") is False:
+            continue
+        if total is None or total <= 0:
+            continue
+        gpu_models = item.get("gpuModels") or item.get("hardwareGpuModels") or []
+        model_labels = []
+        for model in gpu_models:
+            if isinstance(model, dict):
+                label = ":".join(
+                    str(part)
+                    for part in (model.get("vendor"), model.get("model"), model.get("ram"))
+                    if part
+                )
+            else:
+                label = str(model)
+            if label:
+                model_labels.append(label)
         rows.append(
             {
                 "run_ts": run_ts,
@@ -228,22 +265,131 @@ def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]
                 "source": "akash",
                 "venue": "akash-network",
                 "participant_id": participant,
-                "resource_id": item.get("hostUri") or "provider",
-                "available": _float(
-                    gpu.get("available") or item.get("available") or item.get("capacity")
-                ),
-                "total": _float(gpu.get("total") or item.get("total") or item.get("capacity")),
-                "used": _float(gpu.get("active") or item.get("used")),
-                "cpu_cores": _float(cpu.get("total") or attrs.get("cpu")),
-                "gpu_count": _float(gpu.get("total") or attrs.get("gpu")),
-                "memory_gib": _float(memory.get("total") or attrs.get("memory")),
+                "resource_id": f"{item.get('hostUri') or participant}#gpu",
+                "resource_kind": "gpu",
+                "resource_unit": "gpus",
+                "resource_class": ",".join(sorted(set(model_labels))) or None,
+                "available": available,
+                "total": total,
+                "used": used,
+                "cpu_cores": None,
+                "gpu_count": total,
+                "memory_gib": None,
                 "region": (
                     attrs.get("region")
+                    or attrs.get("location-region")
                     or item.get("ipRegion")
                     or item.get("region")
                     or item.get("country")
                 ),
-                "quality_tier": "indexed-network-public-api",
+                "is_online": item.get("isOnline"),
+                "is_valid_version": item.get("isValidVersion"),
+                "is_audited": item.get("isAudited"),
+                "uptime_1d": _float(item.get("uptime1d")),
+                "uptime_7d": _float(item.get("uptime7d")),
+                "uptime_30d": _float(item.get("uptime30d")),
+                "quality_tier": "live-version-valid-provider-aggregate-gpu",
+                "record_json": _json(item),
+            }
+        )
+    return rows
+
+
+def akash_registry_summary(body: Any) -> dict[str, int]:
+    """Coverage ledger for the registry-to-capacity filtering decision."""
+    records = _as_list(body, "providers", "data", "items")
+    online = [row for row in records if row.get("isOnline") is True]
+    valid = [row for row in online if row.get("isValidVersion") is not False]
+    with_gpu = [
+        row
+        for row in valid
+        if _float(((row.get("stats") or {}).get("gpu") or {}).get("total")) not in (None, 0.0)
+    ]
+    return {
+        "registry_providers": len(records),
+        "online_providers": len(online),
+        "online_version_valid_providers": len(valid),
+        "online_gpu_capacity_providers": len(with_gpu),
+    }
+
+
+def _lease_id(lease: dict[str, Any]) -> str | None:
+    identifier = lease.get("id") or {}
+    fields = ("owner", "dseq", "gseq", "oseq", "provider", "bseq")
+    values = [identifier.get(field) for field in fields]
+    if not all(value is not None for value in values):
+        return None
+    return "/".join(str(value) for value in values)
+
+
+def _block_time(body: Any) -> str | None:
+    if not isinstance(body, dict):
+        return None
+    result = body.get("result") or {}
+    # CometBFT ``/header`` is sufficient for a timestamp and avoids storing
+    # every unrelated transaction in the raw capture of a lease lifecycle.
+    header = result.get("header") or ((result.get("block") or {}).get("header") or {})
+    return header.get("time")
+
+
+def _lease_block(lease: dict[str, Any]) -> int | None:
+    value = lease.get("closed_on") if lease.get("state") == "closed" else lease.get("created_at")
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def akash_lease_execution_rows(
+    body: Any, block_times: dict[int, str | None], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize on-chain lease lifecycle events without calling them workloads.
+
+    A lease is a capacity-market contract.  Its close state does not reveal
+    task success, GPU-hours consumed, or a USD clearing price; those are
+    deliberately left null.  Payment rates remain in native denomination.
+    """
+    rows = []
+    for item in _as_list(body, "leases", "data"):
+        lease = item.get("lease") if isinstance(item.get("lease"), dict) else item
+        if not isinstance(lease, dict):
+            continue
+        execution_id = _lease_id(lease)
+        if not execution_id:
+            continue
+        block_height = _lease_block(lease)
+        payment = item.get("escrow_payment") or {}
+        payment_state = payment.get("state") or {}
+        rate = payment_state.get("rate") or lease.get("price") or {}
+        withdrawn = payment_state.get("withdrawn") or {}
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "akash",
+                "venue": "akash-network",
+                "execution_id": execution_id,
+                "instrument_id": "akash:lease-contract",
+                "executed_at": block_times.get(block_height),
+                "event_block_height": block_height,
+                "lease_state": lease.get("state"),
+                "side": "capacity_lease",
+                "requested_size": None,
+                "filled_size": None,
+                "gross_price_usd": None,
+                "native_price": None,
+                "rate_denom": rate.get("denom"),
+                "rate_amount_native": _float(rate.get("amount")),
+                "fee_native": None,
+                "gas_native": None,
+                "settled_denom": withdrawn.get("denom"),
+                "settled_amount_native": _float(withdrawn.get("amount")),
+                "success": None,
+                "participant_id": (lease.get("id") or {}).get("provider"),
+                "metric_definition": (
+                    "On-chain Akash lease lifecycle contract; state and native payment rate, "
+                    "not workload success, GPU-hours consumed, or USD execution price"
+                ),
                 "record_json": _json(item),
             }
         )
@@ -260,6 +406,15 @@ def _float(value: Any) -> float | None:
 def _ratio(numerator: Any, denominator: Any) -> float | None:
     n, d = _float(numerator), _float(denominator)
     return n / d if n is not None and d not in (None, 0) else None
+
+
+def _first_number(*values: Any) -> float | None:
+    """Return the first parseable number while preserving zero as a value."""
+    for value in values:
+        number = _float(value)
+        if number is not None:
+            return number
+    return None
 
 
 def _write(rows: list[dict[str, Any]], table: str, run_ts: str, dt: str, curated_dir: Path) -> None:
@@ -371,6 +526,8 @@ async def capture_markets(
             )
 
         akash = None
+        akash_leases = None
+        akash_block_times: dict[int, str | None] = {}
         akash_url = os.environ.get("ORCAP_AKASH_NETWORK_URL", AKASH_CONSOLE_PROVIDERS_URL)
         if with_akash:
             headers = (
@@ -379,6 +536,27 @@ async def capture_markets(
                 else None
             )
             akash = await fetcher.get_json(akash_url, headers=headers)
+            akash_leases = await fetcher.get_json(
+                os.environ.get("ORCAP_AKASH_LEASES_URL", AKASH_LEASES_URL)
+            )
+            lease_records = _as_list(akash_leases, "leases", "data")
+            heights = sorted(
+                {
+                    block
+                    for item in lease_records
+                    if isinstance(item, dict)
+                    for block in [_lease_block(item.get("lease") or item)]
+                    if block is not None
+                }
+            )
+            rpc_url = os.environ.get("ORCAP_AKASH_RPC_URL", AKASH_RPC_URL).rstrip("/")
+            block_bodies = await asyncio.gather(
+                *(fetcher.get_json(f"{rpc_url}/header?height={height}") for height in heights)
+            )
+            akash_block_times = {
+                height: _block_time(body)
+                for height, body in zip(heights, block_bodies, strict=True)
+            }
         write_raw(fetcher.records, "market_sources", raw_dir, run_ts, dt)
 
     participants = defillama_participant_rows(defillama, run_ts, dt)
@@ -386,10 +564,12 @@ async def capture_markets(
     golem_capacity = golem_capacity_rows(golem, run_ts, dt)
     uni_quotes, uni_executions, uni_events = uniswap_rows(uniswap, run_ts, dt)
     akash_capacity = akash_capacity_rows(akash, run_ts, dt)
+    akash_coverage = akash_registry_summary(akash)
+    akash_leases_rows = akash_lease_execution_rows(akash_leases, akash_block_times, run_ts, dt)
     instrument_map = instrument_map_rows(run_ts, dt)
     _write(participants, "market_participants", run_ts, dt, curated_dir)
     _write(
-        cow_executions + uni_executions,
+        cow_executions + uni_executions + akash_leases_rows,
         "market_executions",
         run_ts,
         dt,
@@ -398,7 +578,9 @@ async def capture_markets(
     _write(uni_quotes, "market_quotes", run_ts, dt, curated_dir)
     _write(golem_capacity + akash_capacity, "market_capacity", run_ts, dt, curated_dir)
     _write(
-        execution_events(cow_executions, "trade") + uni_events,
+        execution_events(cow_executions, "trade")
+        + execution_events(akash_leases_rows, "lease_lifecycle")
+        + uni_events,
         "market_events",
         run_ts,
         dt,
@@ -453,7 +635,19 @@ async def capture_markets(
         )
     if with_akash:
         _run_status(
-            "akash", len(akash_capacity), run_ts, dt, {"configured": bool(akash_url)}, curated_dir
+            "akash",
+            len(akash_capacity) + len(akash_leases_rows),
+            run_ts,
+            dt,
+            {
+                "configured": bool(akash_url),
+                "lease_lifecycle_rows": len(akash_leases_rows),
+                "lease_blocks_timestamped": sum(
+                    row["executed_at"] is not None for row in akash_leases_rows
+                ),
+                **akash_coverage,
+            },
+            curated_dir,
         )
     else:
         write_source_run(
@@ -474,6 +668,8 @@ async def capture_markets(
         "uniswap_quotes": len(uni_quotes),
         "uniswap_executions": len(uni_executions),
         "akash_capacity": len(akash_capacity),
+        "akash_coverage": akash_coverage,
+        "akash_lease_lifecycle_rows": len(akash_leases_rows),
     }
     log.info("market-source capture complete: %s", summary)
     return summary
