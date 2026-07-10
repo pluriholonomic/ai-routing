@@ -129,6 +129,13 @@ token amounts still need an explicit decimal/price mapping before they can
 support USD execution comparisons. The separately qualified dRPC monitor below
 only supplies recent bounded observations.
 
+One deliberately narrow exception is now normalized: exact mainnet
+USDC/WETH `Trade` events have registered token addresses and decimal metadata.
+Those fills are emitted as `ethereum:USDC/WETH`, split by sell direction, and
+priced in the explicit `usdc_per_weth` quote unit. They are **not** USD prices,
+stablecoin-peg-adjusted costs, gas-inclusive costs, surplus estimates, or a
+market-wide CoW execution panel; every other GPv2 pair retains raw amounts.
+
 ## Qualified with a bounded scope: dRPC public Ethereum log monitor
 
 dRPC documents `https://eth.drpc.org` as a public Ethereum RPC endpoint. In
@@ -144,6 +151,13 @@ market-wide coverage. It cannot repair missed periods, establish USD executable
 depth, or turn GPv2 Trade events into market-wide order/fill/surplus coverage.
 An operator-selected archive RPC remains the preferred source for a paper-grade
 historical panel.
+
+The original 128-block default was too short for an hourly workflow at observed
+Ethereum block cadence. A live dRPC validation of a 1,024-block window returned
+650 registered-pool Uniswap logs (615 swaps) and 780 GPv2Settlement logs (398
+trades), with no Quoter errors. The default now uses that validated overlap;
+H41 records gaps between query windows instead of assuming snapshots form a
+continuous panel.
 
 ## Qualified with a bounded scope: Uniswap QuoterV2 price-impact curve
 

@@ -117,6 +117,11 @@ contain API keys.
 - Keep claims separated into measured, provisional/power-gated, and proposed.
   The existing live quote panel is young; do not turn a power-gated analysis
   into a structural conclusion.
+- H41's finalized Ethereum windows are a panel only after their successful
+  query ranges overlap without uncovered blocks. The default 1,024-block
+  window creates the needed hourly overlap, but dynamic work remains gated
+  until seven observed days. QuoterV2 prices must remain split by AMM pool and
+  USDC input bucket; exact-pair CoW prices remain split by trade direction.
 
 ## Current claim boundary
 
