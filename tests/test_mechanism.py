@@ -8,6 +8,7 @@ from orcap.mechanism import (
     CapacityProcurementOffer,
     CertifiedCostCurveOffer,
     CollateralizedCapacityCurveOffer,
+    DeliveryCollateralOffer,
     OutageScenario,
     ProviderOffer,
     allocation_counterfactual,
@@ -35,19 +36,23 @@ from orcap.mechanism import (
     collateralized_capacity_vcg_payment,
     collateralized_capacity_vcg_report_diagnostic,
     collateralized_capacity_vcg_utility,
+    collateralized_delivery_allocation,
     collateralized_reported_capacity,
     declared_capacity_payoff,
     declared_reliability_payoff,
+    delivery_collateral_capacities,
     expected_delivered_under_outage_scenarios,
     expected_net_welfare,
     expected_reliability_report_payoff,
     limited_liability_delivery_gain,
+    minimum_collectible_delivery_bond,
     own_price_share_elasticity,
     procurement_payment,
     procurement_report_diagnostic,
     procurement_utility,
     realized_provider_payoff,
     reported_cost_allocation,
+    reservation_delivery_diagnostic,
     robust_outage_allocation,
     robust_outage_counterfactual,
     welfare_capacity_allocation,
@@ -99,6 +104,96 @@ def test_capacity_bond_covers_negative_serving_margin_to_deter_shortfall():
 def test_limited_liability_caps_the_delivery_incentive_from_a_nominal_bond():
     assert limited_liability_delivery_gain(-1.0, 2.0, 0.4) == -0.6
     assert math.isclose(limited_liability_delivery_gain(-1.0, 2.0, 1.1), 0.1)
+
+
+def test_delivery_collateral_capacity_turns_finite_bond_collateral_into_a_hard_cap():
+    offer = DeliveryCollateralOffer(
+        provider="underwater",
+        delivery_price=0.4,
+        known_marginal_cost=1.0,
+        reliability=1.0,
+        physical_capacity=10.0,
+        posted_collateral=1.5,
+    )
+    capacities = delivery_collateral_capacities([offer], minimum_delivery_gain=0.1).set_index(
+        "provider"
+    )
+
+    assert minimum_collectible_delivery_bond(-0.6, minimum_delivery_gain=0.1) == pytest.approx(0.7)
+    assert capacities.loc["underwater", "collateral_capacity"] == pytest.approx(1.5 / 0.7)
+    assert capacities.loc["underwater", "collateral_certified_capacity"] == pytest.approx(1.5 / 0.7)
+
+
+def test_collateralized_delivery_allocation_reallocates_beyond_the_bond_limited_cap():
+    offers = [
+        DeliveryCollateralOffer(
+            provider="cheap-underwater",
+            delivery_price=1.0,
+            known_marginal_cost=2.0,
+            reliability=1.0,
+            physical_capacity=10.0,
+            posted_collateral=2.0,
+        ),
+        DeliveryCollateralOffer(
+            provider="expensive-profitable",
+            delivery_price=2.0,
+            known_marginal_cost=1.0,
+            reliability=1.0,
+            physical_capacity=10.0,
+            posted_collateral=0.0,
+        ),
+    ]
+
+    allocation = collateralized_delivery_allocation(offers, demand=5.0)
+
+    assert allocation["cheap-underwater"] == 2.0
+    assert allocation["expensive-profitable"] == 3.0
+    assert allocation.sum() == 5.0
+
+
+def test_reservation_transfer_cancels_from_delivery_incentive_and_collateral_certificate():
+    base = dict(
+        provider="provider",
+        delivery_price=0.5,
+        known_marginal_cost=1.0,
+        reliability=1.0,
+        physical_capacity=10.0,
+        posted_collateral=2.2,
+    )
+    no_reservation = reservation_delivery_diagnostic(
+        [DeliveryCollateralOffer(**base, reservation_transfer=0.0)],
+        demand=4.0,
+        minimum_delivery_gain=0.05,
+    ).iloc[0]
+    paid_reservation = reservation_delivery_diagnostic(
+        [DeliveryCollateralOffer(**base, reservation_transfer=7.0)],
+        demand=4.0,
+        minimum_delivery_gain=0.05,
+    ).iloc[0]
+
+    assert no_reservation["delivery_gain_per_feasible_request"] == pytest.approx(0.05)
+    assert paid_reservation["delivery_gain_per_feasible_request"] == pytest.approx(0.05)
+    assert paid_reservation["all_served_payoff"] - no_reservation["all_served_payoff"] == 7.0
+    assert paid_reservation["all_rationed_payoff"] - no_reservation["all_rationed_payoff"] == 7.0
+    assert bool(paid_reservation["allocation_is_collateral_feasible"])
+    assert bool(paid_reservation["delivery_gain_target_met"])
+
+
+def test_delivery_collateral_primitives_reject_nonpositive_price_and_handle_an_empty_market():
+    with pytest.raises(ValueError, match="delivery price"):
+        delivery_collateral_capacities(
+            [
+                DeliveryCollateralOffer(
+                    provider="free",
+                    delivery_price=0.0,
+                    known_marginal_cost=0.0,
+                    reliability=1.0,
+                    physical_capacity=1.0,
+                    posted_collateral=0.0,
+                )
+            ]
+        )
+    assert collateralized_delivery_allocation([], demand=10.0).empty
 
 
 def test_finite_limited_liability_does_not_make_an_increasing_reliability_report_truthful():

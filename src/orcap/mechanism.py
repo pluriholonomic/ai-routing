@@ -28,6 +28,25 @@ class ProviderOffer:
 
 
 @dataclass(frozen=True)
+class DeliveryCollateralOffer:
+    """Known delivery primitives plus collateral locked for an epoch.
+
+    ``delivery_price`` and ``known_marginal_cost`` are exogenous to this
+    reduced-form certificate: this helper does not make either report
+    truthful. ``reservation_transfer`` is a non-contingent epoch payment. It
+    affects participation but cancels from the serve-versus-ration incentive.
+    """
+
+    provider: str
+    delivery_price: float
+    known_marginal_cost: float
+    reliability: float
+    physical_capacity: float
+    posted_collateral: float
+    reservation_transfer: float = 0.0
+
+
+@dataclass(frozen=True)
 class CapacityProcurementOffer:
     """A certified capacity ceiling with a reported linear reservation cost.
 
@@ -1549,6 +1568,193 @@ def limited_liability_delivery_gain(
     return marginal_margin_per_request + min(
         nominal_bond_per_missed_request, collectible_liability_cap
     )
+
+
+def _validate_delivery_collateral_offers(offers: list[DeliveryCollateralOffer]) -> None:
+    if len({offer.provider for offer in offers}) != len(offers):
+        raise ValueError("provider names must be unique")
+    for offer in offers:
+        if not isinstance(offer.provider, str) or not offer.provider:
+            raise ValueError("provider names must be non-empty strings")
+        values = {
+            "delivery_price": offer.delivery_price,
+            "known_marginal_cost": offer.known_marginal_cost,
+            "reliability": offer.reliability,
+            "physical_capacity": offer.physical_capacity,
+            "posted_collateral": offer.posted_collateral,
+            "reservation_transfer": offer.reservation_transfer,
+        }
+        if any(not isfinite(float(value)) for value in values.values()):
+            raise ValueError("delivery-collateral inputs must be finite")
+        if offer.delivery_price <= 0 or offer.known_marginal_cost < 0:
+            raise ValueError("delivery price must be positive and marginal cost non-negative")
+        if not 0 <= offer.reliability <= 1:
+            raise ValueError("reliability must lie in [0, 1]")
+        if offer.physical_capacity < 0 or offer.posted_collateral < 0:
+            raise ValueError("physical capacity and posted collateral must be non-negative")
+
+
+def minimum_collectible_delivery_bond(
+    marginal_margin_per_request: float,
+    *,
+    minimum_delivery_gain: float = 0.0,
+) -> float:
+    """Smallest collectible per-shortfall bond that guarantees a gain target.
+
+    For a feasible assigned unit, delivering rather than deliberately
+    rationing changes payoff by ``m + b``, where ``m = p - c``. Requiring a
+    gain of at least ``delta`` therefore needs ``b >= max(0, delta - m)``.
+    Set a strictly positive ``minimum_delivery_gain`` to obtain strict
+    delivery preference when the serving margin alone is not already large
+    enough. This is an effort/rationing condition, not a reliability-report
+    incentive result.
+    """
+    if not isfinite(marginal_margin_per_request) or not isfinite(minimum_delivery_gain):
+        raise ValueError("delivery-gain inputs must be finite")
+    if minimum_delivery_gain < 0:
+        raise ValueError("minimum_delivery_gain must be non-negative")
+    return max(0.0, minimum_delivery_gain - marginal_margin_per_request)
+
+
+def delivery_collateral_capacities(
+    offers: list[DeliveryCollateralOffer],
+    *,
+    minimum_delivery_gain: float = 0.0,
+) -> pd.DataFrame:
+    """Turn finite collateral into a hard deliverable-capacity certificate.
+
+    The certificate locks the required per-missed-unit bond against every
+    allocated unit. If the bond is positive, at most ``C_i / b_i`` units can
+    be assigned without exceeding posted collateral ``C_i``. A zero required
+    bond leaves physical capacity as the binding cap. Costs and collateral
+    must be known or certified before allocation; this function does not
+    elicit them.
+    """
+    _validate_delivery_collateral_offers(offers)
+    if not isfinite(minimum_delivery_gain) or minimum_delivery_gain < 0:
+        raise ValueError("minimum_delivery_gain must be finite and non-negative")
+    columns = [
+        "provider",
+        "delivery_margin_per_request",
+        "minimum_collectible_bond_per_shortfall",
+        "physical_capacity",
+        "posted_collateral",
+        "collateral_capacity",
+        "collateral_certified_capacity",
+        "minimum_delivery_gain",
+    ]
+    rows = []
+    for offer in offers:
+        margin = offer.delivery_price - offer.known_marginal_cost
+        bond = minimum_collectible_delivery_bond(
+            margin, minimum_delivery_gain=minimum_delivery_gain
+        )
+        collateral_capacity = (
+            offer.physical_capacity if bond == 0 else offer.posted_collateral / bond
+        )
+        certified_capacity = min(offer.physical_capacity, collateral_capacity)
+        rows.append(
+            {
+                "provider": offer.provider,
+                "delivery_margin_per_request": margin,
+                "minimum_collectible_bond_per_shortfall": bond,
+                "physical_capacity": offer.physical_capacity,
+                "posted_collateral": offer.posted_collateral,
+                "collateral_capacity": collateral_capacity,
+                "collateral_certified_capacity": certified_capacity,
+                "minimum_delivery_gain": minimum_delivery_gain,
+            }
+        )
+    return pd.DataFrame(rows, columns=columns)
+
+
+def collateralized_delivery_allocation(
+    offers: list[DeliveryCollateralOffer],
+    *,
+    demand: float,
+    minimum_delivery_gain: float = 0.0,
+    eta: float = 2.0,
+) -> pd.Series:
+    """Score-water-fill allocation constrained by physical and bond capacity.
+
+    This preserves the existing score rule while replacing each physical cap
+    with the smaller collateral-certified cap. It gives no truthfulness result
+    for price, cost, capacity, collateral, or reliability reports.
+    """
+    if demand < 0:
+        raise ValueError("demand must be non-negative")
+    if eta <= 0:
+        raise ValueError("eta must be positive")
+    capacities = delivery_collateral_capacities(
+        offers, minimum_delivery_gain=minimum_delivery_gain
+    ).set_index("provider")
+    score_offers = [
+        ProviderOffer(
+            provider=offer.provider,
+            price=offer.delivery_price,
+            reliability=offer.reliability,
+            committed_capacity=float(
+                capacities.loc[offer.provider, "collateral_certified_capacity"]
+            ),
+            marginal_cost=offer.known_marginal_cost,
+        )
+        for offer in offers
+    ]
+    allocation = capacity_constrained_allocation(score_offers, demand, eta)
+    return allocation.reindex([offer.provider for offer in offers], fill_value=0.0)
+
+
+def reservation_delivery_diagnostic(
+    offers: list[DeliveryCollateralOffer],
+    *,
+    demand: float,
+    minimum_delivery_gain: float = 0.0,
+    eta: float = 2.0,
+) -> pd.DataFrame:
+    """Audit the composed reservation, delivery, and collateral inequalities.
+
+    A non-contingent reservation transfer appears in both the all-served and
+    all-rationed payoff, so it cannot weaken the marginal delivery incentive.
+    The diagnostic certifies only feasible deliberate rationing under known
+    primitives; it neither models physical outage nor proves IR, DSIC,
+    budget balance, or collateral funding.
+    """
+    capacities = delivery_collateral_capacities(
+        offers, minimum_delivery_gain=minimum_delivery_gain
+    ).set_index("provider")
+    allocation = collateralized_delivery_allocation(
+        offers,
+        demand=demand,
+        minimum_delivery_gain=minimum_delivery_gain,
+        eta=eta,
+    )
+    rows = []
+    for offer in offers:
+        capacity = capacities.loc[offer.provider]
+        allocated = float(allocation.get(offer.provider, 0.0))
+        margin = float(capacity["delivery_margin_per_request"])
+        bond = float(capacity["minimum_collectible_bond_per_shortfall"])
+        collateral_locked = allocated * bond
+        served_payoff = offer.reservation_transfer + allocated * margin
+        rationed_payoff = offer.reservation_transfer - collateral_locked
+        delivery_gain = margin + bond
+        rows.append(
+            {
+                **capacity.to_dict(),
+                "allocated_requests": allocated,
+                "reservation_transfer": offer.reservation_transfer,
+                "collateral_locked": collateral_locked,
+                "collateral_slack": offer.posted_collateral - collateral_locked,
+                "all_served_payoff": served_payoff,
+                "all_rationed_payoff": rationed_payoff,
+                "delivery_gain_per_feasible_request": delivery_gain,
+                "allocation_is_collateral_feasible": bool(
+                    collateral_locked <= offer.posted_collateral + 1e-9
+                ),
+                "delivery_gain_target_met": bool(delivery_gain >= minimum_delivery_gain - 1e-9),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def expected_reliability_report_payoff(

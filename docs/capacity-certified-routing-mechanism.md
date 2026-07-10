@@ -274,15 +274,36 @@ AMM welfare results.
     collateral, audit selection, budget balance, correlated failures, or a
     welfare estimate with observed heterogeneous requests.
 
-The next theory step is to relax the finite slot/reliability grid and compose
-the reservation transfer, funded audit score, and payment-on-success delivery
-in one mechanism with a declared liability limit. It must also endogenize or
-validate collateral funding, model stochastic/correlated health, and extend
-welfare to heterogeneous request values and controlled observations. H54
-supplies a defensible *exogenous input* under a controlled design; the
-finite-bond boundary, finite-grid audit construction, and collateralized
-capacity construction together explain why an unsupported direct provider
-score is not enough.
+19. **Collateral-feasible reservation plus delivery, conditional
+    implementation.** Fix an exogenous or certified delivered-unit payment
+    `p_i`, marginal cost `c_i`, physical capacity `K_i`, posted collateral
+    `C_i`, and a non-contingent reservation transfer `R_i`. For a desired
+    per-feasible-request delivery gain `delta >= 0`, lock the smallest
+    collectible shortfall bond
+    `b_i=max(0, delta-(p_i-c_i))`. Restrict allocable capacity to
+    `k_i^C=min(K_i, C_i/b_i)` when `b_i>0`, and to `K_i` when `b_i=0`.
+    Score water-filling over `k_i^C` then obeys `x_i b_i <= C_i`; serving
+    rather than deliberately rationing a feasible assigned request improves
+    payoff by `p_i-c_i+b_i >= delta`. The transfer `R_i` appears in both the
+    served and rationed payoff and therefore cancels from this marginal
+    incentive. `DeliveryCollateralOffer`, `delivery_collateral_capacities`,
+    `collateralized_delivery_allocation`, and `reservation_delivery_diagnostic`
+    implement and audit these exact inequalities. With `delta>0`, the delivery
+    preference is strict. This is a **known-primitive, fully locked,
+    reservation-plus-delivery feasibility certificate**, not DSIC for price,
+    cost, capacity, collateral, or reliability reports; not participation or
+    budget balance; not a claim about physical outages; and not evidence that
+    a provider can fund collateral or that the stated primitives are observed.
+
+The next theory step is to combine this known-primitive collateral certificate
+with the finite-grid audit score and private cost/capacity construction without
+making collateral, payment, or delivery assumptions disappear. That requires
+endogenizing or validating collateral funding, modeling stochastic/correlated
+health, and extending welfare to heterogeneous request values and controlled
+observations. H54 supplies a defensible *exogenous input* under a controlled
+design; the finite-bond boundary, finite-grid audit construction, and
+collateralized capacity construction together explain why an unsupported direct
+provider score is not enough.
 
 ### Proof details and assumptions
 
@@ -420,6 +441,18 @@ expected delivered requests are the probability-weighted available allocation.
 The function `expected_delivered_under_outage_scenarios` records that quantity,
 but it intentionally does not infer independent failures or choose a robust
 portfolio without an empirical joint-outage panel.
+
+For the reservation-plus-delivery certificate, take `x_i <= k_i^C`. If the
+required bond is positive, `x_i b_i <= (C_i/b_i)b_i=C_i`; if it is zero, no
+shortfall collateral is required. Thus the stated bond is fully collectible
+even in the all-shortfall contingency. With the non-contingent reservation
+transfer, all-served payoff is `R_i+x_i(p_i-c_i)` and all-rationed payoff is
+`R_i-x_i b_i`. Their difference is
+`x_i[p_i-c_i+b_i] >= x_i delta`. This proves the stated feasibility and
+delivery-incentive certificate. It does not make the transfer individually
+rational, pay for the locked collateral, verify cost or capacity, deter a
+provider from misreporting an input used to set the cap, or solve physical
+failure and correlated-outage risk.
 
 There is a sharper private-reliability boundary. Fix a provider's actual
 Bernoulli delivery probability `q`, a report-sensitive allocation `x(r)`, and
