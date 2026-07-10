@@ -35,6 +35,7 @@ from .observability import write_source_run
 log = logging.getLogger(__name__)
 
 DEEPINFRA_URL = "https://api.deepinfra.com/models/list"
+CEREBRAS_MODELS_URL = "https://api.cerebras.ai/public/v1/models"
 TOGETHER_SERVERLESS_MODELS_URL = "https://docs.together.ai/docs/serverless/models"
 GROQ_MODELS_URL = "https://console.groq.com/docs/models"
 FIREWORKS_MODEL_PAGES = {
@@ -60,6 +61,27 @@ _FIREWORKS_SERVERLESS_PRICE = re.compile(
     r"\$(?P<input>\d+(?:\.\d+)?)\s*/\s*\$(?P<cached>\d+(?:\.\d+)?)\s*/\s*"
     r"\$(?P<output>\d+(?:\.\d+)?)\s*Per 1M Tokens \(input/cached input/output\)"
 )
+DIRECT_PRICE_SCHEMA = pa.schema(
+    [
+        pa.field("run_ts", pa.string()),
+        pa.field("dt", pa.string()),
+        pa.field("provider", pa.string()),
+        pa.field("model_name", pa.string()),
+        pa.field("direct_provider_model_id", pa.string()),
+        pa.field("model_identifier_type", pa.string()),
+        pa.field("model_type", pa.string()),
+        pa.field("price_input_usd", pa.float64()),
+        pa.field("price_output_usd", pa.float64()),
+        pa.field("price_cached_input_usd", pa.float64()),
+        pa.field("deprecated", pa.bool_()),
+        pa.field("preview", pa.bool_()),
+        pa.field("quote_unit", pa.string()),
+        pa.field("source_type", pa.string()),
+        pa.field("source_url", pa.string()),
+        pa.field("source_schema_version", pa.string()),
+        pa.field("record_json", pa.string()),
+    ]
+)
 
 
 def _text(node: Any) -> str:
@@ -68,6 +90,13 @@ def _text(node: Any) -> str:
 
 def _header(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().lower())
+
+
+def _number(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _usd_per_token(value: str) -> float | None:
@@ -79,6 +108,17 @@ def _usd_per_token(value: str) -> float | None:
     """
     match = _USD_PRICE.fullmatch(value.strip())
     return float(match.group(1)) / _MILLION if match else None
+
+
+def direct_price_table(rows: list[dict[str, Any]]) -> pa.Table:
+    """Construct a stable union schema for heterogeneous provider adapters.
+
+    ``Table.from_pylist`` otherwise adopts the first row's keys, which can
+    silently discard provenance columns introduced by a later provider.
+    """
+    fields = DIRECT_PRICE_SCHEMA.names
+    normalized = [{field: row.get(field) for field in fields} for row in rows]
+    return pa.Table.from_pylist(normalized, schema=DIRECT_PRICE_SCHEMA)
 
 
 def deepinfra_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
@@ -106,6 +146,57 @@ def deepinfra_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
                 "source_url": DEEPINFRA_URL,
                 "source_schema_version": "deepinfra_models_list_v1",
                 "record_json": json.dumps(m, separators=(",", ":"), sort_keys=True),
+            }
+        )
+    return rows
+
+
+def cerebras_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize Cerebras's documented public model catalog.
+
+    The API reports token prices in USD/token and exposes both a Cerebras API
+    id and (when available) a first-party Hugging Face repository id. The
+    latter is used as the H13 match key only because it is a literal field in
+    Cerebras's own response; the provider API id is retained separately.
+    """
+    models = body.get("data") if isinstance(body, dict) else body
+    if not isinstance(models, list):
+        return []
+    rows = []
+    for item in models:
+        if not isinstance(item, dict):
+            continue
+        provider_model_id = item.get("id")
+        pricing = item.get("pricing") or {}
+        prompt, completion = _number(pricing.get("prompt")), _number(pricing.get("completion"))
+        if not provider_model_id or prompt is None or completion is None:
+            continue
+        if prompt <= 0 or completion <= 0:
+            continue
+        canonical_model_id = item.get("hugging_face_id") or provider_model_id
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "provider": "cerebras",
+                "model_name": str(canonical_model_id),
+                "direct_provider_model_id": str(provider_model_id),
+                "model_identifier_type": (
+                    "first_party_hugging_face_id"
+                    if item.get("hugging_face_id")
+                    else "provider_api_id"
+                ),
+                "model_type": "chat",
+                "price_input_usd": prompt,
+                "price_output_usd": completion,
+                "price_cached_input_usd": _number(pricing.get("input_cache_read")),
+                "deprecated": bool(item.get("deprecated")),
+                "preview": bool(item.get("preview")),
+                "quote_unit": "usd_per_token",
+                "source_type": "structured_public_api",
+                "source_url": CEREBRAS_MODELS_URL,
+                "source_schema_version": "cerebras_public_models_v1",
+                "record_json": json.dumps(item, separators=(",", ":"), sort_keys=True),
             }
         )
     return rows
@@ -294,14 +385,16 @@ async def capture_direct(
     }
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
-        deepinfra, *raw_pages = await asyncio.gather(
+        deepinfra, cerebras, *raw_pages = await asyncio.gather(
             fetcher.get_json(DEEPINFRA_URL),
+            fetcher.get_json(CEREBRAS_MODELS_URL),
             *(fetcher.get_text(url) for url in page_urls.values()),
         )
         write_raw(fetcher.records, "direct_providers", raw_dir, run_ts, dt)
 
     raw_by_source = dict(zip(page_urls, raw_pages, strict=True))
     deepinfra = deepinfra_rows(deepinfra, run_ts, dt)
+    cerebras = cerebras_rows(cerebras, run_ts, dt)
     groq = groq_rows(raw_by_source.get("groq"), run_ts, dt)
     together = together_rows(raw_by_source.get("together"), run_ts, dt)
     fireworks = fireworks_rows(
@@ -312,9 +405,9 @@ async def capture_direct(
         run_ts,
         dt,
     )
-    rows = deepinfra + groq + together + fireworks
+    rows = deepinfra + cerebras + groq + together + fireworks
     if rows:
-        write_partition(pa.Table.from_pylist(rows), "direct_prices_daily", run_ts, dt, curated_dir)
+        write_partition(direct_price_table(rows), "direct_prices_daily", run_ts, dt, curated_dir)
     write_source_run(
         "direct_groq_docs",
         status="success" if groq else "degraded",
@@ -329,6 +422,19 @@ async def capture_direct(
         dt=dt,
         curated_dir=curated_dir,
         detail={"url": DEEPINFRA_URL, "source_type": "structured_public_api"},
+    )
+    write_source_run(
+        "direct_cerebras_api",
+        status="success" if cerebras else "degraded",
+        rows=len(cerebras),
+        run_ts=run_ts,
+        dt=dt,
+        curated_dir=curated_dir,
+        detail={
+            "url": CEREBRAS_MODELS_URL,
+            "source_type": "structured_public_api",
+            "schema_version": "cerebras_public_models_v1",
+        },
     )
     write_source_run(
         "direct_together_docs",
@@ -360,6 +466,7 @@ async def capture_direct(
         "run_ts": run_ts,
         "dt": dt,
         "deepinfra_models": len(deepinfra),
+        "cerebras_models": len(cerebras),
         "groq_models": len(groq),
         "together_models": len(together),
         "fireworks_models": len(fireworks),

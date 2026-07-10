@@ -2,8 +2,8 @@
 core = ["openrouter_api", "openrouter_frontend", "vast"]
 comparison = ["defillama", "cow", "golem", "akash", "uniswap", "geckoterminal"]
 capture = ["openrouter_api"]
-scrape = ["openrouter_frontend", "direct_providers", "direct_deepinfra_api", "direct_groq_docs", "direct_together_docs", "direct_fireworks_pages"]
-direct = ["direct_providers", "direct_deepinfra_api", "direct_groq_docs", "direct_together_docs", "direct_fireworks_pages"]
+scrape = ["openrouter_frontend", "direct_providers", "direct_deepinfra_api", "direct_cerebras_api", "direct_groq_docs", "direct_together_docs", "direct_fireworks_pages"]
+direct = ["direct_providers", "direct_deepinfra_api", "direct_cerebras_api", "direct_groq_docs", "direct_together_docs", "direct_fireworks_pages"]
 gpu = ["vast", "ornn"]
 market = ["defillama", "cow", "golem", "akash", "uniswap", "geckoterminal"]
 usage = ["huggingface_open_models", "ollama_library", "docker_hub"]
@@ -48,6 +48,12 @@ min_rows = 1
 
 [sources.direct_deepinfra_api]
 owner = "DeepInfra"
+required = false
+cadence_minutes = 1560
+min_rows = 1
+
+[sources.direct_cerebras_api]
+owner = "Cerebras"
 required = false
 cadence_minutes = 1560
 min_rows = 1

@@ -43,6 +43,22 @@ for `meta-llama/llama-4-scout-17b-16e-instruct`: both surfaces listed
 `$0.11/M` input and `$0.34/M` output. This is a posted-price source check,
 not evidence of a fill or a claim that every Groq route is passed through.
 
+## Qualified in this run: Cerebras public model API
+
+Cerebras documents and serves `https://api.cerebras.ai/public/v1/models`
+without credentials. The response contains a literal Cerebras API ID and
+separate per-token `pricing.prompt` and `pricing.completion` fields. When
+present, it also contains a literal `hugging_face_id`; the collector retains
+both fields and labels that first-party canonical key separately from the
+provider API ID.
+
+On the live source check, Cerebras reported `gpt-oss-120b` with first-party
+canonical key `openai/gpt-oss-120b` and `$0.35/M` input / `$0.75/M` output.
+OpenRouter's current Cerebras endpoint for that same exact canonical key showed
+the same posted prices. This supports one source-qualified H13 pair, not a
+market-wide passthrough or fill claim. Preview status remains in provenance;
+the collector does not silently treat preview availability as a production SLA.
+
 ## Rejected for automatic collection: credential-free Ethereum RPC
 
 The candidate `https://ethereum-rpc.publicnode.com` answered
