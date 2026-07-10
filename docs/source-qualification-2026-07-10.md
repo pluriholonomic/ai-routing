@@ -311,6 +311,36 @@ fields. It must not be merged with Vast individual offers or used as evidence
 of Lambda's token inference price; Lambda's public page states that its
 Inference API is winding down.
 
+## Qualified source contract: Akash block-pinned live-GPU-provider bid panel
+
+Akash's public LCD exposes `v1beta5` market bid lists and a latest-block
+endpoint. The collector first reads the public latest block, then sends every
+bid-list request with that exact `x-cosmos-block-height` state selector. The
+public API returns the selected height in its response metadata; a manual
+historical-height probe confirmed that it honors the selector. This makes a
+multi-provider capture a fixed-chain-state query rather than a non-atomic walk
+over a moving book.
+
+The full network-wide open-bid list is deliberately **not** collected: it is
+larger than a safe recurring raw-capture budget. The retained universe is every
+provider that the already-qualified Console registry reports as online,
+version-valid, and carrying a positive GPU total at that same collection time.
+For each such provider, the collector uses the API's documented nested
+`filters.provider` and `filters.state=open` query, paginates to completion at
+the pinned height, and keeps only GPU-bearing `resources_offer` rows. If any
+provider page is malformed or exceeds the configured cap, the entire bid panel
+is discarded and the source run is degraded; it never publishes a partial
+provider universe as a complete book.
+
+Each retained row contains the literal owner/order sequence, provider, resource
+count, GPU attributes, and native bid field. Akash documents that bid amount
+as a native-denomination **per-block** price. It is therefore not converted to
+USD, a GPU-hour rate, a clearing price, a firm filled order, deliverable
+capacity, GPU utilization, or LLM routing volume. H55 can report repeated,
+coverage-restricted bid-book composition after its seven-day gate; it cannot
+measure whole-network demand because the unbounded tenant-order list is not
+being sampled.
+
 ## Not qualified: Runpod public Serverless GPU pricing
 
 Runpod's indexed documentation showed a detailed public GPU-family table, but

@@ -57,12 +57,13 @@ counted as evidence.
 | Direct routed-versus-provider quote basis | H13: 247 pairs across 4 days, all DeepInfra; exact-zero output basis within numerical precision | Power-gated: needs 7 days and 3 providers |
 | DeFi AMM/RFQ microstructure | H41: one DefiLlama aggregate day only | Not identified: no finalized Uniswap events/depth or market-wide CoW executions |
 | Decentralized compute capacity | H41: no non-null decentralized-compute capacity in authoritative store | Not identified |
+| Open-compute bid book | H55 has a block-pinned, live-GPU-provider-filtered Akash bid contract; no published snapshots | Not yet accumulated; the eventual panel is coverage-restricted and not a fill/demand census |
 | Realized routing and capacity delivery | H48: zero route attempts, commitments, matches, or realized costs | Not identified |
 | Controlled policy effect | H50 has an immutable pre-registration, epoch-assignment, and clustered-estimation contract; no owned study rows | Not identified: tooling is not evidence |
 | Controlled reliability input | H54 has an immutable direct-provider audit schedule and exact lower-bound certificate; no owned audit rows | Not identified: tooling is not evidence |
 | CoW solver competition | H49 collector and local validation exist, but no published remote snapshots | Not yet accumulated; sampled snapshot only, never execution flow |
 | Direct-source breadth | DeepInfra is published; Cerebras and SambaNova structured adapters are merged and locally validated | Awaiting published repetitions |
-| Reproducibility | Full local suite: 192 passing tests after the H54 audit-certificate addition | Strong engineering evidence, not empirical power |
+| Reproducibility | Full local suite: 199 passing tests after the H55 Akash bid-panel addition | Strong engineering evidence, not empirical power |
 
 ## Non-negotiable paper gates
 

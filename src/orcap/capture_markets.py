@@ -14,6 +14,7 @@ import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 import pyarrow as pa
 
@@ -34,6 +35,10 @@ AKASH_LEASES_URL = (
     "?pagination.limit=50&pagination.reverse=true"
 )
 AKASH_RPC_URL = "https://rpc.akashnet.net:443"
+AKASH_MARKET_API_URL = "https://api.akashnet.net/akash/market/v1beta5"
+AKASH_LATEST_BLOCK_URL = "https://api.akashnet.net/cosmos/base/tendermint/v1beta1/blocks/latest"
+AKASH_MARKET_PAGE_SIZE = max(1, int(os.environ.get("ORCAP_AKASH_MARKET_PAGE_SIZE", "1000")))
+AKASH_MARKET_MAX_PAGES = max(1, int(os.environ.get("ORCAP_AKASH_MARKET_MAX_PAGES", "25")))
 GECKOTERMINAL_POOL_URL = "https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_id}"
 CHUTES_MODELS_URL = "https://llm.chutes.ai/v1/models"
 CHUTES_DETAIL_URL = "https://api.chutes.ai/chutes/{chute_id}"
@@ -1234,6 +1239,275 @@ def geckoterminal_quote_rows(
     return rows
 
 
+def akash_market_snapshot_metadata(body: Any) -> dict[str, str] | None:
+    """Extract the immutable height and time used to pin an Akash book query."""
+    if not isinstance(body, dict):
+        return None
+    block = body.get("block") or {}
+    header = block.get("header") if isinstance(block, dict) else None
+    height = header.get("height") if isinstance(header, dict) else None
+    timestamp = header.get("time") if isinstance(header, dict) else None
+    if height is None or timestamp is None:
+        return None
+    try:
+        if int(height) < 0:
+            return None
+    except (TypeError, ValueError):
+        return None
+    return {"height": str(height), "time": str(timestamp)}
+
+
+def akash_market_list_url(
+    kind: str, *, filters: dict[str, str], page_key: str | None = None
+) -> str:
+    """Return a state-filtered public Akash market-list URL.
+
+    The block height is passed as a request header, because Cosmos' REST API
+    treats it as a query-state selector rather than a URL parameter.
+    """
+    if kind not in {"bids", "orders"}:
+        raise ValueError("Akash market list kind must be bids or orders")
+    if filters.get("filters.state") != "open":
+        raise ValueError("Akash market list filters must restrict state to open")
+    params = {**filters, "pagination.limit": str(AKASH_MARKET_PAGE_SIZE)}
+    if page_key:
+        params["pagination.key"] = page_key
+    return f"{AKASH_MARKET_API_URL}/{kind}/list?{urlencode(params)}"
+
+
+async def capture_akash_open_market(
+    fetcher: Fetcher, provider_ids: list[str]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Fetch complete open bids for the live GPU-provider universe.
+
+    The global open lists exceed a safe recurring raw-capture budget. Instead,
+    the coverage universe is the current Console registry's online,
+    version-valid GPU providers. The public LCD supports a height selector, so
+    every provider query is pinned to one block. If any provider's pagination
+    fails or exceeds the cap, no canonical bid rows are returned.
+    """
+    latest = await fetcher.get_json(AKASH_LATEST_BLOCK_URL)
+    snapshot = akash_market_snapshot_metadata(latest)
+    if snapshot is None:
+        return [], {
+            "coverage_complete": False,
+            "reason": "latest_block_metadata_unavailable",
+            "snapshot_height": None,
+            "snapshot_time": None,
+        }
+    headers = {"x-cosmos-block-height": snapshot["height"]}
+
+    async def capture_provider(provider: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        page_key: str | None = None
+        for page in range(1, AKASH_MARKET_MAX_PAGES + 1):
+            body = await fetcher.get_json(
+                akash_market_list_url(
+                    "bids",
+                    filters={"filters.state": "open", "filters.provider": provider},
+                    page_key=page_key,
+                ),
+                headers=headers,
+            )
+            records = body.get("bids") if isinstance(body, dict) else None
+            if not isinstance(records, list) or not all(
+                isinstance(record, dict) for record in records
+            ):
+                return [], {
+                    "provider": provider,
+                    "complete": False,
+                    "pages_fetched": page,
+                    "records_fetched": len(rows),
+                    "reason": "invalid_page_response",
+                }
+            rows.extend(records)
+            pagination = body.get("pagination") or {}
+            next_key = pagination.get("next_key") if isinstance(pagination, dict) else None
+            if not next_key:
+                return rows, {
+                    "provider": provider,
+                    "complete": True,
+                    "pages_fetched": page,
+                    "records_fetched": len(rows),
+                    "reason": None,
+                }
+            page_key = str(next_key)
+        return [], {
+            "provider": provider,
+            "complete": False,
+            "pages_fetched": AKASH_MARKET_MAX_PAGES,
+            "records_fetched": len(rows),
+            "reason": "pagination_cap_exceeded",
+        }
+
+    providers = sorted(set(provider_ids))
+    if not providers:
+        return [], {
+            "coverage_complete": False,
+            "reason": "no_live_gpu_providers",
+            "snapshot_height": snapshot["height"],
+            "snapshot_time": snapshot["time"],
+        }
+    results = await asyncio.gather(*(capture_provider(provider) for provider in providers))
+    incomplete = [detail for _, detail in results if not detail["complete"]]
+    if incomplete:
+        return [], {
+            "coverage_complete": False,
+            "reason": "provider_bid_pagination_incomplete",
+            "snapshot_height": snapshot["height"],
+            "snapshot_time": snapshot["time"],
+            "provider_count": len(providers),
+            "incomplete_provider_count": len(incomplete),
+            "incomplete_provider_details": incomplete,
+            "pagination_page_size": AKASH_MARKET_PAGE_SIZE,
+            "pagination_max_pages": AKASH_MARKET_MAX_PAGES,
+        }
+    bids_by_id: dict[str, dict[str, Any]] = {}
+    for records, _ in results:
+        for record in records:
+            bid = record.get("bid") if isinstance(record.get("bid"), dict) else record
+            bid_id = _akash_bid_id(bid.get("id") if isinstance(bid, dict) else None)
+            if bid_id is not None:
+                bids_by_id[bid_id] = record
+    return list(bids_by_id.values()), {
+        "coverage_complete": True,
+        "snapshot_height": snapshot["height"],
+        "snapshot_time": snapshot["time"],
+        "provider_count": len(providers),
+        "provider_queries_complete": len(results),
+        "bid_records_fetched": sum(detail["records_fetched"] for _, detail in results),
+        "bid_records_deduplicated": len(bids_by_id),
+        "pagination_page_size": AKASH_MARKET_PAGE_SIZE,
+        "pagination_max_pages": AKASH_MARKET_MAX_PAGES,
+    }
+
+
+def _akash_order_id(identifier: Any) -> str | None:
+    if not isinstance(identifier, dict):
+        return None
+    values = [identifier.get(field) for field in ("owner", "dseq", "gseq", "oseq")]
+    if any(value is None for value in values):
+        return None
+    return "/".join(str(value) for value in values)
+
+
+def _akash_bid_id(identifier: Any) -> str | None:
+    order_id = _akash_order_id(identifier)
+    if order_id is None or not isinstance(identifier, dict):
+        return None
+    provider, bseq = identifier.get("provider"), identifier.get("bseq")
+    if provider is None or bseq is None:
+        return None
+    return f"{order_id}/{provider}/{bseq}"
+
+
+def _akash_resource_fields(resource: Any, count: Any) -> dict[str, Any] | None:
+    if not isinstance(resource, dict):
+        return None
+    instances = _float(count)
+    if instances is None or instances <= 0:
+        return None
+    gpu = resource.get("gpu") or {}
+    gpu_units = _float((gpu.get("units") or {}).get("val"))
+    if gpu_units is None or gpu_units <= 0:
+        return None
+    cpu = resource.get("cpu") or {}
+    memory = resource.get("memory") or {}
+    return {
+        "resource_count": instances,
+        "gpu_units_per_resource": gpu_units,
+        "gpu_units_total": gpu_units * instances,
+        "gpu_attributes_json": _json(gpu.get("attributes") or []),
+        "cpu_units_per_resource": _float((cpu.get("units") or {}).get("val")),
+        "memory_bytes_per_resource": _float((memory.get("quantity") or {}).get("val")),
+    }
+
+
+def _akash_market_row(
+    *,
+    run_ts: str,
+    dt: str,
+    snapshot: dict[str, Any],
+    order_id: str,
+    bid_id: str | None,
+    owner: Any,
+    provider: Any,
+    state: Any,
+    resource_index: int,
+    resource: Any,
+    count: Any,
+    price: Any,
+    record: dict[str, Any],
+    book_side: str,
+) -> dict[str, Any] | None:
+    fields = _akash_resource_fields(resource, count)
+    if fields is None:
+        return None
+    price = price if isinstance(price, dict) else {}
+    return {
+        "run_ts": run_ts,
+        "dt": dt,
+        "source": "akash",
+        "venue": "akash-network",
+        "snapshot_height": snapshot.get("snapshot_height") or snapshot.get("height"),
+        "snapshot_time": snapshot.get("snapshot_time") or snapshot.get("time"),
+        "book_side": book_side,
+        "order_id": order_id,
+        "bid_id": bid_id,
+        "owner": owner,
+        "provider": provider,
+        "state": state,
+        "resource_index": resource_index,
+        "resource_id": f"{order_id}:resource:{resource_index}",
+        "native_price_amount": _float(price.get("amount")),
+        "native_price_denom": price.get("denom"),
+        "native_price_unit": "native_per_block",
+        "metric_definition": (
+            "Block-pinned open Akash GPU market record with its raw native price field; "
+            "not an executed lease, USD price, GPU-hour rate, capacity observation, or utilization."
+        ),
+        "record_json": _json(record),
+        **fields,
+    }
+
+
+def akash_open_bid_rows(
+    records: list[dict[str, Any]], snapshot: dict[str, Any], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize only GPU-bearing open provider bids from a pinned book."""
+    rows = []
+    for record in records:
+        bid = record.get("bid") if isinstance(record.get("bid"), dict) else record
+        if not isinstance(bid, dict) or bid.get("state") != "open":
+            continue
+        identifier = bid.get("id")
+        order_id, bid_id = _akash_order_id(identifier), _akash_bid_id(identifier)
+        if order_id is None or bid_id is None:
+            continue
+        for index, offer in enumerate(bid.get("resources_offer") or []):
+            if not isinstance(offer, dict):
+                continue
+            row = _akash_market_row(
+                run_ts=run_ts,
+                dt=dt,
+                snapshot=snapshot,
+                order_id=order_id,
+                bid_id=bid_id,
+                owner=(identifier or {}).get("owner"),
+                provider=(identifier or {}).get("provider"),
+                state=bid.get("state"),
+                resource_index=index,
+                resource=offer.get("resources"),
+                count=offer.get("count"),
+                price=bid.get("price"),
+                record=record,
+                book_side="provider_open_bid",
+            )
+            if row is not None:
+                rows.append(row)
+    return rows
+
+
 def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
     """Return live, version-valid *GPU* capacity observations from Akash.
 
@@ -1336,6 +1610,17 @@ def akash_registry_summary(body: Any) -> dict[str, int]:
         "online_version_valid_providers": len(valid),
         "online_gpu_capacity_providers": len(with_gpu),
     }
+
+
+def akash_live_gpu_provider_ids(body: Any) -> list[str]:
+    """Return the transparent GPU-provider coverage universe for open bids."""
+    return sorted(
+        {
+            str(row["participant_id"])
+            for row in akash_capacity_rows(body, "", "")
+            if row.get("participant_id")
+        }
+    )
 
 
 def akash_gpu_quote_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
@@ -2113,6 +2398,13 @@ async def capture_markets(
         akash = None
         akash_gpu_prices = None
         akash_leases = None
+        akash_open_bids: list[dict[str, Any]] = []
+        akash_market_detail: dict[str, Any] = {
+            "coverage_complete": False,
+            "reason": "flag_not_set",
+            "snapshot_height": None,
+            "snapshot_time": None,
+        }
         akash_block_times: dict[int, str | None] = {}
         akash_url = _configured_url("ORCAP_AKASH_NETWORK_URL", AKASH_CONSOLE_PROVIDERS_URL)
         if with_akash:
@@ -2127,6 +2419,9 @@ async def capture_markets(
             )
             akash_leases = await fetcher.get_json(
                 _configured_url("ORCAP_AKASH_LEASES_URL", AKASH_LEASES_URL)
+            )
+            akash_open_bids, akash_market_detail = await capture_akash_open_market(
+                fetcher, akash_live_gpu_provider_ids(akash)
             )
             lease_records = _as_list(akash_leases, "leases", "data")
             heights = sorted(
@@ -2188,6 +2483,9 @@ async def capture_markets(
     akash_coverage = akash_registry_summary(akash)
     akash_quotes = akash_gpu_quote_rows(akash_gpu_prices, run_ts, dt)
     akash_leases_rows = akash_lease_execution_rows(akash_leases, akash_block_times, run_ts, dt)
+    akash_open_bid_book = akash_open_bid_rows(
+        akash_open_bids, akash_market_detail, run_ts, dt
+    )
     instrument_map = instrument_map_rows(run_ts, dt)
     _write(
         participants + cow_participants + cow_rpc_participants,
@@ -2220,6 +2518,13 @@ async def capture_markets(
     _write(
         golem_capacity + akash_capacity + chutes_capacity,
         "market_capacity",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        akash_open_bid_book,
+        "akash_market_open_bids",
         run_ts,
         dt,
         curated_dir,
@@ -2338,7 +2643,10 @@ async def capture_markets(
     if with_akash:
         _run_status(
             "akash",
-            len(akash_capacity) + len(akash_quotes) + len(akash_leases_rows),
+            len(akash_capacity)
+            + len(akash_quotes)
+            + len(akash_leases_rows)
+            + len(akash_open_bid_book),
             run_ts,
             dt,
             {
@@ -2348,13 +2656,41 @@ async def capture_markets(
                 "lease_blocks_timestamped": sum(
                     row["executed_at"] is not None for row in akash_leases_rows
                 ),
+                "open_gpu_bid_rows": len(akash_open_bid_book),
+                "market_book": akash_market_detail,
                 **akash_coverage,
             },
             curated_dir,
         )
+        market_rows = int(akash_market_detail.get("bid_records_fetched") or 0)
+        write_source_run(
+            "akash_market_book",
+            status="success" if akash_market_detail.get("coverage_complete") else "degraded",
+            rows=market_rows,
+            run_ts=run_ts,
+            dt=dt,
+            detail={
+                "url": AKASH_MARKET_API_URL,
+                "query_state": "open",
+                "resource_scope": "GPU-bearing resources only in curated book tables",
+                "rows_written": {
+                    "open_gpu_bids": len(akash_open_bid_book),
+                },
+                **akash_market_detail,
+            },
+            curated_dir=curated_dir,
+        )
     else:
         write_source_run(
             "akash",
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail={"reason": "flag not set"},
+            curated_dir=curated_dir,
+        )
+        write_source_run(
+            "akash_market_book",
             status="skipped",
             run_ts=run_ts,
             dt=dt,
@@ -2387,6 +2723,8 @@ async def capture_markets(
         "akash_gpu_quotes": len(akash_quotes),
         "akash_coverage": akash_coverage,
         "akash_lease_lifecycle_rows": len(akash_leases_rows),
+        "akash_open_gpu_bid_rows": len(akash_open_bid_book),
+        "akash_market_book": akash_market_detail,
     }
     log.info("market-source capture complete: %s", summary)
     return summary

@@ -2,6 +2,7 @@ import asyncio
 import json
 
 import httpx
+import pytest
 from pyarrow.parquet import ParquetFile
 
 from orcap.capture_markets import (
@@ -17,7 +18,12 @@ from orcap.capture_markets import (
     akash_capacity_rows,
     akash_gpu_quote_rows,
     akash_lease_execution_rows,
+    akash_live_gpu_provider_ids,
+    akash_market_list_url,
+    akash_market_snapshot_metadata,
+    akash_open_bid_rows,
     akash_registry_summary,
+    capture_akash_open_market,
     chutes_capacity_rows,
     cow_amm_preblock_quote_rows,
     cow_competition_rows,
@@ -675,6 +681,137 @@ def test_akash_gpu_quotes_preserve_exact_model_and_hourly_quote_unit():
     assert rows[0]["price_usd"] == 2.4
     assert rows[0]["quote_unit"] == "usd_per_gpu_hour"
     assert rows[0]["available_units"] == 2.0
+
+
+def test_akash_open_market_rows_keep_block_pinned_gpu_bids_distinct_from_execution():
+    snapshot = akash_market_snapshot_metadata(
+        {"block": {"header": {"height": "27652334", "time": "2026-07-10T09:51:37Z"}}}
+    )
+    assert snapshot == {"height": "27652334", "time": "2026-07-10T09:51:37Z"}
+    bid_records = [
+        {
+            "bid": {
+                "id": {
+                    "owner": "tenant",
+                    "dseq": "1",
+                    "gseq": 2,
+                    "oseq": 3,
+                    "provider": "p",
+                    "bseq": 0,
+                },
+                "state": "open",
+                "price": {"denom": "uact", "amount": "4.5"},
+                "resources_offer": [
+                    {
+                        "count": 2,
+                        "resources": {
+                            "gpu": {
+                                "units": {"val": "1"},
+                                "attributes": [
+                                    {"key": "vendor/nvidia/model/h100", "value": "true"}
+                                ],
+                            },
+                            "cpu": {"units": {"val": "16000"}},
+                            "memory": {"quantity": {"val": "34359738368"}},
+                        },
+                    }
+                ],
+            }
+        }
+    ]
+    bid = akash_open_bid_rows(bid_records, snapshot, "20260710T000000Z", "2026-07-10")[0]
+    assert bid["gpu_units_total"] == 2.0
+    assert bid["bid_id"] == "tenant/1/2/3/p/0"
+    assert bid["snapshot_height"] == "27652334"
+    assert bid["native_price_unit"] == "native_per_block"
+    assert "not an executed lease" in bid["metric_definition"]
+
+
+def test_akash_open_market_url_requires_known_book_side_and_encodes_page_cursor():
+    url = akash_market_list_url(
+        "bids",
+        filters={"filters.state": "open", "filters.provider": "provider-a"},
+        page_key="a+/=",
+    )
+    assert "filters.state=open" in url
+    assert "filters.provider=provider-a" in url
+    assert "pagination.key=a%2B%2F%3D" in url
+    with pytest.raises(ValueError, match="bids or orders"):
+        akash_market_list_url("leases", filters={"filters.state": "open"})
+    with pytest.raises(ValueError, match="restrict state"):
+        akash_market_list_url("bids", filters={"filters.state": "closed"})
+
+
+def test_akash_live_gpu_provider_ids_follow_the_existing_live_capacity_filter():
+    providers = akash_live_gpu_provider_ids(
+        {
+            "providers": [
+                {
+                    "owner": "live-gpu",
+                    "isOnline": True,
+                    "isValidVersion": True,
+                    "stats": {"gpu": {"total": 2}},
+                },
+                {
+                    "owner": "offline-gpu",
+                    "isOnline": False,
+                    "isValidVersion": True,
+                    "stats": {"gpu": {"total": 2}},
+                },
+            ]
+        }
+    )
+    assert providers == ["live-gpu"]
+
+
+def test_akash_provider_filtered_bid_capture_pins_all_queries_to_one_block():
+    class Fetcher:
+        def __init__(self):
+            self.calls = []
+
+        async def get_json(self, url, headers=None):
+            self.calls.append((url, headers))
+            if "blocks/latest" in url:
+                return {"block": {"header": {"height": "42", "time": "2026-07-10T00:00:00Z"}}}
+            return {
+                "bids": [
+                    {
+                        "bid": {
+                            "id": {
+                                "owner": "tenant",
+                                "dseq": "1",
+                                "gseq": 1,
+                                "oseq": 1,
+                                "provider": "provider-a",
+                                "bseq": 0,
+                            },
+                            "state": "open",
+                        }
+                    }
+                ],
+                "pagination": {"next_key": None},
+            }
+
+    fetcher = Fetcher()
+    bids, detail = asyncio.run(capture_akash_open_market(fetcher, ["provider-a"]))
+    assert len(bids) == 1
+    assert detail["coverage_complete"] is True
+    assert detail["snapshot_height"] == "42"
+    assert fetcher.calls[1][1] == {"x-cosmos-block-height": "42"}
+    assert "filters.provider=provider-a" in fetcher.calls[1][0]
+
+
+def test_akash_provider_bid_capture_discards_everything_when_one_provider_fails():
+    class Fetcher:
+        async def get_json(self, url, headers=None):
+            if "blocks/latest" in url:
+                return {"block": {"header": {"height": "42", "time": "2026-07-10T00:00:00Z"}}}
+            return None if "provider-b" in url else {"bids": [], "pagination": {}}
+
+    bids, detail = asyncio.run(capture_akash_open_market(Fetcher(), ["provider-a", "provider-b"]))
+    assert bids == []
+    assert detail["coverage_complete"] is False
+    assert detail["reason"] == "provider_bid_pagination_incomplete"
 
 
 def test_instrument_map_is_versioned_and_source_scoped():

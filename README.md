@@ -69,6 +69,7 @@ source record, so OpenRouter schema drift never loses data):
 | `router_policy_snapshots` | owned config × model × provider | redacted Cloudflare AI Gateway, Portkey, or LiteLLM routing configuration; not a traffic log |
 | `router_route_attempts` | owned request attempt | redacted controlled-study provider outcomes/retries; private telemetry, not public market flow |
 | `router_reliability_audit_manifests` / `router_reliability_audit_assignments` | audit / provider × model × epoch | immutable direct-provider reliability-audit design and schedule; no prompts, completions, or traffic sent by registration |
+| `akash_market_open_bids` | pinned block × current live GPU provider × bid resource | coverage-restricted open GPU provider bids; native per-block price field, not fills, whole-market demand, or capacity |
 | `open_model_usage_daily` | day × source × open model | public HF rolling downloads and Ollama cumulative pulls; adoption proxies, never inference tokens |
 | `oss_runtime_adoption_daily` | day × serving runtime image | public Docker Hub cumulative pulls for Ollama/vLLM/SGLang; deployment proxy, not model consumption |
 | `livepeer_gateway_metrics` | five-minute window × Gateway region | aggregate public swap/reuse routing-adjustment messages; external control only, never provider allocation or delivery |
@@ -112,6 +113,7 @@ ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h50  # randomized 
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h52  # parent-block CoW-versus-AMM gross basis, power-gated
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h53  # Chutes public cumulative-invocation growth, source-bounded
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h54  # direct-provider reliability lower-bound audit
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h55  # Akash block-pinned live-provider GPU bid panel
 uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-like hypotheses)
 ORCAP_ANALYSIS_SOURCE=local uv run orcap route-sim-report --out analysis  # 24h public-quote route-surface test
 uv run orcap capture-hf-router --samples 4 --interval-seconds 900  # public HF router surface, no orders
