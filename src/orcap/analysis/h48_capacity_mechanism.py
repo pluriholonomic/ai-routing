@@ -149,13 +149,14 @@ def _commitment_coverage() -> dict:
 def _outcome_coverage() -> dict:
     """Summarize redacted allocated/served epoch aggregates when present."""
     try:
+        glob = data.table_glob("router_capacity_epoch_outcomes")
         rows = data.q(
             f"""
             with latest as (
                 select *, row_number() over (
                     partition by outcome_id order by run_ts desc
                 ) as recency_rank
-                from read_parquet('{data.table_glob("router_capacity_epoch_outcomes")}')
+                from read_parquet('{glob}', union_by_name=true)
             )
             select count(*) as outcomes,
                    count(distinct provider) as providers,
@@ -170,7 +171,7 @@ def _outcome_coverage() -> dict:
             where recency_rank = 1
             """
         ).fetchone()
-        return {
+        result = {
             "outcomes": int(rows[0]),
             "providers": int(rows[1]),
             "models": int(rows[2]),
@@ -180,7 +181,20 @@ def _outcome_coverage() -> dict:
             "shortfall_requests": float(rows[6] or 0.0),
             "realized_cost_observed": int(rows[7]),
             "realized_revenue_observed": int(rows[8]),
+            "declared_value_observed": 0,
         }
+        schema = data.q(
+            f"describe select * from read_parquet('{glob}', union_by_name=true)"
+        ).df()
+        if "declared_value_usd_per_served_request" in set(schema["column_name"]):
+            value_rows = data.q(
+                f"""
+                select count(declared_value_usd_per_served_request)
+                from read_parquet('{glob}', union_by_name=true)
+                """
+            ).fetchone()
+            result["declared_value_observed"] = int(value_rows[0])
+        return result
     except Exception:
         return {
             "outcomes": 0,
@@ -192,6 +206,7 @@ def _outcome_coverage() -> dict:
             "shortfall_requests": 0.0,
             "realized_cost_observed": 0,
             "realized_revenue_observed": 0,
+            "declared_value_observed": 0,
         }
 
 
@@ -475,6 +490,28 @@ def capacity_procurement_gate(commitments: dict) -> dict:
     }
 
 
+def welfare_gate(commitments: dict, outcomes: dict) -> dict:
+    """Keep declared value proxies distinct from a market-wide welfare result."""
+    if not commitments["commitments"] or not outcomes["outcomes"]:
+        status = "not_identified"
+    elif not outcomes["declared_value_observed"]:
+        status = "value_proxy_unobserved"
+    elif not outcomes["realized_cost_observed"]:
+        status = "serving_cost_unobserved"
+    else:
+        status = "partial_controlled_welfare_primitives"
+    return {
+        "status": status,
+        "declared_value_epochs": outcomes["declared_value_observed"],
+        "realized_cost_epochs": outcomes["realized_cost_observed"],
+        "claim_boundary": (
+            "An owner-declared per-success value is a registered controlled-study proxy, not "
+            "consumer surplus, market-wide welfare, a revealed willingness to pay, or a basis "
+            "for comparing unrelated workloads."
+        ),
+    }
+
+
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     panel = allocation_calibration(_load_public_simulation())
     attempts = _owned_attempt_coverage()
@@ -507,6 +544,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             triple_matched_attempts,
         ),
         "capacity_procurement_gate": capacity_procurement_gate(commitments),
+        "welfare_gate": welfare_gate(commitments, outcomes),
         "claim_boundary": (
             "The allocation-price elasticity is algebra implied by the disclosed inverse-square "
             "proxy. It is not an estimated realized router elasticity, an optimal mechanism, or "

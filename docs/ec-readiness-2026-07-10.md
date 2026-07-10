@@ -34,10 +34,12 @@ capacity and full-collateral assumptions:
 8. conditional dominant-strategy reporting and individual rationality for a
    convex capacity-reservation cost when the physical ceiling and cost
    curvature are certified and only the linear cost is private.
+9. a known-primitive expected-net-welfare allocation that weakly dominates
+   pure-cheapest and reliability-only rules for equal request values.
 
 These are useful lemmas. They do **not** establish Bayesian incentive
-compatibility with jointly private capacity/curvature/reliability, welfare with
-heterogeneous request values/quality, or an optimal bond.
+compatibility with jointly private capacity/curvature/reliability, an empirical
+welfare estimate with heterogeneous request values/quality, or an optimal bond.
 
 ## Authoritative empirical gate audit
 
@@ -65,7 +67,9 @@ counted as evidence.
 - Connect the capacity-reservation transfer and shortfall collateral in one
   report-and-delivery mechanism under a declared liability limit.
 - Compare expected welfare with pure cheapest routing and a reliability-only
-  baseline under a declared welfare function.
+  baseline under a pre-registered heterogeneous-value welfare function and
+  controlled value/cost/reliability observations. The current comparison is a
+  known-primitive equal-value benchmark only.
 - Estimate or externally validate a joint-outage panel and analyze limited
   liability rather than assuming fully collectible bonds or independent
   provider failures. The current max-min outage allocation is conditional on

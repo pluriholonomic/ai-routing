@@ -208,6 +208,9 @@ def validate_outcome(record: dict[str, Any]) -> dict[str, Any]:
     outage_event_id = _optional_identifier(record.get("outage_event_id"), "outage_event_id")
     if availability_status == "unavailable" and outage_event_id is None:
         raise ValueError("unavailable capacity outcomes require an outage_event_id")
+    declared_value = _number(record.get("declared_value_usd_per_served_request"))
+    if declared_value is not None and declared_value < 0:
+        raise ValueError("declared_value_usd_per_served_request must be non-negative")
     return {
         "outcome_id": str(record["outcome_id"]),
         "observed_at": str(record["observed_at"]),
@@ -222,6 +225,7 @@ def validate_outcome(record: dict[str, Any]) -> dict[str, Any]:
         "verification_method": record.get("verification_method"),
         "realized_cost_usd": _number(record.get("realized_cost_usd")),
         "realized_revenue_usd": _number(record.get("realized_revenue_usd")),
+        "declared_value_usd_per_served_request": declared_value,
         "availability_status": availability_status,
         "outage_event_id": outage_event_id,
         "metadata_json": json.dumps(

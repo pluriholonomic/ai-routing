@@ -140,11 +140,22 @@ AMM welfare results.
     model; it does not elicit a privately chosen ceiling, a private curvature,
     reliability, correlated physical availability, or a budget-balanced
     mechanism.
+11. **Known-primitive welfare benchmark.** With equal request value `v`, known
+    reliability `q_i`, known marginal serving cost `c_i`, and hard capacity
+    `k_i`, expected net welfare from allocation `x` is
+    `sum_i x_i(v q_i-c_i)`. `welfare_capacity_allocation` assigns positive-
+    surplus capacity in descending `v q_i-c_i` order, so it weakly maximizes
+    this objective and weakly beats feasible pure-cheapest and
+    reliability-only allocations under the same primitives. Payments are
+    transfers and do not enter this calculation. This is an equal-value,
+    known-primitive planner benchmark—not a welfare estimate, a private-
+    information mechanism, or an assertion that any public price reveals
+    cost or request value.
 
 The next theory step is to extend these single-parameter results to jointly
 private capacity, curvature, and reliability under a stochastic health process,
-then compare welfare with (a) pure cheapest routing and (b) a reliability-only
-rule.
+then extend the welfare benchmark to heterogeneous request value and controlled
+observations.
 
 ### Proof details and assumptions
 
@@ -224,6 +235,18 @@ ceiling, known curvature, one-dimensional linear reservation cost, and
 feasible delivery. A provider able to choose or lie about `K_i` or `b_i`, or
 to manipulate reliability, has a multi-dimensional type outside this result.
 
+For the welfare benchmark, each assigned request to provider `i` succeeds with
+probability `q_i`, produces common value `v` on success, and incurs marginal
+cost `c_i` when assigned. The marginal objective coefficient is
+`v q_i-c_i`; the feasible set is a box plus an aggregate demand constraint.
+A linear program over that set assigns positive-capacity providers in descending
+coefficient order and omits negative-coefficient units, exactly as
+`welfare_capacity_allocation` does. Lowest-cost and reliability-only rules are
+feasible members of the same set, so the maximum weakly dominates their
+expected net welfare. This result does not select a distributional weight,
+measure consumer willingness to pay, incorporate heterogeneous quality or
+latency, or survive private/manipulable cost and reliability inputs.
+
 The limited-liability calculation is immediate: under a feasible deliberate
 refusal, the provider can lose no more than `min(b_i,L_i)`, so delivery minus
 refusal is exactly `p_i-c_i+min(b_i,L_i)`. A design requiring a positive
@@ -258,6 +281,7 @@ the observed or declared joint-outage support.
 | `x_i, y_i` | allocated and served controlled-study requests | public panels do not identify them; payload-free `router_capacity_epoch_outcomes` can record controlled provider/model/epoch aggregates, but has no published rows yet |
 | `k_i` | provider/model/time commitment | public inference capacity remains unobserved; `router_capacity_commitments` can record a redacted controlled-study declaration, but has no published rows yet; Akash/Vast capacity is an external supply comparator |
 | `a_i, b_i` | declared linear reservation cost and positive capacity-cost curvature | optional redacted controlled-study fields exist on `router_capacity_commitments`; no published or independently verified observations yet |
+| `v` | pre-registered owner-declared value per served request | optional redacted `declared_value_usd_per_served_request` on controlled epoch outcomes; a study proxy, not consumer surplus or market-wide welfare |
 | joint outage support | named shared failure domains plus provider/epoch availability | `router_capacity_commitments` can record declared failure domains and `router_capacity_epoch_outcomes` can record an aggregate availability state and common outage identifier; neither creates joint-outage observations on its own |
 | `c_i` | realized GPU-seconds times cost | not observed; no profit or optimal-bond claim is permitted |
 
@@ -287,6 +311,11 @@ three-way match: selected route attempts, a capacity commitment, and an epoch
 outcome. It keeps attempt outcomes and epoch aggregates distinct, so the
 contract supports controlled-study calibration rather than a claim about a
 router's global allocation or a provider's total delivered capacity.
+
+An outcome can also carry a non-negative owner-declared value per served
+request. H48 calls it a controlled-study value proxy and reports it through a
+separate welfare gate only with realized cost. It is not inferred from payment
+or revenue and cannot support a market-wide or consumer-surplus claim.
 
 For a correlated-outage extension, commitments may include declared named
 failure domains and outcomes may include an aggregate availability status plus

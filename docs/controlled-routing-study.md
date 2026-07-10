@@ -136,6 +136,12 @@ capacity ceiling, the cost methodology, and the delivery/bond rule separate so
 the single-parameter theorem is not misrepresented as private-capacity truth
 telling.
 
+If `registered_value_net_cost` is a primary outcome, pre-register the
+non-negative `declared_value_usd_per_served_request` before the first epoch
+and record it on each capacity outcome. It is an owner value proxy with a
+fixed workload definition, never inferred willingness to pay or social
+welfare. Do not change it after observing an arm's delivery outcome.
+
 ## H50 outputs and decision rule
 
 | output | meaning |

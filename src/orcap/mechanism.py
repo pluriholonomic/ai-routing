@@ -903,6 +903,146 @@ def _validate_capacity_procurement_payment_inputs(
         raise ValueError("quadrature_steps must be a positive integer")
 
 
+def expected_net_welfare(
+    offers: list[ProviderOffer], allocation: pd.Series, request_value: float
+) -> float:
+    """Expected equal-request net surplus under known reliability and cost.
+
+    Assigned request ``x_i`` yields value ``request_value`` with probability
+    ``q_i`` and incurs the provider's marginal serving cost whenever assigned.
+    Payments are transfers and do not enter this social-surplus benchmark.
+    """
+    _validate_welfare_inputs(offers, request_value)
+    numeric_allocation = _validated_allocation(allocation)
+    unknown = set(numeric_allocation.index) - {offer.provider for offer in offers}
+    if unknown:
+        raise ValueError(f"allocation names unknown providers: {sorted(unknown)}")
+    return float(
+        sum(
+            float(numeric_allocation.get(offer.provider, 0.0))
+            * (request_value * offer.reliability - offer.marginal_cost)
+            for offer in offers
+        )
+    )
+
+
+def welfare_capacity_allocation(
+    offers: list[ProviderOffer], demand: float, request_value: float
+) -> pd.Series:
+    """Maximize expected net welfare with hard capacity and equal-value requests.
+
+    The rule assigns only to positive expected-surplus providers in descending
+    order of ``request_value * reliability - marginal_cost``. It can leave
+    demand unfilled when every remaining feasible assignment has negative
+    expected welfare; it is a known-primitive benchmark, not an implementable
+    policy when costs or reliability are private.
+    """
+    _validate_welfare_inputs(offers, request_value, demand)
+    allocation = {offer.provider: 0.0 for offer in offers}
+    remaining = float(demand)
+    ranked = sorted(
+        offers,
+        key=lambda offer: (
+            request_value * offer.reliability - offer.marginal_cost,
+            offer.reliability,
+            -offer.marginal_cost,
+        ),
+        reverse=True,
+    )
+    for offer in ranked:
+        surplus = request_value * offer.reliability - offer.marginal_cost
+        if remaining <= 0 or surplus <= 0:
+            break
+        assigned = min(remaining, offer.committed_capacity)
+        allocation[offer.provider] = assigned
+        remaining -= assigned
+    return pd.Series(allocation, dtype="float64")
+
+
+def benchmark_capacity_allocation(
+    offers: list[ProviderOffer], demand: float, *, policy: str
+) -> pd.Series:
+    """Allocate feasible demand by a transparent price-only or reliability-only rule."""
+    if not isfinite(demand) or demand < 0:
+        raise ValueError("demand must be finite and non-negative")
+    _validate_welfare_inputs(offers, request_value=0.0)
+    allocation = {offer.provider: 0.0 for offer in offers}
+    if policy == "lowest_cost":
+        ranked = sorted(offers, key=lambda offer: (offer.marginal_cost, offer.provider))
+    elif policy == "reliability_only":
+        ranked = sorted(
+            offers, key=lambda offer: (-offer.reliability, offer.marginal_cost, offer.provider)
+        )
+    else:
+        raise ValueError("policy must be 'lowest_cost' or 'reliability_only'")
+    remaining = float(demand)
+    for offer in ranked:
+        if remaining <= 0:
+            break
+        assigned = min(remaining, offer.committed_capacity)
+        allocation[offer.provider] = assigned
+        remaining -= assigned
+    return pd.Series(allocation, dtype="float64")
+
+
+def welfare_policy_counterfactual(
+    offers: list[ProviderOffer], demand: float, request_value: float
+) -> pd.DataFrame:
+    """Compare known-primitive welfare optimum with price and reliability baselines."""
+    _validate_welfare_inputs(offers, request_value, demand)
+    allocations = {
+        "expected_welfare": welfare_capacity_allocation(offers, demand, request_value),
+        "lowest_cost": benchmark_capacity_allocation(offers, demand, policy="lowest_cost"),
+        "reliability_only": benchmark_capacity_allocation(
+            offers, demand, policy="reliability_only"
+        ),
+    }
+    rows = []
+    for policy, allocation in allocations.items():
+        allocated = float(allocation.sum())
+        expected_delivered = float(
+            sum(allocation[offer.provider] * offer.reliability for offer in offers)
+        )
+        rows.append(
+            {
+                "policy": policy,
+                "allocated_requests": allocated,
+                "unfilled_requests": max(0.0, demand - allocated),
+                "expected_delivered_requests": expected_delivered,
+                "expected_net_welfare": expected_net_welfare(offers, allocation, request_value),
+            }
+        )
+    result = pd.DataFrame(rows)
+    welfare_value = float(
+        result.loc[result["policy"] == "expected_welfare", "expected_net_welfare"].iat[0]
+    )
+    result["welfare_gain_over_policy"] = welfare_value - result["expected_net_welfare"]
+    return result
+
+
+def _validate_welfare_inputs(
+    offers: list[ProviderOffer], request_value: float, demand: float | None = None
+) -> None:
+    if not isfinite(request_value) or request_value < 0:
+        raise ValueError("request_value must be finite and non-negative")
+    if demand is not None and (not isfinite(demand) or demand < 0):
+        raise ValueError("demand must be finite and non-negative")
+    if len({offer.provider for offer in offers}) != len(offers):
+        raise ValueError("provider names must be unique")
+    for offer in offers:
+        values = {
+            "reliability": offer.reliability,
+            "committed_capacity": offer.committed_capacity,
+            "marginal_cost": offer.marginal_cost,
+        }
+        if any(not isfinite(value) for value in values.values()):
+            raise ValueError("welfare inputs must be finite")
+        if not 0 <= offer.reliability <= 1:
+            raise ValueError("reliability must lie in [0, 1] for welfare accounting")
+        if offer.committed_capacity < 0 or offer.marginal_cost < 0:
+            raise ValueError("capacity and marginal cost must be non-negative")
+
+
 def capacity_feasible(offer: ProviderOffer, allocated_requests: float) -> bool:
     """Whether the commitment covers the router's allocated request quantity."""
     return allocated_requests <= offer.committed_capacity
