@@ -36,13 +36,14 @@ log = logging.getLogger(__name__)
 
 DEEPINFRA_URL = "https://api.deepinfra.com/models/list"
 TOGETHER_SERVERLESS_MODELS_URL = "https://docs.together.ai/docs/serverless/models"
+GROQ_MODELS_URL = "https://console.groq.com/docs/models"
 FIREWORKS_MODEL_PAGES = {
     "accounts/fireworks/models/gpt-oss-20b": "https://fireworks.ai/models/fireworks/gpt-oss-20b",
     "accounts/fireworks/models/gpt-oss-120b": "https://fireworks.ai/models/fireworks/gpt-oss-120b",
 }
 
 RAW_PAGES = {
-    "groq": "https://groq.com/pricing",
+    "groq": GROQ_MODELS_URL,
     "novita_llm": "https://novita.ai/pricing",
     "together": TOGETHER_SERVERLESS_MODELS_URL,
     "fireworks": "https://fireworks.ai/pricing",
@@ -53,6 +54,7 @@ RAW_PAGES = {
 
 _MILLION = 1_000_000
 _USD_PRICE = re.compile(r"^\$(\d+(?:\.\d+)?)$")
+_GROQ_PRICE = re.compile(r"^\$(\d+(?:\.\d+)?)\s*input\s*\$(\d+(?:\.\d+)?)\s*output$")
 _FIREWORKS_SERVERLESS_PRICE = re.compile(
     r"Available Serverless\s*Run queries immediately, pay only for usage\s*"
     r"\$(?P<input>\d+(?:\.\d+)?)\s*/\s*\$(?P<cached>\d+(?:\.\d+)?)\s*/\s*"
@@ -184,6 +186,50 @@ def together_rows(body: str | None, run_ts: str, dt: str) -> list[dict[str, Any]
     return rows
 
 
+def groq_rows(body: str | None, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize Groq's public exact-ID synchronous model price table."""
+    if not body:
+        return []
+    try:
+        tree = html.fromstring(body)
+    except (TypeError, ValueError, etree.ParserError):
+        return []
+    rows, seen = [], set()
+    for table in tree.xpath("//table"):
+        table_rows = table.xpath(".//tr")
+        if not table_rows:
+            continue
+        headers = [_header(_text(cell)) for cell in table_rows[0].xpath("./th|./td")]
+        try:
+            model_idx = headers.index("model id")
+            price_idx = headers.index("price per 1m tokens")
+        except ValueError:
+            continue
+        for tr in table_rows[1:]:
+            cells = [_text(cell) for cell in tr.xpath("./td")]
+            if len(cells) <= max(model_idx, price_idx):
+                continue
+            model_name = cells[model_idx].strip()
+            match = _GROQ_PRICE.fullmatch(cells[price_idx])
+            if not model_name or model_name in seen or not match:
+                continue
+            seen.add(model_name)
+            rows.append(
+                {
+                    "run_ts": run_ts, "dt": dt, "provider": "groq", "model_name": model_name,
+                    "model_type": "chat", "price_input_usd": float(match.group(1)) / _MILLION,
+                    "price_output_usd": float(match.group(2)) / _MILLION,
+                    "price_cached_input_usd": None, "deprecated": False,
+                    "quote_unit": "usd_per_token", "source_type": "published_docs_table",
+                    "source_url": GROQ_MODELS_URL, "source_schema_version": "groq_models_v1",
+                    "record_json": json.dumps(
+                        {"headers": headers, "cells": cells}, separators=(",", ":"), sort_keys=True
+                    ),
+                }
+            )
+    return rows
+
+
 def fireworks_rows(
     body_by_model_id: dict[str, str | None], run_ts: str, dt: str
 ) -> list[dict[str, Any]]:
@@ -256,6 +302,7 @@ async def capture_direct(
 
     raw_by_source = dict(zip(page_urls, raw_pages, strict=True))
     deepinfra = deepinfra_rows(deepinfra, run_ts, dt)
+    groq = groq_rows(raw_by_source.get("groq"), run_ts, dt)
     together = together_rows(raw_by_source.get("together"), run_ts, dt)
     fireworks = fireworks_rows(
         {
@@ -265,9 +312,15 @@ async def capture_direct(
         run_ts,
         dt,
     )
-    rows = deepinfra + together + fireworks
+    rows = deepinfra + groq + together + fireworks
     if rows:
         write_partition(pa.Table.from_pylist(rows), "direct_prices_daily", run_ts, dt, curated_dir)
+    write_source_run(
+        "direct_groq_docs",
+        status="success" if groq else "degraded",
+        rows=len(groq), run_ts=run_ts, dt=dt, curated_dir=curated_dir,
+        detail={"url": GROQ_MODELS_URL, "source_type": "published_docs_table"},
+    )
     write_source_run(
         "direct_deepinfra_api",
         status="success" if deepinfra else "degraded",
@@ -307,6 +360,7 @@ async def capture_direct(
         "run_ts": run_ts,
         "dt": dt,
         "deepinfra_models": len(deepinfra),
+        "groq_models": len(groq),
         "together_models": len(together),
         "fireworks_models": len(fireworks),
         "direct_price_rows": len(rows),

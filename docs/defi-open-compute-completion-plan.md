@@ -25,7 +25,7 @@ controls, but are not the primary comparison dataset.
 |---|---|---|
 | OpenRouter quotes | all endpoints sampled at five-minute resolution, plus provider price changes | young live panel; posted list prices are not guaranteed executable fills |
 | OpenRouter execution | daily frontend effective pricing, uptime, comparisons; hot-model congestion | no client-level fills, no request timestamps, and only router-estimated capacity |
-| Direct inference basis | structured daily DeepInfra prices, Together's exact-ID public serverless docs table, and two Fireworks exact-ID serverless pages | Together and Fireworks are explicitly posted-page quotes; other provider pages remain raw HTML only, so coverage is still too narrow for a market-wide conclusion |
+| Direct inference basis | structured daily DeepInfra prices, Groq/Together exact-ID docs tables, and two Fireworks exact-ID serverless pages | Groq, Together, and Fireworks are posted-page quotes; other provider pages remain raw HTML only, so coverage is still too narrow for a market-wide conclusion |
 | Open GPU supply | hourly Vast offer books, on-demand and bid | single marketplace; no region/quality-normalized cross-venue index or observed utilization |
 | Forward/carry | Vast duration buckets plus static anchors | heterogeneous, sparse forward anchors; no tradable same-venue curve |
 | DeFi macro controls | base fee, two Uniswap V3 pool prices, CoW sender counts, BTC funding/hashprice | no event-level depth, volume, gas-inclusive execution, solver identity, or time-aligned cross-venue universe |
