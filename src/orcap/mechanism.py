@@ -225,6 +225,176 @@ def declared_capacity_payoff(
     )
 
 
+def reported_cost_allocation(
+    offers: list[ProviderOffer],
+    *,
+    provider: str,
+    reported_cost: float,
+    demand: float,
+    eta: float = 2.0,
+) -> float:
+    """Allocation to one provider after a direct marginal-cost report.
+
+    This is an alternative procurement menu, not an interpretation of a
+    router's public posted price. It holds hard committed capacity and the
+    pre-allocation reliability score fixed, replacing only the reporting
+    provider's score input by its positive marginal-cost report.
+    """
+    if not isfinite(reported_cost) or reported_cost <= 0:
+        raise ValueError("reported_cost must be finite and positive")
+    if provider not in {offer.provider for offer in offers}:
+        raise ValueError(f"unknown provider: {provider}")
+    reported_offers = [
+        (
+            ProviderOffer(
+                provider=offer.provider,
+                price=reported_cost,
+                reliability=offer.reliability,
+                committed_capacity=offer.committed_capacity,
+                marginal_cost=offer.marginal_cost,
+            )
+            if offer.provider == provider
+            else offer
+        )
+        for offer in offers
+    ]
+    return float(capacity_constrained_allocation(reported_offers, demand, eta).get(provider, 0.0))
+
+
+def procurement_payment(
+    offers: list[ProviderOffer],
+    *,
+    provider: str,
+    reported_cost: float,
+    demand: float,
+    cost_upper_bound: float,
+    eta: float = 2.0,
+    quadrature_steps: int = 512,
+) -> float:
+    """Envelope payment for a cost-only, capacity-fixed direct menu.
+
+    With allocation ``x_i(r)`` weakly decreasing in provider ``i``'s reported
+    marginal cost ``r``, the procurement payment
+
+    ``T_i(r) = r x_i(r) + integral_r^cbar x_i(z) dz``
+
+    implements truthful cost reporting and gives zero utility to the upper
+    cost type. The integral is a deterministic trapezoid approximation used
+    for counterfactuals; the theorem is the exact envelope formula. This does
+    not impose budget balance or solve private capacity reporting.
+    """
+    if not isfinite(cost_upper_bound) or cost_upper_bound <= 0:
+        raise ValueError("cost_upper_bound must be finite and positive")
+    if reported_cost > cost_upper_bound:
+        raise ValueError("reported_cost cannot exceed cost_upper_bound")
+    if not isinstance(quadrature_steps, int) or quadrature_steps < 1:
+        raise ValueError("quadrature_steps must be a positive integer")
+    allocation = reported_cost_allocation(
+        offers,
+        provider=provider,
+        reported_cost=reported_cost,
+        demand=demand,
+        eta=eta,
+    )
+    if reported_cost == cost_upper_bound:
+        return reported_cost * allocation
+    step = (cost_upper_bound - reported_cost) / quadrature_steps
+    previous = allocation
+    integral = 0.0
+    for index in range(1, quadrature_steps + 1):
+        report = reported_cost + index * step
+        current = reported_cost_allocation(
+            offers,
+            provider=provider,
+            reported_cost=report,
+            demand=demand,
+            eta=eta,
+        )
+        integral += (previous + current) * step / 2
+        previous = current
+    return reported_cost * allocation + integral
+
+
+def procurement_utility(
+    offers: list[ProviderOffer],
+    *,
+    provider: str,
+    true_cost: float,
+    reported_cost: float,
+    demand: float,
+    cost_upper_bound: float,
+    eta: float = 2.0,
+    quadrature_steps: int = 512,
+) -> float:
+    """Expected utility from a cost report when assigned demand is delivered.
+
+    Delivery is assumed feasible because capacity is fixed and hard in this
+    result. The shortfall bond remains the separate ex-post delivery device.
+    """
+    if not isfinite(true_cost) or true_cost <= 0 or true_cost > cost_upper_bound:
+        raise ValueError("true_cost must lie in (0, cost_upper_bound]")
+    allocation = reported_cost_allocation(
+        offers,
+        provider=provider,
+        reported_cost=reported_cost,
+        demand=demand,
+        eta=eta,
+    )
+    payment = procurement_payment(
+        offers,
+        provider=provider,
+        reported_cost=reported_cost,
+        demand=demand,
+        cost_upper_bound=cost_upper_bound,
+        eta=eta,
+        quadrature_steps=quadrature_steps,
+    )
+    return payment - true_cost * allocation
+
+
+def procurement_report_diagnostic(
+    offers: list[ProviderOffer],
+    *,
+    provider: str,
+    true_cost: float,
+    report_grid: list[float],
+    demand: float,
+    cost_upper_bound: float,
+    eta: float = 2.0,
+    quadrature_steps: int = 512,
+) -> pd.DataFrame:
+    """Audit monotonic allocation and the direct-menu incentive numerically."""
+    if not isfinite(true_cost) or true_cost <= 0 or true_cost > cost_upper_bound:
+        raise ValueError("true_cost must lie in (0, cost_upper_bound]")
+    rows = []
+    for reported_cost in report_grid:
+        allocation = reported_cost_allocation(
+            offers,
+            provider=provider,
+            reported_cost=reported_cost,
+            demand=demand,
+            eta=eta,
+        )
+        payment = procurement_payment(
+            offers,
+            provider=provider,
+            reported_cost=reported_cost,
+            demand=demand,
+            cost_upper_bound=cost_upper_bound,
+            eta=eta,
+            quadrature_steps=quadrature_steps,
+        )
+        rows.append(
+            {
+                "reported_cost": reported_cost,
+                "allocated_requests": allocation,
+                "payment": payment,
+                "utility_at_true_cost": payment - true_cost * allocation,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def capacity_feasible(offer: ProviderOffer, allocated_requests: float) -> bool:
     """Whether the commitment covers the router's allocated request quantity."""
     return allocated_requests <= offer.committed_capacity

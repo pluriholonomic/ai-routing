@@ -27,6 +27,8 @@ capacity and full-collateral assumptions:
    and
 5. weak delivered-request-count dominance over uncapped score allocation when
    requests have equal value.
+6. conditional dominant-strategy cost reporting and individual rationality for
+   a direct procurement menu with fixed hard capacity and reliability.
 
 These are useful lemmas. They do **not** establish Bayesian incentive
 compatibility, individual rationality with capacity acquisition, welfare with
