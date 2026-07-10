@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from orcap.observability import write_source_run
+from orcap.observability import source_spec, write_source_run
 from orcap.quality import check
 
 
@@ -64,3 +64,8 @@ def test_hf_router_profile_accepts_a_fresh_independent_capture(tmp_path):
     assert [source["source"] for source in result["sources"]] == [
         "huggingface_inference_providers"
     ]
+
+
+def test_market_profile_registers_every_source_run_written_by_optional_market_collectors():
+    assert source_spec("uniswap_tick_book").min_rows == 1
+    assert source_spec("nosana").min_rows == 1

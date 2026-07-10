@@ -109,6 +109,11 @@ def main() -> None:
     p_market.add_argument(
         "--with-akash", action="store_true", help="query configured Akash network endpoint"
     )
+    p_market.add_argument(
+        "--with-nosana",
+        action="store_true",
+        help="query public on-chain Nosana registered-node state",
+    )
 
     p_quality = sub.add_parser("quality", help="check source freshness and run-health ledger")
     p_quality.add_argument("--profile", default="core", help="registry profile (default: core)")
@@ -310,7 +315,11 @@ def main() -> None:
     elif args.command == "market-capture":
         from .capture_markets import main as market_main
 
-        market_main(with_uniswap=args.with_uniswap, with_akash=args.with_akash)
+        market_main(
+            with_uniswap=args.with_uniswap,
+            with_akash=args.with_akash,
+            with_nosana=args.with_nosana,
+        )
     elif args.command == "register-routing-study":
         from .study_registry import register_main
 
@@ -402,6 +411,7 @@ def main() -> None:
             "h55": "h55_akash_open_market_book",
             "h56": "h56_uniswap_tick_book",
             "h57": "h57_uniswap_virtual_depth",
+            "h58": "h58_nosana_node_registry",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

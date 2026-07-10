@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 
 import httpx
@@ -30,6 +31,7 @@ from orcap.capture_markets import (
     akash_open_bid_rows,
     akash_registry_summary,
     capture_akash_open_market,
+    capture_nosana_node_registry,
     chutes_capacity_rows,
     cow_amm_preblock_quote_rows,
     cow_competition_rows,
@@ -40,6 +42,7 @@ from orcap.capture_markets import (
     geckoterminal_quote_rows,
     golem_capacity_rows,
     instrument_map_rows,
+    nosana_node_registry_rows,
     uniswap_pool_specs,
     uniswap_quoter_impact_capacity_rows,
     uniswap_quoter_quote_rows,
@@ -65,6 +68,80 @@ def test_blank_actions_url_override_uses_public_default(monkeypatch):
     assert _configured_url("ORCAP_AKASH_NETWORK_URL", "https://public.example") == (
         "https://public.example"
     )
+
+
+def test_nosana_node_registry_parser_keeps_declared_profiles_distinct_from_capacity():
+    header = (
+        bytes.fromhex("7da61292c37f56dc")
+        + (b"\x00" * 32)
+        + b"\x01"  # audited
+        + b"\x02"  # architecture enum
+        + (840).to_bytes(2, "little")
+        + (16).to_bytes(2, "little")
+        + (2).to_bytes(2, "little")
+        + (64).to_bytes(2, "little")
+        + (1_000).to_bytes(2, "little")
+        + (500).to_bytes(2, "little")
+    )
+    rows = nosana_node_registry_rows(
+        {
+            "context": {"slot": 123},
+            "result": [
+                {
+                    "pubkey": "node-account",
+                    "account": {
+                        "data": [base64.b64encode(header).decode("ascii"), "base64"]
+                    },
+                }
+            ],
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["participant_id"] == "node-account"
+    assert row["audited"] is True
+    assert row["country_code"] == 840
+    assert row["declared_cpu_cores"] == 16
+    assert row["declared_gpu_value"] == 2
+    assert row["declared_memory_gb"] == 64
+    assert row["snapshot_slot"] == 123
+    assert "do not identify node liveness" in row["metric_definition"]
+    assert nosana_node_registry_rows({"result": []}, "run", "dt") == []
+
+
+def test_nosana_node_registry_capture_uses_public_header_only_json_rpc_request():
+    async def run():
+        def handler(request):
+            assert request.url == httpx.URL("https://solana.example/")
+            body = json.loads(request.content)
+            assert body["method"] == "getProgramAccounts"
+            assert body["params"][0] == "nosNeZR64wiEhQc5j251bsP4WqDabT6hmz4PHyoHLGD"
+            config = body["params"][1]
+            assert config["withContext"] is True
+            assert config["dataSlice"] == {"offset": 0, "length": 54}
+            assert config["filters"] == [
+                {"memcmp": {"offset": 0, "bytes": "N1x6kpVdXxo"}}
+            ]
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {"context": {"slot": 42}, "value": []},
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            body, detail = await capture_nosana_node_registry(Fetcher(client), url="https://solana.example/")
+        return body, detail
+
+    body, detail = asyncio.run(run())
+    assert body == {"context": {"slot": 42}, "result": []}
+    assert detail["query_succeeded"] is True
+    assert detail["snapshot_slot"] == 42
+    assert detail["account_records_fetched"] == 0
 
 
 def test_ethereum_rpc_config_prefers_operator_endpoint_over_public_bounded_fallback(monkeypatch):

@@ -135,6 +135,15 @@ deterioration, and checks its predicted final sqrt price against same-block
 QuoterV2 rows. That validates state arithmetic, not EVM step rounding, gas,
 ordering, fillability, cross-pool routing, total market depth, or welfare.
 
+The monitor also records the public Nosana Solana `NodeAccount` registry as a
+separate, source-bounded contextual panel. It reads only the fixed declared
+header at one returned slot and accepts a snapshot only when the raw account
+count and parsed-account count agree. H58 may report registered-node count,
+the declared audited flag, and the literal declared-profile composition over
+time. The registry must not be treated as node liveness, free GPU supply, GPU
+model/count, queue, posted price, utilization, job execution, delivered
+compute, or a harmonized compute-capacity input.
+
 The same archive-capable RPC path also queries the verified mainnet
 `GPv2Settlement` contract for `Trade` and `Settlement` events in a separate
 bounded window (`ORCAP_COW_LOG_WINDOW_BLOCKS`, with the same finality buffer).

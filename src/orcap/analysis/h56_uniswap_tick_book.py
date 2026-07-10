@@ -46,6 +46,15 @@ def _load(name: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def snapshot_key(run_ts: object, dt: object) -> tuple[str, str]:
+    """Canonicalize parquet DATE values before joining source-ledger snapshots."""
+    try:
+        date_key = pd.Timestamp(dt).date().isoformat()
+    except (TypeError, ValueError):
+        date_key = str(dt)
+    return str(run_ts), date_key
+
+
 def complete_snapshot_manifests(source_runs: pd.DataFrame) -> dict[tuple[str, str], int]:
     """Return full source-run keys and their certified initialized-tick row counts."""
     required = {"run_ts", "dt", "source", "status", "detail_json"}
@@ -79,7 +88,7 @@ def complete_snapshot_manifests(source_runs: pd.DataFrame) -> dict[tuple[str, st
             continue
         run_ts, dt = getattr(row, "run_ts", None), getattr(row, "dt", None)
         if run_ts is not None and dt is not None:
-            result[(str(run_ts), str(dt))] = expected_rows
+            result[snapshot_key(run_ts, dt)] = expected_rows
     return result
 
 
@@ -98,14 +107,18 @@ def tick_book_panel(
     if ticks.empty or not required.issubset(ticks.columns) or not complete_keys:
         return _empty()
     frame = ticks.copy()
-    keys = list(zip(frame["run_ts"].astype(str), frame["dt"].astype(str), strict=True))
+    keys = [
+        snapshot_key(run_ts, dt)
+        for run_ts, dt in zip(frame["run_ts"], frame["dt"], strict=True)
+    ]
     frame = frame.loc[[key in complete_keys for key in keys]].copy()
     if frame.empty:
         return _empty()
     if expected_rows is not None:
-        frame["_snapshot_key"] = list(
-            zip(frame["run_ts"].astype(str), frame["dt"].astype(str), strict=True)
-        )
+        frame["_snapshot_key"] = [
+            snapshot_key(run_ts, dt)
+            for run_ts, dt in zip(frame["run_ts"], frame["dt"], strict=True)
+        ]
         observed_rows = frame.groupby("_snapshot_key").size().to_dict()
         valid_keys = {
             key

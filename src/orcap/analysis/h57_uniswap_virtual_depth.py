@@ -16,7 +16,7 @@ import pandas as pd
 from ..capture_markets import uniswap_pool_specs
 from . import data
 from .common import DEFAULT_OUT, save, save_json
-from .h56_uniswap_tick_book import complete_snapshot_manifests
+from .h56_uniswap_tick_book import complete_snapshot_manifests, snapshot_key
 
 Q96 = Decimal(2**96)
 FEE_DENOMINATOR = Decimal(1_000_000)
@@ -187,9 +187,9 @@ def verified_tick_rows(ticks: pd.DataFrame, manifests: dict[tuple[str, str], int
     if ticks.empty or not required.issubset(ticks.columns) or not manifests:
         return pd.DataFrame()
     frame = ticks.copy()
-    frame["_snapshot_key"] = list(
-        zip(frame["run_ts"].astype(str), frame["dt"].astype(str), strict=True)
-    )
+    frame["_snapshot_key"] = [
+        snapshot_key(run_ts, dt) for run_ts, dt in zip(frame["run_ts"], frame["dt"], strict=True)
+    ]
     frame = frame.loc[frame["_snapshot_key"].isin(manifests)].copy()
     counts = frame.groupby("_snapshot_key").size().to_dict()
     valid = {key for key, count in counts.items() if manifests.get(key) == int(count)}
@@ -261,6 +261,10 @@ def quoter_validation_panel(
             "usdc_to_weth_exact_input_simulation"
         )
     ].copy()
+    quote_frame["_snapshot_key"] = [
+        snapshot_key(run_ts, dt)
+        for run_ts, dt in zip(quote_frame["run_ts"], quote_frame["dt"], strict=True)
+    ]
     rows = []
     for key, group in frame.groupby(["run_ts", "dt", "pool_id", "block_number"], dropna=False):
         run_ts, dt, pool_id, block_number = key
@@ -268,9 +272,11 @@ def quoter_validation_panel(
         records = _snapshot_records(group)
         if spec is None or records is None:
             continue
+        target_key = snapshot_key(run_ts, dt)
         candidates = quote_frame.loc[
-            quote_frame["run_ts"].astype(str).eq(str(run_ts))
-            & quote_frame["dt"].astype(str).eq(str(dt))
+            quote_frame["_snapshot_key"].map(
+                lambda value, target_key=target_key: value == target_key
+            )
             & quote_frame["pool_id"].astype(str).str.lower().eq(str(pool_id).lower())
             & pd.to_numeric(quote_frame["block_number"], errors="coerce").eq(block_number)
         ]

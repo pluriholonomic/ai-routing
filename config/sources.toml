@@ -1,11 +1,11 @@
 [profiles]
 core = ["openrouter_api", "openrouter_frontend", "vast"]
-comparison = ["defillama", "cow", "golem", "akash", "akash_market_book", "chutes", "uniswap", "geckoterminal"]
+comparison = ["defillama", "cow", "golem", "akash", "akash_market_book", "chutes", "uniswap", "uniswap_tick_book", "nosana", "geckoterminal"]
 capture = ["openrouter_api"]
 scrape = ["openrouter_frontend", "direct_providers", "direct_deepinfra_api", "direct_cerebras_api", "direct_sambanova_api", "direct_chutes_api", "direct_groq_docs", "direct_novita_pricing", "direct_baseten_pricing", "direct_together_docs", "direct_fireworks_pages"]
 direct = ["direct_providers", "direct_deepinfra_api", "direct_cerebras_api", "direct_sambanova_api", "direct_chutes_api", "direct_groq_docs", "direct_novita_pricing", "direct_baseten_pricing", "direct_together_docs", "direct_fireworks_pages"]
 gpu = ["vast", "ornn", "lambda_gpu_pricing"]
-market = ["defillama", "cow", "golem", "akash", "akash_market_book", "chutes", "uniswap", "geckoterminal"]
+market = ["defillama", "cow", "golem", "akash", "akash_market_book", "chutes", "uniswap", "uniswap_tick_book", "nosana", "geckoterminal"]
 usage = ["huggingface_open_models", "ollama_library", "docker_hub"]
 router_comparator = ["openrouter_api", "huggingface_inference_providers"]
 # The hourly Hugging Face collector is buffered independently and only needs to
@@ -215,6 +215,18 @@ min_rows = 1
 
 [sources.uniswap]
 owner = "Uniswap / The Graph"
+required = false
+cadence_minutes = 130
+min_rows = 1
+
+[sources.uniswap_tick_book]
+owner = "Uniswap / TickLens"
+required = false
+cadence_minutes = 130
+min_rows = 1
+
+[sources.nosana]
+owner = "Nosana / Solana public NodeAccount registry"
 required = false
 cadence_minutes = 130
 min_rows = 1

@@ -38,7 +38,7 @@ jobs:
           AKASH_API_KEY: ${{ secrets.AKASH_API_KEY }}
           ORCAP_COW_TRADES_URL: ${{ vars.ORCAP_COW_TRADES_URL }}
           ORCAP_GOLEM_STATS_URL: ${{ vars.ORCAP_GOLEM_STATS_URL }}
-        run: uv run orcap market-capture --with-uniswap --with-akash
+        run: uv run orcap market-capture --with-uniswap --with-akash --with-nosana
       - name: validate required source health
         run: uv run orcap quality --profile market
       - name: push comparison data and source-run ledger

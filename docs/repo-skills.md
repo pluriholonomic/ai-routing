@@ -189,3 +189,27 @@ Completion check: a source-ledger-verified H56 snapshot has one final block per
 pool, every usable word was scanned, every tick maps back to its bitmap word,
 and any executable-depth conclusion is supported by a separately documented
 traversal rather than by the raw tick table alone.
+
+## 8. Monitor a public on-chain declared-node registry
+
+Use for: qualifying a decentralized-compute registry without an API key or
+mistaking a registration record for available capacity.
+
+1. Query the documented Nosana Nodes program through canonical public Solana
+   JSON-RPC with `getProgramAccounts`, `withContext=true`, the NodeAccount
+   discriminator filter, and only the 54-byte fixed header. Do not use a
+   frontend credential, browser session, or the authenticated Markets API.
+2. Retain the returned context slot and parse only the documented header
+   fields. The collector must fail closed if a returned record is malformed,
+   has the wrong discriminator, or produces a raw-account/parsed-row mismatch.
+3. Require the `nosana` source-run ledger row to be `success`,
+   `query_succeeded=true`, and `registry_complete=true` before using H58. H58
+   independently repeats the expected-row and unique-node checks.
+4. Label every output as a *declared registration profile*. The audited flag
+   and declared resource fields do not establish liveness, free capacity, GPU
+   count/model, availability, price, utilization, queue, job completion, or
+   delivered compute. Do not merge them into H41 or a cross-venue price panel.
+
+Completion check: the source ledger certifies that every returned header
+parsed once, the snapshot slot is retained, malformed fixtures degrade the
+source, and outputs remain separate from capacity and utilization claims.
