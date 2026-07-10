@@ -413,6 +413,7 @@ def main() -> None:
             "h57": "h57_uniswap_virtual_depth",
             "h58": "h58_nosana_node_registry",
             "h59": "h59_nosana_job_activity",
+            "h61": "h61_akash_dashboard",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

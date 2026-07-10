@@ -23,6 +23,7 @@ from orcap.capture_markets import (
     _uniswap_tick_lens_calldata,
     _write,
     akash_capacity_rows,
+    akash_dashboard_rows,
     akash_gpu_quote_rows,
     akash_lease_execution_rows,
     akash_live_gpu_provider_ids,
@@ -881,6 +882,41 @@ def test_akash_registry_entries_without_live_gpu_capacity_are_excluded():
         "online_version_valid_providers": 1,
         "online_gpu_capacity_providers": 0,
     }
+
+
+def test_akash_dashboard_rows_keep_network_aggregates_separate_from_price_or_utilization():
+    rows = akash_dashboard_rows(
+        {
+            "now": {
+                "date": "2026-07-10T12:11:50.977Z",
+                "height": 27_653_769,
+                "activeLeaseCount": 604,
+                "totalLeaseCount": 525_527,
+                "dailyLeaseCount": 489,
+                "activeGPU": 116,
+                "totalUUsdcSpent": 1_787_716_411_792.543,
+                "dailyUUsdcSpent": 7_446_170_573.202393,
+            },
+            "compare": {"date": "2026-07-09T12:11:51.670Z", "height": 27_639_049},
+        },
+        {
+            "resources": {"gpu": {"active": 115, "pending": 11, "available": 124, "total": 250}},
+            "activeProviderCount": 60,
+        },
+        "20260710T120000Z",
+        "2026-07-10",
+    )
+    by_metric = {row["metric"]: row for row in rows}
+    assert len(rows) == 11
+    assert by_metric["source_reported_active_lease_count"]["value"] == 604.0
+    assert by_metric["source_reported_source_day_uusdc_spent"]["value"] == pytest.approx(
+        7_446_170_573.202393
+    )
+    assert by_metric["source_reported_network_gpu_available"]["value"] == 124.0
+    assert by_metric["source_reported_network_active_provider_count"]["value"] == 60.0
+    assert all(row["source_block_height"] == 27_653_769 for row in rows)
+    assert all(row["source_compare_block_height"] == 27_639_049 for row in rows)
+    assert all("utilization" not in row["metric"] for row in rows)
 
 
 def test_akash_lease_lifecycle_preserves_native_rate_without_claiming_workload_success():

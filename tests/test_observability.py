@@ -67,6 +67,7 @@ def test_hf_router_profile_accepts_a_fresh_independent_capture(tmp_path):
 
 
 def test_market_profile_registers_every_source_run_written_by_optional_market_collectors():
+    assert source_spec("akash_dashboard").min_rows == 8
     assert source_spec("uniswap_tick_book").min_rows == 1
     assert source_spec("nosana").min_rows == 1
     assert source_spec("nosana_jobs_api").min_rows == 1

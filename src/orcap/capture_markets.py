@@ -35,6 +35,8 @@ AKASH_LEASES_URL = (
     "https://console-api.akash.network/akash/market/v1beta5/leases/list"
     "?pagination.limit=50&pagination.reverse=true"
 )
+AKASH_DASHBOARD_URL = "https://console-api.akash.network/v1/dashboard-data"
+AKASH_NETWORK_CAPACITY_URL = "https://console-api.akash.network/v1/network-capacity"
 AKASH_RPC_URL = "https://rpc.akashnet.net:443"
 AKASH_MARKET_API_URL = "https://api.akashnet.net/akash/market/v1beta5"
 AKASH_LATEST_BLOCK_URL = "https://api.akashnet.net/cosmos/base/tendermint/v1beta1/blocks/latest"
@@ -2345,6 +2347,146 @@ def _integer(value: Any) -> int | None:
         return None
 
 
+def akash_dashboard_rows(
+    dashboard: Any, network_capacity: Any, run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize public Akash network aggregates without inferring unit economics.
+
+    The Console dashboard is a source-indexed aggregate view. It complements,
+    but cannot be joined one-to-one with, the provider/GPU and lease panels.
+    In particular, its spend fields are kept in their literal source units and
+    are never divided by GPU or lease counts to manufacture prices or usage.
+    """
+    if not isinstance(dashboard, dict) or not isinstance(network_capacity, dict):
+        return []
+    now = dashboard.get("now")
+    if not isinstance(now, dict):
+        return []
+    observed_at = now.get("date")
+    block_height = _integer(now.get("height"))
+    if (
+        not isinstance(observed_at, str)
+        or not observed_at
+        or block_height is None
+        or block_height <= 0
+    ):
+        return []
+    compare = dashboard.get("compare") if isinstance(dashboard.get("compare"), dict) else {}
+    common = {
+        "run_ts": run_ts,
+        "dt": dt,
+        "source": "akash_dashboard",
+        "venue": "akash-console-network-data",
+        "source_observed_at": observed_at,
+        "source_block_height": block_height,
+        "source_compare_at": compare.get("date"),
+        "source_compare_block_height": _integer(compare.get("height")),
+        "quality_tier": "public indexed network aggregate; source-defined metric",
+    }
+    rows: list[dict[str, Any]] = []
+
+    def emit(
+        *,
+        metric: str,
+        value: Any,
+        unit: str,
+        endpoint: str,
+        path: str,
+        definition: str,
+    ) -> None:
+        numeric = _float(value)
+        if numeric is None or numeric < 0:
+            return
+        rows.append(
+            common
+            | {
+                "metric": metric,
+                "value": numeric,
+                "source_reported_unit": unit,
+                "metric_definition": definition,
+                "record_json": _json({"endpoint": endpoint, "path": path}),
+            }
+        )
+
+    for field, metric, unit, definition in (
+        (
+            "activeLeaseCount",
+            "source_reported_active_lease_count",
+            "leases",
+            "Akash dashboard active lease-contract count; not completed workloads or demand.",
+        ),
+        (
+            "totalLeaseCount",
+            "source_reported_total_lease_count",
+            "leases",
+            "Akash dashboard cumulative lease-contract count; not delivered compute.",
+        ),
+        (
+            "dailyLeaseCount",
+            "source_reported_daily_lease_count",
+            "leases",
+            "Akash dashboard source-defined daily lease count; not successful workloads.",
+        ),
+        (
+            "activeGPU",
+            "source_reported_dashboard_active_gpu_count",
+            "gpus",
+            "Akash dashboard active GPU count; source-indexed state, not utilization or "
+            "audited GPUs.",
+        ),
+    ):
+        emit(
+            metric=metric,
+            value=now.get(field),
+            unit=unit,
+            endpoint=AKASH_DASHBOARD_URL,
+            path=f"now.{field}",
+            definition=definition,
+        )
+    for denom in ("UAkt", "UAct", "UUsdc", "UUsd"):
+        for prefix, horizon in (("total", "cumulative"), ("daily", "source_day")):
+            field = f"{prefix}{denom}Spent"
+            emit(
+                metric=f"source_reported_{horizon}_{denom.lower()}_spent",
+                value=now.get(field),
+                unit=denom.lower(),
+                endpoint=AKASH_DASHBOARD_URL,
+                path=f"now.{field}",
+                definition=(
+                    f"Akash dashboard {horizon} {denom} spend in the literal source unit; "
+                    "aggregate protocol spend, not provider revenue, a GPU-hour price, or welfare."
+                ),
+            )
+
+    resources = network_capacity.get("resources")
+    gpu = resources.get("gpu") if isinstance(resources, dict) else None
+    if isinstance(gpu, dict):
+        for state in ("active", "pending", "available", "total"):
+            emit(
+                metric=f"source_reported_network_gpu_{state}",
+                value=gpu.get(state),
+                unit="gpus",
+                endpoint=AKASH_NETWORK_CAPACITY_URL,
+                path=f"resources.gpu.{state}",
+                definition=(
+                    f"Akash network-capacity GPU {state} count; source-indexed aggregate, not "
+                    "model-specific capacity, a physical-GPU audit, or utilization."
+                ),
+            )
+    emit(
+        metric="source_reported_network_active_provider_count",
+        value=network_capacity.get("activeProviderCount"),
+        unit="providers",
+        endpoint=AKASH_NETWORK_CAPACITY_URL,
+        path="activeProviderCount",
+        definition=(
+            "Akash network-capacity active-provider count; source-indexed aggregate, not an "
+            "individual provider quality or capacity observation."
+        ),
+    )
+    return rows
+
+
 def _ratio(numerator: Any, denominator: Any) -> float | None:
     n, d = _float(numerator), _float(denominator)
     return n / d if n is not None and d not in (None, 0) else None
@@ -3198,6 +3340,8 @@ async def capture_markets(
         akash = None
         akash_gpu_prices = None
         akash_leases = None
+        akash_dashboard_body = None
+        akash_network_capacity_body = None
         akash_open_bids: list[dict[str, Any]] = []
         akash_market_detail: dict[str, Any] = {
             "coverage_complete": False,
@@ -3219,6 +3363,12 @@ async def capture_markets(
             )
             akash_leases = await fetcher.get_json(
                 _configured_url("ORCAP_AKASH_LEASES_URL", AKASH_LEASES_URL)
+            )
+            akash_dashboard_body, akash_network_capacity_body = await asyncio.gather(
+                fetcher.get_json(_configured_url("ORCAP_AKASH_DASHBOARD_URL", AKASH_DASHBOARD_URL)),
+                fetcher.get_json(
+                    _configured_url("ORCAP_AKASH_NETWORK_CAPACITY_URL", AKASH_NETWORK_CAPACITY_URL)
+                ),
             )
             akash_open_bids, akash_market_detail = await capture_akash_open_market(
                 fetcher, akash_live_gpu_provider_ids(akash)
@@ -3294,6 +3444,9 @@ async def capture_markets(
     akash_coverage = akash_registry_summary(akash)
     akash_quotes = akash_gpu_quote_rows(akash_gpu_prices, run_ts, dt)
     akash_leases_rows = akash_lease_execution_rows(akash_leases, akash_block_times, run_ts, dt)
+    akash_dashboard = akash_dashboard_rows(
+        akash_dashboard_body, akash_network_capacity_body, run_ts, dt
+    )
     akash_open_bid_book = akash_open_bid_rows(
         akash_open_bids, akash_market_detail, run_ts, dt
     )
@@ -3338,6 +3491,13 @@ async def capture_markets(
     _write(
         golem_capacity + akash_capacity + chutes_capacity,
         "market_capacity",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        akash_dashboard,
+        "akash_dashboard",
         run_ts,
         dt,
         curated_dir,
@@ -3523,6 +3683,32 @@ async def capture_markets(
             },
             curated_dir,
         )
+        dashboard_now = (
+            akash_dashboard_body.get("now") if isinstance(akash_dashboard_body, dict) else None
+        )
+        _run_status(
+            "akash_dashboard",
+            len(akash_dashboard),
+            run_ts,
+            dt,
+            {
+                "dashboard_url": _configured_url("ORCAP_AKASH_DASHBOARD_URL", AKASH_DASHBOARD_URL),
+                "network_capacity_url": _configured_url(
+                    "ORCAP_AKASH_NETWORK_CAPACITY_URL", AKASH_NETWORK_CAPACITY_URL
+                ),
+                "dashboard_now_timestamp": (
+                    dashboard_now.get("date") if isinstance(dashboard_now, dict) else None
+                ),
+                "dashboard_now_height": (
+                    dashboard_now.get("height") if isinstance(dashboard_now, dict) else None
+                ),
+                "metric_boundary": (
+                    "public aggregate lease, resource, and spend fields; not workload delivery, "
+                    "GPU-hour price, provider revenue, utilization, or welfare"
+                ),
+            },
+            curated_dir,
+        )
         market_rows = int(akash_market_detail.get("bid_records_fetched") or 0)
         write_source_run(
             "akash_market_book",
@@ -3553,6 +3739,14 @@ async def capture_markets(
         )
         write_source_run(
             "akash_market_book",
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail={"reason": "flag not set"},
+            curated_dir=curated_dir,
+        )
+        write_source_run(
+            "akash_dashboard",
             status="skipped",
             run_ts=run_ts,
             dt=dt,
@@ -3642,6 +3836,7 @@ async def capture_markets(
         "akash_gpu_quotes": len(akash_quotes),
         "akash_coverage": akash_coverage,
         "akash_lease_lifecycle_rows": len(akash_leases_rows),
+        "akash_dashboard_rows": len(akash_dashboard),
         "akash_open_gpu_bid_rows": len(akash_open_bid_book),
         "akash_market_book": akash_market_detail,
         "nosana_node_registry_rows": len(nosana_nodes),
