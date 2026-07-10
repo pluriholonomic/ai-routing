@@ -7,6 +7,7 @@ from orcap.analysis.h48_capacity_mechanism import (
     allocation_calibration,
     capacity_procurement_gate,
     enforcement_gate,
+    welfare_gate,
 )
 from orcap.capacity_telemetry import write_commitments, write_outcomes
 from orcap.route_telemetry import write_attempts
@@ -93,6 +94,21 @@ def test_h48_capacity_procurement_gate_keeps_declared_costs_distinct_from_verifi
     )
     assert partial["status"] == "declared_cost_type_coverage"
     assert "do not verify private cost" in partial["claim_boundary"]
+
+
+def test_h48_welfare_gate_requires_registered_value_and_cost_primitives():
+    commitments = {"commitments": 1}
+    missing_value = welfare_gate(
+        commitments,
+        {"outcomes": 1, "declared_value_observed": 0, "realized_cost_observed": 1},
+    )
+    assert missing_value["status"] == "value_proxy_unobserved"
+    partial = welfare_gate(
+        commitments,
+        {"outcomes": 1, "declared_value_observed": 1, "realized_cost_observed": 1},
+    )
+    assert partial["status"] == "partial_controlled_welfare_primitives"
+    assert "not consumer surplus" in partial["claim_boundary"]
 
 
 def test_h48_matches_owned_attempts_to_same_provider_model_study_and_epoch(tmp_path, monkeypatch):

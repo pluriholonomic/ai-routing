@@ -134,7 +134,9 @@ Each JSONL object requires `outcome_id`, `observed_at`, `study_id`, `provider`,
 `model_id`, `epoch_start`, `epoch_end`, `allocated_requests`, and
 `served_requests`. The importer derives shortfall as allocated minus served;
 optional `realized_cost_usd`, `realized_revenue_usd`, `verification_method`,
-and non-payload `metadata` are permitted. H48 only uses an outcome when its
+`declared_value_usd_per_served_request`, and non-payload `metadata` are
+permitted. The value field is an owner-declared controlled-study proxy, not
+consumer surplus or revenue. H48 only uses an outcome when its
 provider/model/study/epoch exactly matches a commitment, and only treats
 selected attempts in that same half-open epoch as controlled-study coverage.
 This is not global routing flow or a capacity proof.

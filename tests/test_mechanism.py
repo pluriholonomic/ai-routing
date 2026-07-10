@@ -16,6 +16,7 @@ from orcap.mechanism import (
     capacity_procurement_utility,
     declared_capacity_payoff,
     expected_delivered_under_outage_scenarios,
+    expected_net_welfare,
     limited_liability_delivery_gain,
     own_price_share_elasticity,
     procurement_payment,
@@ -25,6 +26,8 @@ from orcap.mechanism import (
     reported_cost_allocation,
     robust_outage_allocation,
     robust_outage_counterfactual,
+    welfare_capacity_allocation,
+    welfare_policy_counterfactual,
 )
 
 
@@ -326,3 +329,20 @@ def test_convex_capacity_procurement_menu_is_monotone_truthful_and_individually_
         cost_upper_bound=4.0,
     )
     assert upper_type_utility == pytest.approx(0.0)
+
+
+def test_known_primitive_welfare_rule_dominates_price_and_reliability_baselines():
+    offers = [
+        ProviderOffer("cheap", 1.0, 0.1, 10, 1.0),
+        ProviderOffer("reliable", 1.0, 0.9, 10, 5.0),
+        ProviderOffer("very-expensive", 1.0, 1.0, 10, 12.0),
+    ]
+    allocation = welfare_capacity_allocation(offers, demand=10, request_value=10)
+    assert allocation["reliable"] == 10
+    assert expected_net_welfare(offers, allocation, request_value=10) == pytest.approx(40)
+    comparison = welfare_policy_counterfactual(offers, demand=10, request_value=10).set_index(
+        "policy"
+    )
+    assert comparison.loc["expected_welfare", "welfare_gain_over_policy"] == pytest.approx(0)
+    assert comparison.loc["lowest_cost", "welfare_gain_over_policy"] > 0
+    assert comparison.loc["reliability_only", "welfare_gain_over_policy"] > 0

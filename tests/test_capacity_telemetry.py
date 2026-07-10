@@ -42,6 +42,7 @@ def _outcome():
         "verification_method": "router_epoch_ledger",
         "realized_cost_usd": 0.12,
         "realized_revenue_usd": 0.18,
+        "declared_value_usd_per_served_request": 0.03,
         "availability_status": "available",
         "metadata": {"workload_class": "short_chat"},
     }
@@ -92,6 +93,7 @@ def test_capacity_outcome_contract_records_aggregate_delivery_without_payload():
     assert row["served_requests"] == 114.0
     assert row["shortfall_requests"] == 6.0
     assert row["payload_retained"] is False
+    assert row["declared_value_usd_per_served_request"] == 0.03
 
 
 def test_capacity_outcome_rejects_impossible_counts_and_payloads():
@@ -101,6 +103,8 @@ def test_capacity_outcome_rejects_impossible_counts_and_payloads():
         validate_outcome(_outcome() | {"metadata": {"messages": ["do not persist"]}})
     with pytest.raises(ValueError, match="outage_event_id"):
         validate_outcome(_outcome() | {"availability_status": "unavailable"})
+    with pytest.raises(ValueError, match="declared_value"):
+        validate_outcome(_outcome() | {"declared_value_usd_per_served_request": -0.01})
 
 
 def test_capacity_outcome_records_aggregate_joint_outage_identifier_without_payload():
