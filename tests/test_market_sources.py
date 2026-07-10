@@ -4,6 +4,7 @@ from orcap.capture_markets import (
     akash_gpu_quote_rows,
     akash_lease_execution_rows,
     akash_registry_summary,
+    cow_competition_rows,
     cow_execution_rows,
     defillama_participant_rows,
     geckoterminal_quote_rows,
@@ -49,6 +50,47 @@ def test_cow_execution_uses_immutable_trade_identity():
     )
     assert rows[0]["execution_id"] == "trade1"
     assert rows[0]["native_price"] == 3.0
+
+
+def test_cow_latest_competition_is_live_solver_metadata_not_trade_execution():
+    participants, events = cow_competition_rows(
+        {
+            "auctionId": 123,
+            "auctionStartBlock": 10,
+            "auctionDeadlineBlock": 12,
+            "transactionHashes": ["0xtx"],
+            "auction": {"orders": ["order-uid-a", "order-uid-b"]},
+            "solutions": [
+                {
+                    "solverAddress": "0xSolverA",
+                    "score": "10",
+                    "ranking": 1,
+                    "isWinner": True,
+                    "filteredOut": False,
+                    "txHash": "0xtx",
+                    "orders": [{"id": "order-uid-a"}],
+                },
+                {
+                    "solverAddress": "0xSolverB",
+                    "score": "9",
+                    "ranking": 2,
+                    "isWinner": False,
+                    "filteredOut": False,
+                    "orders": [{"id": "order-uid-b"}],
+                },
+            ],
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert events[0]["event_id"] == "cow:solver-competition:123"
+    assert events[0]["event_type"] == "solver_competition_snapshot"
+    assert events[0]["event_time"] is None
+    assert "order-uid-a" not in events[0]["record_json"]
+    assert participants[0]["participant_id"] == "0xsolvera"
+    assert participants[0]["value"] is None
+    assert participants[0]["competition_score"] == 10.0
+    assert "not market-wide trades" in participants[0]["quality_tier"]
 
 
 def test_uniswap_rows_keep_quote_and_execution_separate():

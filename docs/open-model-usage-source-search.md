@@ -20,7 +20,7 @@ does not invite an unsupported conversion into inference tokens or revenue.
 
 | Source | Finding | Decision |
 |---|---|---|
-| CoW Protocol trade endpoint | The public endpoint requires an owner or order UID, so it cannot supply a market-wide execution feed. | Keep `cow` degraded until a bounded official aggregate/subgraph feed is configured. |
+| CoW Protocol trade endpoint | The public trade endpoint requires an owner or order UID, so it cannot supply a market-wide execution feed. The separate public `solver_competition/latest` endpoint is captured as a bounded live solver-competition snapshot. | Use it for current candidate-solver participation only; keep the market-wide CoW execution/fill gate closed until a bounded official aggregate/subgraph feed is configured. |
 | Uniswap depth and swaps | The configured Graph path requires a subgraph id and API key. | Keep credential-gated; do not substitute an undocumented third-party feed. |
 | Golem Stats | The documented public API exposes provider and utilization series, but the live API hostname failed DNS resolution from the collector environment. | Keep `golem` degraded and monitor; do not create zero-capacity records. |
 | GitHub repository traffic | GitHub traffic endpoints require repository write/admin access and only retain 14 days of clone history. | Do not treat public stars/forks as model consumption. Existing devrel metrics remain adoption proxies only. |
@@ -50,8 +50,9 @@ does not invite an unsupported conversion into inference tokens or revenue.
   stats derivations (performed from the verified local mirror in this run).
 - Replace broad historical compaction hydration with a resumable,
   table-scoped fold; the old all-table hydration exhausts the Hub API quota.
-- Configure a finalized Uniswap source and a market-wide CoW feed before
-  claiming a full DeFi liquidity/execution comparison.
+- Configure a finalized Uniswap source and a market-wide CoW execution feed
+  before claiming a full DeFi liquidity/execution comparison. The live CoW
+  solver-competition snapshots are not substitutes for either one.
 - H31 now records the Vast on-demand rented-share/rent association with a
   seven-day, three-GPU-class power gate. It remains descriptive until an
   exogenous supply or demand instrument is added.

@@ -1,9 +1,10 @@
 name: market-comparison
 
 # The comparison monitor keeps raw source evidence and status records even when
-# optional credentialed feeds are absent. DefiLlama and the public Akash
-# provider/lease feeds run without credentials; CoW, Golem, and Uniswap remain
-# visibly degraded until a live or configured feed is available.
+# optional credentialed feeds are absent. DefiLlama, public Akash provider/lease
+# feeds, and CoW's bounded latest solver-competition snapshot run without
+# credentials. CoW market-wide executions, Golem, and finalized Uniswap remain
+# visibly incomplete until their respective feeds are available.
 on:
   schedule:
     - cron: "29 * * * *"

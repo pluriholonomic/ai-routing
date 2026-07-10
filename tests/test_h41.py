@@ -95,3 +95,22 @@ def test_geckoterminal_is_an_indexed_amm_control_not_unknown_market():
         pd.DataFrame(),
     )
     assert set(panel["market"]) == {"defi_amm_indexed_control"}
+
+
+def test_participant_count_does_not_coerce_non_comparable_metadata_into_a_value():
+    panel = metric_panel(
+        pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "cow",
+                    "participant_id": "solver-a",
+                    "value": None,
+                }
+            ]
+        ),
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+    )
+    assert set(panel["metric"]) == {"participants"}

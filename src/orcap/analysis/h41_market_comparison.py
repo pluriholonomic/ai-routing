@@ -53,12 +53,20 @@ def metric_panel(
     rows: list[dict] = []
     if not participants.empty:
         for (dt, source), group in participants.groupby(["dt", "source"]):
-            rows.extend(
-                [
-                    _row(dt, source, "participants", group["participant_id"].nunique(), len(group)),
-                    _row(dt, source, "median_reported_value", group["value"].median(), len(group)),
-                ]
+            rows.append(
+                _row(dt, source, "participants", group["participant_id"].nunique(), len(group))
             )
+            values = pd.to_numeric(group["value"], errors="coerce")
+            if values.notna().any():
+                rows.append(
+                    _row(
+                        dt,
+                        source,
+                        "median_reported_value",
+                        values.median(),
+                        int(values.notna().sum()),
+                    )
+                )
     if not executions.empty:
         executed = executions.copy()
         if {"source", "execution_id"}.issubset(executed.columns):
