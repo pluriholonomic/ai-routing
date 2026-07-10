@@ -138,6 +138,7 @@ def monitor_badge() -> str:
             "core": check("core"),
             "direct": check("direct"),
             "comparison": check("market"),
+            "livepeer": check("livepeer"),
         }
     except Exception as exc:
         log.warning("monitor health unavailable: %s", exc)
@@ -161,6 +162,7 @@ def live_status(analysis_dir: Path) -> str:
     h17 = _j(analysis_dir, "h17_summary")
     h42 = _j(analysis_dir, "h42_summary")
     h45 = _j(analysis_dir, "h45_shadow_execution_summary")
+    h51 = _j(analysis_dir, "h51_summary")
     h3 = _j(analysis_dir, "h3_summary")
     h42_data = h42.get("data") or {}
     h42_r2 = h42.get("r2_undercut_capture") or {}
@@ -206,6 +208,11 @@ def live_status(analysis_dir: Path) -> str:
             "H42 clean undercut windows",
         ),
         (str(h45.get("policy_groups", "—")), "H45 shadow-policy groups"),
+        (_fmt(h51.get("median_switch_share"), pct=True), "H51 Gateway switch share"),
+        (
+            f"{h51.get('n_snapshot_runs', '—')}/1000",
+            "H51 aggregate snapshots",
+        ),
     ]
     tile_html = "".join(
         f'<div class="stat"><div class="v">{html.escape(str(v))}</div>'

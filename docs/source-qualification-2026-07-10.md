@@ -159,6 +159,21 @@ trades), with no Quoter errors. The default now uses that validated overlap;
 H41 records gaps between query windows instead of assuming snapshots form a
 continuous panel.
 
+## Qualified with a bounded scope: Livepeer aggregate Gateway routing control
+
+Livepeer's documented Gateway Introspection API exposes a public Loki endpoint
+for observing Gateway activity. The collector requests only three aggregate
+LogQL count queries by public region: swap messages, reuse messages, and reuse
+messages while segments are in flight. A live validation returned two regional
+rows with non-zero decision-message counts; the raw provenance contained four
+aggregate responses and no manifest, session, or client identifiers.
+
+This qualifies a privacy-preserving external routing-adjustment control. It
+does not identify an orchestrator, stream, selected provider, LLM model, price,
+request volume, capacity, successful delivery, or welfare. H51 is therefore
+power-gated and may only report a region-window association after its declared
+seven-day and snapshot-count thresholds.
+
 ## Qualified with a bounded scope: Uniswap QuoterV2 price-impact curve
 
 Uniswap's official Ethereum deployment list identifies QuoterV2 at

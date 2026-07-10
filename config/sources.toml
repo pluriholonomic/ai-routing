@@ -8,6 +8,7 @@ gpu = ["vast", "ornn", "lambda_gpu_pricing"]
 market = ["defillama", "cow", "golem", "akash", "chutes", "uniswap", "geckoterminal"]
 usage = ["huggingface_open_models", "ollama_library", "docker_hub"]
 router_comparator = ["openrouter_api", "huggingface_inference_providers"]
+livepeer = ["livepeer_gateway"]
 router_shadow = [
   "openrouter_api",
   "huggingface_inference_providers",
@@ -117,6 +118,12 @@ owner = "Hugging Face Inference Providers"
 required = true
 cadence_minutes = 80
 min_rows = 100
+
+[sources.livepeer_gateway]
+owner = "Livepeer"
+required = true
+cadence_minutes = 65
+min_rows = 1
 
 [sources.cloudflare_ai_gateway]
 owner = "Owned Cloudflare AI Gateway account"
