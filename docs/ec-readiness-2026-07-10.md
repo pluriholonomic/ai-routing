@@ -1,0 +1,83 @@
+# EC-readiness audit — 2026-07-10
+
+## Bottom line
+
+The project is **not submission-ready** for ACM EC. It has a credible
+mechanism-design nucleus and reproducible collector/analysis infrastructure,
+but it does not yet have the matched execution/capacity evidence or the
+private-information welfare result needed for a central empirical-theory claim.
+This document is a gate ledger, not a forecast of acceptance.
+
+## Current candidate contribution
+
+The defensible prospective contribution is a capacity-certified inference
+routing mechanism: score allocations use reliability-weighted inverse prices,
+but route only against declared, collateral-backed capacity. The DeFi link is
+to firm RFQ liquidity and collateralized performance, not to a claim that an
+inference router is an AMM.
+
+The current one-period model establishes only the following under stated hard
+capacity and full-collateral assumptions:
+
+1. the inverse-price allocation comparative static;
+2. capped water-fill feasibility and its entropy-regularized characterization;
+3. a delivery incentive when payment is conditional on service and the
+   shortfall bond covers the cost-minus-price gap;
+4. no profitable hard-capacity over-report that creates an unserved assignment;
+   and
+5. weak delivered-request-count dominance over uncapped score allocation when
+   requests have equal value.
+
+These are useful lemmas. They do **not** establish Bayesian incentive
+compatibility, individual rationality with capacity acquisition, welfare with
+heterogeneous request values/quality, or an optimal bond.
+
+## Authoritative empirical gate audit
+
+The following was re-run against `t4run/openrouter-market-history` on
+2026-07-10. New collector code that has not yet reached the dataset is not
+counted as evidence.
+
+| Requirement | Current evidence | Status |
+|---|---|---|
+| Direct routed-versus-provider quote basis | H13: 247 pairs across 4 days, all DeepInfra; exact-zero output basis within numerical precision | Power-gated: needs 7 days and 3 providers |
+| DeFi AMM/RFQ microstructure | H41: one DefiLlama aggregate day only | Not identified: no finalized Uniswap events/depth or market-wide CoW executions |
+| Decentralized compute capacity | H41: no non-null decentralized-compute capacity in authoritative store | Not identified |
+| Realized routing and capacity delivery | H48: zero route attempts, commitments, matches, or realized costs | Not identified |
+| CoW solver competition | H49 collector and local validation exist, but no published remote snapshots | Not yet accumulated; sampled snapshot only, never execution flow |
+| Direct-source breadth | DeepInfra is published; Cerebras and SambaNova structured adapters are merged and locally validated | Awaiting published repetitions |
+| Reproducibility | Full local suite: 110 passing tests at the most recent source expansion | Strong engineering evidence, not empirical power |
+
+## Non-negotiable paper gates
+
+### Theory
+
+- State an explicit type space for cost, capacity, and reliability.
+- Prove individual rationality and a reporting result under declared collateral
+  and a capacity-acquisition cost.
+- Compare expected welfare with pure cheapest routing and a reliability-only
+  baseline under a declared welfare function.
+- Analyze limited liability and correlated outages rather than assuming full
+  collectible bonds.
+
+### Empirics
+
+- Accumulate at least 6–8 weeks of coherent quote/quality panels.
+- Clear H13 breadth gates with repeated, source-qualified direct prices; keep
+  mapped one-to-one IDs distinguishable from literal provider IDs.
+- Obtain finalized Uniswap swap/mint/burn data and a market-wide CoW
+  settlement/auction source. Indexed pool state and latest-auction snapshots
+  remain controls, not substitutes.
+- Run a controlled, redacted routing study with provider/model/epoch
+  commitments, selected attempts, allocated and served counts, and cost or
+  margin fields.
+- Pre-register shocks, outcome variables, minimum event counts, inference
+  clusters, negative controls, and stopping rules before dynamic estimation.
+
+## Stop rule
+
+Work may stop only after every gate above is supported by reproducible current
+artifacts, theory claims have proofs matching their assumptions, and the paper
+cleanly separates measured, power-gated, and proposed results. Until then,
+collector additions and local mechanism counterfactuals are progress—not
+evidence of an EC-ready paper.
