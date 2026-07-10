@@ -82,9 +82,7 @@ def vast_snapshot_panel(offers: pd.DataFrame) -> pd.DataFrame:
         rows["rented_bool"] = np.nan
     else:
         rows["rented_bool"] = rented.map(
-            lambda value: str(value).lower() in {"true", "1", "yes"}
-            if pd.notna(value)
-            else np.nan
+            lambda value: str(value).lower() in {"true", "1", "yes"} if pd.notna(value) else np.nan
         )
     return (
         rows.groupby(["run_ts", "gpu_class"], as_index=False)
@@ -119,9 +117,11 @@ def match_venue_quotes(
             ]
             if candidates.empty:
                 continue
-            match = candidates.assign(_gap=(candidates["ts"] - quote.ts).abs()).sort_values(
-                ["_gap", "ts"], ascending=[True, False]
-            ).iloc[0]
+            match = (
+                candidates.assign(_gap=(candidates["ts"] - quote.ts).abs())
+                .sort_values(["_gap", "ts"], ascending=[True, False])
+                .iloc[0]
+            )
             basis = (float(match["vast_median_usd_hr"]) / float(quote.price_usd) - 1) * 100
             rows.append(
                 {
@@ -140,6 +140,71 @@ def match_venue_quotes(
                 }
             )
     return pd.DataFrame(rows, columns=PANEL_COLUMNS)
+
+
+def coverage_diagnostic(akash: pd.DataFrame, vast: pd.DataFrame, mapping: pd.DataFrame) -> dict:
+    """Expose exact-cohort and timestamp gaps before declaring zero matches.
+
+    A zero matched panel can arise because no venue lists an exact cohort, no
+    valid quote exists, or because independently captured snapshots have not
+    yet been published on a common clock. These states have different repairs
+    and must not be collapsed into a zero-basis observation.
+    """
+    quotes = akash.copy()
+    quotes["price_usd"] = pd.to_numeric(quotes.get("price_usd"), errors="coerce")
+    quotes = quotes.loc[quotes["price_usd"] > 0].copy()
+    if not quotes.empty:
+        quotes["ts"] = pd.to_datetime(
+            quotes["run_ts"], format="%Y%m%dT%H%M%SZ", utc=True, errors="coerce"
+        )
+        quotes = quotes.dropna(subset=["ts"])
+    offers = vast_snapshot_panel(vast)
+    if not offers.empty:
+        offers["ts"] = pd.to_datetime(
+            offers["run_ts"], format="%Y%m%dT%H%M%SZ", utc=True, errors="coerce"
+        )
+        offers = offers.dropna(subset=["ts"])
+    rows = []
+    for item in mapping.itertuples(index=False):
+        left = (
+            quotes.loc[quotes["quote_id"].eq(item.akash_quote_id)]
+            if "quote_id" in quotes
+            else quotes.iloc[0:0]
+        )
+        right = (
+            offers.loc[offers["gpu_class"].eq(item.vast_gpu_class)]
+            if "gpu_class" in offers
+            else offers.iloc[0:0]
+        )
+        nearest = []
+        within_window = 0
+        if not left.empty and not right.empty:
+            for timestamp in left["ts"]:
+                gap = (right["ts"] - timestamp).abs().min()
+                minutes = float(gap.total_seconds() / 60)
+                nearest.append(minutes)
+                within_window += int(minutes <= MAX_MATCH_MINUTES)
+        rows.append(
+            {
+                "cohort": item.cohort,
+                "akash_quote_id": item.akash_quote_id,
+                "vast_gpu_class": item.vast_gpu_class,
+                "akash_quote_snapshots": int(len(left)),
+                "vast_on_demand_snapshots": int(len(right)),
+                "nearest_elapsed_minutes": min(nearest) if nearest else None,
+                "akash_snapshots_within_match_window": within_window,
+            }
+        )
+    return {
+        "valid_akash_quote_rows": int(len(quotes)),
+        "vast_on_demand_snapshot_rows": int(len(offers)),
+        "mapping_cohorts": int(len(mapping)),
+        "cohorts": rows,
+        "claim_boundary": (
+            "Coverage diagnostic only. It identifies explicit quote/cohort/timestamp overlap; "
+            "it is not a price basis, fill, utilization, or execution measure."
+        ),
+    }
 
 
 def summarize(panel: pd.DataFrame) -> dict:
@@ -191,35 +256,65 @@ def summarize(panel: pd.DataFrame) -> dict:
     }
 
 
-def _load_akash_quotes() -> pd.DataFrame:
+def _load_akash_quotes() -> tuple[pd.DataFrame, bool]:
+    """Return quotes and whether the source query completed.
+
+    A source-read failure is intentionally distinct from a successful empty
+    table: otherwise a transient dataset/network error looks like evidence of
+    no matched quotes.
+    """
     try:
-        return data.q(
-            f"""
+        return (
+            data.q(
+                f"""
             select run_ts, quote_id, price_usd, available_units
             from read_parquet('{data.table_glob("market_quotes")}', union_by_name=true)
             where source = 'akash' and quote_unit = 'usd_per_gpu_hour'
             """
-        ).df()
+            ).df(),
+            True,
+        )
     except Exception:
-        return pd.DataFrame()
+        return pd.DataFrame(), False
 
 
-def _load_vast_offers() -> pd.DataFrame:
+def _load_vast_offers() -> tuple[pd.DataFrame, bool]:
     try:
-        return data.q(
-            f"""
+        return (
+            data.q(
+                f"""
             select run_ts, gpu_class, offer_type, dph_total, rented
             from read_parquet('{data.table_glob("gpu_offers_snapshots")}')
             """
-        ).df()
+            ).df(),
+            True,
+        )
     except Exception:
-        return pd.DataFrame()
+        return pd.DataFrame(), False
+
+
+def source_read_status(rows: pd.DataFrame, query_succeeded: bool) -> dict:
+    """Serialize source health without exposing transient exception details."""
+    return {
+        "status": "query_succeeded" if query_succeeded else "query_failed",
+        "rows": int(len(rows)),
+    }
 
 
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     version, mapping = venue_map()
-    panel = match_venue_quotes(_load_akash_quotes(), _load_vast_offers(), mapping)
+    akash, akash_query_succeeded = _load_akash_quotes()
+    vast, vast_query_succeeded = _load_vast_offers()
+    panel = match_venue_quotes(akash, vast, mapping)
     save(panel, out_dir, "h47_gpu_venue_basis")
-    result = {"mapping_version": version, **summarize(panel)}
+    result = {
+        "mapping_version": version,
+        "source_reads": {
+            "akash_market_quotes": source_read_status(akash, akash_query_succeeded),
+            "vast_gpu_offers": source_read_status(vast, vast_query_succeeded),
+        },
+        "coverage_diagnostic": coverage_diagnostic(akash, vast, mapping),
+        **summarize(panel),
+    }
     save_json(result, out_dir, "h47_summary")
     return result

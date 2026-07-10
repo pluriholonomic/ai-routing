@@ -16,6 +16,7 @@ than a forecast from local staging files.
 | H41 DeFi/open-compute comparison | Akash, Chutes, CoW, DefiLlama, GeckoTerminal, and Uniswap rows are present. Uniswap and CoW each have two overlapping finalized windows with zero uncovered blocks between them (1,536 and 1,539 covered blocks respectively). | Still power-gated: one observation day only; full finalized USD depth and a market-wide CoW execution/auction panel are absent. State-derived Uniswap impact lower bounds remain distinct from depth. |
 | H58 Nosana registry | 19 NodeAccount rows and one source-ledger-certified complete snapshot | Power-gated at 1/7 days and 1/20 snapshots. These remain declared registration fields, not availability, price, GPU count/model, utilization, or delivery. |
 | H59 Nosana aggregate activity | 93 aggregate-only rows, including 25 completed-job buckets, 25 duration buckets, and 34 market running totals; the source-reported running count equals their sum | Power-gated at 2/7 source-bucket days and 25/100 buckets per series. It is not LLM routing, token flow, verified GPU-hours, capacity, utilization, payment, revenue, welfare, or causal demand. |
+| H47 exact GPU quote basis | All three versioned Akash/Vast cohorts exist in the authoritative store: three positive Akash quote snapshots per cohort and 46–49 Vast on-demand snapshots. Yet no pair falls within the 90-minute rule; the nearest cohort-specific published snapshot is 355.55–407.75 minutes away. | Not an economic zero. The current GPU workflow buffers hourly captures as GitHub artifacts for the nightly compact/upload job, while the market workflow publishes Akash quotes directly. H47 is therefore blocked by a publication-clock mismatch rather than an absent GPU mapping or quote. |
 
 ## Why H13 has only one provider today
 
@@ -45,7 +46,12 @@ The next source-health check must therefore distinguish two outcomes:
 3. Let H58 reach seven days and 20 ledger-verified registry snapshots; let H59
    reach seven source-bucket days and 100 latest buckets for both source
    series. These are descriptive source-panel gates, not welfare gates.
-4. A central empirical/theory paper remains blocked on a controlled, redacted
+4. Before treating H47 as a basis result, make the two source series queryable
+   on a common clock at the existing 90-minute threshold, then accumulate at
+   least seven days, 50 matched pairs, and two exact GPU cohorts. Widening the
+   match window without a validated intraday-staleness model would create a
+   stale-quote comparison, not repair the panel.
+5. A central empirical/theory paper remains blocked on a controlled, redacted
    routing study and independently scheduled reliability audit. Public panels
    can validate regime and context but cannot identify realized allocation,
    quality-adjusted cost, or welfare.
@@ -64,7 +70,11 @@ PYTHONPATH=. .venv/bin/python -c \
   'from pathlib import Path; from orcap.analysis.h58_nosana_node_registry import run; run(Path("/tmp/h58"))'
 PYTHONPATH=. .venv/bin/python -c \
   'from pathlib import Path; from orcap.analysis.h59_nosana_job_activity import run; run(Path("/tmp/h59"))'
+PYTHONPATH=. .venv/bin/python -c \
+  'from pathlib import Path; from orcap.analysis.h47_gpu_venue_basis import run; run(Path("/tmp/h47"))'
 ```
 
 The omitted output directory should be an explicit temporary directory for a
-read-only audit, as it was for this run.
+read-only audit, as it was for this run. H47 now records source-read status
+separately from coverage: a failed remote read cannot silently masquerade as
+an empty quote panel.
