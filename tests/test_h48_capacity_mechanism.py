@@ -94,6 +94,16 @@ def test_h48_capacity_procurement_gate_keeps_declared_costs_distinct_from_verifi
     )
     assert partial["status"] == "declared_cost_type_coverage"
     assert "do not verify private cost" in partial["claim_boundary"]
+    curve = capacity_procurement_gate(
+        {
+            "commitments": 100,
+            "capacity_linear_cost_observed": 0,
+            "capacity_cost_curvature_observed": 0,
+            "capacity_cost_curve_observed": 100,
+        }
+    )
+    assert curve["status"] == "declared_cost_curve_coverage"
+    assert "VCG counterfactual" in curve["claim_boundary"]
 
 
 def test_h48_welfare_gate_requires_registered_value_and_cost_primitives():

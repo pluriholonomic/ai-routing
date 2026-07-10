@@ -108,7 +108,8 @@ Each JSONL object requires `commitment_id`, `observed_at`, `study_id`,
 `committed_requests`. `verification_method`,
 `marginal_cost_usd_per_request`,
 `capacity_linear_cost_usd_per_request`,
-`capacity_cost_curvature_usd_per_request_sq`, and a non-payload `metadata`
+`capacity_cost_curvature_usd_per_request_sq`, an optional compressed
+`capacity_cost_curve`, and a non-payload `metadata`
 object are optional. The capacity linear cost must be non-negative and the
 curvature positive when supplied. H48 joins a record to a route attempt only for the same study,
 provider, model, and half-open time interval `[epoch_start, epoch_end)`.
@@ -120,6 +121,13 @@ For a correlated-outage study, an owner may additionally supply
 `["cloud:example", "region:us-east"]`. These are declared exposure labels,
 not inferred uptime or proof of common ownership. They make a later
 joint-outage model auditable without collecting request content.
+
+`capacity_cost_curve` is a non-empty list of objects with `end_requests` and
+`marginal_cost_usd_per_request`. Endpoints must be strictly increasing, the
+final endpoint must equal `committed_requests`, and marginal costs must be
+non-negative and non-decreasing. It is a compressed declared convex
+reservation-cost curve for the conditional VCG counterfactual—not a verified
+cost statement, capacity proof, or provider price quote.
 
 ## Import redacted capacity outcomes
 

@@ -136,6 +136,11 @@ capacity ceiling, the cost methodology, and the delivery/bond rule separate so
 the single-parameter theorem is not misrepresented as private-capacity truth
 telling.
 
+If the operator uses the conditional cost-curve VCG counterfactual, also
+collect a payload-free compressed `capacity_cost_curve` with cumulative request
+breakpoints and non-decreasing marginal reservation costs. This is a declared
+study input, not an independent cost audit.
+
 If `registered_value_net_cost` is a primary outcome, pre-register the
 non-negative `declared_value_usd_per_served_request` before the first epoch
 and record it on each capacity outcome. It is an owner value proxy with a
