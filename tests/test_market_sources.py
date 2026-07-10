@@ -6,6 +6,7 @@ from orcap.capture_markets import (
     akash_registry_summary,
     cow_execution_rows,
     defillama_participant_rows,
+    geckoterminal_quote_rows,
     golem_capacity_rows,
     instrument_map_rows,
     uniswap_rows,
@@ -80,6 +81,30 @@ def test_uniswap_rows_keep_quote_and_execution_separate():
     assert quotes[0]["quote_id"] == "pool"
     assert executions[0]["execution_id"] == "swap"
     assert events[0]["event_type"] == "swap"
+
+
+def test_geckoterminal_rows_preserve_indexed_state_boundary():
+    rows = geckoterminal_quote_rows(
+        {
+            "0xpool": {
+                "data": {
+                    "id": "eth_0xpool",
+                    "attributes": {
+                        "dex_id": "uniswap_v3",
+                        "base_token_price_usd": "2000",
+                        "quote_token_price_usd": "1",
+                        "reserve_in_usd": "1200000",
+                        "volume_usd": {"m5": "5", "h1": "60", "h24": "1440"},
+                    },
+                }
+            }
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["price_usd"] == 2000.0
+    assert rows[0]["depth_usd"] == 1_200_000.0
+    assert "not executable depth" in rows[0]["quality_tier"]
 
 
 def test_akash_rows_keep_provider_as_participant():
