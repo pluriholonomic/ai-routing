@@ -43,6 +43,7 @@ log = logging.getLogger(__name__)
 DEEPINFRA_URL = "https://api.deepinfra.com/models/list"
 CEREBRAS_MODELS_URL = "https://api.cerebras.ai/public/v1/models"
 SAMBANOVA_MODELS_URL = "https://api.sambanova.ai/v1/models"
+CHUTES_MODELS_URL = "https://llm.chutes.ai/v1/models"
 TOGETHER_SERVERLESS_MODELS_URL = "https://docs.together.ai/docs/serverless/models"
 GROQ_MODELS_URL = "https://console.groq.com/docs/models"
 NOVITA_PRICING_URL = "https://novita.ai/pricing"
@@ -281,6 +282,74 @@ def sambanova_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
                 "source_type": "structured_public_api",
                 "source_url": SAMBANOVA_MODELS_URL,
                 "source_schema_version": "sambanova_public_models_v1",
+                "record_json": json.dumps(item, separators=(",", ":"), sort_keys=True),
+            }
+        )
+    return rows
+
+
+def chutes_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize Chutes's public catalog with configuration-verified mappings.
+
+    Chutes's public id includes a ``-TEE`` product suffix while OpenRouter uses
+    a canonical model id. A canonical H13 key is assigned only when the
+    provider id, literal catalog root, and quantization all agree with a
+    versioned one-to-one map. Unmapped records remain direct-provider ids and
+    cannot silently enter the venue-basis panel.
+    """
+    models = body.get("data") if isinstance(body, dict) else body
+    if not isinstance(models, list):
+        return []
+    maps = direct_model_maps()
+    rows = []
+    for item in models:
+        if not isinstance(item, dict):
+            continue
+        provider_model_id = item.get("id")
+        pricing = item.get("pricing") or {}
+        prompt = _number(pricing.get("prompt"))
+        completion = _number(pricing.get("completion"))
+        if not isinstance(provider_model_id, str) or not provider_model_id:
+            continue
+        if prompt is None or completion is None or prompt <= 0 or completion <= 0:
+            continue
+        mapping = maps.get(("chutes", provider_model_id))
+        root_matches = mapping is not None and item.get("root") == mapping.get("expected_root")
+        quantization_matches = (
+            mapping is not None and item.get("quantization") == mapping.get("expected_quantization")
+        )
+        verified_mapping = mapping if root_matches and quantization_matches else None
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "provider": "chutes",
+                "model_name": provider_model_id,
+                "direct_provider_model_id": provider_model_id,
+                "canonical_model_id": (
+                    verified_mapping.get("canonical_model_id")
+                    if verified_mapping is not None
+                    else None
+                ),
+                "model_identifier_type": (
+                    verified_mapping.get("mapping_type")
+                    if verified_mapping is not None
+                    else "provider_api_id"
+                ),
+                "model_type": "chat",
+                "price_input_usd": prompt / _MILLION,
+                "price_output_usd": completion / _MILLION,
+                "price_cached_input_usd": (
+                    _number(pricing.get("input_cache_read")) / _MILLION
+                    if _number(pricing.get("input_cache_read")) is not None
+                    else None
+                ),
+                "deprecated": False,
+                "preview": False,
+                "quote_unit": "usd_per_token",
+                "source_type": "structured_public_api",
+                "source_url": CHUTES_MODELS_URL,
+                "source_schema_version": "chutes_public_models_v1",
                 "record_json": json.dumps(item, separators=(",", ":"), sort_keys=True),
             }
         )
@@ -570,10 +639,11 @@ async def capture_direct(
     }
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
-        deepinfra, cerebras, sambanova, *raw_pages = await asyncio.gather(
+        deepinfra, cerebras, sambanova, chutes, *raw_pages = await asyncio.gather(
             fetcher.get_json(DEEPINFRA_URL),
             fetcher.get_json(CEREBRAS_MODELS_URL),
             fetcher.get_json(SAMBANOVA_MODELS_URL),
+            fetcher.get_json(CHUTES_MODELS_URL),
             *(fetcher.get_text(url) for url in page_urls.values()),
         )
         write_raw(fetcher.records, "direct_providers", raw_dir, run_ts, dt)
@@ -582,6 +652,7 @@ async def capture_direct(
     deepinfra = deepinfra_rows(deepinfra, run_ts, dt)
     cerebras = cerebras_rows(cerebras, run_ts, dt)
     sambanova = sambanova_rows(sambanova, run_ts, dt)
+    chutes = chutes_rows(chutes, run_ts, dt)
     groq = groq_rows(raw_by_source.get("groq"), run_ts, dt)
     novita = novita_rows(raw_by_source.get("novita_llm"), run_ts, dt)
     together = together_rows(raw_by_source.get("together"), run_ts, dt)
@@ -593,7 +664,7 @@ async def capture_direct(
         run_ts,
         dt,
     )
-    rows = deepinfra + cerebras + sambanova + groq + novita + together + fireworks
+    rows = deepinfra + cerebras + sambanova + chutes + groq + novita + together + fireworks
     if rows:
         write_partition(direct_price_table(rows), "direct_prices_daily", run_ts, dt, curated_dir)
     write_source_run(
@@ -635,6 +706,22 @@ async def capture_direct(
             "url": CEREBRAS_MODELS_URL,
             "source_type": "structured_public_api",
             "schema_version": "cerebras_public_models_v1",
+        },
+    )
+    write_source_run(
+        "direct_chutes_api",
+        status="success" if chutes else "degraded",
+        rows=len(chutes),
+        run_ts=run_ts,
+        dt=dt,
+        curated_dir=curated_dir,
+        detail={
+            "url": CHUTES_MODELS_URL,
+            "source_type": "structured_public_api",
+            "schema_version": "chutes_public_models_v1",
+            "verified_configuration_maps": sum(
+                row["canonical_model_id"] is not None for row in chutes
+            ),
         },
     )
     write_source_run(
@@ -685,6 +772,7 @@ async def capture_direct(
         "deepinfra_models": len(deepinfra),
         "cerebras_models": len(cerebras),
         "sambanova_models": len(sambanova),
+        "chutes_models": len(chutes),
         "groq_models": len(groq),
         "novita_models": len(novita),
         "together_models": len(together),

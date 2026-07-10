@@ -7,6 +7,7 @@ import pandas as pd
 from orcap.analysis import h13_venue_basis
 from orcap.capture_direct import (
     CEREBRAS_MODELS_URL,
+    CHUTES_MODELS_URL,
     DEEPINFRA_URL,
     FIREWORKS_MODEL_PAGES,
     GROQ_MODELS_URL,
@@ -14,6 +15,7 @@ from orcap.capture_direct import (
     SAMBANOVA_MODELS_URL,
     TOGETHER_SERVERLESS_MODELS_URL,
     cerebras_rows,
+    chutes_rows,
     deepinfra_rows,
     direct_price_table,
     fireworks_rows,
@@ -131,6 +133,55 @@ def test_sambanova_rows_keep_unmapped_id_without_fuzzy_crosswalk():
     )
     assert rows[0]["canonical_model_id"] is None
     assert rows[0]["model_identifier_type"] == "provider_api_id"
+
+
+def test_chutes_rows_require_provider_root_and_quantization_for_canonical_map():
+    rows = chutes_rows(
+        {
+            "data": [
+                {
+                    "id": "Qwen/Qwen3.6-27B-TEE",
+                    "root": "Qwen/Qwen3.6-27B-FP8",
+                    "quantization": "fp8",
+                    "pricing": {"prompt": 0.3, "completion": 2.0, "input_cache_read": 0.15},
+                },
+                {
+                    "id": "Qwen/Qwen3.6-27B-TEE",
+                    "root": "wrong-root",
+                    "quantization": "fp8",
+                    "pricing": {"prompt": 0.3, "completion": 2.0},
+                },
+            ]
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert len(rows) == 2
+    assert rows[0]["canonical_model_id"] == "qwen/qwen3.6-27b"
+    assert rows[0]["model_identifier_type"] == "verified_provider_configuration_pair_v1"
+    assert rows[0]["price_input_usd"] == 0.3 / 1_000_000
+    assert rows[0]["price_cached_input_usd"] == 0.15 / 1_000_000
+    assert rows[0]["source_url"] == CHUTES_MODELS_URL
+    assert rows[1]["canonical_model_id"] is None
+    assert rows[1]["model_identifier_type"] == "provider_api_id"
+
+
+def test_chutes_glm_map_requires_the_literal_fp8_root():
+    rows = chutes_rows(
+        {
+            "data": [
+                {
+                    "id": "zai-org/GLM-5.1-TEE",
+                    "root": "zai-org/GLM-5.1-FP8",
+                    "quantization": "fp8",
+                    "pricing": {"prompt": 0.98, "completion": 3.08},
+                }
+            ]
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["canonical_model_id"] == "z-ai/glm-5.1"
 
 
 def test_direct_price_table_keeps_later_provider_provenance_columns():
@@ -499,6 +550,37 @@ def test_h13_selects_nearest_quote_and_rejects_stale_same_day_quote():
     assert len(matched) == 1
     assert matched.loc[0, "routed_run_ts"] == "20260710T115500Z"
     assert matched.loc[0, "quote_time_gap_minutes"] == 5.0
+
+
+def test_h13_deduplicates_mapping_changes_by_stable_direct_provider_id():
+    direct = pd.DataFrame(
+        [
+            {
+                "dt": "2026-07-10",
+                "run_ts": "20260710T070000Z",
+                "provider": "chutes",
+                "direct_provider_model_id": "zai-org/GLM-5-TEE",
+                "model_name": "zai-org/GLM-5-TEE",
+            },
+            {
+                "dt": "2026-07-10",
+                "run_ts": "20260710T071000Z",
+                "provider": "chutes",
+                "direct_provider_model_id": "zai-org/GLM-5-TEE",
+                "model_name": "z-ai/glm-5",
+            },
+        ]
+    )
+    latest = h13_venue_basis.latest_direct_by_provider_id(direct)
+    assert latest.to_dict("records") == [
+        {
+            "dt": "2026-07-10",
+            "run_ts": "20260710T071000Z",
+            "provider": "chutes",
+            "direct_provider_model_id": "zai-org/GLM-5-TEE",
+            "model_name": "z-ai/glm-5",
+        }
+    ]
 
 
 def test_h13_market_wide_claim_is_power_gated_without_breadth():

@@ -11,3 +11,86 @@ mapping_type = "verified_router_canonical_pair_v1"
 direct_source_url = "https://api.sambanova.ai/v1/models"
 router_evidence_url = "https://openrouter.ai/api/v1/models/openai/gpt-oss-120b/endpoints"
 notes = "OpenRouter's current SambaNova endpoint exposes the canonical ID but no provider_model_id; SambaNova's public catalog exposes gpt-oss-120b."
+
+# Chutes appends a product/TEE suffix to the public API id. These mappings
+# require both the catalog's literal ``root`` and ``quantization`` to match the
+# versioned evidence below; no display-name or string-similarity mapping is used.
+[maps.chutes_qwen36_27b]
+provider = "chutes"
+direct_provider_model_id = "Qwen/Qwen3.6-27B-TEE"
+canonical_model_id = "qwen/qwen3.6-27b"
+mapping_type = "verified_provider_configuration_pair_v1"
+expected_root = "Qwen/Qwen3.6-27B-FP8"
+expected_quantization = "fp8"
+direct_source_url = "https://llm.chutes.ai/v1/models"
+router_evidence_url = "https://openrouter.ai/api/v1/models/qwen/qwen3.6-27b/endpoints"
+
+[maps.chutes_kimi_k26]
+provider = "chutes"
+direct_provider_model_id = "moonshotai/Kimi-K2.6-TEE"
+canonical_model_id = "moonshotai/kimi-k2.6"
+mapping_type = "verified_provider_configuration_pair_v1"
+expected_root = "moonshotai/Kimi-K2.6"
+expected_quantization = "int4"
+direct_source_url = "https://llm.chutes.ai/v1/models"
+router_evidence_url = "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2.6/endpoints"
+
+[maps.chutes_glm51]
+provider = "chutes"
+direct_provider_model_id = "zai-org/GLM-5.1-TEE"
+canonical_model_id = "z-ai/glm-5.1"
+mapping_type = "verified_provider_configuration_pair_v1"
+expected_root = "zai-org/GLM-5.1-FP8"
+expected_quantization = "fp8"
+direct_source_url = "https://llm.chutes.ai/v1/models"
+router_evidence_url = "https://openrouter.ai/api/v1/models/z-ai/glm-5.1/endpoints"
+
+[maps.chutes_gemma4_31b]
+provider = "chutes"
+direct_provider_model_id = "google/gemma-4-31B-turbo-TEE"
+canonical_model_id = "google/gemma-4-31b-it"
+mapping_type = "verified_provider_configuration_pair_v1"
+expected_root = "nvidia/Gemma-4-31B-IT-NVFP4"
+expected_quantization = "fp4"
+direct_source_url = "https://llm.chutes.ai/v1/models"
+router_evidence_url = "https://openrouter.ai/api/v1/models/google/gemma-4-31b-it/endpoints"
+
+[maps.chutes_qwen35_397b]
+provider = "chutes"
+direct_provider_model_id = "Qwen/Qwen3.5-397B-A17B-TEE"
+canonical_model_id = "qwen/qwen3.5-397b-a17b"
+mapping_type = "verified_provider_configuration_pair_v1"
+expected_root = "Qwen/Qwen3.5-397B-A17B-FP8"
+expected_quantization = "fp8"
+direct_source_url = "https://llm.chutes.ai/v1/models"
+router_evidence_url = "https://openrouter.ai/api/v1/models/qwen/qwen3.5-397b-a17b/endpoints"
+
+[maps.chutes_minimax_m25]
+provider = "chutes"
+direct_provider_model_id = "MiniMaxAI/MiniMax-M2.5-TEE"
+canonical_model_id = "minimax/minimax-m2.5"
+mapping_type = "verified_provider_configuration_pair_v1"
+expected_root = "MiniMaxAI/MiniMax-M2.5"
+expected_quantization = "fp8"
+direct_source_url = "https://llm.chutes.ai/v1/models"
+router_evidence_url = "https://openrouter.ai/api/v1/models/minimax/minimax-m2.5/endpoints"
+
+[maps.chutes_glm5]
+provider = "chutes"
+direct_provider_model_id = "zai-org/GLM-5-TEE"
+canonical_model_id = "z-ai/glm-5"
+mapping_type = "verified_provider_configuration_pair_v1"
+expected_root = "zai-org/GLM-5-FP8"
+expected_quantization = "fp8"
+direct_source_url = "https://llm.chutes.ai/v1/models"
+router_evidence_url = "https://openrouter.ai/api/v1/models/z-ai/glm-5/endpoints"
+
+[maps.chutes_kimi_k25]
+provider = "chutes"
+direct_provider_model_id = "moonshotai/Kimi-K2.5-TEE"
+canonical_model_id = "moonshotai/kimi-k2.5"
+mapping_type = "verified_provider_configuration_pair_v1"
+expected_root = "moonshotai/Kimi-K2.5"
+expected_quantization = "int4"
+direct_source_url = "https://llm.chutes.ai/v1/models"
+router_evidence_url = "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2.5/endpoints"
