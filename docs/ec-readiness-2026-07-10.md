@@ -44,6 +44,10 @@ capacity and full-collateral assumptions:
 12. a limited-liability boundary showing that the current payment-on-success
     plus finite-shortfall-bond rule cannot make direct reliability reports
     truthful whenever an overreport gains allocation and service is profitable.
+13. a conditional product-report DSIC/IR synthesis for a certified capacity,
+    full convex cost curve, finite clipped reliability grid, independent audit,
+    and externally funded bounded score; it does not cover private capacity,
+    continuous reliability, delivery enforcement, or budget balance.
 
 These are useful lemmas. They do **not** establish Bayesian incentive
 compatibility with jointly private capacity/curvature/reliability, an empirical
@@ -70,17 +74,18 @@ counted as evidence.
 | Controlled reliability input | H54 has an immutable direct-provider audit schedule and exact lower-bound certificate; no owned audit rows | Not identified: tooling is not evidence |
 | CoW solver competition | H49: 2 published sampled auctions across 1 day; 16 candidate solvers and a 7,915.5 median current-auction candidate-order count | Power-gated: needs 100 sampled auctions across 7 days; sampled state is never execution flow or market-wide order flow |
 | Direct-source breadth | DeepInfra is published; Cerebras and SambaNova structured adapters are merged and locally validated | Awaiting published repetitions |
-| Reproducibility | Full local suite: 201 passing tests after the reliability-reporting boundary addition | Strong engineering evidence, not empirical power |
+| Reproducibility | Full local suite: 222 passing tests after the audited-VCG product-report synthesis | Strong engineering evidence, not empirical power |
 
 ## Non-negotiable paper gates
 
 ### Theory
 
 - Extend the explicit single-parameter cost type to jointly private capacity,
-  curvature, and reliability. The finite-bond direct-reliability boundary and
-  the bounded finite-grid audited-score construction are useful partial
-  results, but not a full characterization of continuous reports, funding,
-  audit selection, correlated failures, or endogenous reliability.
+  curvature, and reliability. The bounded audited-VCG synthesis now combines
+  full cost-curve reporting with a finite reliability grid under certified
+  capacity, but it is not a full characterization of private capacity,
+  continuous reports, funding, audit selection, correlated failures, or
+  endogenous reliability.
 - Connect the capacity-reservation transfer and shortfall collateral in one
   report-and-delivery mechanism under a declared liability limit.
 - Compare expected welfare with pure cheapest routing and a reliability-only
