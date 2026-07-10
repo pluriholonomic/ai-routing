@@ -148,3 +148,36 @@ def test_h13_maps_fireworks_only_by_exact_provider_model_id(monkeypatch):
     routed = h13_venue_basis.load_routed()
     assert routed.loc[0, "provider"] == "fireworks"
     assert routed.loc[0, "model_name"] == "accounts/fireworks/models/gpt-oss-20b"
+
+
+def test_h13_market_wide_claim_is_power_gated_without_breadth():
+    m = pd.DataFrame(
+        {
+            "dt": ["2026-07-10"] * 10,
+            "provider": ["deepinfra"] * 10,
+            "source_type": ["structured_public_api"] * 10,
+            "basis_out_pct": [0.0] * 10,
+        }
+    )
+    summary = h13_venue_basis.summarize(m)
+    assert summary["evidence_status"] == "power_gated"
+    assert "only 1/7 daily observations" in summary["gate_reasons"]
+    assert "only 1/3 providers" in summary["gate_reasons"]
+
+
+def test_h13_descriptive_gate_accepts_repeated_multivenue_panel():
+    rows = []
+    for day in range(7):
+        for provider in ("deepinfra", "together", "fireworks"):
+            for _pair in range(10):
+                rows.append(
+                    {
+                        "dt": f"2026-07-{day + 1:02d}",
+                        "provider": provider,
+                        "source_type": "structured_public_api",
+                        "basis_out_pct": 0.0,
+                    }
+                )
+    summary = h13_venue_basis.summarize(pd.DataFrame(rows))
+    assert summary["evidence_status"] == "provisional_descriptive"
+    assert summary["n_pairs"] == 210
