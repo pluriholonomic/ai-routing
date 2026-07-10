@@ -366,6 +366,7 @@ def main() -> None:
             "h43": "h43_routing_simulation",
             "h44": "h44_cross_router",
             "h45": "h45_shadow_execution",
+            "h46": "h46_rolling_routing_elasticity",
             "h47": "h47_gpu_venue_basis",
             "h48": "h48_capacity_mechanism",
             "h49": "h49_solver_competition",

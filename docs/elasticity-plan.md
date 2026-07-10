@@ -53,6 +53,17 @@ the eventual reallocation happens within 30/60/180 minutes. This is the
 sharpest routing-vs-users decomposition available anywhere.
 *Power: first ~10 burst windows (~1-2 weeks at current event rates).*
 
+### Rolling daily companion (H46)
+
+H46 re-estimates the existing H4 within-(day × model × variant) effective
+price/share association over fixed 14-day trailing windows. It is the
+time-series diagnostic for whether the pooled routing elasticity is stable,
+moving toward the documented inverse-square benchmark, or becoming more
+sticky. Each output retains its group-clustered uncertainty and is gated until
+there are four complete windows, 100 observations, and 30 market groups per
+window. It is not a price experiment: user pinning, workload mix, and
+provider eligibility can all move with the observed daily association.
+
 **H28c — cross-model (nested upper level).** Users substitute across models:
 ∂ln D_mt / ∂ln(P_mt / P_m't) for capability-matched pairs (same class, e.g.
 GLM-5.2 vs Kimi-k2.7 vs MiniMax-m3). Panel: rankings_weekly × price history

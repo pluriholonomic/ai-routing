@@ -116,6 +116,7 @@ uv run orcap capture-hf-router --samples 4 --interval-seconds 900  # public HF r
 uv run orcap capture-livepeer --samples 2 --interval-seconds 300  # aggregate public Gateway route adjustments, no stream IDs
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h44  # public cross-router quote/policy screen
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h45  # cross-router shadow routing + outage stress
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h46  # rolling daily routing share-price elasticity
 uv run orcap import-router-policy --input redacted-router-policy.json
 uv run orcap ingest-route-attempts --input redacted-gateway-events.jsonl --format portkey --study-id routing-v1
 uv run orcap register-routing-study --input redacted-study-manifest.json  # pre-outcome, no traffic sent
