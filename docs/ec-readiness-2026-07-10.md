@@ -41,6 +41,9 @@ capacity and full-collateral assumptions:
 11. an exact one-sided lower reliability-bound input for a pre-registered,
     direct provider/model audit population, conditional on complete retained
     outcomes and the audit's independent-attempt assumption.
+12. a limited-liability boundary showing that the current payment-on-success
+    plus finite-shortfall-bond rule cannot make direct reliability reports
+    truthful whenever an overreport gains allocation and service is profitable.
 
 These are useful lemmas. They do **not** establish Bayesian incentive
 compatibility with jointly private capacity/curvature/reliability, an empirical
@@ -70,7 +73,9 @@ counted as evidence.
 ### Theory
 
 - Extend the explicit single-parameter cost type to jointly private capacity,
-  curvature, and reliability, or prove an appropriate impossibility/boundary.
+  curvature, and reliability. The finite-bond direct-reliability boundary is a
+  useful partial impossibility result, but not yet a full characterization of
+  audit/scoring transfers, correlated failures, or endogenous reliability.
 - Connect the capacity-reservation transfer and shortfall collateral in one
   report-and-delivery mechanism under a declared liability limit.
 - Compare expected welfare with pure cheapest routing and a reliability-only
