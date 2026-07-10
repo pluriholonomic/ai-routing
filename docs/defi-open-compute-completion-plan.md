@@ -29,7 +29,7 @@ controls, but are not the primary comparison dataset.
 | Open GPU supply | hourly Vast offer books (on-demand and bid) plus Lambda's published per-GPU-hour instance tables | Vast is the only offer book; Lambda list prices carry no availability, utilization, or execution evidence, and there is no region/quality-normalized cross-venue index |
 | Forward/carry | Vast duration buckets plus static anchors | heterogeneous, sparse forward anchors; no tradable same-venue curve |
 | DeFi microstructure | finalized bounded Uniswap and GPv2Settlement logs, QuoterV2 fixed-notional curves, CoW solver identities only when linked to a same-transaction settlement, and state impact-capacity lower bounds | young live panel; no market-wide CoW order/auction source, gas-inclusive execution measure, or dollar-depth construction |
-| DeFi monitoring | hourly market workflow with raw provenance, source-run ledger, finality buffer, and H41 gap accounting | public dRPC path is recent-window only; the panel needs repeated contiguous coverage and an archive RPC for historical repair/backfill |
+| DeFi monitoring | twice-hourly market workflow with raw provenance, source-run ledger, finality buffer, and H41 gap accounting | public dRPC path is recent-window only; the panel needs repeated contiguous coverage and an archive RPC for historical repair/backfill |
 | Reproducibility | raw capture, source registry/run ledger, and synthetic estimator tests for core collectors | DeFi feeds still lack complete production schemas and freshness coverage; analyses need final matched-data gates before any full-market claim |
 
 ## Source plan

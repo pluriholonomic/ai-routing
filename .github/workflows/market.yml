@@ -3,12 +3,14 @@ name: market-comparison
 # The comparison monitor keeps raw source evidence and status records even when
 # optional credentialed feeds are absent. DefiLlama, public Akash provider/lease
 # feeds, Chutes deployment-configuration snapshots, and a dRPC bounded-finality
-# log window run without credentials. The public Ethereum fallback is never an
-# archive source; USD executable depth, market-wide CoW coverage, and Golem
-# remain visibly incomplete.
+# log window run without credentials. Two off-peak attempts per hour reduce the
+# effect of GitHub's best-effort scheduled-job delays; H41 still measures actual
+# successful-window continuity rather than trusting this requested cadence. The
+# public Ethereum fallback is never an archive source; USD executable depth,
+# market-wide CoW coverage, and Golem remain visibly incomplete.
 on:
   schedule:
-    - cron: "29 * * * *"
+    - cron: "12,42 * * * *"
   workflow_dispatch:
 
 concurrency:
