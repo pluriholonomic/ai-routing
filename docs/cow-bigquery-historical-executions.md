@@ -110,3 +110,27 @@ comparable event semantics. Until then, the defensible statement is only that
 the preregistered 15-minute/70% split of this short finalized-settlement series
 is materially better predicted by the declared binned count-autoregressive
 model than the two fixed-rate Poisson baselines.
+
+## Router-side comparison boundary
+
+On 2026-07-10, a read-only rerun of H39 on the authoritative routing panel
+fit 264 endpoint-level series and reported median INGARCH persistence 0.766
+(90th percentile 0.913) and median aggregated-variance Hurst estimate 0.824.
+At the closest H65 sensitivity specification (30-minute bins, 70% chronological
+training split), CoW settlement persistence was 0.900.
+
+These numbers are **not a cross-market estimate or ranking**. H39 measures
+interval-censored, 30-minute request counts separately for endpoints and
+warns that within-bin overdispersion can push persistence upward. H65 measures
+one finalized settlement transaction for a market-wide batch protocol; it is
+not one trader arrival or one trade. H39's current fit is in-sample, while H65
+reports held-out likelihood. The panels also have different observation
+horizons and sources of censoring.
+
+A defensible comparative test needs a preregistered common bin width and
+forecast horizon, a shared negative-binomial or other overdispersion-aware
+model, timezone/weekday controls, a sufficiently long concurrent observation
+window, and an aligned unit (a router commit/attempt versus a CoW settlement
+transaction). Until that is collected, the results merely motivate—not
+validate—the hypothesis that both systems have material short-run temporal
+dependence.
