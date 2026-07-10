@@ -359,6 +359,35 @@ coverage-restricted bid-book composition after its seven-day gate; it cannot
 measure whole-network demand because the unbounded tenant-order list is not
 being sampled.
 
+## Qualified source contract: Nosana public on-chain NodeAccount registry
+
+Nosana's official Nodes documentation identifies the public Solana Nodes
+program and its `NodeAccount` structure. A credential-free
+`getProgramAccounts` query against canonical Solana mainnet JSON-RPC can return
+the program's accounts with a NodeAccount discriminator filter and a 54-byte
+fixed-header slice. The returned `context.slot` makes the query a named-chain
+snapshot; the collector retains that slot and never uses an authenticated
+Markets API request or a browser/frontend credential.
+
+The fixed header contains the account discriminator, authority, audited flag,
+architecture field, country code, and declared resource fields. The collector
+accepts the snapshot only if every returned record parses once and the raw
+account count equals the curated NodeAccount-row count. This supports a
+repeated **declared registry composition** panel (H58), not a supply or
+transaction panel.
+
+A read-only validation on 2026-07-10 returned 19 NodeAccount records at one
+Solana slot; the collector parsed all 19 to unique participant IDs. This checks
+the public source contract and parser only. It is not a published historical
+panel and does not imply that any registered node was online or available.
+
+In particular, these headers do not establish node liveness, current free
+capacity, GPU model or count semantics, price, queue state, utilization,
+jobs, completed work, delivered compute, or an LLM routing allocation. H58
+therefore keeps the literal declared values separate from H41 capacity
+comparisons and does not convert them into GPU-hours, a clearing price, or
+availability.
+
 ## Not qualified: Runpod public Serverless GPU pricing
 
 Runpod's indexed documentation showed a detailed public GPU-family table, but

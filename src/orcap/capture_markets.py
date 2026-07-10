@@ -7,6 +7,7 @@ runs, never mistaken for a quiet market.
 """
 
 import asyncio
+import base64
 import json
 import logging
 import os
@@ -37,6 +38,12 @@ AKASH_LEASES_URL = (
 AKASH_RPC_URL = "https://rpc.akashnet.net:443"
 AKASH_MARKET_API_URL = "https://api.akashnet.net/akash/market/v1beta5"
 AKASH_LATEST_BLOCK_URL = "https://api.akashnet.net/cosmos/base/tendermint/v1beta1/blocks/latest"
+NOSANA_SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"
+NOSANA_NODES_PROGRAM_ID = "nosNeZR64wiEhQc5j251bsP4WqDabT6hmz4PHyoHLGD"
+# The documented Anchor discriminator for Nosana's NodeAccount. The base58
+# form is required by Solana's public ``getProgramAccounts`` memcmp filter.
+NOSANA_NODE_ACCOUNT_DISCRIMINATOR = bytes.fromhex("7da61292c37f56dc")
+NOSANA_NODE_ACCOUNT_DISCRIMINATOR_BASE58 = "N1x6kpVdXxo"
 AKASH_MARKET_PAGE_SIZE = max(1, int(os.environ.get("ORCAP_AKASH_MARKET_PAGE_SIZE", "1000")))
 AKASH_MARKET_MAX_PAGES = max(1, int(os.environ.get("ORCAP_AKASH_MARKET_MAX_PAGES", "25")))
 GECKOTERMINAL_POOL_URL = "https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_id}"
@@ -463,6 +470,134 @@ def golem_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]
             }
         )
     return rows
+
+
+def nosana_node_registry_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize Nosana's public on-chain NodeAccount registry state.
+
+    Registration is a declared hardware profile, not a liveness check, current
+    workload, free capacity, job completion, GPU model, or price. Preserve
+    those distinctions by retaining the declared values in a dedicated table
+    instead of treating a registered node as immediately rentable supply.
+    """
+    accounts = body.get("result") if isinstance(body, dict) else None
+    if not isinstance(accounts, list):
+        return []
+    rows = []
+    for item in accounts:
+        if not isinstance(item, dict):
+            continue
+        account = item.get("account") if isinstance(item.get("account"), dict) else {}
+        encoded = account.get("data") if isinstance(account.get("data"), list) else []
+        if not encoded or not isinstance(encoded[0], str):
+            continue
+        try:
+            raw = base64.b64decode(encoded[0], validate=True)
+        except (ValueError, TypeError):
+            continue
+        # The documented fixed header ends at storage; variable strings follow.
+        if len(raw) < 54 or raw[:8] != NOSANA_NODE_ACCOUNT_DISCRIMINATOR:
+            continue
+        audited_raw = raw[40]
+        if audited_raw not in (0, 1):
+            continue
+        participant_id = str(item.get("pubkey") or "")
+        if not participant_id:
+            continue
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "nosana",
+                "venue": "nosana-node-registry",
+                "participant_id": participant_id,
+                "audited": bool(audited_raw),
+                "architecture_type": raw[41],
+                "country_code": int.from_bytes(raw[42:44], "little"),
+                "declared_cpu_cores": int.from_bytes(raw[44:46], "little"),
+                "declared_gpu_value": int.from_bytes(raw[46:48], "little"),
+                "declared_memory_gb": int.from_bytes(raw[48:50], "little"),
+                "declared_iops": int.from_bytes(raw[50:52], "little"),
+                "declared_storage_gb": int.from_bytes(raw[52:54], "little"),
+                "snapshot_slot": body.get("context", {}).get("slot")
+                if isinstance(body.get("context"), dict)
+                else None,
+                "quality_tier": "onchain-node-registry; declared hardware profile",
+                "metric_definition": (
+                    "Nosana NodeAccount fields declared at registration. They do not identify "
+                    "node liveness, available GPUs, GPU model, utilization, posted price, "
+                    "executed jobs, or delivered compute."
+                ),
+                "record_json": _json(item),
+            }
+        )
+    return rows
+
+
+async def capture_nosana_node_registry(
+    fetcher: Fetcher,
+    *,
+    url: str | None = None,
+) -> tuple[Any, dict[str, Any]]:
+    """Fetch a bounded public Solana NodeAccount registry snapshot.
+
+    ``getProgramAccounts`` is block-pinned by the returned context slot. The
+    request asks only for the fixed 54-byte header; it deliberately excludes
+    variable endpoint strings and does not touch the authenticated Nosana API.
+    """
+    rpc_url = _configured_url("ORCAP_NOSANA_SOLANA_RPC_URL", url or NOSANA_SOLANA_RPC_URL)
+    body = await fetcher.post_json(
+        rpc_url,
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getProgramAccounts",
+            "params": [
+                NOSANA_NODES_PROGRAM_ID,
+                {
+                    "encoding": "base64",
+                    "withContext": True,
+                    "dataSlice": {"offset": 0, "length": 54},
+                    "filters": [
+                        {
+                            "memcmp": {
+                                "offset": 0,
+                                "bytes": NOSANA_NODE_ACCOUNT_DISCRIMINATOR_BASE58,
+                            }
+                        }
+                    ],
+                },
+            ],
+        },
+        record_url="public:solana-mainnet-nosana-node-registry",
+    )
+    if not isinstance(body, dict):
+        return body, {"query_succeeded": False, "error": "no JSON-RPC response"}
+    if isinstance(body.get("error"), dict):
+        return body, {
+            "query_succeeded": False,
+            "error": str(body["error"].get("message") or "JSON-RPC error"),
+        }
+    result = body.get("result")
+    if not isinstance(result, dict) or not isinstance(result.get("value"), list):
+        return body, {"query_succeeded": False, "error": "malformed getProgramAccounts result"}
+    normalized = {"context": result.get("context"), "result": result["value"]}
+    return normalized, {
+        "query_succeeded": True,
+        "snapshot_slot": (
+            result.get("context", {}).get("slot")
+            if isinstance(result.get("context"), dict)
+            else None
+        ),
+        "account_records_fetched": len(result["value"]),
+        "program_id": NOSANA_NODES_PROGRAM_ID,
+        "account_discriminator": NOSANA_NODE_ACCOUNT_DISCRIMINATOR.hex(),
+        "data_slice_bytes": 54,
+        "metric_boundary": (
+            "registered declared node hardware only; not online availability, GPU model, "
+            "price, utilization, jobs, or delivered capacity"
+        ),
+    }
 
 
 def chutes_capacity_rows(
@@ -2670,6 +2805,7 @@ async def capture_markets(
     *,
     with_uniswap: bool = False,
     with_akash: bool = False,
+    with_nosana: bool = False,
     raw_dir: Path = RAW_DIR,
     curated_dir: Path = CURATED_DIR,
 ) -> dict[str, Any]:
@@ -2853,6 +2989,10 @@ async def capture_markets(
                 height: _block_time(body)
                 for height, body in zip(heights, block_bodies, strict=True)
             }
+        nosana_body = None
+        nosana_detail: dict[str, Any] = {"query_succeeded": False, "reason": "flag_not_set"}
+        if with_nosana:
+            nosana_body, nosana_detail = await capture_nosana_node_registry(fetcher)
         write_raw(fetcher.records, "market_sources", raw_dir, run_ts, dt)
 
     participants = defillama_participant_rows(defillama, run_ts, dt)
@@ -2899,6 +3039,7 @@ async def capture_markets(
     akash_open_bid_book = akash_open_bid_rows(
         akash_open_bids, akash_market_detail, run_ts, dt
     )
+    nosana_nodes = nosana_node_registry_rows(nosana_body, run_ts, dt)
     instrument_map = instrument_map_rows(run_ts, dt)
     _write(
         participants + cow_participants + cow_rpc_participants,
@@ -2945,6 +3086,13 @@ async def capture_markets(
     _write(
         akash_open_bid_book,
         "akash_market_open_bids",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        nosana_nodes,
+        "nosana_node_registry",
         run_ts,
         dt,
         curated_dir,
@@ -3127,6 +3275,7 @@ async def capture_markets(
             },
             curated_dir=curated_dir,
         )
+
     else:
         write_source_run(
             "akash",
@@ -3138,6 +3287,37 @@ async def capture_markets(
         )
         write_source_run(
             "akash_market_book",
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail={"reason": "flag not set"},
+            curated_dir=curated_dir,
+        )
+
+    if with_nosana:
+        expected_nosana_accounts = nosana_detail.get("account_records_fetched")
+        registry_complete = (
+            nosana_detail.get("query_succeeded") is True
+            and isinstance(expected_nosana_accounts, int)
+            and expected_nosana_accounts > 0
+            and len(nosana_nodes) == expected_nosana_accounts
+        )
+        write_source_run(
+            "nosana",
+            status="success" if registry_complete else "degraded",
+            rows=len(nosana_nodes),
+            run_ts=run_ts,
+            dt=dt,
+            detail={
+                "rows_written": {"nosana_node_registry": len(nosana_nodes)},
+                "registry_complete": registry_complete,
+                **nosana_detail,
+            },
+            curated_dir=curated_dir,
+        )
+    else:
+        write_source_run(
+            "nosana",
             status="skipped",
             run_ts=run_ts,
             dt=dt,
@@ -3174,14 +3354,24 @@ async def capture_markets(
         "akash_lease_lifecycle_rows": len(akash_leases_rows),
         "akash_open_gpu_bid_rows": len(akash_open_bid_book),
         "akash_market_book": akash_market_detail,
+        "nosana_node_registry_rows": len(nosana_nodes),
+        "nosana_node_registry": nosana_detail,
     }
     log.info("market-source capture complete: %s", summary)
     return summary
 
 
-def main(with_uniswap: bool = False, with_akash: bool = False) -> dict[str, Any]:
+def main(
+    with_uniswap: bool = False, with_akash: bool = False, with_nosana: bool = False
+) -> dict[str, Any]:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    result = asyncio.run(capture_markets(with_uniswap=with_uniswap, with_akash=with_akash))
+    result = asyncio.run(
+        capture_markets(
+            with_uniswap=with_uniswap,
+            with_akash=with_akash,
+            with_nosana=with_nosana,
+        )
+    )
     print(json.dumps(result, indent=2))
     return result

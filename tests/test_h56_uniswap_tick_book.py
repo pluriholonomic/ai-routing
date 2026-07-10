@@ -107,3 +107,35 @@ def test_h56_does_not_promote_unverified_tick_rows_to_a_panel():
     panel = tick_book_panel(ticks, set())
     assert panel.empty
     assert coverage_gate(panel)["status"] == "not_identified"
+
+
+def test_h56_normalizes_parquet_date_values_before_joining_the_source_ledger():
+    source_runs = pd.DataFrame(
+        [
+            {
+                "run_ts": "20260710T000000Z",
+                "dt": pd.Timestamp("2026-07-10"),
+                "source": "uniswap_tick_book",
+                "status": "success",
+                "detail_json": (
+                    '{"coverage_complete":true,"initialized_tick_rows":1,'
+                    '"pool_details":{"pool-a":{"complete":true,"initialized_tick_rows":1}}}'
+                ),
+            }
+        ]
+    )
+    ticks = pd.DataFrame(
+        [
+            {
+                "run_ts": "20260710T000000Z",
+                "dt": pd.Timestamp("2026-07-10"),
+                "pool_id": "pool-a",
+                "block_number": 10,
+                "tick": 0,
+                "liquidity_net_raw": "0",
+            }
+        ]
+    )
+    manifests = complete_snapshot_manifests(source_runs)
+    assert manifests == {("20260710T000000Z", "2026-07-10"): 1}
+    assert not tick_book_panel(ticks, set(manifests), manifests).empty
