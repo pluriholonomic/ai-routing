@@ -165,6 +165,9 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
     if not isfinite(committed) or committed < 0:
         raise ValueError("committed_requests must be finite and non-negative")
     failure_domains = _optional_string_list(record.get("failure_domains"), "failure_domains")
+    marginal_cost = _number(record.get("marginal_cost_usd_per_request"))
+    if marginal_cost is not None and marginal_cost < 0:
+        raise ValueError("marginal_cost_usd_per_request must be non-negative")
     capacity_linear_cost = _number(record.get("capacity_linear_cost_usd_per_request"))
     capacity_cost_curvature = _number(
         record.get("capacity_cost_curvature_usd_per_request_sq")
@@ -173,6 +176,21 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("capacity_linear_cost_usd_per_request must be non-negative")
     if capacity_cost_curvature is not None and capacity_cost_curvature <= 0:
         raise ValueError("capacity_cost_curvature_usd_per_request_sq must be positive")
+    contracted_delivery_price = _number(record.get("contracted_delivery_price_usd_per_request"))
+    posted_collateral = _number(record.get("posted_collateral_usd"))
+    collateral_capital_cost_rate = _number(record.get("collateral_capital_cost_rate"))
+    outside_option = _number(record.get("outside_option_usd"))
+    minimum_delivery_gain = _number(record.get("minimum_delivery_gain_usd_per_request"))
+    if contracted_delivery_price is not None and contracted_delivery_price <= 0:
+        raise ValueError("contracted_delivery_price_usd_per_request must be positive")
+    for field, value in {
+        "posted_collateral_usd": posted_collateral,
+        "collateral_capital_cost_rate": collateral_capital_cost_rate,
+        "outside_option_usd": outside_option,
+        "minimum_delivery_gain_usd_per_request": minimum_delivery_gain,
+    }.items():
+        if value is not None and value < 0:
+            raise ValueError(f"{field} must be non-negative")
     capacity_cost_curve = _optional_cost_curve(record.get("capacity_cost_curve"), committed)
     return {
         "commitment_id": str(record["commitment_id"]),
@@ -184,11 +202,14 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
         "epoch_end": str(record["epoch_end"]),
         "committed_requests": committed,
         "verification_method": record.get("verification_method"),
-        "marginal_cost_usd_per_request": _number(
-            record.get("marginal_cost_usd_per_request")
-        ),
+        "marginal_cost_usd_per_request": marginal_cost,
         "capacity_linear_cost_usd_per_request": capacity_linear_cost,
         "capacity_cost_curvature_usd_per_request_sq": capacity_cost_curvature,
+        "contracted_delivery_price_usd_per_request": contracted_delivery_price,
+        "posted_collateral_usd": posted_collateral,
+        "collateral_capital_cost_rate": collateral_capital_cost_rate,
+        "outside_option_usd": outside_option,
+        "minimum_delivery_gain_usd_per_request": minimum_delivery_gain,
         "capacity_cost_curve_json": json.dumps(
             capacity_cost_curve, separators=(",", ":"), sort_keys=True
         ),

@@ -23,6 +23,11 @@ def _commitment():
         "marginal_cost_usd_per_request": 0.001,
         "capacity_linear_cost_usd_per_request": 0.0002,
         "capacity_cost_curvature_usd_per_request_sq": 0.00001,
+        "contracted_delivery_price_usd_per_request": 0.0015,
+        "posted_collateral_usd": 1.0,
+        "collateral_capital_cost_rate": 0.001,
+        "outside_option_usd": 0.01,
+        "minimum_delivery_gain_usd_per_request": 0.0001,
         "failure_domains": ["cloud:example", "region:us-east"],
         "metadata": {"capacity_class": "reserved"},
     }
@@ -56,6 +61,9 @@ def test_capacity_commitment_contract_preserves_only_capacity_metadata():
     assert row["failure_domains_json"] == '["cloud:example","region:us-east"]'
     assert row["capacity_linear_cost_usd_per_request"] == 0.0002
     assert row["capacity_cost_curvature_usd_per_request_sq"] == 0.00001
+    assert row["contracted_delivery_price_usd_per_request"] == 0.0015
+    assert row["posted_collateral_usd"] == 1.0
+    assert row["collateral_capital_cost_rate"] == 0.001
 
 
 def test_capacity_commitment_allows_explicit_zero_but_rejects_payloads():
@@ -74,6 +82,10 @@ def test_capacity_commitment_rejects_missing_and_negative_capacity():
         validate_commitment(_commitment() | {"committed_requests": -1})
     with pytest.raises(ValueError, match="curvature"):
         validate_commitment(_commitment() | {"capacity_cost_curvature_usd_per_request_sq": 0})
+    with pytest.raises(ValueError, match="contracted_delivery_price"):
+        validate_commitment(_commitment() | {"contracted_delivery_price_usd_per_request": 0})
+    with pytest.raises(ValueError, match="posted_collateral"):
+        validate_commitment(_commitment() | {"posted_collateral_usd": -0.01})
 
 
 def test_capacity_commitment_accepts_only_complete_non_decreasing_cost_curves():

@@ -18,6 +18,7 @@ from .common import DEFAULT_OUT, save, save_json
 
 ETA = 2.0
 MIN_CAPACITY_PROCUREMENT_COMMITMENTS = 100
+MIN_PARTICIPATION_CERTIFICATE_EPOCHS = 100
 PANEL_COLUMNS = [
     "run_ts",
     "model_id",
@@ -114,6 +115,7 @@ def _commitment_coverage() -> dict:
             "capacity_linear_cost_observed": 0,
             "capacity_cost_curvature_observed": 0,
             "capacity_cost_curve_observed": 0,
+            "participation_certificate_input_rows": 0,
         }
         schema = data.q(
             f"describe select * from read_parquet('{glob}', union_by_name=true)"
@@ -140,6 +142,29 @@ def _commitment_coverage() -> dict:
                 """
             ).fetchone()
             result["capacity_cost_curve_observed"] = int(curve_rows[0])
+        participation_columns = {
+            "marginal_cost_usd_per_request",
+            "contracted_delivery_price_usd_per_request",
+            "posted_collateral_usd",
+            "collateral_capital_cost_rate",
+            "outside_option_usd",
+            "minimum_delivery_gain_usd_per_request",
+        }
+        if participation_columns.issubset(columns):
+            participation_rows = data.q(
+                f"""
+                select count(*) filter (
+                    where marginal_cost_usd_per_request is not null
+                      and contracted_delivery_price_usd_per_request is not null
+                      and posted_collateral_usd is not null
+                      and collateral_capital_cost_rate is not null
+                      and outside_option_usd is not null
+                      and minimum_delivery_gain_usd_per_request is not null
+                )
+                from read_parquet('{glob}', union_by_name=true)
+                """
+            ).fetchone()
+            result["participation_certificate_input_rows"] = int(participation_rows[0])
         return result
     except Exception:
         return {
@@ -153,6 +178,7 @@ def _commitment_coverage() -> dict:
             "capacity_linear_cost_observed": 0,
             "capacity_cost_curvature_observed": 0,
             "capacity_cost_curve_observed": 0,
+            "participation_certificate_input_rows": 0,
         }
 
 
@@ -512,6 +538,37 @@ def capacity_procurement_gate(commitments: dict) -> dict:
     }
 
 
+def participation_certificate_gate(commitments: dict) -> dict:
+    """Gate declared primitives needed for the all-served participation check."""
+    rows = commitments.get("participation_certificate_input_rows", 0)
+    if not commitments["commitments"]:
+        status = "not_identified"
+    elif not rows:
+        status = "participation_primitives_unobserved"
+    elif rows < MIN_PARTICIPATION_CERTIFICATE_EPOCHS:
+        status = "power_gated"
+    else:
+        status = "declared_participation_input_coverage"
+    return {
+        "status": status,
+        "declared_complete_input_rows": rows,
+        "minimum_declared_complete_input_rows": MIN_PARTICIPATION_CERTIFICATE_EPOCHS,
+        "required_commitment_fields": [
+            "marginal_cost_usd_per_request",
+            "contracted_delivery_price_usd_per_request",
+            "posted_collateral_usd",
+            "collateral_capital_cost_rate",
+            "outside_option_usd",
+            "minimum_delivery_gain_usd_per_request",
+        ],
+        "claim_boundary": (
+            "Complete declared inputs can calibrate only the known-primitive, all-served "
+            "collateral-capital participation certificate. They do not verify cost, collateral, "
+            "outside options, delivery, funding, failure-state IR, or budget balance."
+        ),
+    }
+
+
 def welfare_gate(commitments: dict, outcomes: dict) -> dict:
     """Keep declared value proxies distinct from a market-wide welfare result."""
     if not commitments["commitments"] or not outcomes["outcomes"]:
@@ -566,6 +623,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             triple_matched_attempts,
         ),
         "capacity_procurement_gate": capacity_procurement_gate(commitments),
+        "participation_certificate_gate": participation_certificate_gate(commitments),
         "welfare_gate": welfare_gate(commitments, outcomes),
         "claim_boundary": (
             "The allocation-price elasticity is algebra implied by the disclosed inverse-square "

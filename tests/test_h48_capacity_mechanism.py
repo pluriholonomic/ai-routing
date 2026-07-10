@@ -7,6 +7,7 @@ from orcap.analysis.h48_capacity_mechanism import (
     allocation_calibration,
     capacity_procurement_gate,
     enforcement_gate,
+    participation_certificate_gate,
     welfare_gate,
 )
 from orcap.capacity_telemetry import write_commitments, write_outcomes
@@ -119,6 +120,22 @@ def test_h48_welfare_gate_requires_registered_value_and_cost_primitives():
     )
     assert partial["status"] == "partial_controlled_welfare_primitives"
     assert "not consumer surplus" in partial["claim_boundary"]
+
+
+def test_h48_participation_gate_requires_all_declared_collateral_capital_primitives():
+    unobserved = participation_certificate_gate(
+        {"commitments": 1, "participation_certificate_input_rows": 0}
+    )
+    assert unobserved["status"] == "participation_primitives_unobserved"
+    partial = participation_certificate_gate(
+        {"commitments": 99, "participation_certificate_input_rows": 99}
+    )
+    assert partial["status"] == "power_gated"
+    ready = participation_certificate_gate(
+        {"commitments": 100, "participation_certificate_input_rows": 100}
+    )
+    assert ready["status"] == "declared_participation_input_coverage"
+    assert "all-served" in ready["claim_boundary"]
 
 
 def test_h48_matches_owned_attempts_to_same_provider_model_study_and_epoch(tmp_path, monkeypatch):

@@ -141,6 +141,22 @@ collect a payload-free compressed `capacity_cost_curve` with cumulative request
 breakpoints and non-decreasing marginal reservation costs. This is a declared
 study input, not an independent cost audit.
 
+For the known-primitive collateral-capital participation certificate, register
+all six fields before the epoch starts on the commitment record:
+
+- `marginal_cost_usd_per_request`
+- `contracted_delivery_price_usd_per_request`
+- `posted_collateral_usd`
+- `collateral_capital_cost_rate`
+- `outside_option_usd`
+- `minimum_delivery_gain_usd_per_request`
+
+They are provider-declared contract primitives for H48's all-served
+participation calculation, not verified costs, a collateral custody record,
+physical-failure insurance, or a budget-balance claim. The reservation
+transfer implied by them must be fixed before the outcome and must not be
+re-priced after an observed failure.
+
 If `registered_value_net_cost` is a primary outcome, pre-register the
 non-negative `declared_value_usd_per_served_request` before the first epoch
 and record it on each capacity outcome. It is an owner value proxy with a

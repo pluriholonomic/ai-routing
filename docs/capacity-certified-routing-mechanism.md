@@ -295,15 +295,39 @@ AMM welfare results.
     budget balance; not a claim about physical outages; and not evidence that
     a provider can fund collateral or that the stated primitives are observed.
 
+20. **Collateral-capital participation certificate, conditional IR.** Retain
+    the known-primitive setting of item 19, and additionally fix an epoch
+    collateral opportunity-cost rate `gamma_i >= 0` per dollar locked and a
+    provider's known all-served outside option `u_i >= 0`. For a positive
+    allocation `x_i`, fully locked collateral is `x_i b_i` and all-served
+    payoff before the up-front non-contingent reservation transfer is
+    `x_i(p_i-c_i-gamma_i b_i)`. The smallest non-negative transfer that makes
+    all-served payoff reach the outside option is
+
+    `R_i^*=max(0, u_i-x_i[p_i-c_i-gamma_i b_i])`.
+
+    This payment is made at reservation and is not contingent on service, so
+    it appears in both all-served and deliberate-ration payoffs. The delivery
+    gain remains exactly `p_i-c_i+b_i >= delta`. Combining this transfer with
+    item 19's collateral-certified cap preserves `x_i b_i <= C_i`,
+    all-served participation, and strict delivery preference when `delta>0`.
+    `DeliveryParticipationOffer`, `minimum_reservation_transfer`, and
+    `reservation_delivery_participation_diagnostic` audit those inequalities.
+    This is a **known-primitive, all-served, ex-post participation
+    certificate**. It does not insure physical failure, elicit the outside
+    option/capital cost or any other report, prove interim or failure-state
+    IR, guarantee collateral funding, or establish budget balance.
+
 The next theory step is to combine this known-primitive collateral certificate
 with the finite-grid audit score and private cost/capacity construction without
 making collateral, payment, or delivery assumptions disappear. That requires
-endogenizing or validating collateral funding, modeling stochastic/correlated
-health, and extending welfare to heterogeneous request values and controlled
-observations. H54 supplies a defensible *exogenous input* under a controlled
-design; the finite-bond boundary, finite-grid audit construction, and
-collateralized capacity construction together explain why an unsupported direct
-provider score is not enough.
+making the outside option and collateral-capital cost incentive compatible or
+verifiable, modeling stochastic/correlated health and failure-state
+participation, and extending welfare to heterogeneous request values and
+controlled observations. H54 supplies a defensible *exogenous input* under a
+controlled design; the finite-bond boundary, finite-grid audit construction,
+and collateralized capacity construction together explain why an unsupported
+direct provider score is not enough.
 
 ### Proof details and assumptions
 
@@ -326,6 +350,19 @@ is `log(w_i)-log(x_i)-1`. KKT stationarity therefore gives
 commitment is lower, allocating each `k_i` leaves the residual explicitly
 unfilled. This proves feasibility conditional on verified commitments, not
 truthful commitment revelation or optimality under private information.
+
+For the collateral-capital participation certificate, fix a provider with a
+positive collateral-feasible allocation `x`, bond `b`, serving margin `m=p-c`,
+collateral-capital rate `gamma`, and outside option `u`. The all-served payoff
+is `R+xm-gamma xb`; rearranging the inequality that it is at least `u` gives
+exactly `R >= max(0,u-x[m-gamma b])`. If allocation is zero, no contract is
+offered and the minimum transfer is zero. Deliberate rationing has payoff
+`R-xb-gamma xb`, so all-served minus rationed payoff is `x(m+b)`, independent
+of `R`, `gamma`, and `u`. Thus the minimum reservation transfer can restore
+all-served participation without weakening item 19's delivery condition. This
+requires collateral to remain locked and the transfer to be paid in either
+delivery state; it does not establish truthful `u` or `gamma` reports, nor
+participation when physical delivery is impossible.
 
 For the deliverable-count result, an uncapped allocation has feasible delivery
 `min(Ds_i,k_i)` at each provider. Any allocation has at most both total demand

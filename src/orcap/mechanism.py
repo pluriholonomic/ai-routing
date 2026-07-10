@@ -47,6 +47,28 @@ class DeliveryCollateralOffer:
 
 
 @dataclass(frozen=True)
+class DeliveryParticipationOffer:
+    """Known delivery primitives plus a declared contract outside option.
+
+    ``collateral_capital_cost_rate`` is the provider's known opportunity cost
+    over the allocation epoch per dollar of fully locked shortfall collateral.
+    ``outside_option`` is an epoch-level utility requirement only when the
+    provider receives a positive allocation. These are reduced-form,
+    externally specified inputs; the helper does not make them truthful.
+    """
+
+    provider: str
+    delivery_price: float
+    known_marginal_cost: float
+    reliability: float
+    physical_capacity: float
+    posted_collateral: float
+    reservation_transfer: float = 0.0
+    outside_option: float = 0.0
+    collateral_capital_cost_rate: float = 0.0
+
+
+@dataclass(frozen=True)
 class CapacityProcurementOffer:
     """A certified capacity ceiling with a reported linear reservation cost.
 
@@ -1594,6 +1616,32 @@ def _validate_delivery_collateral_offers(offers: list[DeliveryCollateralOffer]) 
             raise ValueError("physical capacity and posted collateral must be non-negative")
 
 
+def _as_delivery_collateral_offer(offer: DeliveryParticipationOffer) -> DeliveryCollateralOffer:
+    return DeliveryCollateralOffer(
+        provider=offer.provider,
+        delivery_price=offer.delivery_price,
+        known_marginal_cost=offer.known_marginal_cost,
+        reliability=offer.reliability,
+        physical_capacity=offer.physical_capacity,
+        posted_collateral=offer.posted_collateral,
+        reservation_transfer=offer.reservation_transfer,
+    )
+
+
+def _validate_delivery_participation_offers(offers: list[DeliveryParticipationOffer]) -> None:
+    """Validate known outside-option and collateral-capital inputs."""
+    _validate_delivery_collateral_offers([_as_delivery_collateral_offer(offer) for offer in offers])
+    for offer in offers:
+        values = {
+            "outside_option": offer.outside_option,
+            "collateral_capital_cost_rate": offer.collateral_capital_cost_rate,
+        }
+        if any(not isfinite(float(value)) for value in values.values()):
+            raise ValueError("participation inputs must be finite")
+        if offer.outside_option < 0 or offer.collateral_capital_cost_rate < 0:
+            raise ValueError("outside option and collateral capital cost rate must be non-negative")
+
+
 def minimum_collectible_delivery_bond(
     marginal_margin_per_request: float,
     *,
@@ -1614,6 +1662,50 @@ def minimum_collectible_delivery_bond(
     if minimum_delivery_gain < 0:
         raise ValueError("minimum_delivery_gain must be non-negative")
     return max(0.0, minimum_delivery_gain - marginal_margin_per_request)
+
+
+def minimum_reservation_transfer(
+    *,
+    allocated_requests: float,
+    marginal_margin_per_request: float,
+    bond_per_missed_request: float,
+    collateral_capital_cost_rate: float,
+    outside_option: float,
+) -> float:
+    """Smallest up-front transfer for conditional all-served participation.
+
+    For a positive allocation ``x``, fully locking ``xb`` units of collateral
+    has an epoch cost ``gamma * x * b``. If all assigned feasible requests are
+    served, net payoff before the reservation transfer is
+    ``x * (p - c - gamma*b)``. The returned transfer is the minimum
+    non-negative payment that reaches the known outside option. A provider
+    with zero allocation is not offered a contract and requires no transfer.
+
+    This is deliberately an all-served participation certificate. It does not
+    insure physical failures, elicit cost/outside-option/capital-cost reports,
+    or prove budget balance.
+    """
+    values = {
+        "allocated_requests": allocated_requests,
+        "marginal_margin_per_request": marginal_margin_per_request,
+        "bond_per_missed_request": bond_per_missed_request,
+        "collateral_capital_cost_rate": collateral_capital_cost_rate,
+        "outside_option": outside_option,
+    }
+    if any(not isfinite(float(value)) for value in values.values()):
+        raise ValueError("reservation-participation inputs must be finite")
+    if allocated_requests < 0:
+        raise ValueError("allocated_requests must be non-negative")
+    if bond_per_missed_request < 0 or collateral_capital_cost_rate < 0 or outside_option < 0:
+        raise ValueError(
+            "bond, collateral capital cost rate, and outside option must be non-negative"
+        )
+    if allocated_requests == 0:
+        return 0.0
+    net_before_transfer = allocated_requests * (
+        marginal_margin_per_request - collateral_capital_cost_rate * bond_per_missed_request
+    )
+    return max(0.0, outside_option - net_before_transfer)
 
 
 def delivery_collateral_capacities(
@@ -1752,6 +1844,77 @@ def reservation_delivery_diagnostic(
                     collateral_locked <= offer.posted_collateral + 1e-9
                 ),
                 "delivery_gain_target_met": bool(delivery_gain >= minimum_delivery_gain - 1e-9),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def reservation_delivery_participation_diagnostic(
+    offers: list[DeliveryParticipationOffer],
+    *,
+    demand: float,
+    minimum_delivery_gain: float = 0.0,
+    eta: float = 2.0,
+) -> pd.DataFrame:
+    """Audit collateral feasibility, delivery incentive, and served-state IR.
+
+    The allocation and bond are exactly the known-primitive collateralized
+    delivery rule. A reservation transfer compensates the capital cost of
+    locked collateral and a known outside option only in the all-served state.
+    Because the transfer is non-contingent, it cancels from the serve-versus-
+    ration comparison. This is not a physical-outage guarantee or a report-
+    truthfulness result.
+    """
+    _validate_delivery_participation_offers(offers)
+    collateral_offers = [_as_delivery_collateral_offer(offer) for offer in offers]
+    capacities = delivery_collateral_capacities(
+        collateral_offers, minimum_delivery_gain=minimum_delivery_gain
+    ).set_index("provider")
+    allocation = collateralized_delivery_allocation(
+        collateral_offers,
+        demand=demand,
+        minimum_delivery_gain=minimum_delivery_gain,
+        eta=eta,
+    )
+    rows = []
+    for offer in offers:
+        capacity = capacities.loc[offer.provider]
+        allocated = float(allocation.get(offer.provider, 0.0))
+        margin = float(capacity["delivery_margin_per_request"])
+        bond = float(capacity["minimum_collectible_bond_per_shortfall"])
+        collateral_locked = allocated * bond
+        collateral_capital_cost = offer.collateral_capital_cost_rate * collateral_locked
+        minimum_transfer = minimum_reservation_transfer(
+            allocated_requests=allocated,
+            marginal_margin_per_request=margin,
+            bond_per_missed_request=bond,
+            collateral_capital_cost_rate=offer.collateral_capital_cost_rate,
+            outside_option=offer.outside_option,
+        )
+        all_served = offer.reservation_transfer + allocated * margin - collateral_capital_cost
+        all_rationed = offer.reservation_transfer - collateral_locked - collateral_capital_cost
+        delivery_gain = margin + bond
+        rows.append(
+            {
+                **capacity.to_dict(),
+                "allocated_requests": allocated,
+                "outside_option": offer.outside_option,
+                "collateral_capital_cost_rate": offer.collateral_capital_cost_rate,
+                "collateral_locked": collateral_locked,
+                "collateral_capital_cost": collateral_capital_cost,
+                "reservation_transfer": offer.reservation_transfer,
+                "minimum_reservation_transfer": minimum_transfer,
+                "reservation_transfer_excess": offer.reservation_transfer - minimum_transfer,
+                "all_served_payoff_net_collateral_cost": all_served,
+                "all_rationed_payoff_net_collateral_cost": all_rationed,
+                "delivery_gain_per_feasible_request": delivery_gain,
+                "allocation_is_collateral_feasible": bool(
+                    collateral_locked <= offer.posted_collateral + 1e-9
+                ),
+                "delivery_gain_target_met": bool(delivery_gain >= minimum_delivery_gain - 1e-9),
+                "all_served_participation_met": bool(
+                    allocated == 0 or all_served >= offer.outside_option - 1e-9
+                ),
             }
         )
     return pd.DataFrame(rows)

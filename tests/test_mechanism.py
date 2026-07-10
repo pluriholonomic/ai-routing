@@ -9,6 +9,7 @@ from orcap.mechanism import (
     CertifiedCostCurveOffer,
     CollateralizedCapacityCurveOffer,
     DeliveryCollateralOffer,
+    DeliveryParticipationOffer,
     OutageScenario,
     ProviderOffer,
     allocation_counterfactual,
@@ -46,6 +47,7 @@ from orcap.mechanism import (
     expected_reliability_report_payoff,
     limited_liability_delivery_gain,
     minimum_collectible_delivery_bond,
+    minimum_reservation_transfer,
     own_price_share_elasticity,
     procurement_payment,
     procurement_report_diagnostic,
@@ -53,6 +55,7 @@ from orcap.mechanism import (
     realized_provider_payoff,
     reported_cost_allocation,
     reservation_delivery_diagnostic,
+    reservation_delivery_participation_diagnostic,
     robust_outage_allocation,
     robust_outage_counterfactual,
     welfare_capacity_allocation,
@@ -177,6 +180,85 @@ def test_reservation_transfer_cancels_from_delivery_incentive_and_collateral_cer
     assert paid_reservation["all_rationed_payoff"] - no_reservation["all_rationed_payoff"] == 7.0
     assert bool(paid_reservation["allocation_is_collateral_feasible"])
     assert bool(paid_reservation["delivery_gain_target_met"])
+
+
+def test_minimum_reservation_transfer_recovers_served_state_participation_after_collateral_cost():
+    minimum = minimum_reservation_transfer(
+        allocated_requests=2.0,
+        marginal_margin_per_request=-0.5,
+        bond_per_missed_request=0.6,
+        collateral_capital_cost_rate=0.1,
+        outside_option=0.2,
+    )
+
+    assert minimum == pytest.approx(1.32)
+    assert (
+        minimum_reservation_transfer(
+            allocated_requests=0.0,
+            marginal_margin_per_request=-10.0,
+            bond_per_missed_request=5.0,
+            collateral_capital_cost_rate=1.0,
+            outside_option=100.0,
+        )
+        == 0.0
+    )
+
+
+def test_participation_certificate_prices_collateral_capital_without_weakening_delivery():
+    base = dict(
+        provider="underwater",
+        delivery_price=0.5,
+        known_marginal_cost=1.0,
+        reliability=1.0,
+        physical_capacity=10.0,
+        posted_collateral=4.0,
+        outside_option=0.2,
+        collateral_capital_cost_rate=0.1,
+    )
+    binding = reservation_delivery_participation_diagnostic(
+        [DeliveryParticipationOffer(**base, reservation_transfer=1.32)],
+        demand=2.0,
+        minimum_delivery_gain=0.1,
+    ).iloc[0]
+    higher_transfer = reservation_delivery_participation_diagnostic(
+        [DeliveryParticipationOffer(**base, reservation_transfer=4.0)],
+        demand=2.0,
+        minimum_delivery_gain=0.1,
+    ).iloc[0]
+
+    assert binding["minimum_reservation_transfer"] == pytest.approx(1.32)
+    assert binding["all_served_payoff_net_collateral_cost"] == pytest.approx(0.2)
+    assert binding["all_rationed_payoff_net_collateral_cost"] == pytest.approx(0.0)
+    assert binding["delivery_gain_per_feasible_request"] == pytest.approx(0.1)
+    assert bool(binding["all_served_participation_met"])
+    assert bool(binding["allocation_is_collateral_feasible"])
+    assert higher_transfer["delivery_gain_per_feasible_request"] == pytest.approx(0.1)
+
+
+def test_participation_primitives_reject_negative_collateral_capital_cost_or_outside_option():
+    with pytest.raises(ValueError, match="non-negative"):
+        minimum_reservation_transfer(
+            allocated_requests=1.0,
+            marginal_margin_per_request=0.0,
+            bond_per_missed_request=0.0,
+            collateral_capital_cost_rate=-0.1,
+            outside_option=0.0,
+        )
+    with pytest.raises(ValueError, match="non-negative"):
+        reservation_delivery_participation_diagnostic(
+            [
+                DeliveryParticipationOffer(
+                    provider="invalid",
+                    delivery_price=1.0,
+                    known_marginal_cost=0.5,
+                    reliability=1.0,
+                    physical_capacity=1.0,
+                    posted_collateral=0.0,
+                    outside_option=-1.0,
+                )
+            ],
+            demand=1.0,
+        )
 
 
 def test_delivery_collateral_primitives_reject_nonpositive_price_and_handle_an_empty_market():

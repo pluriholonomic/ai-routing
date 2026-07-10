@@ -116,6 +116,15 @@ provider, model, and half-open time interval `[epoch_start, epoch_end)`.
 This records controlled-study declarations; it does not send traffic, reserve
 capacity, contact a provider, or make a public capacity claim.
 
+To calibrate the known-primitive all-served collateral-capital participation
+certificate, the same commitment may additionally include
+`contracted_delivery_price_usd_per_request`, `posted_collateral_usd`,
+`collateral_capital_cost_rate`, `outside_option_usd`, and
+`minimum_delivery_gain_usd_per_request`. Every supplied amount must be
+non-negative (the contracted delivery price must be positive). These are
+declared, pre-epoch inputs; they are not provider cost verification, escrow
+proof, physical-outage insurance, or a budget-balance result.
+
 For a correlated-outage study, an owner may additionally supply
 `failure_domains` as a de-duplicated list of non-payload labels such as
 `["cloud:example", "region:us-east"]`. These are declared exposure labels,
