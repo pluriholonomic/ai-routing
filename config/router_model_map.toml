@@ -1,0 +1,11 @@
+mapping_version = "v1-20260710"
+
+# Explicit, versioned aliases only.  A row appears in a cross-router comparison
+# only if this map says the public router listings refer to the same model.
+[openrouter_to_huggingface]
+"z-ai/glm-5.2" = "zai-org/GLM-5.2"
+"minimax/minimax-m3" = "MiniMaxAI/MiniMax-M3"
+"deepseek/deepseek-v4-pro" = "deepseek-ai/DeepSeek-V4-Pro"
+"deepseek/deepseek-v4-flash" = "deepseek-ai/DeepSeek-V4-Flash"
+"openai/gpt-oss-120b" = "openai/gpt-oss-120b"
+"xiaomi/mimo-v2.5-pro" = "XiaomiMiMo/MiMo-V2.5-Pro"
