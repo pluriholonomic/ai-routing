@@ -1,0 +1,4 @@
+interface:
+  display_name: "DeFi and Compute Comparison"
+  short_description: "Build defensible DeFi versus compute analyses"
+  default_prompt: "Use $orcap-defi-compute-comparison to extend the DeFi and open-compute comparison."

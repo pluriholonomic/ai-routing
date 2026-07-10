@@ -1,0 +1,4 @@
+interface:
+  display_name: "ORCAP Market Monitoring"
+  short_description: "Operate reliable ORCAP market data monitoring"
+  default_prompt: "Use $orcap-market-monitoring to diagnose or extend the ORCAP monitoring pipeline."

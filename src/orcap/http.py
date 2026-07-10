@@ -4,6 +4,7 @@ import asyncio
 import gzip
 import json
 import time
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -54,18 +55,18 @@ class Fetcher:
         stop=stop_after_attempt(4),
         reraise=True,
     )
-    async def _get(self, url: str) -> httpx.Response:
+    async def _get(self, url: str, headers: Mapping[str, str] | None = None) -> httpx.Response:
         await self.limiter.wait()
-        resp = await self.client.get(url)
+        resp = await self.client.get(url, headers=headers)
         if resp.status_code in (429, 500, 502, 503, 504):
             resp.raise_for_status()
         return resp
 
-    async def get_json(self, url: str) -> Any | None:
+    async def get_json(self, url: str, headers: Mapping[str, str] | None = None) -> Any | None:
         """GET a JSON document; returns None (and records the failure) on hard errors."""
         fetched_at = datetime.now(UTC).isoformat()
         try:
-            resp = await self._get(url)
+            resp = await self._get(url, headers=headers)
         except httpx.HTTPError as exc:
             self.records.append(
                 {"fetched_at": fetched_at, "url": url, "status": None, "error": str(exc)}
@@ -90,6 +91,46 @@ class Fetcher:
                 "url": url,
                 "status": resp.status_code,
                 "body": body if body is not None else fallback,
+            }
+        )
+        return body if resp.status_code == 200 else None
+
+    async def post_json(
+        self,
+        url: str,
+        payload: Any,
+        headers: Mapping[str, str] | None = None,
+    ) -> Any | None:
+        """POST JSON while preserving the same raw-response evidence as GET."""
+        fetched_at = datetime.now(UTC).isoformat()
+        try:
+            await self.limiter.wait()
+            resp = await self.client.post(url, json=payload, headers=headers)
+            if resp.status_code in (429, 500, 502, 503, 504):
+                resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            self.records.append(
+                {"fetched_at": fetched_at, "url": url, "status": None, "error": str(exc)}
+            )
+            return None
+        try:
+            body = resp.json()
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            try:
+                body = json.loads(gzip.decompress(resp.content))
+            except Exception:
+                try:
+                    body = resp.text[:200_000]
+                except UnicodeDecodeError:
+                    body = f"<binary {len(resp.content)} bytes>"
+        self.records.append(
+            {
+                "fetched_at": fetched_at,
+                "url": url,
+                "method": "POST",
+                "request_json": payload,
+                "status": resp.status_code,
+                "body": body,
             }
         )
         return body if resp.status_code == 200 else None

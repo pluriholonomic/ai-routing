@@ -90,7 +90,9 @@ async def capture_devrel(
         if os.environ.get("GITHUB_TOKEN"):
             gh_headers["Authorization"] = f"Bearer {os.environ['GITHUB_TOKEN']}"
         for repo in GITHUB_REPOS:
-            b = await fetcher.get_json(f"https://api.github.com/repos/{repo}")
+            b = await fetcher.get_json(
+                f"https://api.github.com/repos/{repo}", headers=gh_headers or None
+            )
             if isinstance(b, dict):
                 add("github", repo, "stars", b.get("stargazers_count"))
                 add("github", repo, "open_issues", b.get("open_issues_count"))

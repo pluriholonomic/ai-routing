@@ -43,6 +43,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/assemble_artifacts.sh 26 data
+      - name: validate required source health
+        run: uv run orcap quality --profile core
       - name: reanalyze
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}

@@ -1,0 +1,44 @@
+name: market-comparison
+
+# The comparison monitor keeps raw source evidence and status records even when
+# optional credentialed feeds are absent. DefiLlama is the required public
+# source; CoW, Golem, Akash, and Uniswap remain visibly degraded until their
+# configured feed or credential is available.
+on:
+  schedule:
+    - cron: "29 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: market-comparison
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  market-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: capture comparison sources
+        env:
+          GRAPH_API_KEY: ${{ secrets.GRAPH_API_KEY }}
+          ORCAP_UNISWAP_SUBGRAPH_ID: ${{ secrets.ORCAP_UNISWAP_SUBGRAPH_ID }}
+          ORCAP_UNISWAP_POOLS: ${{ vars.ORCAP_UNISWAP_POOLS }}
+          ORCAP_AKASH_NETWORK_URL: ${{ vars.ORCAP_AKASH_NETWORK_URL }}
+          AKASH_API_KEY: ${{ secrets.AKASH_API_KEY }}
+          ORCAP_COW_TRADES_URL: ${{ vars.ORCAP_COW_TRADES_URL }}
+          ORCAP_GOLEM_STATS_URL: ${{ vars.ORCAP_GOLEM_STATS_URL }}
+        run: uv run orcap market-capture --with-uniswap --with-akash
+      - name: validate required source health
+        run: uv run orcap quality --profile market
+      - name: push comparison data and source-run ledger
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "market comparison ${{ github.run_id }}" --delete-local

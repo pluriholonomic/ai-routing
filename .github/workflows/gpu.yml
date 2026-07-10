@@ -24,6 +24,8 @@ jobs:
       - run: uv sync --no-dev
       - name: capture GPU prices
         run: uv run orcap capture-gpu
+      - name: validate GPU source health
+        run: uv run orcap quality --profile gpu
       - name: buffer output as workflow artifact
         uses: actions/upload-artifact@v4
         with:

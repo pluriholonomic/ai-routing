@@ -12,6 +12,13 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 - **Code**: this (public) GitHub repo. Contains no data.
 - **Data**: private HF dataset repo [`t4run/openrouter-market-history`](https://huggingface.co/datasets/t4run/openrouter-market-history).
 
+## Documentation
+
+- [`docs/repo-guide.md`](docs/repo-guide.md) — architecture, data contracts, local setup, workflows, and claim boundaries.
+- [`docs/repo-skills.md`](docs/repo-skills.md) — concise operating skills for capture, source extensions, comparative analysis, and monitoring.
+- [`docs/defi-open-compute-completion-plan.md`](docs/defi-open-compute-completion-plan.md) — the source, schema, method, monitoring, and prioritized fix plan for a complete DeFi-versus-open-compute comparison.
+- [`docs/routing-mev-research-plan.md`](docs/routing-mev-research-plan.md) — falsifiable routing-volume-capture hypotheses, event-study designs, data gates, and the boundary between quote competition and MEV-like claims.
+
 ## Cadence
 
 | workflow | schedule | what |
@@ -75,6 +82,10 @@ uv sync
 uv run orcap capture                  # one snapshot -> data/
 uv run orcap capture --samples 3      # 15-min-slot behavior
 uv run orcap scrape --limit 10        # frontend charts for 10 model×variant combos
+uv run orcap capture-gpu              # open-GPU marketplace book
+uv run orcap market-capture --with-uniswap --with-akash
+uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-like hypotheses)
+uv run orcap quality --profile core
 uv run orcap push                     # -> HF dataset repo (uses cached HF login)
 uv run orcap compact                  # compacts yesterday in the HF repo
 uv run orcap backfill                 # wayback backfill of model-level pricing

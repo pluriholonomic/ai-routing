@@ -109,6 +109,41 @@ def write_partition(
     return out
 
 
+def write_event_burst_manifest(
+    models: set[str],
+    run_ts: str,
+    dt: str,
+    planned_post_seconds: int,
+    curated_dir: Path = CURATED_DIR,
+) -> Path | None:
+    """Persist the intended event-study window when a price change is detected.
+
+    The normal panel provides the pre-event five-minute quote observations;
+    minute-level burst sampling begins only after detection.  Recording that
+    asymmetry prevents downstream analysis from presenting post-only bursts as
+    symmetric high-frequency evidence.
+    """
+    if not models:
+        return None
+    rows = [
+        {
+            "event_id": f"{run_ts}|{model}",
+            "detected_at_run_ts": run_ts,
+            "dt": dt,
+            "model_id": model,
+            "trigger": "price_change",
+            "pre_event_resolution_seconds": 300,
+            "post_event_resolution_seconds": 60,
+            "planned_post_seconds": planned_post_seconds,
+            "post_burst_attempted": planned_post_seconds > 0,
+        }
+        for model in sorted(models)
+    ]
+    return write_partition(
+        pa.Table.from_pylist(rows), "event_burst_manifest", run_ts, dt, curated_dir
+    )
+
+
 async def capture(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) -> dict[str, Any]:
     run_ts = run_timestamp()
     dt = dt_partition()
@@ -263,6 +298,12 @@ async def capture_loop(samples: int, interval_seconds: float) -> list[dict[str, 
             hot |= changed
             log.warning("PRICE EVENT detected: %s", sorted(changed))
             Path("events_detected").write_text("\n".join(sorted(hot)))
+            write_event_burst_manifest(
+                changed,
+                summary["run_ts"],
+                summary["dt"],
+                max(0, int(interval_seconds - 65)) if i < samples - 1 else 0,
+            )
         prev = cur
         if i < samples - 1:
             deadline = start + interval_seconds

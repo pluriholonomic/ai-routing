@@ -1,0 +1,73 @@
+[profiles]
+core = ["openrouter_api", "openrouter_frontend", "vast"]
+comparison = ["defillama", "cow", "golem", "akash", "uniswap"]
+capture = ["openrouter_api"]
+scrape = ["openrouter_frontend"]
+gpu = ["vast"]
+market = ["defillama", "cow", "golem", "akash", "uniswap"]
+
+[sources.openrouter_api]
+owner = "OpenRouter"
+required = true
+cadence_minutes = 65
+min_rows = 1
+
+[sources.openrouter_frontend]
+owner = "OpenRouter"
+required = true
+cadence_minutes = 1560
+min_rows = 1
+
+[sources.vast]
+owner = "Vast.ai"
+required = true
+cadence_minutes = 130
+min_rows = 1
+
+[sources.direct_providers]
+owner = "Direct inference providers"
+required = false
+cadence_minutes = 1560
+min_rows = 1
+
+[sources.huggingface]
+owner = "Hugging Face"
+required = false
+cadence_minutes = 1560
+min_rows = 1
+
+[sources.devrel]
+owner = "Public developer platforms"
+required = false
+cadence_minutes = 1560
+min_rows = 1
+
+[sources.defillama]
+owner = "DefiLlama"
+required = true
+cadence_minutes = 1560
+min_rows = 1
+
+[sources.cow]
+owner = "CoW Protocol"
+required = false
+cadence_minutes = 30
+min_rows = 1
+
+[sources.golem]
+owner = "Golem Network"
+required = false
+cadence_minutes = 130
+min_rows = 1
+
+[sources.akash]
+owner = "Akash Network"
+required = false
+cadence_minutes = 130
+min_rows = 1
+
+[sources.uniswap]
+owner = "Uniswap / The Graph"
+required = false
+cadence_minutes = 130
+min_rows = 1

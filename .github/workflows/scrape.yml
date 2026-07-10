@@ -41,6 +41,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: uv run orcap capture-devrel
+      - name: validate frontend source health
+        run: uv run orcap quality --profile scrape
       - name: push to HF dataset repo
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}

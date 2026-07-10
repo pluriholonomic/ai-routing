@@ -129,13 +129,36 @@ def _fmt(x, pct=False, nd=2):
     return f"{x * 100:.1f}%" if pct else f"{x:.{nd}f}"
 
 
+def monitor_badge() -> str:
+    """Render source health without turning an unavailable ledger into a green claim."""
+    try:
+        from .quality import check
+
+        healths = {"core": check("core"), "comparison": check("market")}
+    except Exception as exc:
+        log.warning("monitor health unavailable: %s", exc)
+        return '<p class="small sans">Monitor health: unavailable.</p>'
+    state = ", ".join(f"{name} {health['overall']}" for name, health in healths.items())
+    detail = "; ".join(
+        ", ".join(f"{item['source']}: {item['state']}" for item in health["sources"])
+        for health in healths.values()
+    )
+    return (
+        '<p class="small sans">Monitor health: '
+        f"<strong>{html.escape(state)}</strong> — {html.escape(detail)}.</p>"
+    )
+
+
 def live_status(analysis_dir: Path) -> str:
     h2 = _j(analysis_dir, "h2_summary")
     h4 = _j(analysis_dir, "h4_summary")
     h10 = _j(analysis_dir, "h10_summary")
     h13 = _j(analysis_dir, "h13_summary")
     h17 = _j(analysis_dir, "h17_summary")
+    h42 = _j(analysis_dir, "h42_summary")
     h3 = _j(analysis_dir, "h3_summary")
+    h42_data = h42.get("data") or {}
+    h42_r2 = h42.get("r2_undercut_capture") or {}
 
     counts = data.q(
         f"""
@@ -172,6 +195,11 @@ def live_status(analysis_dir: Path) -> str:
         (_fmt(h13.get("share_exact_zero_basis"), pct=True), "venue quotes at exactly direct price"),
         ("$" + _fmt(h3.get("gpu_h100_usd_hr")), "H100 SXM $/hr (vast.ai median)"),
         (_fmt((h17.get("live") or {}).get("share_reversal"), pct=True), "live events reversed"),
+        (str(h42_data.get("events_eligible_quote", "—")), "H42 eligible quote events"),
+        (
+            f"{h42_r2.get('n_events_with_balanced_intraday_window', '—')}/20",
+            "H42 clean undercut windows",
+        ),
     ]
     tile_html = "".join(
         f'<div class="stat"><div class="v">{html.escape(str(v))}</div>'
@@ -187,6 +215,7 @@ def live_status(analysis_dir: Path) -> str:
     return f"""
 <h2>Live status <span class="sans" style="font-size:13px;color:var(--muted);font-weight:400">
 auto-generated from the latest daily reanalysis</span></h2>
+{monitor_badge()}
 <div class="statrow">{tile_html}</div>
 <table><thead><tr><th>UTC</th><th>Model</th><th>Provider</th>
 <th class="num">$/Mtok out</th></tr></thead>
@@ -196,11 +225,37 @@ the full capture; the narrative sections below are the dated core screen.</p>
 """
 
 
+def unavailable_live_status(analysis_dir: Path) -> str:
+    """Keep locally computed event-study coverage visible during remote throttling."""
+    h42 = _j(analysis_dir, "h42_summary")
+    h42_data = h42.get("data") or {}
+    h42_r2 = h42.get("r2_undercut_capture") or {}
+    eligible = html.escape(str(h42_data.get("events_eligible_quote", "—")))
+    windows = html.escape(str(h42_r2.get("n_events_with_balanced_intraday_window", "—")))
+    return f"""
+<h2>Live status <span class="sans" style="font-size:13px;color:var(--muted);font-weight:400">
+temporarily unavailable</span></h2>
+<p class="small sans">The historical analysis rendered, but the current source query failed.
+Check monitor health before interpreting this as zero activity.</p>
+<div class="statrow">
+  <div class="stat"><div class="v">{eligible}</div>
+  <div class="l">H42 eligible quote events</div></div>
+  <div class="stat"><div class="v">{windows}/20</div>
+  <div class="l">H42 clean undercut windows</div></div>
+</div>
+"""
+
+
 def build(analysis_dir: Path = Path("analysis"), out: Path | None = None) -> Path:
     tpl = TEMPLATE.read_text()
     d = chart_data(analysis_dir)
     page = tpl.replace("/*__DATA__*/", json.dumps(d, separators=(",", ":")))
-    page = page.replace("<!--LIVE_STATUS-->", live_status(analysis_dir))
+    try:
+        status = live_status(analysis_dir)
+    except Exception as exc:
+        log.warning("live memo status unavailable: %s", exc)
+        status = unavailable_live_status(analysis_dir)
+    page = page.replace("<!--LIVE_STATUS-->", status)
     page = page.replace("{{AS_OF}}", datetime.now(UTC).strftime("%Y-%m-%d"))
     out = out or analysis_dir / "memo.html"
     out.write_text(page)
