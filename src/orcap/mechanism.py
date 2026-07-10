@@ -1,10 +1,12 @@
-"""Minimal capacity-certified routing mechanism used by H48.
+"""Capacity-aware routing and finite collateralized procurement primitives.
 
 The model is deliberately small enough for empirical calibration. Providers
 post a unit quote and a capacity commitment; the router allocates first-route
 probability using reliability-weighted inverse-price scores. A capacity bond
-is a deferred payment/forfeit for committed but unserved allocation.  It is a
-mechanism-design proposal, not a claim about any existing router's policy.
+is a deferred payment/forfeit for committed but unserved allocation. Separate
+finite VCG helpers also model private capacity as a collateralized sentinel
+suffix on a complete cost curve. These are mechanism-design proposals, not
+claims about any existing router's policy.
 """
 
 from __future__ import annotations
@@ -54,6 +56,314 @@ class CertifiedCostCurveOffer:
     provider: str
     certified_capacity: int
     reported_marginal_costs: tuple[float, ...]
+
+
+@dataclass(frozen=True)
+class CollateralizedCapacityCurveOffer:
+    """A finite capacity/cost report with a collateralized default sentinel.
+
+    ``registered_slot_limit`` is a public maximum number of collateralizable
+    reservation slots, not a certificate of physical capacity. The finite
+    report prefix represents available units; its sentinel suffix represents
+    unavailable units that lose fully collectible shortfall collateral if a
+    provider falsely makes them reservable.
+    """
+
+    provider: str
+    registered_slot_limit: int
+    reported_marginal_costs: tuple[float, ...]
+
+
+def _validate_collateralized_capacity_curve_offers(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    outside_option_cost: float,
+    shortfall_sentinel_cost: float,
+) -> None:
+    """Validate the finite report domain for private capacity plus cost.
+
+    Deliverable costs must be strictly cheaper than the fixed fallback. The
+    exact sentinel is a terminal suffix above that fallback, so a truthful
+    unavailable slot is never reserved.
+    """
+    if not isfinite(outside_option_cost) or outside_option_cost < 0:
+        raise ValueError("outside_option_cost must be finite and non-negative")
+    if not isfinite(shortfall_sentinel_cost) or shortfall_sentinel_cost <= outside_option_cost:
+        raise ValueError("shortfall_sentinel_cost must strictly exceed outside_option_cost")
+    if len({offer.provider for offer in offers}) != len(offers):
+        raise ValueError("provider names must be unique")
+    for offer in offers:
+        if not isinstance(offer.registered_slot_limit, int) or isinstance(
+            offer.registered_slot_limit, bool
+        ):
+            raise ValueError("registered_slot_limit must be an integer")
+        if offer.registered_slot_limit < 0:
+            raise ValueError("registered_slot_limit must be non-negative")
+        costs = tuple(offer.reported_marginal_costs)
+        if len(costs) != offer.registered_slot_limit:
+            raise ValueError("marginal-cost schedule length must equal registered_slot_limit")
+        if any(not isfinite(float(cost)) or float(cost) < 0 for cost in costs):
+            raise ValueError("marginal costs must be finite and non-negative")
+        if any(float(left) > float(right) for left, right in zip(costs, costs[1:], strict=False)):
+            raise ValueError("marginal-cost schedule must be non-decreasing")
+        saw_sentinel = False
+        for cost in costs:
+            value = float(cost)
+            if value == shortfall_sentinel_cost:
+                saw_sentinel = True
+            elif saw_sentinel:
+                raise ValueError("shortfall sentinel must be a terminal suffix")
+            elif value >= outside_option_cost:
+                raise ValueError("deliverable marginal costs must be below outside_option_cost")
+
+
+def collateralized_reported_capacity(
+    offer: CollateralizedCapacityCurveOffer,
+    *,
+    outside_option_cost: float,
+    shortfall_sentinel_cost: float,
+) -> int:
+    """Return the finite report prefix interpreted as physical capacity."""
+    _validate_collateralized_capacity_curve_offers(
+        [offer],
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    return sum(float(cost) < shortfall_sentinel_cost for cost in offer.reported_marginal_costs)
+
+
+def collateralized_capacity_vcg_allocation(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    demand: int,
+    outside_option_cost: float,
+    shortfall_sentinel_cost: float,
+) -> pd.Series:
+    """Efficient finite-slot procurement with a fixed per-unit fallback.
+
+    This is VCG procurement against a dummy outside provider with ``demand``
+    units at ``outside_option_cost``. The sentinel is more expensive than the
+    fallback, so a truthful unavailable slot is not reserved.
+    """
+    demand = _validate_integer_demand(demand)
+    _validate_collateralized_capacity_curve_offers(
+        offers,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    allocation = {offer.provider: 0 for offer in offers}
+    marginal_units = sorted(
+        (float(cost), offer.provider, unit)
+        for offer in offers
+        for unit, cost in enumerate(offer.reported_marginal_costs, start=1)
+    )
+    for cost, provider, _ in marginal_units:
+        if sum(allocation.values()) >= demand or cost >= outside_option_cost:
+            break
+        allocation[provider] += 1
+    return pd.Series(allocation, dtype="int64")
+
+
+def _collateralized_capacity_system_cost(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    demand: int,
+    outside_option_cost: float,
+    shortfall_sentinel_cost: float,
+) -> float:
+    allocation = collateralized_capacity_vcg_allocation(
+        offers,
+        demand=demand,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    reported_cost = sum(
+        float(sum(offer.reported_marginal_costs[: int(allocation[offer.provider])]))
+        for offer in offers
+    )
+    return reported_cost + outside_option_cost * (demand - int(allocation.sum()))
+
+
+def collateralized_capacity_vcg_payment(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    provider: str,
+    demand: int,
+    outside_option_cost: float,
+    shortfall_sentinel_cost: float,
+) -> float:
+    """Clarke-pivot reservation transfer for private capacity/cost reports.
+
+    The transfer is paid at reservation. If a false unavailable slot is
+    reserved, the provider loses the fully collectible sentinel collateral and
+    the router invokes its fixed fallback. This is not a payment-on-success or
+    budget-balance claim.
+    """
+    demand = _validate_integer_demand(demand)
+    _validate_collateralized_capacity_curve_offers(
+        offers,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    if provider not in {offer.provider for offer in offers}:
+        raise ValueError(f"unknown provider: {provider}")
+    allocation = collateralized_capacity_vcg_allocation(
+        offers,
+        demand=demand,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    without = [offer for offer in offers if offer.provider != provider]
+    cost_without_provider = _collateralized_capacity_system_cost(
+        without,
+        demand=demand,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    others_cost = sum(
+        float(sum(offer.reported_marginal_costs[: int(allocation[offer.provider])]))
+        for offer in without
+    )
+    others_cost += outside_option_cost * (demand - int(allocation.sum()))
+    return cost_without_provider - others_cost
+
+
+def collateralized_capacity_vcg_utility(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    demand: int,
+    outside_option_cost: float,
+    shortfall_sentinel_cost: float,
+) -> float:
+    """True utility including a sentinel loss on every false capacity unit."""
+    _validate_collateralized_capacity_curve_offers(
+        offers,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    by_provider = {offer.provider: offer for offer in offers}
+    if provider not in by_provider:
+        raise ValueError(f"unknown provider: {provider}")
+    true_offer = CollateralizedCapacityCurveOffer(
+        provider=provider,
+        registered_slot_limit=by_provider[provider].registered_slot_limit,
+        reported_marginal_costs=tuple(true_marginal_costs),
+    )
+    _validate_collateralized_capacity_curve_offers(
+        [true_offer],
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    allocation = collateralized_capacity_vcg_allocation(
+        offers,
+        demand=demand,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    payment = collateralized_capacity_vcg_payment(
+        offers,
+        provider=provider,
+        demand=demand,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    true_cost = float(sum(true_offer.reported_marginal_costs[: int(allocation[provider])]))
+    return payment - true_cost
+
+
+def collateralized_capacity_vcg_report_diagnostic(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    report_schedules: list[tuple[float, ...]],
+    demand: int,
+    outside_option_cost: float,
+    shortfall_sentinel_cost: float,
+) -> pd.DataFrame:
+    """Enumerate finite capacity/cost deviations at true collateral losses."""
+    _validate_collateralized_capacity_curve_offers(
+        offers,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    by_provider = {offer.provider: offer for offer in offers}
+    if provider not in by_provider:
+        raise ValueError(f"unknown provider: {provider}")
+    true_offer = CollateralizedCapacityCurveOffer(
+        provider=provider,
+        registered_slot_limit=by_provider[provider].registered_slot_limit,
+        reported_marginal_costs=tuple(true_marginal_costs),
+    )
+    _validate_collateralized_capacity_curve_offers(
+        [true_offer],
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    actual_capacity = collateralized_reported_capacity(
+        true_offer,
+        outside_option_cost=outside_option_cost,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    rows = []
+    for schedule in report_schedules:
+        reported_offers = [
+            (
+                CollateralizedCapacityCurveOffer(
+                    provider=offer.provider,
+                    registered_slot_limit=offer.registered_slot_limit,
+                    reported_marginal_costs=tuple(schedule),
+                )
+                if offer.provider == provider
+                else offer
+            )
+            for offer in offers
+        ]
+        _validate_collateralized_capacity_curve_offers(
+            reported_offers,
+            outside_option_cost=outside_option_cost,
+            shortfall_sentinel_cost=shortfall_sentinel_cost,
+        )
+        allocation = collateralized_capacity_vcg_allocation(
+            reported_offers,
+            demand=demand,
+            outside_option_cost=outside_option_cost,
+            shortfall_sentinel_cost=shortfall_sentinel_cost,
+        )
+        reported_offer = next(offer for offer in reported_offers if offer.provider == provider)
+        rows.append(
+            {
+                "reported_marginal_costs": tuple(float(cost) for cost in schedule),
+                "reported_capacity": collateralized_reported_capacity(
+                    reported_offer,
+                    outside_option_cost=outside_option_cost,
+                    shortfall_sentinel_cost=shortfall_sentinel_cost,
+                ),
+                "actual_capacity": actual_capacity,
+                "reserved_units": int(allocation[provider]),
+                "defaulted_reserved_units_at_true_capacity": max(
+                    0, int(allocation[provider]) - actual_capacity
+                ),
+                "reservation_payment": collateralized_capacity_vcg_payment(
+                    reported_offers,
+                    provider=provider,
+                    demand=demand,
+                    outside_option_cost=outside_option_cost,
+                    shortfall_sentinel_cost=shortfall_sentinel_cost,
+                ),
+                "utility_at_true_capacity_and_cost": collateralized_capacity_vcg_utility(
+                    reported_offers,
+                    provider=provider,
+                    true_marginal_costs=true_marginal_costs,
+                    demand=demand,
+                    outside_option_cost=outside_option_cost,
+                    shortfall_sentinel_cost=shortfall_sentinel_cost,
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 @dataclass(frozen=True)

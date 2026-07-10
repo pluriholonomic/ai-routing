@@ -227,15 +227,40 @@ AMM welfare results.
     does not elicit private capacity, cover continuous reliability, make audit
     selection truthful, guarantee delivery, integrate a shortfall bond, prove
     budget balance, or model correlated failure.
+17. **Collateralized finite VCG for jointly private capacity and convex
+    cost.** Fix a public maximum number of collateralizable reservation slots
+    `M_i`, a per-unit router fallback cost `P`, and a fully collectible
+    shortfall sentinel `H>P`. A provider's type is a complete non-decreasing
+    length-`M_i` curve: a finite prefix of deliverable marginal costs strictly
+    below `P`, followed by an exact `H` suffix. The prefix length is its
+    privately known physical capacity; an assigned false extra unit loses `H`
+    at reservation and is sent to the fallback. The allocation minimizes
+    reported cost plus `P` for each unfilled unit, equivalently adding a dummy
+    outside provider with `D` units at `P`, and pays the Clarke pivot at the
+    reservation decision. For true type `t_i`, utility from report `r_i` is
+    `C_-i^*-[t_i(x_i(r_i))+C_-i(x(r_i))]`: the first term is report-independent
+    and the bracket is the true total cost of the selected outcome. Truthful
+    reporting therefore weakly maximizes utility over the complete finite
+    capacity/curve domain. With a truthful `H` suffix, no unavailable unit is
+    selected because `H>P`; pivot utility is non-negative because removing a
+    provider weakly raises the minimum cost. The
+    `CollateralizedCapacityCurveOffer` and `collateralized_capacity_vcg_*`
+    routines implement allocation, payment, true-cost utility, and a finite
+    report diagnostic. This is a **reservation-stage, fully collateralized,
+    finite-slot** DSIC/IR construction. It does not make a public slot limit a
+    physical-capacity certificate, prove payment-on-success delivery, budget
+    balance, endogenous investment, private/continuous reliability, audit
+    selection, or correlated-outage results.
 
-The next theory step is still to extend these certified-input results to jointly
-private capacity and reliability under a stochastic health process, then
-connect the now-composed cost-curve procurement and funded audit score to
-shortfall collateral in one delivery mechanism and extend welfare to
-heterogeneous request values and controlled observations. H54 supplies a
-defensible *exogenous input* under a controlled design; the finite-bond
-boundary and the finite-grid audit construction together explain why an
-unsupported direct provider score is not enough.
+The next theory step is to compose the finite private-capacity/cost construction
+with privately reported reliability under a stochastic health process, then
+connect the reservation transfer, funded audit score, and payment-on-success
+delivery in one mechanism with a declared liability limit. It must also extend
+welfare to heterogeneous request values and controlled observations. H54
+supplies a defensible *exogenous input* under a controlled design; the
+finite-bond boundary, finite-grid audit construction, and collateralized
+capacity construction together explain why an unsupported direct provider
+score is not enough.
 
 ### Proof details and assumptions
 
