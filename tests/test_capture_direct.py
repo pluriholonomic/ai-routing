@@ -10,6 +10,7 @@ from orcap.capture_direct import (
     DEEPINFRA_URL,
     FIREWORKS_MODEL_PAGES,
     GROQ_MODELS_URL,
+    NOVITA_PRICING_URL,
     SAMBANOVA_MODELS_URL,
     TOGETHER_SERVERLESS_MODELS_URL,
     cerebras_rows,
@@ -17,6 +18,7 @@ from orcap.capture_direct import (
     direct_price_table,
     fireworks_rows,
     groq_rows,
+    novita_rows,
     sambanova_rows,
     together_rows,
 )
@@ -49,6 +51,11 @@ GROQ_MODELS_TABLE = """
 <tbody><tr><td>meta-llama/llama-4-scout-17b-16e-instruct</td>
 <td>$0.11 input $0.34 output</td></tr></tbody></table>
 """
+
+
+def _novita_pricing_page(models):
+    payload = '0:{"initialFullLLMModels":' + json.dumps(models, separators=(",", ":")) + "}"
+    return "<script>self.__next_f.push(" + json.dumps([1, payload]) + ")</script>"
 
 
 def test_cerebras_rows_keep_provider_api_and_first_party_canonical_ids():
@@ -213,6 +220,58 @@ def test_groq_rows_reject_malformed_price_cell():
     assert groq_rows(changed, "20260710T000000Z", "2026-07-10") == []
 
 
+def test_novita_rows_require_literal_active_chat_ids_and_displayed_token_prices():
+    rows = novita_rows(
+        _novita_pricing_page(
+            [
+                {
+                    "type": "Chat",
+                    "id": "openai/gpt-oss-20b",
+                    "status": 1,
+                    "endpoints": ["chat/completions"],
+                    "input_token_price_per_m_toString": "0.04",
+                    "output_token_price_per_m_toString": "0.15",
+                },
+                {
+                    "type": "Chat",
+                    "id": "not-active",
+                    "status": 0,
+                    "endpoints": ["chat/completions"],
+                    "input_token_price_per_m_toString": "0.01",
+                    "output_token_price_per_m_toString": "0.02",
+                },
+            ]
+        ),
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["model_name"] == "openai/gpt-oss-20b"
+    assert row["direct_provider_model_id"] == "openai/gpt-oss-20b"
+    assert row["price_input_usd"] == 0.04 / 1_000_000
+    assert row["price_output_usd"] == 0.15 / 1_000_000
+    assert row["source_type"] == "published_ssr_pricing_catalog"
+    assert row["source_url"] == NOVITA_PRICING_URL
+
+
+def test_novita_rows_reject_missing_flight_catalog_or_unlabeled_prices():
+    assert novita_rows("<html></html>", "20260710T000000Z", "2026-07-10") == []
+    page = _novita_pricing_page(
+        [
+            {
+                "type": "Chat",
+                "id": "openai/gpt-oss-20b",
+                "status": 1,
+                "endpoints": ["chat/completions"],
+                "input_token_price_per_m_toString": "starting at 0.04",
+                "output_token_price_per_m_toString": "0.15",
+            }
+        ]
+    )
+    assert novita_rows(page, "20260710T000000Z", "2026-07-10") == []
+
+
 def test_fireworks_rows_require_literal_provider_id_and_labeled_price_block():
     model_id = "accounts/fireworks/models/gpt-oss-20b"
     rows = fireworks_rows({model_id: FIREWORKS_MODEL_PAGE}, "20260710T000000Z", "2026-07-10")
@@ -333,6 +392,30 @@ def test_h13_maps_fireworks_only_by_exact_provider_model_id(monkeypatch):
     routed = h13_venue_basis.load_routed()
     assert routed.loc[0, "provider"] == "fireworks"
     assert routed.loc[0, "model_name"] == "accounts/fireworks/models/gpt-oss-20b"
+
+
+def test_h13_maps_novita_by_the_literal_direct_provider_model_id(monkeypatch):
+    class Relation:
+        def df(self):
+            return pd.DataFrame(
+                [
+                    {
+                        "dt": "2026-07-10",
+                        "provider_display_name": "Novita",
+                        "record_json": json.dumps(
+                            {
+                                "model_id": "openai/gpt-oss-20b",
+                                "pricing": {"prompt": "0.00000004", "completion": "0.00000015"},
+                            }
+                        ),
+                    }
+                ]
+            )
+
+    monkeypatch.setattr(h13_venue_basis.data, "q", lambda _sql: Relation())
+    routed = h13_venue_basis.load_routed()
+    assert routed.loc[0, "provider"] == "novita"
+    assert routed.loc[0, "model_name"] == "openai/gpt-oss-20b"
 
 
 def test_h13_market_wide_claim_is_power_gated_without_breadth():
