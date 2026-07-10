@@ -14,6 +14,7 @@ than a forecast from local staging files.
 |---|---|---|
 | H13 routed-versus-direct basis | 191 matched daily price pairs across 4 days, all DeepInfra; every basis is numerically zero (maximum absolute percentage basis `2.22e-14`) and maximum routed/direct quote gap is 12.8 minutes | Power-gated: only 4/7 days and 1/3 providers. Exact zero is consistent with posted-quote passthrough, not executable fills, allocation, or market-wide routing. |
 | H41 DeFi/open-compute comparison | Akash, Chutes, CoW, DefiLlama, GeckoTerminal, and Uniswap rows are present. Uniswap and CoW each have two overlapping finalized windows with zero uncovered blocks between them (1,536 and 1,539 covered blocks respectively). | Still power-gated: one observation day only; full finalized USD depth and a market-wide CoW execution/auction panel are absent. State-derived Uniswap impact lower bounds remain distinct from depth. |
+| H52 CoW-versus-AMM parent-block basis | 21 exact finalized USDC-to-WETH CoW fills, each simulated at the same pre-settlement input through both registered Uniswap pools (42 counterfactuals). The median gross and fee-adjusted CoW-over-AMM basis are both `-0.1374%`; all 21 [`Trade.feeAmount`](https://cowswap.mintlify.app/cow-protocol/reference/contracts/core/settlement) fields are present and zero. | Power-gated: 21/500 fills and 1/7 days. The CoW contract documents `feeAmount` as a fee in the sell token, but the AMM simulation remains at the pre-fee stated CoW input; this is not same-all-in-notional best execution, gas-inclusive cost, surplus, or adverse selection. |
 | H58 Nosana registry | 19 NodeAccount rows and one source-ledger-certified complete snapshot | Power-gated at 1/7 days and 1/20 snapshots. These remain declared registration fields, not availability, price, GPU count/model, utilization, or delivery. |
 | H59 Nosana aggregate activity | 93 aggregate-only rows, including 25 completed-job buckets, 25 duration buckets, and 34 market running totals; the source-reported running count equals their sum | Power-gated at 2/7 source-bucket days and 25/100 buckets per series. It is not LLM routing, token flow, verified GPU-hours, capacity, utilization, payment, revenue, welfare, or causal demand. |
 | H47 exact GPU quote basis | All three versioned Akash/Vast cohorts exist in the authoritative store: three positive Akash quote snapshots per cohort and 46–49 Vast on-demand snapshots. Yet no pair falls within the 90-minute rule; the nearest cohort-specific published snapshot is 355.55–407.75 minutes away. | Not an economic zero. The current GPU workflow buffers hourly captures as GitHub artifacts for the nightly compact/upload job, while the market workflow publishes Akash quotes directly. H47 is therefore blocked by a publication-clock mismatch rather than an absent GPU mapping or quote. |
@@ -43,6 +44,8 @@ The next source-health check must therefore distinguish two outcomes:
 2. Accumulate at least six more days of contiguous, finalized Uniswap/CoW
    windows. Preserve the zero-uncovered-block diagnostic; do not substitute
    indexed or state-derived values for finalized depth or market-wide CoW flow.
+   H52 additionally needs 479 more exact USDC-to-WETH fills before reporting
+   even its tightly bounded fee-adjusted parent-block basis.
 3. Let H58 reach seven days and 20 ledger-verified registry snapshots; let H59
    reach seven source-bucket days and 100 latest buckets for both source
    series. These are descriptive source-panel gates, not welfare gates.
@@ -66,6 +69,8 @@ PYTHONPATH=. .venv/bin/python -c \
   'from pathlib import Path; from orcap.analysis.h13_venue_basis import run; run(Path("/tmp/h13"))'
 PYTHONPATH=. .venv/bin/python -c \
   'from pathlib import Path; from orcap.analysis.h41_market_comparison import run; run(Path("/tmp/h41"))'
+PYTHONPATH=. .venv/bin/python -c \
+  'from pathlib import Path; from orcap.analysis.h52_cow_amm_basis import run; run(Path("/tmp/h52"))'
 PYTHONPATH=. .venv/bin/python -c \
   'from pathlib import Path; from orcap.analysis.h58_nosana_node_registry import run; run(Path("/tmp/h58"))'
 PYTHONPATH=. .venv/bin/python -c \

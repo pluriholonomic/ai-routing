@@ -3,8 +3,10 @@
 The panel compares an exact USDC-to-WETH CoW settlement price with QuoterV2's
 simulation of the *same* USDC input at the parent block of that settlement,
 separately for each registered Uniswap pool. This is a reproducible pre-block
-cross-venue gross-price basis. It is not an intra-block quote, gas/fee-inclusive
-best-execution result, user surplus measure, or adverse-selection estimate.
+cross-venue price basis. CoW's finalized ``Trade.feeAmount`` is retained as a
+separate sell-token fee adjustment; the AMM counterfactual remains at the
+pre-fee stated CoW input. It is not an intra-block quote, same-all-in-notional
+best-execution result, user-surplus measure, or adverse-selection estimate.
 """
 
 from __future__ import annotations
@@ -31,8 +33,12 @@ COLUMNS = [
     "pool_id",
     "input_amount_usdc",
     "cow_gross_price_usdc_per_weth",
+    "cow_reported_fee_usdc",
+    "cow_reported_fee_bps",
+    "cow_fee_adjusted_price_usdc_per_weth",
     "amm_parent_block_price_usdc_per_weth",
     "cow_over_amm_gross_basis_pct",
+    "cow_fee_adjusted_over_amm_stated_input_basis_pct",
 ]
 
 
@@ -50,7 +56,7 @@ def load_inputs() -> tuple[pd.DataFrame, pd.DataFrame]:
     executions = _load(
         "market_executions",
         "run_ts, dt, source, execution_id, executed_at, event_block_number, side, "
-        "price_unit, price_usdc_per_weth",
+        "price_unit, price_usdc_per_weth, requested_size, fee_amount_raw",
     )
     quotes = _load("market_counterfactual_quotes", "*")
     return executions, quotes
@@ -84,10 +90,22 @@ def basis_panel(executions: pd.DataFrame, quotes: pd.DataFrame) -> pd.DataFrame:
         & (executions["side"] == "usdc_to_weth")
         & (executions["price_unit"] == "usdc_per_weth")
     ].copy()
-    fills["price_usdc_per_weth"] = pd.to_numeric(
-        fills["price_usdc_per_weth"], errors="coerce"
+    fills["price_usdc_per_weth"] = pd.to_numeric(fills["price_usdc_per_weth"], errors="coerce")
+    fills["requested_size"] = pd.to_numeric(fills.get("requested_size"), errors="coerce")
+    fills["fee_amount_raw"] = pd.to_numeric(fills.get("fee_amount_raw"), errors="coerce")
+    fills = fills.dropna(subset=["execution_id", "price_usdc_per_weth", "requested_size"])
+    # GPv2Settlement's Trade event defines feeAmount in the sell-token's raw
+    # units. The H52 cohort is USDC-to-WETH, so the registered 6-decimal USDC
+    # conversion is exact at the instrument level. Missing fee data remains
+    # missing; it must not be converted to zero.
+    fills["cow_reported_fee_usdc"] = fills["fee_amount_raw"] / 1_000_000
+    fills.loc[fills["cow_reported_fee_usdc"] < 0, "cow_reported_fee_usdc"] = pd.NA
+    fills["cow_reported_fee_bps"] = (
+        fills["cow_reported_fee_usdc"] / fills["requested_size"] * 10_000
     )
-    fills = fills.dropna(subset=["execution_id", "price_usdc_per_weth"])
+    fills["cow_fee_adjusted_price_usdc_per_weth"] = fills["price_usdc_per_weth"] * (
+        1 + fills["cow_reported_fee_usdc"] / fills["requested_size"]
+    )
     if "run_ts" in fills:
         fills = fills.sort_values("run_ts").drop_duplicates("execution_id", keep="last")
     counterfactuals = quotes[
@@ -123,20 +141,22 @@ def basis_panel(executions: pd.DataFrame, quotes: pd.DataFrame) -> pd.DataFrame:
             "dt": merged["dt_cow" if "dt_cow" in merged else "dt"].astype(str),
             "execution_id": merged["execution_id"].astype(str),
             "executed_at": merged.get("executed_at"),
-            "event_block_number": pd.to_numeric(
-                merged.get("event_block_number"), errors="coerce"
-            ),
-            "state_block_number": pd.to_numeric(
-                merged["state_block_number"], errors="coerce"
-            ),
+            "event_block_number": pd.to_numeric(merged.get("event_block_number"), errors="coerce"),
+            "state_block_number": pd.to_numeric(merged["state_block_number"], errors="coerce"),
             "pool_id": merged["pool_id"].astype(str),
             "input_amount_usdc": merged["input_amount"],
             "cow_gross_price_usdc_per_weth": merged["price_usdc_per_weth_cow"],
+            "cow_reported_fee_usdc": merged["cow_reported_fee_usdc"],
+            "cow_reported_fee_bps": merged["cow_reported_fee_bps"],
+            "cow_fee_adjusted_price_usdc_per_weth": merged["cow_fee_adjusted_price_usdc_per_weth"],
             "amm_parent_block_price_usdc_per_weth": merged["price_usdc_per_weth_amm"],
         }
     )
     panel["cow_over_amm_gross_basis_pct"] = (
-        panel["cow_gross_price_usdc_per_weth"]
+        panel["cow_gross_price_usdc_per_weth"] / panel["amm_parent_block_price_usdc_per_weth"] - 1
+    ) * 100
+    panel["cow_fee_adjusted_over_amm_stated_input_basis_pct"] = (
+        panel["cow_fee_adjusted_price_usdc_per_weth"]
         / panel["amm_parent_block_price_usdc_per_weth"]
         - 1
     ) * 100
@@ -151,6 +171,8 @@ def summarize(panel: pd.DataFrame) -> dict:
         return {
             "evidence_status": "not_identified",
             "n_unique_cow_fills": 0,
+            "n_fee_observed_fills": 0,
+            "n_nonzero_reported_fee_fills": 0,
             "claim_boundary": _claim_boundary(),
         }
     fills = int(panel["execution_id"].nunique())
@@ -167,9 +189,14 @@ def summarize(panel: pd.DataFrame) -> dict:
         str(pool): {
             "n_counterfactuals": int(len(group)),
             "median_cow_over_amm_gross_basis_pct": _median(group["cow_over_amm_gross_basis_pct"]),
+            "median_cow_fee_adjusted_over_amm_stated_input_basis_pct": _median(
+                group["cow_fee_adjusted_over_amm_stated_input_basis_pct"].dropna()
+            ),
         }
         for pool, group in panel.groupby("pool_id")
     }
+    fee_fills = panel.drop_duplicates("execution_id")
+    fee_observed = fee_fills["cow_reported_fee_bps"].dropna()
     return {
         "evidence_status": "descriptive_cross_venue_basis" if not reasons else "power_gated",
         "n_unique_cow_fills": fills,
@@ -177,6 +204,12 @@ def summarize(panel: pd.DataFrame) -> dict:
         "n_days": days,
         "n_pools": pools,
         "median_cow_over_amm_gross_basis_pct": _median(panel["cow_over_amm_gross_basis_pct"]),
+        "n_fee_observed_fills": int(len(fee_observed)),
+        "n_nonzero_reported_fee_fills": int((fee_observed > 0).sum()),
+        "median_cow_reported_fee_bps": _median(fee_observed),
+        "median_cow_fee_adjusted_over_amm_stated_input_basis_pct": _median(
+            panel["cow_fee_adjusted_over_amm_stated_input_basis_pct"].dropna()
+        ),
         "by_pool": by_pool,
         "power_gate": {"min_fills": MIN_FILLS, "min_days": MIN_DAYS, "min_pools": MIN_POOLS},
         "gate_reasons": reasons,
@@ -191,10 +224,12 @@ def _median(values: pd.Series) -> float | None:
 
 def _claim_boundary() -> str:
     return (
-        "This is a parent-block, exact-input, gross cross-venue simulation for finalized "
-        "USDC-to-WETH CoW fills. It excludes CoW fee, gas, surplus, intra-block ordering, "
-        "and post-parent-block price movement; it is not best execution, causal adverse "
-        "selection, AMM depth, or a market-wide CoW execution estimate."
+        "This is a parent-block, exact stated-sell-input cross-venue simulation for finalized "
+        "USDC-to-WETH CoW fills. The CoW side includes the finalized Trade-event sell-token "
+        "fee when available, but the AMM counterfactual remains at CoW's pre-fee stated input. "
+        "It excludes batch gas, surplus, intra-block ordering, and post-parent-block price "
+        "movement; it is not same-all-in-notional best execution, causal adverse selection, "
+        "AMM depth, or a market-wide CoW execution estimate."
     )
 
 

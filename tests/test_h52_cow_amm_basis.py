@@ -17,6 +17,8 @@ def _executions():
                 "side": "usdc_to_weth",
                 "price_unit": "usdc_per_weth",
                 "price_usdc_per_weth": 2_020.0,
+                "requested_size": 2_000.0,
+                "fee_amount_raw": "10000000",
             },
             {
                 "run_ts": "20260710T000000Z",
@@ -26,6 +28,8 @@ def _executions():
                 "side": "weth_to_usdc",
                 "price_unit": "usdc_per_weth",
                 "price_usdc_per_weth": 2_020.0,
+                "requested_size": 1.0,
+                "fee_amount_raw": "0",
             },
         ]
     )
@@ -68,9 +72,17 @@ def test_h52_matches_only_same_execution_and_computes_gross_basis_per_pool():
     assert panel.loc["pool-30", "cow_over_amm_gross_basis_pct"] == pytest.approx(
         (2_020 / 2_010 - 1) * 100
     )
+    assert panel.loc["pool-5", "cow_reported_fee_usdc"] == 10.0
+    assert panel.loc["pool-5", "cow_reported_fee_bps"] == 50.0
+    assert panel.loc["pool-5", "cow_fee_adjusted_price_usdc_per_weth"] == pytest.approx(2_030.1)
+    assert panel.loc["pool-5", "cow_fee_adjusted_over_amm_stated_input_basis_pct"] == pytest.approx(
+        (2_030.1 / 2_000 - 1) * 100
+    )
 
 
 def test_h52_short_panel_is_power_gated_and_rejects_adverse_selection_claim():
     summary = summarize(basis_panel(_executions(), _quotes()))
     assert summary["evidence_status"] == "power_gated"
-    assert "not best execution" in summary["claim_boundary"]
+    assert summary["n_fee_observed_fills"] == 1
+    assert summary["median_cow_reported_fee_bps"] == 50.0
+    assert "not same-all-in-notional best execution" in summary["claim_boundary"]
