@@ -10,6 +10,7 @@ mechanism-design proposal, not a claim about any existing router's policy.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 import pandas as pd
 
@@ -136,13 +137,18 @@ def own_price_share_elasticity(share: float, eta: float = 2.0) -> float:
 
 
 def capacity_bond_floor(marginal_margin_per_request: float) -> float:
-    """Smallest per-missed-request forfeit that deters deliberate shortfall.
+    """Non-negative threshold for a per-missed-request shortfall bond.
 
-    With payment only for served requests, accepting a request and deliberately
-    rationing can save at most the provider's positive marginal margin under
-    this reduced form. A strictly larger bond makes that deviation dominated.
+    Let the margin from serving a feasible assigned request be ``m = p - c``.
+    Serving instead of deliberately rationing changes payoff by ``m + b``.
+    The exact strict condition is ``b > -m``. Restricting bonds to be
+    non-negative gives the convenient sufficient rule ``b > max(0, -m)``;
+    when ``m > 0``, a zero bond already strictly deters rationing. The returned
+    threshold uses a strict inequality and does not itself choose an epsilon.
     """
-    return max(0.0, marginal_margin_per_request)
+    if not isfinite(marginal_margin_per_request):
+        raise ValueError("marginal margin must be finite")
+    return max(0.0, -marginal_margin_per_request)
 
 
 def realized_provider_payoff(
@@ -155,6 +161,8 @@ def realized_provider_payoff(
     """Provider payoff under delivery payment plus an ex-post shortfall bond."""
     if allocated_requests < 0 or served_requests < 0:
         raise ValueError("request counts must be non-negative")
+    if bond_per_missed_request < 0:
+        raise ValueError("bond_per_missed_request must be non-negative")
     served = min(allocated_requests, served_requests)
     shortfall = max(0.0, allocated_requests - served)
     return (offer.price - offer.marginal_cost) * served - bond_per_missed_request * shortfall
