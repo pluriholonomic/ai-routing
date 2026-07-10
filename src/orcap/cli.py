@@ -101,6 +101,13 @@ def main() -> None:
         help="capture public open-model download/pull and serving-runtime adoption proxies",
     )
 
+    p_openrouter_usage = sub.add_parser(
+        "capture-openrouter-usage",
+        help="capture opt-in OpenRouter aggregate daily model token rankings",
+    )
+    p_openrouter_usage.add_argument("--start-date", default=None, help="YYYY-MM-DD")
+    p_openrouter_usage.add_argument("--end-date", default=None, help="YYYY-MM-DD")
+
     sub.add_parser("capture-devrel", help="snapshot npm/pypi/github/HN developer-adoption stats")
 
     p_market = sub.add_parser(
@@ -318,6 +325,10 @@ def main() -> None:
         from .capture_open_usage import main as open_usage_main
 
         open_usage_main()
+    elif args.command == "capture-openrouter-usage":
+        from .capture_openrouter_datasets import main as openrouter_usage_main
+
+        openrouter_usage_main(start_date=args.start_date, end_date=args.end_date)
     elif args.command == "capture-devrel":
         from .capture_devrel import main as devrel_main
 
@@ -426,6 +437,7 @@ def main() -> None:
             "h59": "h59_nosana_job_activity",
             "h61": "h61_akash_dashboard",
             "h62": "h62_akash_provider_activity",
+            "h64": "h64_openrouter_usage",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

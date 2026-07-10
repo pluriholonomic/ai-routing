@@ -254,3 +254,9 @@ owner = "Nosana Explore public aggregate API"
 required = false
 cadence_minutes = 130
 min_rows = 1
+
+[sources.openrouter_rankings_daily]
+owner = "OpenRouter authenticated aggregate daily rankings API"
+required = false
+cadence_minutes = 1560
+min_rows = 1
