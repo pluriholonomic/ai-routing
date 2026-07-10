@@ -88,6 +88,31 @@ def test_akash_rows_keep_provider_as_participant():
     assert rows[0]["available"] == 4.0
 
 
+def test_akash_console_provider_rows_use_public_gpu_stats():
+    rows = akash_capacity_rows(
+        [
+            {
+                "owner": "akash1x",
+                "hostUri": "https://provider.example",
+                "ipRegion": "us-east",
+                "stats": {
+                    "gpu": {"active": 2, "available": 6, "total": 8},
+                    "cpu": {"total": 64},
+                    "memory": {"total": 512},
+                },
+                "attributes": [{"key": "datacenter", "value": "example"}],
+            }
+        ],
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["available"] == 6.0
+    assert rows[0]["used"] == 2.0
+    assert rows[0]["total"] == 8.0
+    assert rows[0]["cpu_cores"] == 64.0
+    assert rows[0]["region"] == "us-east"
+
+
 def test_instrument_map_is_versioned_and_source_scoped():
     rows = instrument_map_rows("20260709T000000Z", "2026-07-09")
     assert {row["map_id"] for row in rows} >= {"uniswap_usdc_weth_5", "vast_h100_sxm"}

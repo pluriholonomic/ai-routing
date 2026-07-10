@@ -72,7 +72,35 @@ Use for: DeFi, RFQ, AMM, GPU rental, or inference-market comparisons.
 Completion check: another researcher can reproduce every metric from a raw
 source, a mapping table, and a recorded configuration hash.
 
-## 4. Publish and operate a live monitor
+## 4. Test public-quote routing before buying inference
+
+Use for: route-preview questions, quote-based allocation simulations, and
+deciding whether an authorized synthetic request panel is warranted.
+
+1. Use saved endpoint snapshots; do not send a completion merely to infer a
+   route unless a user has explicitly approved a key and spend budget.
+2. Fix the model panel and workload shapes before the observation window. Treat
+   prompt text as absent unless it changes a documented routing field; model
+   token budgets and requested API capabilities are the relevant public
+   inputs.
+3. Apply the documented price weighting only to strictly positive public
+   quotes. Record free/zero-price, single-provider, and missing-capability
+   exclusions rather than assigning a made-up route probability.
+4. Label output as simulated provider share, never routed flow. The public
+   feed does not reveal the live eligibility filter, retries, or selected
+   provider.
+5. Require both time coverage and contiguous transitions before declaring the
+   quote surface stable or changing. A wide cross-section is not a substitute
+   for a 24-hour series.
+6. Escalate to an account-level controlled probe or a privacy-preserving
+   route-decision export only after the public simulation has meaningful
+   movement and a specific validation question.
+
+Completion check: `routing_simulation_runs` explains all absent groups,
+`h43_routing_simulation_summary` passes its coverage gate, and the conclusion
+states the simulated-versus-realized boundary.
+
+## 5. Publish and operate a live monitor
 
 Use for: dashboards, alerts, memo deployment, and scheduled research.
 

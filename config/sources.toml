@@ -3,8 +3,9 @@ core = ["openrouter_api", "openrouter_frontend", "vast"]
 comparison = ["defillama", "cow", "golem", "akash", "uniswap"]
 capture = ["openrouter_api"]
 scrape = ["openrouter_frontend"]
-gpu = ["vast"]
+gpu = ["vast", "ornn"]
 market = ["defillama", "cow", "golem", "akash", "uniswap"]
+usage = ["huggingface_open_models", "ollama_library", "docker_hub"]
 
 [sources.openrouter_api]
 owner = "OpenRouter"
@@ -24,6 +25,12 @@ required = true
 cadence_minutes = 130
 min_rows = 1
 
+[sources.ornn]
+owner = "Ornn AI"
+required = true
+cadence_minutes = 130
+min_rows = 5
+
 [sources.direct_providers]
 owner = "Direct inference providers"
 required = false
@@ -35,6 +42,24 @@ owner = "Hugging Face"
 required = false
 cadence_minutes = 1560
 min_rows = 1
+
+[sources.huggingface_open_models]
+owner = "Hugging Face Hub"
+required = false
+cadence_minutes = 1560
+min_rows = 100
+
+[sources.ollama_library]
+owner = "Ollama"
+required = false
+cadence_minutes = 1560
+min_rows = 50
+
+[sources.docker_hub]
+owner = "Docker Hub"
+required = false
+cadence_minutes = 1560
+min_rows = 3
 
 [sources.devrel]
 owner = "Public developer platforms"

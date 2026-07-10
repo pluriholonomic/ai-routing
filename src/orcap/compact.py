@@ -1,12 +1,17 @@
 """Nightly compaction over the HF dataset repo.
 
 For a target day:
-  1. Pull that day's curated partitions plus the derived state from HF.
-  2. Repartition each table's many per-run files into one zstd file per day.
+  1. Pull that day's endpoint partitions plus the derived state from HF.
+  2. Repartition endpoint snapshots into one zstd file per day.
   3. Fold endpoints_snapshots through the pricing state to derive SCD-2
      price-change events (derived/pricing_changes) and refresh the
      latest-known-price table (derived/pricing_current).
-  4. Commit consolidated files + state, deleting the small per-run files.
+  4. Commit the pricing-critical consolidated file + state, deleting its
+     small per-run inputs.
+
+Only endpoint snapshots are hydrated remotely. Historical all-table hydration
+can require thousands of Hub file API calls and exhaust the account quota before
+the price ledger is written; other curated tables remain queryable as-is.
 
 Endpoint identity for change detection is (model_id, provider_name, tag,
 endpoint_fingerprint) — the fingerprint hashes capability fields because a
@@ -38,6 +43,7 @@ TRACKED_PRICE_FIELDS = [
 
 DERIVED_DIR = DATA_DIR / "derived"
 PRICING_CURRENT = DERIVED_DIR / "pricing_current.parquet"
+REMOTE_COMPACT_TABLES = ("endpoints_snapshots",)
 
 
 def yesterday_utc() -> str:
@@ -270,7 +276,7 @@ def compact_hf(dt: str, repo_id: str = HF_DATASET_REPO, workdir: Path | None = N
         repo_type="dataset",
         local_dir=workdir,
         allow_patterns=[
-            f"curated/*/dt={dt}/*",
+            *(f"curated/{table}/dt={dt}/*" for table in REMOTE_COMPACT_TABLES),
             "derived/pricing_current.parquet",
             f"derived/pricing_changes/dt={dt}/*",
         ],

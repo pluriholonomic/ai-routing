@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 
 DEFILLAMA_PROTOCOLS_URL = "https://api.llama.fi/protocols"
 GOLEM_ONLINE_URL = "https://api.stats.golem.network/v1/network/online"
+AKASH_CONSOLE_PROVIDERS_URL = "https://console-api.akash.network/v1/providers"
 GRAPH_GATEWAY = "https://gateway.thegraph.com/api/{key}/subgraphs/id/{subgraph_id}"
 INSTRUMENTS_PATH = Path(__file__).resolve().parents[2] / "config" / "instruments.toml"
 
@@ -210,7 +211,16 @@ def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]
         participant = item.get("owner") or item.get("address") or item.get("id")
         if not participant:
             continue
-        attrs = item.get("attributes") or {}
+        attrs_raw = item.get("attributes") or {}
+        attrs = (
+            {str(a.get("key")): a.get("value") for a in attrs_raw if isinstance(a, dict)}
+            if isinstance(attrs_raw, list)
+            else attrs_raw
+        )
+        stats = item.get("stats") or {}
+        gpu = stats.get("gpu") or {}
+        cpu = stats.get("cpu") or {}
+        memory = stats.get("memory") or {}
         rows.append(
             {
                 "run_ts": run_ts,
@@ -219,14 +229,21 @@ def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]
                 "venue": "akash-network",
                 "participant_id": participant,
                 "resource_id": item.get("hostUri") or "provider",
-                "available": _float(item.get("available") or item.get("capacity")),
-                "total": _float(item.get("total") or item.get("capacity")),
-                "used": _float(item.get("used")),
-                "cpu_cores": _float(attrs.get("cpu")),
-                "gpu_count": _float(attrs.get("gpu")),
-                "memory_gib": _float(attrs.get("memory")),
-                "region": attrs.get("region") or item.get("region"),
-                "quality_tier": "indexed-network",
+                "available": _float(
+                    gpu.get("available") or item.get("available") or item.get("capacity")
+                ),
+                "total": _float(gpu.get("total") or item.get("total") or item.get("capacity")),
+                "used": _float(gpu.get("active") or item.get("used")),
+                "cpu_cores": _float(cpu.get("total") or attrs.get("cpu")),
+                "gpu_count": _float(gpu.get("total") or attrs.get("gpu")),
+                "memory_gib": _float(memory.get("total") or attrs.get("memory")),
+                "region": (
+                    attrs.get("region")
+                    or item.get("ipRegion")
+                    or item.get("region")
+                    or item.get("country")
+                ),
+                "quality_tier": "indexed-network-public-api",
                 "record_json": _json(item),
             }
         )
@@ -354,8 +371,8 @@ async def capture_markets(
             )
 
         akash = None
-        akash_url = os.environ.get("ORCAP_AKASH_NETWORK_URL")
-        if with_akash and akash_url:
+        akash_url = os.environ.get("ORCAP_AKASH_NETWORK_URL", AKASH_CONSOLE_PROVIDERS_URL)
+        if with_akash:
             headers = (
                 {"x-api-key": os.environ["AKASH_API_KEY"]}
                 if os.environ.get("AKASH_API_KEY")

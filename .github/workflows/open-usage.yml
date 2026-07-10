@@ -1,0 +1,30 @@
+name: open-model-usage
+
+# Keep public adoption proxies separate from OpenRouter's actual routed-token data.
+on:
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: open-model-usage
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: capture public open-model usage proxies
+        run: uv run orcap capture-open-usage
+      - name: validate source health
+        run: uv run orcap quality --profile usage
+      - name: push source data and source-run ledger
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "open-model usage ${{ github.run_id }}" --delete-local

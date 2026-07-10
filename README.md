@@ -18,6 +18,7 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 - [`docs/repo-skills.md`](docs/repo-skills.md) — concise operating skills for capture, source extensions, comparative analysis, and monitoring.
 - [`docs/defi-open-compute-completion-plan.md`](docs/defi-open-compute-completion-plan.md) — the source, schema, method, monitoring, and prioritized fix plan for a complete DeFi-versus-open-compute comparison.
 - [`docs/routing-mev-research-plan.md`](docs/routing-mev-research-plan.md) — falsifiable routing-volume-capture hypotheses, event-study designs, data gates, and the boundary between quote competition and MEV-like claims.
+- [`docs/routing-simulation-monitor.md`](docs/routing-simulation-monitor.md) — zero-spend 15-minute public-quote route-surface assay, its 24-hour decision rule, and the boundary from realized routing.
 
 ## Cadence
 
@@ -25,7 +26,8 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 |---|---|---|
 | `capture` | every 15 min, 3 samples at 5-min spacing | `/api/v1` models + providers + per-model endpoints (per-provider pricing, uptime/latency/throughput rolling windows). 5 min is the finest granularity OpenRouter exposes (`uptime_last_5m`), so sampling faster buys nothing. |
 | `scrape` | daily 03:17 UTC | undocumented `/api/frontend/v1` chart APIs: model activity (31-day trailing), app leaderboards, endpoint stats, daily uptime, effective (transacted) pricing, perf comparisons, weekly rankings |
-| `compact` | nightly 01:43 UTC | consolidates the day's ~300 small parquet files to one per table/day; derives SCD-2 `pricing_changes` + `pricing_current` |
+| `compact` | nightly 01:43 UTC | consolidates pricing-critical endpoint snapshots and derives SCD-2 `pricing_changes` + `pricing_current` |
+| `route-simulation-monitor` | hourly | evaluates the latest 26 hours of 15-minute public-quote routing simulations; publishes only after its coverage gate |
 
 ## Data layout (HF dataset repo)
 
@@ -53,6 +55,10 @@ source record, so OpenRouter schema drift never loses data):
 | `perf_comparisons_daily` | day × endpoint × metric | throughput, latency (TTFT + e2e), tool-call/structured-output error rates, cache-hit-rate |
 | `rankings_weekly` | week × model | global weekly token totals, history back to 2025-07 |
 | `pricing_changes` | change event | SCD-2: field, old/new value, when; `__endpoint_added__`/`__endpoint_removed__` markers |
+| `routing_simulation` | run × fixed model × workload shape × provider | **simulated** first-route share from public endpoint quotes and documented inverse-square price weighting; never actual fills |
+| `routing_simulation_runs` | run | simulation coverage plus free/zero-cost/single-provider exclusion ledger |
+| `open_model_usage_daily` | day × source × open model | public HF rolling downloads and Ollama cumulative pulls; adoption proxies, never inference tokens |
+| `oss_runtime_adoption_daily` | day × serving runtime image | public Docker Hub cumulative pulls for Ollama/vLLM/SGLang; deployment proxy, not model consumption |
 
 ## Querying
 
@@ -82,9 +88,11 @@ uv sync
 uv run orcap capture                  # one snapshot -> data/
 uv run orcap capture --samples 3      # 15-min-slot behavior
 uv run orcap scrape --limit 10        # frontend charts for 10 model×variant combos
-uv run orcap capture-gpu              # open-GPU marketplace book
+uv run orcap capture-open-usage       # broad open-model download/pull and runtime-adoption proxies
+uv run orcap capture-gpu              # Vast offer book + public Ornn GPU index history
 uv run orcap market-capture --with-uniswap --with-akash
 uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-like hypotheses)
+ORCAP_ANALYSIS_SOURCE=local uv run orcap route-sim-report --out analysis  # 24h public-quote route-surface test
 uv run orcap quality --profile core
 uv run orcap push                     # -> HF dataset repo (uses cached HF login)
 uv run orcap compact                  # compacts yesterday in the HF repo
