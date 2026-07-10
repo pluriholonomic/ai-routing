@@ -463,6 +463,101 @@ def limited_liability_delivery_gain(
     )
 
 
+def expected_reliability_report_payoff(
+    *,
+    actual_reliability: float,
+    allocated_requests: float,
+    marginal_margin_per_success: float,
+    nominal_bond_per_missed_request: float,
+    collectible_liability_cap: float,
+) -> float:
+    """Expected payoff under a reliability report and a capped shortfall bond.
+
+    A completed assigned request succeeds with the provider's *actual*
+    probability ``q``.  Conditional on success it earns the stated serving
+    margin; conditional on a failed delivery it loses at most the collectible
+    portion of the nominal bond.  Thus, for ``x`` assignments, expected payoff
+    is ``x [q m - (1-q) min(b, L)]``.
+
+    This is the private-reliability boundary of the current payment rule. If a
+    report raises allocation while this per-assignment expectation is positive,
+    the report is profitable even though failure is penalized. It is not an
+    outcome-effort model, a reliability estimator, or an assertion that
+    observed failures are independent.
+    """
+    values = {
+        "actual_reliability": actual_reliability,
+        "allocated_requests": allocated_requests,
+        "marginal_margin_per_success": marginal_margin_per_success,
+        "nominal_bond_per_missed_request": nominal_bond_per_missed_request,
+        "collectible_liability_cap": collectible_liability_cap,
+    }
+    if any(not isfinite(value) for value in values.values()):
+        raise ValueError("reliability-report inputs must be finite")
+    if not 0 <= actual_reliability <= 1:
+        raise ValueError("actual_reliability must lie in [0, 1]")
+    if allocated_requests < 0:
+        raise ValueError("allocated_requests must be non-negative")
+    if nominal_bond_per_missed_request < 0 or collectible_liability_cap < 0:
+        raise ValueError("bond and liability cap must be non-negative")
+    collectible_bond = min(nominal_bond_per_missed_request, collectible_liability_cap)
+    return allocated_requests * (
+        actual_reliability * marginal_margin_per_success
+        - (1.0 - actual_reliability) * collectible_bond
+    )
+
+
+def declared_reliability_payoff(
+    offers: list[ProviderOffer],
+    *,
+    provider: str,
+    actual_reliability: float,
+    reported_reliability: float,
+    demand: float,
+    nominal_bond_per_missed_request: float,
+    collectible_liability_cap: float,
+    eta: float = 2.0,
+) -> float:
+    """Expected payoff when only one provider's reliability report changes.
+
+    It mechanically applies the existing capped score rule to the report, then
+    values its allocation at the provider's actual success probability. This
+    is a counterfactual diagnostic for the limited-liability impossibility
+    boundary: it does not make a self-report incentive compatible.
+    """
+    if not isfinite(actual_reliability) or not 0 <= actual_reliability <= 1:
+        raise ValueError("actual_reliability must lie in [0, 1]")
+    if not isfinite(reported_reliability) or not 0 <= reported_reliability <= 1:
+        raise ValueError("reported_reliability must lie in [0, 1]")
+    by_provider = {offer.provider: offer for offer in offers}
+    if provider not in by_provider:
+        raise ValueError(f"unknown provider: {provider}")
+    reported_offers = [
+        (
+            ProviderOffer(
+                provider=offer.provider,
+                price=offer.price,
+                reliability=reported_reliability,
+                committed_capacity=offer.committed_capacity,
+                marginal_cost=offer.marginal_cost,
+            )
+            if offer.provider == provider
+            else offer
+        )
+        for offer in offers
+    ]
+    allocation = capacity_constrained_allocation(reported_offers, demand, eta)
+    allocated = float(allocation.get(provider, 0))
+    offer = by_provider[provider]
+    return expected_reliability_report_payoff(
+        actual_reliability=actual_reliability,
+        allocated_requests=allocated,
+        marginal_margin_per_success=offer.price - offer.marginal_cost,
+        nominal_bond_per_missed_request=nominal_bond_per_missed_request,
+        collectible_liability_cap=collectible_liability_cap,
+    )
+
+
 def expected_delivered_under_outage_scenarios(
     allocation: pd.Series, scenarios: list[OutageScenario]
 ) -> float:

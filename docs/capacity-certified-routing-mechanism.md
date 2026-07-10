@@ -175,13 +175,28 @@ AMM welfare results.
     a statistical certificate for the specified direct-audit population—not a
     truthful-reliability mechanism, a platform-wide quality claim, or a model
     of correlated outages.
+14. **Limited-liability reliability-reporting boundary.** Suppose delivery
+    payment gives positive margin `m_i=p_i-c_i>0` on a successful request,
+    an unserved request can lose at most `ell_i=min(b_i,L_i)`, and the score
+    allocation is strictly higher at a report `r_i>q_i` than at the true
+    reliability `q_i`. With capacity slack, the expected incremental utility
+    from the larger allocation is
+    `(x_i(r_i)-x_i(q_i)) [q_i m_i-(1-q_i) ell_i]`. For every finite `ell_i`,
+    this is positive for reliabilities sufficiently close to one. Therefore no
+    finite capped shortfall bond can make direct reliability reports
+    dominant-strategy truthful across this type space whenever allocation uses
+    the report. `declared_reliability_payoff` exhibits the counterfactual. The
+    result is a boundary, not an impossibility of using an externally audited
+    certificate, an outcome-contingent scoring mechanism with different
+    transfers, or a restricted type space.
 
 The next theory step is still to extend these certified-input results to jointly
 private capacity and reliability under a stochastic health process, then
 connect the cost-curve procurement and shortfall collateral in one delivery
 mechanism and extend welfare to heterogeneous request values and controlled
 observations. H54 supplies a defensible *exogenous input* under a controlled
-design; it does not close that private-information gap.
+design; the limited-liability boundary explains why it cannot simply be
+replaced by a provider self-report under the current payment rule.
 
 ### Proof details and assumptions
 
@@ -319,6 +334,26 @@ expected delivered requests are the probability-weighted available allocation.
 The function `expected_delivered_under_outage_scenarios` records that quantity,
 but it intentionally does not infer independent failures or choose a robust
 portfolio without an empirical joint-outage panel.
+
+There is a sharper private-reliability boundary. Fix a provider's actual
+Bernoulli delivery probability `q`, a report-sensitive allocation `x(r)`, and
+an unbinding physical capacity. Under the stated payment rule, expected payoff
+at report `r` is
+
+`U(r;q)=x(r)[q(p-c)-(1-q)min(b,L)]`.
+
+If a higher report `r>q` receives additional allocation, the payoff difference
+is the allocation increase times the bracket. When `p-c=m>0` and the
+collectible liability `ell=min(b,L)` is finite, the bracket is positive for
+every `q>ell/(m+ell)` (and for every positive `q` if `ell=0`). Thus any
+allocation rule that remains report-responsive in that region admits a
+profitable overreport. This is why the delivery lemma—although it can deter a
+deliberate *failure* of a feasible request—does not elicit private
+reliability. The result assumes a fixed reliability process, payment only on
+successful service, and no capacity bind; it does not rule out audited
+certificates, a carefully funded scoring transfer, or a mechanism with a
+restricted report domain. It does rule out presenting a finite shortfall bond
+as a general direct-reliability DSIC solution.
 
 For the robust correlated-outage proposition, fix a finite, declared set of
 joint states with positive probability. The linear program's feasible set is

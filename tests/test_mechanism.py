@@ -20,8 +20,10 @@ from orcap.mechanism import (
     certified_cost_curve_vcg_report_diagnostic,
     certified_cost_curve_vcg_utility,
     declared_capacity_payoff,
+    declared_reliability_payoff,
     expected_delivered_under_outage_scenarios,
     expected_net_welfare,
+    expected_reliability_report_payoff,
     limited_liability_delivery_gain,
     own_price_share_elasticity,
     procurement_payment,
@@ -80,6 +82,58 @@ def test_capacity_bond_covers_negative_serving_margin_to_deter_shortfall():
 def test_limited_liability_caps_the_delivery_incentive_from_a_nominal_bond():
     assert limited_liability_delivery_gain(-1.0, 2.0, 0.4) == -0.6
     assert math.isclose(limited_liability_delivery_gain(-1.0, 2.0, 1.1), 0.1)
+
+
+def test_finite_limited_liability_does_not_make_an_increasing_reliability_report_truthful():
+    offers = [
+        ProviderOffer("a", price=1.0, reliability=0.9, committed_capacity=100, marginal_cost=0.4),
+        ProviderOffer("b", price=1.0, reliability=0.5, committed_capacity=100, marginal_cost=0.4),
+    ]
+    truthful = declared_reliability_payoff(
+        offers,
+        provider="a",
+        actual_reliability=0.9,
+        reported_reliability=0.9,
+        demand=100,
+        nominal_bond_per_missed_request=1.0,
+        collectible_liability_cap=1.0,
+    )
+    overreported = declared_reliability_payoff(
+        offers,
+        provider="a",
+        actual_reliability=0.9,
+        reported_reliability=1.0,
+        demand=100,
+        nominal_bond_per_missed_request=1.0,
+        collectible_liability_cap=1.0,
+    )
+    assert overreported > truthful
+    assert expected_reliability_report_payoff(
+        actual_reliability=0.9,
+        allocated_requests=1,
+        marginal_margin_per_success=0.6,
+        nominal_bond_per_missed_request=5.0,
+        collectible_liability_cap=1.0,
+    ) == pytest.approx(0.44)
+
+
+def test_reliability_report_payoff_requires_a_bounded_probability_and_nonnegative_liability():
+    with pytest.raises(ValueError, match="actual_reliability"):
+        expected_reliability_report_payoff(
+            actual_reliability=1.01,
+            allocated_requests=1,
+            marginal_margin_per_success=1,
+            nominal_bond_per_missed_request=1,
+            collectible_liability_cap=1,
+        )
+    with pytest.raises(ValueError, match="bond"):
+        expected_reliability_report_payoff(
+            actual_reliability=0.5,
+            allocated_requests=1,
+            marginal_margin_per_success=1,
+            nominal_bond_per_missed_request=-1,
+            collectible_liability_cap=1,
+        )
 
 
 def test_joint_outage_scenarios_need_not_follow_marginal_uptime():
