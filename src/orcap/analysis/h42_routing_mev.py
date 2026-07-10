@@ -37,7 +37,14 @@ def _ts(values: pd.Series) -> pd.Series:
 
 def _sum_observed(values: pd.Series) -> float:
     """Preserve a missing source field as missing rather than manufacturing zero flow."""
-    return float(values.sum(min_count=1))
+    total = values.sum(min_count=1)
+    return float(total) if pd.notna(total) else np.nan
+
+
+def _mean_observed(values: pd.Series) -> float:
+    """Keep an all-missing nullable aggregate as NaN rather than raising."""
+    mean = values.mean()
+    return float(mean) if pd.notna(mean) else np.nan
 
 
 def _empty_panel() -> pd.DataFrame:
@@ -185,18 +192,37 @@ def load_snapshots_for_events() -> pd.DataFrame:
 
 
 def event_model_slugs(events: pd.DataFrame) -> pd.DataFrame:
-    """Build the congestion join key without scanning the full model-history panel.
+    """Map stable event ids to the versioned frontend congestion permaslugs.
 
-    Completion-price events are emitted for base model ids, which are the
-    permaslugs used by the frontend endpoint-stat route in the observed data.
-    If a future source revision breaks that identity, H42 records no intraday
-    coverage rather than issuing hundreds of model-snapshot reads and hiding a
-    source incident behind a best-effort mapping.
+    The endpoint quote API exposes stable model ids (for example
+    ``z-ai/glm-5.2``), whereas the frontend stats API records versioned
+    canonical slugs.  Taking the latest observed mapping is safe for the
+    short live panel and is strictly better than silently dropping every
+    stable-id event from the congestion join.
     """
-    return (
-        events.loc[:, ["model_id"]]
-        .drop_duplicates()
-        .assign(model_permaslug=lambda d: d["model_id"])
+    base = events.loc[:, ["model_id"]].drop_duplicates().copy()
+    if base.empty:
+        return base.assign(model_permaslug=pd.Series(dtype="object"))
+    quoted = ", ".join(
+        "'" + str(x).replace("'", "''") + "'" for x in sorted(base["model_id"])
+    )
+    try:
+        mapping = data.q(
+            f"""
+            select id as model_id, canonical_slug as model_permaslug
+            from (
+              select id, canonical_slug, run_ts,
+                     row_number() over (partition by id order by run_ts desc) as rn
+              from {data.models_snapshots()}
+              where id in ({quoted}) and canonical_slug is not null
+            ) where rn = 1
+            """
+        ).df()
+    except Exception as exc:
+        log.info("H42 canonical model mapping unavailable: %s", exc)
+        mapping = pd.DataFrame(columns=["model_id", "model_permaslug"])
+    return base.merge(mapping, on="model_id", how="left").assign(
+        model_permaslug=lambda d: d["model_permaslug"].fillna(d["model_id"])
     )
 
 
@@ -593,12 +619,12 @@ def event_effects(panel: pd.DataFrame, intraday: pd.DataFrame, kind: str) -> pd.
             "event_kind": kind,
             "model_id": event.model_id,
             "provider_name": event.provider_name,
-            "pre_request_share_30m": float(pre["request_share_30m"].mean()),
-            "post_request_share_30m": float(post["request_share_30m"].mean()),
-            "pre_reject_rate_30m": float(pre["reject_rate_30m"].mean()),
-            "post_reject_rate_30m": float(post["reject_rate_30m"].mean()),
-            "pre_capacity_ceiling_rpm": float(pre["capacity_ceiling_rpm"].mean()),
-            "post_capacity_ceiling_rpm": float(post["capacity_ceiling_rpm"].mean()),
+            "pre_request_share_30m": _mean_observed(pre["request_share_30m"]),
+            "post_request_share_30m": _mean_observed(post["request_share_30m"]),
+            "pre_reject_rate_30m": _mean_observed(pre["reject_rate_30m"]),
+            "post_reject_rate_30m": _mean_observed(post["reject_rate_30m"]),
+            "pre_capacity_ceiling_rpm": _mean_observed(pre["capacity_ceiling_rpm"]),
+            "post_capacity_ceiling_rpm": _mean_observed(post["capacity_ceiling_rpm"]),
             "pre_ticks": int(len(pre)),
             "post_ticks": int(len(post)),
         }
@@ -627,10 +653,10 @@ def _effect_summary(effects: pd.DataFrame, kind: str) -> dict:
         return result
     result.update(
         {
-            "mean_delta_request_share_30m": float(d["delta_request_share_30m"].mean()),
+            "mean_delta_request_share_30m": _mean_observed(d["delta_request_share_30m"]),
             "median_delta_request_share_30m": float(d["delta_request_share_30m"].median()),
-            "mean_delta_reject_rate_30m": float(d["delta_reject_rate_30m"].mean()),
-            "mean_delta_capacity_ceiling_rpm": float(d["delta_capacity_ceiling_rpm"].mean()),
+            "mean_delta_reject_rate_30m": _mean_observed(d["delta_reject_rate_30m"]),
+            "mean_delta_capacity_ceiling_rpm": _mean_observed(d["delta_capacity_ceiling_rpm"]),
         }
     )
     return result

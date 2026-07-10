@@ -125,6 +125,16 @@ def pre_event_congestion(ev: pd.DataFrame) -> pd.DataFrame:
     ).df()
     cong = cong.merge(slug_map, left_on="model_permaslug", right_on="canonical_slug")
 
+    def mean_or_nan(values: pd.Series) -> float:
+        """Normalise pandas nullable aggregates before serialising results.
+
+        Sparse congestion fields arrive as ``pd.NA`` in the full panel.  A
+        nonempty pre-event window can therefore still have no observed value;
+        treat it as missing rather than letting one sparse endpoint abort H17.
+        """
+        value = values.mean()
+        return float(value) if pd.notna(value) else np.nan
+
     outs = []
     for r in ev.itertuples(index=False):
         c = cong[
@@ -135,9 +145,9 @@ def pre_event_congestion(ev: pd.DataFrame) -> pd.DataFrame:
         ]
         outs.append(
             {
-                "pre_utilization": float(c["util"].mean()) if len(c) else np.nan,
-                "pre_p90_latency": float(c["p90_latency_ms"].mean()) if len(c) else np.nan,
-                "pre_reject": float(c["reject"].mean()) if len(c) else np.nan,
+                "pre_utilization": mean_or_nan(c["util"]),
+                "pre_p90_latency": mean_or_nan(c["p90_latency_ms"]),
+                "pre_reject": mean_or_nan(c["reject"]),
             }
         )
     return pd.concat([ev.reset_index(drop=True), pd.DataFrame(outs)], axis=1)

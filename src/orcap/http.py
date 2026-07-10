@@ -95,6 +95,22 @@ class Fetcher:
         )
         return body if resp.status_code == 200 else None
 
+    async def get_text(self, url: str, headers: Mapping[str, str] | None = None) -> str | None:
+        """GET a text document while retaining the verbatim response in the raw layer."""
+        fetched_at = datetime.now(UTC).isoformat()
+        try:
+            resp = await self._get(url, headers=headers)
+            body = resp.text
+        except (httpx.HTTPError, UnicodeDecodeError) as exc:
+            self.records.append(
+                {"fetched_at": fetched_at, "url": url, "status": None, "error": str(exc)}
+            )
+            return None
+        self.records.append(
+            {"fetched_at": fetched_at, "url": url, "status": resp.status_code, "body": body}
+        )
+        return body if resp.status_code == 200 else None
+
     async def post_json(
         self,
         url: str,

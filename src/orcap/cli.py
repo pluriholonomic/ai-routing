@@ -70,6 +70,11 @@ def main() -> None:
 
     sub.add_parser("capture-hf", help="snapshot HF Hub model stats (demand leading indicator)")
 
+    sub.add_parser(
+        "capture-open-usage",
+        help="capture public open-model download/pull and serving-runtime adoption proxies",
+    )
+
     sub.add_parser("capture-devrel", help="snapshot npm/pypi/github/HN developer-adoption stats")
 
     p_market = sub.add_parser(
@@ -155,6 +160,10 @@ def main() -> None:
         from .capture_hf_stats import main as hf_main
 
         _collector("huggingface", hf_main)
+    elif args.command == "capture-open-usage":
+        from .capture_open_usage import main as open_usage_main
+
+        open_usage_main()
     elif args.command == "capture-devrel":
         from .capture_devrel import main as devrel_main
 

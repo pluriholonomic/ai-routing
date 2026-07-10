@@ -4,6 +4,8 @@ import pandas as pd
 from pyarrow.parquet import ParquetFile
 
 from orcap.analysis.h42_routing_mev import (
+    _mean_observed,
+    _sum_observed,
     attach_intraday,
     build_event_panel,
     event_effects,
@@ -76,6 +78,11 @@ def test_h42_reconstructs_rank_improving_undercut():
     assert focal["is_cut"]
     assert focal["eligible_quote"]
     assert threshold_summary(panel)["n_rank_crossing_cuts"] == 1
+
+
+def test_h42_keeps_all_missing_flow_as_missing():
+    assert pd.isna(_sum_observed(pd.Series([pd.NA], dtype="Int64")))
+    assert pd.isna(_mean_observed(pd.Series([pd.NA], dtype="Int64")))
 
 
 def test_h42_finds_stale_quote_beneficiary_after_competitor_raise():

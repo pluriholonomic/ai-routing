@@ -1,7 +1,7 @@
 name: compact
-# Nightly: consolidate yesterday's ~100 small parquet files per table into one
-# file per table/day in the HF repo, and derive SCD-2 pricing_changes +
-# pricing_current from the endpoint snapshots.
+# Nightly: consolidate pricing-critical endpoint snapshots for yesterday and
+# derive SCD-2 pricing_changes + pricing_current. Other curated tables remain
+# queryable without hydration so the job stays below the Hub file-API quota.
 
 on:
   schedule:
@@ -23,7 +23,10 @@ permissions:
 jobs:
   compact:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The 2026-07-09 scheduled run was terminated at the old 30-minute job
+    # limit while folding the prior day's endpoint history.  A missed fold
+    # leaves raw snapshots intact but silently stalls pricing_changes.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
