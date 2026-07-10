@@ -190,6 +190,18 @@ at the registered buckets, but it does not account for a subsequent block,
 transaction ordering, wallet approvals, gas, cross-pool routing, or wider
 market liquidity. H41 continues to keep the full Uniswap depth gate closed.
 
+The collector also uses QuoterV2 only as a parent-block simulation for the
+exact input amount in an observed USDC-to-WETH CoW Trade. That makes the H52
+comparison reproducible at a fixed pre-settlement EVM state and avoids matching
+unrelated size buckets. It remains a gross venue basis: the state cannot recover
+transaction ordering within the settlement block, CoW fees, gas, surplus, or a
+firm contemporaneous AMM quote.
+
+The current live dRPC validation obtained all 36 requested parent-block calls
+for 18 exact CoW fills across the two registered pools, with no call errors.
+H52's one-window median gross basis is retained only as a pipeline check: it
+remains power-gated at 18 of 500 fills and one of seven days.
+
 ## Qualified in this run: Novita public SSR pricing catalog
 
 Novita's public pricing page embeds a named `initialFullLLMModels` catalog in

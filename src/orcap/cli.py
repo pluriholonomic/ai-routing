@@ -371,6 +371,7 @@ def main() -> None:
             "h49": "h49_solver_competition",
             "h50": "h50_controlled_routing",
             "h51": "h51_livepeer_gateway",
+            "h52": "h52_cow_amm_basis",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

@@ -19,6 +19,7 @@ from orcap.capture_markets import (
     akash_lease_execution_rows,
     akash_registry_summary,
     chutes_capacity_rows,
+    cow_amm_preblock_quote_rows,
     cow_competition_rows,
     cow_execution_rows,
     cow_rpc_log_rows,
@@ -106,6 +107,32 @@ def test_uniswap_quoter_rows_keep_fixed_notional_simulation_distinct_from_depth(
     assert rows[0]["depth_usd"] is None
     assert rows[0]["finalized"] is True
     assert "not a fill guarantee" in rows[0]["quality_tier"]
+
+
+def test_cow_amm_preblock_rows_keep_parent_block_counterfactual_distinct_from_fill():
+    pool_id = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+    spec = uniswap_pool_specs()[pool_id]
+    result = "0x" + "00000000000000000000000000000000000000000000000000038d7ea4c68000"
+    rows = cow_amm_preblock_quote_rows(
+        [
+            {
+                "reference_execution_id": "cow:0xabc:1",
+                "reference_event_block_number": 25500000,
+                "state_block_number": 25499999,
+                "pool_id": pool_id,
+                "spec": spec,
+                "amount_in_raw": 2_000_000_000,
+                "result": result,
+            }
+        ],
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["reference_execution_id"] == "cow:0xabc:1"
+    assert rows[0]["state_block_number"] == 25499999
+    assert rows[0]["input_amount"] == 2_000.0
+    assert rows[0]["quote_unit"] == "usdc_per_weth"
+    assert "not an intra-block quote" in rows[0]["quality_tier"]
 
 
 def test_golem_capacity_keeps_hardware_metadata():

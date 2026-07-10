@@ -40,7 +40,7 @@ only for an already-hydrated local mirror or test fixture.
 | `capture-devrel` | `devrel_daily` | daily | NPM, PyPI, GitHub, and HN adoption proxies. |
 | `backfill` | Wayback and LiteLLM history | manual | Historical model-level only; it cannot recover historical per-provider endpoint prices. |
 | `defi` | `external/*.parquet` | **manual only** | Current comparators are gas, two Uniswap pools, CoW settlement counts, BTC funding/hashprice, and PyPI history. |
-| `market-capture` | `market_quotes` | hourly workflow | Includes GeckoTerminal indexed state as a reserve/volume control plus fixed-notional Uniswap QuoterV2 simulations at a finality-buffered block. The latter is a price-impact curve, not a fill guarantee or market-wide depth. |
+| `market-capture` | `market_quotes`, `market_counterfactual_quotes` | hourly workflow | Includes GeckoTerminal indexed state as a reserve/volume control, fixed-notional Uniswap QuoterV2 simulations, and exact-input parent-block AMM counterfactuals for observed CoW USDC sells. Neither simulation is a fill guarantee, executable depth, or best-execution result. |
 
 Every collector must preserve the raw response before producing a normalized
 row.  `record_json` in curated tables makes schema evolution recoverable.  Do

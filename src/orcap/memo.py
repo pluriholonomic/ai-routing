@@ -163,6 +163,7 @@ def live_status(analysis_dir: Path) -> str:
     h42 = _j(analysis_dir, "h42_summary")
     h45 = _j(analysis_dir, "h45_shadow_execution_summary")
     h51 = _j(analysis_dir, "h51_summary")
+    h52 = _j(analysis_dir, "h52_summary")
     h3 = _j(analysis_dir, "h3_summary")
     h42_data = h42.get("data") or {}
     h42_r2 = h42.get("r2_undercut_capture") or {}
@@ -213,6 +214,15 @@ def live_status(analysis_dir: Path) -> str:
             f"{h51.get('n_snapshot_runs', '—')}/1000",
             "H51 aggregate snapshots",
         ),
+        (
+            (
+                _fmt(h52.get("median_cow_over_amm_gross_basis_pct")) + "%"
+                if h52.get("median_cow_over_amm_gross_basis_pct") is not None
+                else "—"
+            ),
+            "H52 CoW-over-AMM gross basis",
+        ),
+        (f"{h52.get('n_unique_cow_fills', '—')}/500", "H52 exact CoW fills"),
     ]
     tile_html = "".join(
         f'<div class="stat"><div class="v">{html.escape(str(v))}</div>'
