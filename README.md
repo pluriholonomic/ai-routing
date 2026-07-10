@@ -21,6 +21,7 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 - [`docs/routing-simulation-monitor.md`](docs/routing-simulation-monitor.md) — zero-spend 15-minute public-quote route-surface assay, its 24-hour decision rule, and the boundary from realized routing.
 - [`docs/cross-router-data.md`](docs/cross-router-data.md) — Hugging Face public-router comparator, cross-router policy analysis, and the redacted contract for controlled route telemetry.
 - [`docs/router-shadow-execution.md`](docs/router-shadow-execution.md) — one shadow-execution interface for OpenRouter, Hugging Face, Cloudflare AI Gateway, Portkey, and LiteLLM.
+- [`docs/capacity-certified-routing-mechanism.md`](docs/capacity-certified-routing-mechanism.md) — pre-registered RFQ-style routing mechanism, propositions, and empirical calibration gates.
 
 ## Cadence
 
@@ -100,6 +101,7 @@ uv run orcap capture-gpu              # Vast offer book + public Ornn GPU index 
 uv run orcap market-capture --with-uniswap --with-akash
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h31  # GPU rent/utilization screen
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h47  # exact-spec GPU quote basis
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h48  # routing-mechanism calibration sheet
 uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-like hypotheses)
 ORCAP_ANALYSIS_SOURCE=local uv run orcap route-sim-report --out analysis  # 24h public-quote route-surface test
 uv run orcap capture-hf-router --samples 4 --interval-seconds 900  # public HF router surface, no orders
