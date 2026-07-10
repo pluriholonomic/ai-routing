@@ -90,6 +90,19 @@ AMM welfare results.
    mechanical delivery gain. This is not a general welfare theorem: it does
    not value latency, quality, heterogeneous requests, strategic prices, or
    capacity-acquisition cost.
+6. **Cost-reporting menu, conditional DSIC and IR.** As an alternative to a
+   posted-price surface, fix hard committed capacity and the pre-allocation
+   reliability score, and let a provider directly report positive marginal
+   cost `r_i` in `(0,cbar]`. Apply the same capped score rule with
+   `w_i=q_i r_i^{-eta}`. Its own allocation `x_i(r_i)` is weakly decreasing in
+   its report. The procurement transfer
+   `T_i(r_i)=r_i x_i(r_i)+integral_{r_i}^{cbar} x_i(z) dz` makes truthful cost
+   reporting dominant and gives the `cbar` type zero utility, conditional on
+   delivery. `procurement_payment` numerically evaluates the transfer and
+   `procurement_report_diagnostic` audits the envelope on a report grid. This
+   is a direct-revelation benchmark, not a claim that public router quotes are
+   private costs, a budget-balanced mechanism, or a solution to private
+   capacity.
 
 The next theory step is to extend this one-period result to private capacity
 and a stochastic health process, then prove an individually rational
@@ -137,6 +150,26 @@ checks this counterfactual. This is **not** full truthful-reporting
 implementation: endogenous capacity investment, limited collateral, private
 reliability, correlated outages, and price/reliability manipulation still need
 a Bayesian mechanism and empirical inputs.
+
+For the cost-only menu, hold the provider's certified capacity, all other
+reports, and reliability scores fixed. Reducing `r_i` raises only its positive
+score `q_i r_i^{-eta}`. The capped water-fill allocation is weakly increasing
+in that score (a cap can flatten the response but cannot reverse it), hence
+`x_i(r_i)` is weakly decreasing in the cost report. For a true cost `c_i`,
+the utility from report `r_i` under the stated delivery assumption is
+
+`U_i(r_i;c_i) = (r_i-c_i)x_i(r_i) + integral_{r_i}^{cbar} x_i(z) dz`.
+
+Where differentiable, its derivative is `(r_i-c_i)x_i'(r_i)`: nonnegative
+below `c_i` and nonpositive above it. The same conclusion follows from the
+monotonicity inequality at kinks. Thus `r_i=c_i` maximizes utility. At the
+upper type the transfer is `cbar x_i(cbar)`, so utility is zero; truthful types
+obtain `integral_{c_i}^{cbar}x_i(z)dz >= 0`. This is a dominant-strategy
+cost-screening lemma, stronger than a Bayesian statement in that one narrow
+dimension, but its assumptions are deliberately strict: capacity is hard and
+held fixed, the transfer may require a subsidy, delivery is assumed, and
+quality/reliability cannot be privately manipulated. The separate shortfall
+bond is still required to make delivery incentives credible.
 
 ## Empirical mapping and gates
 

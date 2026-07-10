@@ -8,7 +8,11 @@ from orcap.mechanism import (
     capacity_constrained_allocation,
     declared_capacity_payoff,
     own_price_share_elasticity,
+    procurement_payment,
+    procurement_report_diagnostic,
+    procurement_utility,
     realized_provider_payoff,
+    reported_cost_allocation,
 )
 
 
@@ -131,3 +135,50 @@ def test_hard_capacity_overreport_is_worse_when_it_creates_shortfall():
         bond_per_missed_request=0.1,
     )
     assert truthful > overreported
+
+
+def test_cost_only_procurement_menu_is_monotone_and_truthful_on_a_report_grid():
+    offers = [
+        ProviderOffer("a", price=1, reliability=1, committed_capacity=100, marginal_cost=1),
+        ProviderOffer("b", price=1.5, reliability=1, committed_capacity=100, marginal_cost=1.5),
+    ]
+    reports = [0.5, 0.8, 1.0, 1.4, 2.0]
+    diagnostic = procurement_report_diagnostic(
+        offers,
+        provider="a",
+        true_cost=1.0,
+        report_grid=reports,
+        demand=100,
+        cost_upper_bound=4.0,
+        quadrature_steps=4_096,
+    )
+    assert diagnostic["allocated_requests"].is_monotonic_decreasing
+    truthful_utility = diagnostic.loc[
+        diagnostic["reported_cost"] == 1.0, "utility_at_true_cost"
+    ].iat[0]
+    assert truthful_utility >= diagnostic["utility_at_true_cost"].max() - 0.01
+    assert truthful_utility >= -0.01
+
+
+def test_procurement_payment_gives_upper_cost_type_zero_utility():
+    offers = [
+        ProviderOffer("a", price=1, reliability=1, committed_capacity=100, marginal_cost=1),
+        ProviderOffer("b", price=2, reliability=1, committed_capacity=100, marginal_cost=2),
+    ]
+    upper = 4.0
+    allocation = reported_cost_allocation(
+        offers, provider="a", reported_cost=upper, demand=100
+    )
+    payment = procurement_payment(
+        offers, provider="a", reported_cost=upper, demand=100, cost_upper_bound=upper
+    )
+    utility = procurement_utility(
+        offers,
+        provider="a",
+        true_cost=upper,
+        reported_cost=upper,
+        demand=100,
+        cost_upper_bound=upper,
+    )
+    assert math.isclose(payment, upper * allocation)
+    assert math.isclose(utility, 0.0)
