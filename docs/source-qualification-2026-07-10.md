@@ -29,6 +29,26 @@ This is still posted-price evidence, not a firm quote, request outcome, or
 fill.  The collector records it as `published_model_page` and gives it its own
 source-health record.
 
+## Qualified in this run: BaseTen public model-library catalog
+
+BaseTen's public pricing page server-renders `LibraryModelRecord` entries with
+a literal publisher slug, a literal library-model slug, and separate input,
+cached-input, and output USD-per-million-token fields. The collector decodes
+only those records from the named React-flight object and defines the retained
+direct identity as `publisher_slug/model_slug`; this is a public catalog
+identity, not an account deployment ID or an inference API credential.
+
+The live page exposed 11 positive-price records. Only three have checked-in,
+one-to-one current OpenRouter BaseTen endpoint pairs: `z-ai/glm-51` to
+`z-ai/glm-5.1`, `moonshot-ai/kimi-k26` to `moonshotai/kimi-k2.6`, and
+`openai/gpt-oss-120b` to itself. All other records remain direct catalog rows
+without a canonical H13 mapping. The parser fails closed if the React payload,
+literal publisher/model slugs, or positive input/output prices are absent.
+
+This is public posted-price evidence. It does not reveal a customer's BaseTen
+deployment ID, availability, token usage, executed request, routed share, or
+provider cost. The explicit mappings do not authorize fuzzy family joins.
+
 ## Qualified in this run: Groq public model table
 
 Groq's public supported-models page provides literal API model IDs and a

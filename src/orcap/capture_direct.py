@@ -14,8 +14,10 @@ Four source tiers, kept explicitly separate in the curated provenance:
     provider's broad historical sitemap every day.
   - Published SSR pricing catalog: Novita's public pricing page embeds a
     literal active-model catalog with API IDs and displayed USD-per-million
-    token prices.  The parser reads its named React-flight payload without
-    executing page JavaScript; an envelope or schema change yields no rows.
+    token prices. BaseTen publishes literal publisher/model-library slugs and
+    token prices in the same source form. The parsers read named React-flight
+    payloads without executing page JavaScript; an envelope or schema change
+    yields no rows.
 
 Remaining provider pages are raw-archived for later parser work.  Raw evidence
 alone is not a usable H13 list-price observation.
@@ -47,6 +49,7 @@ CHUTES_MODELS_URL = "https://llm.chutes.ai/v1/models"
 TOGETHER_SERVERLESS_MODELS_URL = "https://docs.together.ai/docs/serverless/models"
 GROQ_MODELS_URL = "https://console.groq.com/docs/models"
 NOVITA_PRICING_URL = "https://novita.ai/pricing"
+BASETEN_PRICING_URL = "https://www.baseten.co/pricing/"
 FIREWORKS_MODEL_PAGES = {
     "accounts/fireworks/models/gpt-oss-20b": "https://fireworks.ai/models/fireworks/gpt-oss-20b",
     "accounts/fireworks/models/gpt-oss-120b": "https://fireworks.ai/models/fireworks/gpt-oss-120b",
@@ -55,6 +58,7 @@ FIREWORKS_MODEL_PAGES = {
 RAW_PAGES = {
     "groq": GROQ_MODELS_URL,
     "novita_llm": NOVITA_PRICING_URL,
+    "baseten": BASETEN_PRICING_URL,
     "together": TOGETHER_SERVERLESS_MODELS_URL,
     "fireworks": "https://fireworks.ai/pricing",
     "lambda": "https://lambda.ai/inference",
@@ -575,6 +579,132 @@ def novita_rows(body: str | None, run_ts: str, dt: str) -> list[dict[str, Any]]:
     return rows
 
 
+def _baseten_pricing_models(body: str | None) -> list[dict[str, Any]]:
+    """Extract literal BaseTen library records from the public React payload.
+
+    The pricing page embeds a server-rendered React-flight payload. Only exact
+    ``LibraryModelRecord`` objects with their public publisher slug, model slug,
+    and three labeled token-price fields are considered. A payload/schema shift
+    emits no rows instead of attempting to infer a model identity from visible
+    marketing text.
+    """
+    if not body:
+        return []
+    chunks = re.findall(r"<script>self\.__next_f\.push\((.*?)\)</script>", body, re.DOTALL)
+    decoder = json.JSONDecoder()
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    needle = '{"__typename":"LibraryModelRecord"'
+    for chunk in chunks:
+        try:
+            envelope = json.loads(chunk)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(envelope, list) or len(envelope) < 2 or not isinstance(envelope[1], str):
+            continue
+        payload = envelope[1]
+        offset = 0
+        while True:
+            start = payload.find(needle, offset)
+            if start < 0:
+                break
+            try:
+                item, end = decoder.raw_decode(payload[start:])
+            except json.JSONDecodeError:
+                offset = start + len(needle)
+                continue
+            offset = start + end
+            record_id = item.get("id") if isinstance(item, dict) else None
+            if (
+                not isinstance(item, dict)
+                or item.get("__typename") != "LibraryModelRecord"
+                or not isinstance(record_id, str)
+                or record_id in seen
+            ):
+                continue
+            seen.add(record_id)
+            rows.append(item)
+    return rows
+
+
+def baseten_rows(body: str | None, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize BaseTen's literal public model-library token-price catalog.
+
+    BaseTen's public library identity is ``publisher_slug/model_slug`` rather
+    than an account deployment id. A model enters H13 only through a checked-in
+    one-to-one current OpenRouter pair; unlisted records remain source-qualified
+    direct prices without a canonical cross-router claim.
+    """
+    rows = []
+    seen: set[str] = set()
+    maps = direct_model_maps()
+    for item in _baseten_pricing_models(body):
+        publisher = item.get("publisher") if isinstance(item.get("publisher"), dict) else {}
+        publisher_slug, model_slug = publisher.get("slug"), item.get("slug")
+        input_price = _number(item.get("perfCost"))
+        output_price = _number(item.get("perfCostOutput"))
+        cached_price = _number(item.get("perfCostCacheInput"))
+        if (
+            not isinstance(publisher_slug, str)
+            or not publisher_slug
+            or not isinstance(model_slug, str)
+            or not model_slug
+            or input_price is None
+            or output_price is None
+            or input_price <= 0
+            or output_price <= 0
+        ):
+            continue
+        provider_model_id = f"{publisher_slug}/{model_slug}"
+        if provider_model_id in seen:
+            continue
+        seen.add(provider_model_id)
+        mapping = maps.get(("baseten", provider_model_id))
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "provider": "baseten",
+                "model_name": item.get("name"),
+                "direct_provider_model_id": provider_model_id,
+                "canonical_model_id": (
+                    mapping.get("canonical_model_id") if mapping is not None else None
+                ),
+                "model_identifier_type": (
+                    mapping.get("mapping_type")
+                    if mapping is not None
+                    else "published_publisher_model_slug"
+                ),
+                "model_type": "chat",
+                "price_input_usd": input_price / _MILLION,
+                "price_output_usd": output_price / _MILLION,
+                "price_cached_input_usd": (
+                    cached_price / _MILLION if cached_price is not None else None
+                ),
+                "deprecated": False,
+                "preview": False,
+                "quote_unit": "usd_per_token",
+                "source_type": "published_ssr_pricing_catalog",
+                "source_url": BASETEN_PRICING_URL,
+                "source_schema_version": "baseten_pricing_flight_catalog_v1",
+                "record_json": json.dumps(
+                    {
+                        "publisher_slug": publisher_slug,
+                        "publisher_name": publisher.get("name"),
+                        "model_name": item.get("name"),
+                        "model_slug": model_slug,
+                        "input_usd_per_million": input_price,
+                        "cached_input_usd_per_million": cached_price,
+                        "output_usd_per_million": output_price,
+                    },
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            }
+        )
+    return rows
+
+
 def fireworks_rows(
     body_by_model_id: dict[str, str | None], run_ts: str, dt: str
 ) -> list[dict[str, Any]]:
@@ -655,6 +785,7 @@ async def capture_direct(
     chutes = chutes_rows(chutes, run_ts, dt)
     groq = groq_rows(raw_by_source.get("groq"), run_ts, dt)
     novita = novita_rows(raw_by_source.get("novita_llm"), run_ts, dt)
+    baseten = baseten_rows(raw_by_source.get("baseten"), run_ts, dt)
     together = together_rows(raw_by_source.get("together"), run_ts, dt)
     fireworks = fireworks_rows(
         {
@@ -664,7 +795,9 @@ async def capture_direct(
         run_ts,
         dt,
     )
-    rows = deepinfra + cerebras + sambanova + chutes + groq + novita + together + fireworks
+    rows = (
+        deepinfra + cerebras + sambanova + chutes + groq + novita + baseten + together + fireworks
+    )
     if rows:
         write_partition(direct_price_table(rows), "direct_prices_daily", run_ts, dt, curated_dir)
     write_source_run(
@@ -684,6 +817,22 @@ async def capture_direct(
             "url": NOVITA_PRICING_URL,
             "source_type": "published_ssr_pricing_catalog",
             "schema_version": "novita_pricing_flight_catalog_v1",
+        },
+    )
+    write_source_run(
+        "direct_baseten_pricing",
+        status="success" if baseten else "degraded",
+        rows=len(baseten),
+        run_ts=run_ts,
+        dt=dt,
+        curated_dir=curated_dir,
+        detail={
+            "url": BASETEN_PRICING_URL,
+            "source_type": "published_ssr_pricing_catalog",
+            "schema_version": "baseten_pricing_flight_catalog_v1",
+            "verified_canonical_maps": sum(
+                row["canonical_model_id"] is not None for row in baseten
+            ),
         },
     )
     write_source_run(
@@ -775,6 +924,7 @@ async def capture_direct(
         "chutes_models": len(chutes),
         "groq_models": len(groq),
         "novita_models": len(novita),
+        "baseten_models": len(baseten),
         "together_models": len(together),
         "fireworks_models": len(fireworks),
         "direct_price_rows": len(rows),

@@ -12,6 +12,34 @@ direct_source_url = "https://api.sambanova.ai/v1/models"
 router_evidence_url = "https://openrouter.ai/api/v1/models/openai/gpt-oss-120b/endpoints"
 notes = "OpenRouter's current SambaNova endpoint exposes the canonical ID but no provider_model_id; SambaNova's public catalog exposes gpt-oss-120b."
 
+# BaseTen's public pricing catalog exposes a literal publisher slug and library
+# model slug, rather than an account deployment id. These pairs are admitted
+# only after that exact public identity is observed on a current BaseTen
+# OpenRouter endpoint; display names are not used for matching.
+[maps.baseten_glm_51]
+provider = "baseten"
+direct_provider_model_id = "z-ai/glm-51"
+canonical_model_id = "z-ai/glm-5.1"
+mapping_type = "verified_published_library_router_pair_v1"
+direct_source_url = "https://www.baseten.co/pricing/"
+router_evidence_url = "https://openrouter.ai/api/v1/models/z-ai/glm-5.1/endpoints"
+
+[maps.baseten_kimi_k26]
+provider = "baseten"
+direct_provider_model_id = "moonshot-ai/kimi-k26"
+canonical_model_id = "moonshotai/kimi-k2.6"
+mapping_type = "verified_published_library_router_pair_v1"
+direct_source_url = "https://www.baseten.co/pricing/"
+router_evidence_url = "https://openrouter.ai/api/v1/models/moonshotai/kimi-k2.6/endpoints"
+
+[maps.baseten_gpt_oss_120b]
+provider = "baseten"
+direct_provider_model_id = "openai/gpt-oss-120b"
+canonical_model_id = "openai/gpt-oss-120b"
+mapping_type = "verified_published_library_router_pair_v1"
+direct_source_url = "https://www.baseten.co/pricing/"
+router_evidence_url = "https://openrouter.ai/api/v1/models/openai/gpt-oss-120b/endpoints"
+
 # Chutes appends a product/TEE suffix to the public API id. These mappings
 # require both the catalog's literal ``root`` and ``quantization`` to match the
 # versioned evidence below; no display-name or string-similarity mapping is used.
