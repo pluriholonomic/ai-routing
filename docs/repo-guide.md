@@ -96,6 +96,9 @@ or git history.
   `h13_provider_day`. Its summary is explicitly `power_gated` until the
   multi-provider and repeated-observation threshold is met; do not promote a
   zero basis from a single catalog into a market-wide result.
+- The rendered memo reports `core`, `direct`, and `comparison` source-health
+  profiles. A missing direct-provider run must appear as degraded rather than
+  allowing H13 to look current by default.
 - Tests are synthetic recovery tests: plant a known signal, then assert the
   estimator recovers it.  Add source-schema and failure-mode tests alongside
   them for every new collector.

@@ -134,7 +134,11 @@ def monitor_badge() -> str:
     try:
         from .quality import check
 
-        healths = {"core": check("core"), "comparison": check("market")}
+        healths = {
+            "core": check("core"),
+            "direct": check("direct"),
+            "comparison": check("market"),
+        }
     except Exception as exc:
         log.warning("monitor health unavailable: %s", exc)
         return '<p class="small sans">Monitor health: unavailable.</p>'
