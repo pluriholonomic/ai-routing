@@ -250,6 +250,15 @@ utilization, allocation, or a provider profit measure. In particular, a count
 of active configured GPUs must not be converted into an inference capacity or
 used to calibrate the routing mechanism's delivery constraint.
 
+The same public detail response includes a cumulative invocation counter.
+H53 first-differences that counter only for adjacent snapshots no more than
+three hours apart, records decreases as resets, and reports the resulting
+source-defined invocation-rate panel separately from active deployment
+configuration. The counter is stronger than a static catalog for observing
+change, but it is still not a successful-completion count, token volume,
+unique-user count, revenue, market-wide demand, GPU utilization, or a causal
+demand estimate.
+
 ## Not qualified: Hyperbolic public inference pricing
 
 On 2026-07-10, an unauthenticated request to Hyperbolic's documented
