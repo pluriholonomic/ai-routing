@@ -76,6 +76,8 @@ uv run orcap scrape --limit 10
 uv run orcap capture-gpu
 uv run orcap analyze --hypothesis h34
 uv run orcap memo
+# Only ingests an already-redacted local controlled-study export; no API calls.
+uv run orcap ingest-capacity-commitments --input redacted-capacity-commitments.jsonl
 ```
 
 Writes to the dataset need an authenticated Hugging Face token (`HF_TOKEN` or
