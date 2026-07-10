@@ -154,6 +154,42 @@ def monitor_badge() -> str:
     )
 
 
+def _h46_trajectory_html(analysis_dir: Path) -> str:
+    """Render recent rolling estimates without failing an older analysis bundle."""
+    path = analysis_dir / "h46_rolling_routing_elasticity.parquet"
+    if not path.exists():
+        return ""
+    try:
+        rows = duckdb.sql(
+            f"""
+            select window_end, share_price_elasticity, std_error, n_groups
+            from '{path}' order by window_end desc limit 6
+            """
+        ).fetchall()
+    except Exception as exc:
+        log.warning("H46 trajectory skipped: %s", exc)
+        return ""
+    if not rows:
+        return ""
+    body = "".join(
+        "<tr>"
+        f"<td>{html.escape(str(window_end))}</td>"
+        f"<td class='num'>{float(elasticity):.2f}</td>"
+        f"<td class='num'>{float(standard_error):.2f}</td>"
+        f"<td class='num'>{int(groups)}</td>"
+        "</tr>"
+        for window_end, elasticity, standard_error, groups in reversed(rows)
+    )
+    return f"""
+<h3>H46 rolling routing elasticity</h3>
+<table><thead><tr><th>Window end</th><th class="num">Elasticity</th>
+<th class="num">SE</th><th class="num">Market groups</th></tr></thead>
+<tbody>{body}</tbody></table>
+<p class="small sans">Fourteen-day trailing, within day-model-variant associations.
+These are daily aggregate associations, not causal request-level elasticities.</p>
+"""
+
+
 def live_status(analysis_dir: Path) -> str:
     h2 = _j(analysis_dir, "h2_summary")
     h4 = _j(analysis_dir, "h4_summary")
@@ -162,6 +198,7 @@ def live_status(analysis_dir: Path) -> str:
     h17 = _j(analysis_dir, "h17_summary")
     h42 = _j(analysis_dir, "h42_summary")
     h45 = _j(analysis_dir, "h45_shadow_execution_summary")
+    h46 = _j(analysis_dir, "h46_summary")
     h51 = _j(analysis_dir, "h51_summary")
     h52 = _j(analysis_dir, "h52_summary")
     h53 = _j(analysis_dir, "h53_summary")
@@ -210,6 +247,8 @@ def live_status(analysis_dir: Path) -> str:
             "H42 clean undercut windows",
         ),
         (str(h45.get("policy_groups", "—")), "H45 shadow-policy groups"),
+        (_fmt(h46.get("latest_elasticity")), "H46 rolling routing elasticity"),
+        (f"{h46.get('n_windows', '—')}/4", "H46 full rolling windows"),
         (_fmt(h51.get("median_switch_share"), pct=True), "H51 Gateway switch share"),
         (
             f"{h51.get('n_snapshot_runs', '—')}/1000",
@@ -249,6 +288,7 @@ auto-generated from the latest daily reanalysis</span></h2>
 <table><thead><tr><th>UTC</th><th>Model</th><th>Provider</th>
 <th class="num">$/Mtok out</th></tr></thead>
 <tbody>{rows}</tbody></table>
+{_h46_trajectory_html(analysis_dir)}
 <p class="small sans">Most recent repricing events. All statistics recomputed nightly from
 the full capture; the narrative sections below are the dated core screen.</p>
 """
