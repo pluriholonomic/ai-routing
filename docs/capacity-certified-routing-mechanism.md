@@ -126,11 +126,25 @@ AMM welfare results.
    a conditional resilience guarantee, not an estimate of outage risk,
    expected welfare, insurance value, or a reason to infer independence from
    marginal uptime.
+10. **Convex capacity procurement, conditional DSIC and IR.** Before routing,
+    suppose provider `i` has a certified physical ceiling `K_i`, a known
+    positive capacity-cost curvature `b_i`, and one private linear reservation
+    cost `a_i`. Procuring `k_i` costs `a_i k_i+b_i k_i^2/2`. The router buys
+    the minimum-cost certified portfolio for demand `D`, then pays
+    `T_i(r_i)=r_i k_i(r_i)+b_i k_i(r_i)^2/2+integral_{r_i}^{abar}k_i(z)dz`.
+    Since `k_i(r_i)` is weakly decreasing in the report, truthful `a_i`
+    reporting is dominant and the upper type has zero utility. The code-level
+    `capacity_procurement_allocation` and `capacity_procurement_payment`
+    implement the allocation and envelope diagnostic. This brings
+    capacity-acquisition cost inside a narrow single-parameter procurement
+    model; it does not elicit a privately chosen ceiling, a private curvature,
+    reliability, correlated physical availability, or a budget-balanced
+    mechanism.
 
-The next theory step is to extend this one-period result to private capacity
-and a stochastic health process, then prove an individually rational
-reliability-adjusted scoring rule. It must compare welfare with (a) pure
-cheapest routing and (b) a reliability-only rule.
+The next theory step is to extend these single-parameter results to jointly
+private capacity, curvature, and reliability under a stochastic health process,
+then compare welfare with (a) pure cheapest routing and (b) a reliability-only
+rule.
 
 ### Proof details and assumptions
 
@@ -194,6 +208,22 @@ held fixed, the transfer may require a subsidy, delivery is assumed, and
 quality/reliability cannot be privately manipulated. The separate shortfall
 bond is still required to make delivery incentives credible.
 
+For convex capacity procurement, hold certified ceilings `K_i` and positive
+curvatures `b_i` fixed and let only `a_i` be private. The capacity allocation
+minimizes `sum_i r_i k_i+b_i k_i^2/2` subject to the stated demand and ceiling
+constraints. KKT stationarity gives
+`k_i(r_i)=clip((lambda-r_i)/b_i,0,K_i)`, where the multiplier adjusts to the
+required total. Raising `r_i` therefore weakly lowers its allocation. For a
+report `r_i`, define the stated transfer. Its derivative is
+`(r_i+b_i k_i(r_i)) k_i'(r_i)`, while the derivative of true utility is
+`(r_i-a_i)k_i'(r_i)`. Because `k_i'<=0`, utility weakly rises up to the true
+type and weakly falls afterward; the same envelope inequality applies at
+kinks. At `abar`, the integral is zero and payment exactly covers the declared
+convex cost, so IR binds. This is a DSIC/IR theorem only for a certified
+ceiling, known curvature, one-dimensional linear reservation cost, and
+feasible delivery. A provider able to choose or lie about `K_i` or `b_i`, or
+to manipulate reliability, has a multi-dimensional type outside this result.
+
 The limited-liability calculation is immediate: under a feasible deliberate
 refusal, the provider can lose no more than `min(b_i,L_i)`, so delivery minus
 refusal is exactly `p_i-c_i+min(b_i,L_i)`. A design requiring a positive
@@ -227,6 +257,7 @@ the observed or declared joint-outage support.
 | `q_i` | uptime, error, latency, throughput, router scorecard | public proxy only; private live eligibility remains unobserved |
 | `x_i, y_i` | allocated and served controlled-study requests | public panels do not identify them; payload-free `router_capacity_epoch_outcomes` can record controlled provider/model/epoch aggregates, but has no published rows yet |
 | `k_i` | provider/model/time commitment | public inference capacity remains unobserved; `router_capacity_commitments` can record a redacted controlled-study declaration, but has no published rows yet; Akash/Vast capacity is an external supply comparator |
+| `a_i, b_i` | declared linear reservation cost and positive capacity-cost curvature | optional redacted controlled-study fields exist on `router_capacity_commitments`; no published or independently verified observations yet |
 | joint outage support | named shared failure domains plus provider/epoch availability | `router_capacity_commitments` can record declared failure domains and `router_capacity_epoch_outcomes` can record an aggregate availability state and common outage identifier; neither creates joint-outage observations on its own |
 | `c_i` | realized GPU-seconds times cost | not observed; no profit or optimal-bond claim is permitted |
 
@@ -241,6 +272,13 @@ all agree. A match is controlled-study coverage—not proof of capacity delivery
 market-wide demand, a causal routing effect, or an optimal bond. Without all
 four primitives, the paper may state a design proposal and reduced-form
 comparative statics, but not an empirically calibrated optimal mechanism.
+
+The same commitment contract can optionally record a non-negative linear
+capacity-reservation cost and a positive capacity-cost curvature. Those fields
+are inputs to the single-parameter convex procurement theorem, not evidence
+that costs, curvature, or capacity are privately truthful or independently
+verified. A future calibration needs a pre-specified method for measuring them
+and outcomes for the corresponding reservation epoch.
 
 The companion `ingest-capacity-outcomes` contract records only an aggregate
 allocated count, served count, optional realized cost/revenue, and non-payload

@@ -4,12 +4,16 @@ import pandas as pd
 import pytest
 
 from orcap.mechanism import (
+    CapacityProcurementOffer,
     OutageScenario,
     ProviderOffer,
     allocation_counterfactual,
     allocation_shares,
     capacity_bond_floor,
     capacity_constrained_allocation,
+    capacity_procurement_allocation,
+    capacity_procurement_report_diagnostic,
+    capacity_procurement_utility,
     declared_capacity_payoff,
     expected_delivered_under_outage_scenarios,
     limited_liability_delivery_gain,
@@ -280,3 +284,45 @@ def test_procurement_payment_gives_upper_cost_type_zero_utility():
     )
     assert math.isclose(payment, upper * allocation)
     assert math.isclose(utility, 0.0)
+
+
+def test_convex_capacity_procurement_is_cost_minimizing_and_feasible():
+    offers = [
+        CapacityProcurementOffer("a", 1.0, 10.0, 1.0),
+        CapacityProcurementOffer("b", 2.0, 10.0, 1.0),
+    ]
+    allocation = capacity_procurement_allocation(offers, demand=10)
+    assert allocation.sum() == pytest.approx(10)
+    assert allocation["a"] > allocation["b"]
+    assert (allocation <= 10).all()
+
+
+def test_convex_capacity_procurement_menu_is_monotone_truthful_and_individually_rational():
+    offers = [
+        CapacityProcurementOffer("a", 1.0, 10.0, 1.0),
+        CapacityProcurementOffer("b", 2.0, 10.0, 1.0),
+    ]
+    diagnostic = capacity_procurement_report_diagnostic(
+        offers,
+        provider="a",
+        true_linear_cost=1.0,
+        report_grid=[0.0, 0.5, 1.0, 1.5, 2.0, 3.0],
+        demand=10,
+        cost_upper_bound=4.0,
+        quadrature_steps=4_096,
+    )
+    assert diagnostic["procured_capacity"].is_monotonic_decreasing
+    truthful = diagnostic.loc[
+        diagnostic["reported_linear_cost"] == 1.0, "utility_at_true_cost"
+    ].iat[0]
+    assert truthful >= diagnostic["utility_at_true_cost"].max() - 0.01
+    assert truthful >= -0.01
+    upper_type_utility = capacity_procurement_utility(
+        offers,
+        provider="a",
+        true_linear_cost=4.0,
+        reported_linear_cost=4.0,
+        demand=10,
+        cost_upper_bound=4.0,
+    )
+    assert upper_type_utility == pytest.approx(0.0)

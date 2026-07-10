@@ -106,8 +106,11 @@ uv run orcap ingest-capacity-commitments --input redacted-capacity-commitments.j
 Each JSONL object requires `commitment_id`, `observed_at`, `study_id`,
 `provider`, `model_id`, `epoch_start`, `epoch_end`, and
 `committed_requests`. `verification_method`,
-`marginal_cost_usd_per_request`, and a non-payload `metadata` object are
-optional. H48 joins a record to a route attempt only for the same study,
+`marginal_cost_usd_per_request`,
+`capacity_linear_cost_usd_per_request`,
+`capacity_cost_curvature_usd_per_request_sq`, and a non-payload `metadata`
+object are optional. The capacity linear cost must be non-negative and the
+curvature positive when supplied. H48 joins a record to a route attempt only for the same study,
 provider, model, and half-open time interval `[epoch_start, epoch_end)`.
 This records controlled-study declarations; it does not send traffic, reserve
 capacity, contact a provider, or make a public capacity claim.

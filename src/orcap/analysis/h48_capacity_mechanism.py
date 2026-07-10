@@ -17,6 +17,7 @@ from . import data
 from .common import DEFAULT_OUT, save, save_json
 
 ETA = 2.0
+MIN_CAPACITY_PROCUREMENT_COMMITMENTS = 100
 PANEL_COLUMNS = [
     "run_ts",
     "model_id",
@@ -89,6 +90,7 @@ def _commitment_coverage() -> dict:
     declared commitment, not evidence that the capacity was delivered.
     """
     try:
+        glob = data.table_glob("router_capacity_commitments")
         rows = data.q(
             f"""
             select count(*) as commitments,
@@ -98,10 +100,10 @@ def _commitment_coverage() -> dict:
                    count(verification_method) as verification_method_observed,
                    count(marginal_cost_usd_per_request) as marginal_cost_observed,
                    sum(committed_requests) as committed_requests
-            from read_parquet('{data.table_glob("router_capacity_commitments")}')
+            from read_parquet('{glob}', union_by_name=true)
             """
         ).fetchone()
-        return {
+        result = {
             "commitments": int(rows[0]),
             "providers": int(rows[1]),
             "models": int(rows[2]),
@@ -109,7 +111,27 @@ def _commitment_coverage() -> dict:
             "verification_method_observed": int(rows[4]),
             "marginal_cost_observed": int(rows[5]),
             "committed_requests": float(rows[6] or 0.0),
+            "capacity_linear_cost_observed": 0,
+            "capacity_cost_curvature_observed": 0,
         }
+        schema = data.q(
+            f"describe select * from read_parquet('{glob}', union_by_name=true)"
+        ).df()
+        columns = set(schema["column_name"])
+        if {
+            "capacity_linear_cost_usd_per_request",
+            "capacity_cost_curvature_usd_per_request_sq",
+        }.issubset(columns):
+            cost_rows = data.q(
+                f"""
+                select count(capacity_linear_cost_usd_per_request),
+                       count(capacity_cost_curvature_usd_per_request_sq)
+                from read_parquet('{glob}', union_by_name=true)
+                """
+            ).fetchone()
+            result["capacity_linear_cost_observed"] = int(cost_rows[0])
+            result["capacity_cost_curvature_observed"] = int(cost_rows[1])
+        return result
     except Exception:
         return {
             "commitments": 0,
@@ -119,6 +141,8 @@ def _commitment_coverage() -> dict:
             "verification_method_observed": 0,
             "marginal_cost_observed": 0,
             "committed_requests": 0.0,
+            "capacity_linear_cost_observed": 0,
+            "capacity_cost_curvature_observed": 0,
         }
 
 
@@ -424,6 +448,33 @@ def enforcement_gate(
     }
 
 
+def capacity_procurement_gate(commitments: dict) -> dict:
+    """Expose whether the convex capacity-cost type is empirically observed."""
+    observed = min(
+        commitments["capacity_linear_cost_observed"],
+        commitments["capacity_cost_curvature_observed"],
+    )
+    if not commitments["commitments"]:
+        status = "not_identified"
+    elif not observed:
+        status = "cost_type_unobserved"
+    elif observed < MIN_CAPACITY_PROCUREMENT_COMMITMENTS:
+        status = "power_gated"
+    else:
+        status = "declared_cost_type_coverage"
+    return {
+        "status": status,
+        "declared_linear_cost_rows": commitments["capacity_linear_cost_observed"],
+        "declared_curvature_rows": commitments["capacity_cost_curvature_observed"],
+        "minimum_declared_cost_rows": MIN_CAPACITY_PROCUREMENT_COMMITMENTS,
+        "claim_boundary": (
+            "Declared reservation-cost fields support only a controlled-study calibration input. "
+            "They do not verify private cost, physical capacity, reliability, welfare, or a "
+            "budget-balanced mechanism."
+        ),
+    }
+
+
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     panel = allocation_calibration(_load_public_simulation())
     attempts = _owned_attempt_coverage()
@@ -455,6 +506,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             matched_outcomes,
             triple_matched_attempts,
         ),
+        "capacity_procurement_gate": capacity_procurement_gate(commitments),
         "claim_boundary": (
             "The allocation-price elasticity is algebra implied by the disclosed inverse-square "
             "proxy. It is not an estimated realized router elasticity, an optimal mechanism, or "

@@ -31,9 +31,12 @@ capacity and full-collateral assumptions:
    a direct procurement menu with fixed hard capacity and reliability.
 7. conditional max-min delivery-floor dominance over score water-filling when
    the router has a declared joint-outage support and hard commitments.
+8. conditional dominant-strategy reporting and individual rationality for a
+   convex capacity-reservation cost when the physical ceiling and cost
+   curvature are certified and only the linear cost is private.
 
 These are useful lemmas. They do **not** establish Bayesian incentive
-compatibility, individual rationality with capacity acquisition, welfare with
+compatibility with jointly private capacity/curvature/reliability, welfare with
 heterogeneous request values/quality, or an optimal bond.
 
 ## Authoritative empirical gate audit
@@ -57,9 +60,10 @@ counted as evidence.
 
 ### Theory
 
-- State an explicit type space for cost, capacity, and reliability.
-- Prove individual rationality and a reporting result under declared collateral
-  and a capacity-acquisition cost.
+- Extend the explicit single-parameter cost type to jointly private capacity,
+  curvature, and reliability, or prove an appropriate impossibility/boundary.
+- Connect the capacity-reservation transfer and shortfall collateral in one
+  report-and-delivery mechanism under a declared liability limit.
 - Compare expected welfare with pure cheapest routing and a reliability-only
   baseline under a declared welfare function.
 - Estimate or externally validate a joint-outage panel and analyze limited
