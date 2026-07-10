@@ -1,13 +1,17 @@
 """Daily capture of DIRECT provider list prices, for the venue-basis test (H13):
 what does the same model cost from the provider's own API vs via OpenRouter?
 
-Two tiers, kept explicitly separate in the curated provenance:
+Three source tiers, kept explicitly separate in the curated provenance:
   - Structured public API: DeepInfra's model-list JSON.
   - Published docs table: Together's public serverless catalog.  It has exact
     API model IDs and per-million-token list prices, but it is a rendered
     documentation table rather than a versioned pricing API.  A header change
     yields zero Together rows (and a degraded source-run) rather than a
     best-effort or fuzzy parse.
+  - Published model page: Fireworks' public serverless pages for a bounded,
+    explicit list of current models.  Each page must state the exact Fireworks
+    API model ID and its three per-million-token rates.  We do not crawl the
+    provider's broad historical sitemap every day.
 
 The remaining provider pages are raw-archived for later parser work.  Raw
 evidence alone is not a usable H13 list-price observation.
@@ -32,6 +36,10 @@ log = logging.getLogger(__name__)
 
 DEEPINFRA_URL = "https://api.deepinfra.com/models/list"
 TOGETHER_SERVERLESS_MODELS_URL = "https://docs.together.ai/docs/serverless/models"
+FIREWORKS_MODEL_PAGES = {
+    "accounts/fireworks/models/gpt-oss-20b": "https://fireworks.ai/models/fireworks/gpt-oss-20b",
+    "accounts/fireworks/models/gpt-oss-120b": "https://fireworks.ai/models/fireworks/gpt-oss-120b",
+}
 
 RAW_PAGES = {
     "groq": "https://groq.com/pricing",
@@ -45,6 +53,11 @@ RAW_PAGES = {
 
 _MILLION = 1_000_000
 _USD_PRICE = re.compile(r"^\$(\d+(?:\.\d+)?)$")
+_FIREWORKS_SERVERLESS_PRICE = re.compile(
+    r"Available Serverless\s*Run queries immediately, pay only for usage\s*"
+    r"\$(?P<input>\d+(?:\.\d+)?)\s*/\s*\$(?P<cached>\d+(?:\.\d+)?)\s*/\s*"
+    r"\$(?P<output>\d+(?:\.\d+)?)\s*Per 1M Tokens \(input/cached input/output\)"
+)
 
 
 def _text(node: Any) -> str:
@@ -171,23 +184,88 @@ def together_rows(body: str | None, run_ts: str, dt: str) -> list[dict[str, Any]
     return rows
 
 
+def fireworks_rows(
+    body_by_model_id: dict[str, str | None], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize a bounded set of first-party Fireworks serverless model pages.
+
+    The expected key is the literal provider API model ID, previously verified
+    in OpenRouter's endpoint record.  The collector rejects pages that omit
+    that exact ID or the labeled serverless input/cached/output price block.
+    This is an identity assertion from two first-party sources, not a model-name
+    crosswalk.
+    """
+    rows = []
+    for model_id, body in body_by_model_id.items():
+        if not body:
+            continue
+        try:
+            tree = html.fromstring(body)
+        except (TypeError, ValueError, etree.ParserError):
+            continue
+        for node in tree.xpath("//script|//style"):
+            node.getparent().remove(node)
+        visible = " ".join(tree.text_content().split())
+        match = _FIREWORKS_SERVERLESS_PRICE.search(visible)
+        if model_id not in visible or not match:
+            continue
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "provider": "fireworks",
+                "model_name": model_id,
+                "model_type": "chat",
+                "price_input_usd": float(match["input"]) / _MILLION,
+                "price_output_usd": float(match["output"]) / _MILLION,
+                "price_cached_input_usd": float(match["cached"]) / _MILLION,
+                "deprecated": False,
+                "quote_unit": "usd_per_token",
+                "source_type": "published_model_page",
+                "source_url": FIREWORKS_MODEL_PAGES[model_id],
+                "source_schema_version": "fireworks_serverless_model_page_v1",
+                "record_json": json.dumps(
+                    {
+                        "direct_provider_model_id": model_id,
+                        "prices_usd_per_million_tokens": match.groupdict(),
+                    },
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            }
+        )
+    return rows
+
+
 async def capture_direct(
     raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR
 ) -> dict[str, Any]:
     run_ts = run_timestamp()
     dt = dt_partition()
+    page_urls = {
+        **RAW_PAGES,
+        **{f"fireworks_model:{model_id}": url for model_id, url in FIREWORKS_MODEL_PAGES.items()},
+    }
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
         deepinfra, *raw_pages = await asyncio.gather(
             fetcher.get_json(DEEPINFRA_URL),
-            *(fetcher.get_text(url) for url in RAW_PAGES.values()),
+            *(fetcher.get_text(url) for url in page_urls.values()),
         )
         write_raw(fetcher.records, "direct_providers", raw_dir, run_ts, dt)
 
-    raw_by_provider = dict(zip(RAW_PAGES, raw_pages, strict=True))
+    raw_by_source = dict(zip(page_urls, raw_pages, strict=True))
     deepinfra = deepinfra_rows(deepinfra, run_ts, dt)
-    together = together_rows(raw_by_provider.get("together"), run_ts, dt)
-    rows = deepinfra + together
+    together = together_rows(raw_by_source.get("together"), run_ts, dt)
+    fireworks = fireworks_rows(
+        {
+            model_id: raw_by_source.get(f"fireworks_model:{model_id}")
+            for model_id in FIREWORKS_MODEL_PAGES
+        },
+        run_ts,
+        dt,
+    )
+    rows = deepinfra + together + fireworks
     if rows:
         write_partition(pa.Table.from_pylist(rows), "direct_prices_daily", run_ts, dt, curated_dir)
     write_source_run(
@@ -212,13 +290,27 @@ async def capture_direct(
             "schema_version": "together_serverless_chat_v1",
         },
     )
+    write_source_run(
+        "direct_fireworks_pages",
+        status="success" if fireworks else "degraded",
+        rows=len(fireworks),
+        run_ts=run_ts,
+        dt=dt,
+        curated_dir=curated_dir,
+        detail={
+            "model_pages": FIREWORKS_MODEL_PAGES,
+            "source_type": "published_model_page",
+            "schema_version": "fireworks_serverless_model_page_v1",
+        },
+    )
     summary = {
         "run_ts": run_ts,
         "dt": dt,
         "deepinfra_models": len(deepinfra),
         "together_models": len(together),
+        "fireworks_models": len(fireworks),
         "direct_price_rows": len(rows),
-        "raw_pages": len(RAW_PAGES),
+        "raw_pages": len(page_urls),
     }
     log.info("direct capture complete: %s", summary)
     return summary

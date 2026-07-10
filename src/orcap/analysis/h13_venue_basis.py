@@ -5,9 +5,10 @@ take levied off-quote). Panel version (pre-registered): transient deviations
 around provider repricing events measure the router's quote-refresh latency.
 
 Providers covered = whatever ``capture_direct`` parses (currently DeepInfra's
-structured API and Together's published serverless-price table).  Source type
-is retained in the output: a docs-table observation is a posted list quote,
-not evidence of an API-level firm quote or a fill.
+structured API, Together's published serverless-price table, and a bounded
+Fireworks first-party model-page list).  Source type is retained in the output:
+published-page observations are posted list quotes, not evidence of an
+API-level firm quote or a fill.
 
   h13_basis          per provider × model × day: routed vs direct price, basis
   h13_summary        share of exact matches, basis distribution
@@ -27,7 +28,7 @@ log = logging.getLogger(__name__)
 # OpenRouter display name -> capture_direct provider key.  The model identifier
 # is joined exactly: provider aliases or product-name similarities never count
 # as a venue-basis match.
-PROVIDER_MAP = {"DeepInfra": "deepinfra", "Together": "together"}
+PROVIDER_MAP = {"DeepInfra": "deepinfra", "Together": "together", "Fireworks": "fireworks"}
 
 
 def load_routed() -> pd.DataFrame:
