@@ -98,7 +98,7 @@ uv run orcap capture --samples 3      # 15-min-slot behavior
 uv run orcap scrape --limit 10        # frontend charts for 10 model×variant combos
 uv run orcap capture-open-usage       # broad open-model download/pull and runtime-adoption proxies
 uv run orcap capture-gpu              # Vast offer book + public Ornn GPU index history
-uv run orcap market-capture --with-uniswap --with-akash
+uv run orcap market-capture --with-uniswap --with-akash  # dRPC recent-finality fallback; no archive backfill
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h31  # GPU rent/utilization screen
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h47  # exact-spec GPU quote basis
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h48  # routing-mechanism calibration sheet

@@ -91,7 +91,8 @@ candidate `https://eth.llamarpc.com` returned a browser challenge rather than
 JSON-RPC.  Neither is suitable as a production no-auth source.
 
 Do not silently fall back to a current-block-only query or treat an empty
-response as zero Uniswap activity.  The needed collector must use one of:
+response as zero Uniswap activity.  For historical or paper-grade collection,
+the needed collector must use one of:
 
 1. an archive-capable `ORCAP_ETHEREUM_RPC_URL` with an explicit cost/rate
    policy, then ingest finalized `Swap`, `Mint`, and `Burn` logs with a reorg
@@ -122,10 +123,27 @@ An archive-capable `ORCAP_ETHEREUM_RPC_URL` now has a bounded implementation
 path for this blocker: it queries verified `GPv2Settlement` `Trade` and
 `Settlement` logs after a reorg buffer. The collector keeps only a solver
 emitted by the same transaction's `Settlement` event, never the transaction
-sender. It is code-ready but **not yet source-qualified in production**: no
-configured archive endpoint has accumulated rows, and raw token amounts still
-need an explicit decimal/price mapping before they can support USD execution
-comparisons.
+sender. The archive/historical path is **not yet source-qualified in
+production**: no configured archive endpoint has accumulated rows, and raw
+token amounts still need an explicit decimal/price mapping before they can
+support USD execution comparisons. The separately qualified dRPC monitor below
+only supplies recent bounded observations.
+
+## Qualified with a bounded scope: dRPC public Ethereum log monitor
+
+dRPC documents `https://eth.drpc.org` as a public Ethereum RPC endpoint. In
+this run it served `eth_blockNumber` and bounded `eth_getLogs` requests for the
+two registered Uniswap pools and GPv2Settlement. After a 64-block finality
+buffer, the collector observed 75 Uniswap swaps and six liquidity events in a
+128-block window. dRPC added explicit `blockTimestamp` values to logs; the
+collector uses them only when its canonical block-header lookup is unavailable
+and records that fallback in the source ledger.
+
+This qualifies a live, bounded recent-finality monitor, not archival or
+market-wide coverage. It cannot repair missed periods, establish USD executable
+depth, or turn GPv2 Trade events into market-wide order/fill/surplus coverage.
+An operator-selected archive RPC remains the preferred source for a paper-grade
+historical panel.
 
 ## Qualified in this run: Novita public SSR pricing catalog
 
@@ -159,6 +177,21 @@ current Chutes OpenRouter endpoint covered by the configuration-verified map.
 This provides a model-configuration posted-quote comparison only. The public
 TEE flag is not an availability, execution, fill, or cryptographic-attestation
 claim, and the panel does not establish Chutes's routed share or cost.
+
+## Qualified in this run: Chutes public deployment configuration
+
+For each public catalog `chute_id`, `GET https://api.chutes.ai/chutes/{id}`
+returns the live public NodeSelector, active instance records, configured
+concurrency, cumulative invocation count, and a source-defined estimated hourly
+deployment price. The market collector records active instances times the
+configured GPUs per instance as `active_configured_gpu` alongside the raw
+fields and source definition.
+
+This is useful as a repeated decentralized-inference supply-state control. It
+is **not** available capacity, queue depth, throughput, tokens served, realized
+utilization, allocation, or a provider profit measure. In particular, a count
+of active configured GPUs must not be converted into an inference capacity or
+used to calibrate the routing mechanism's delivery constraint.
 
 ## Not qualified: Hyperbolic public inference pricing
 

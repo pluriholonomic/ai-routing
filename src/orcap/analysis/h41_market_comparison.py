@@ -33,6 +33,7 @@ MARKETS = {
     "geckoterminal": "defi_amm_indexed_control",
     "golem": "decentralized_compute",
     "akash": "decentralized_compute",
+    "chutes": "decentralized_compute",
 }
 
 
@@ -229,10 +230,11 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         }
         for source, group in panel.groupby("source")
     }
-    has_compute_capacity = bool(
-        (panel["metric"] == "reported_capacity").any()
-        and panel.loc[panel["metric"] == "reported_capacity", "value"].notna().any()
-    )
+    compute_capacity = panel[
+        (panel["market"] == "decentralized_compute")
+        & (panel["metric"] == "reported_capacity")
+    ]
+    has_compute_capacity = bool(compute_capacity["value"].notna().any())
     execution_sources = (
         executions["source"] if "source" in executions else pd.Series("", index=executions.index)
     )
@@ -267,8 +269,8 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         comparison_status = "gated: no non-null decentralized-compute capacity observation"
     elif not finalized_uniswap:
         comparison_status = (
-            "gated: live decentralized-compute capacity is observed, but no finalized Uniswap "
-            "swap execution panel is available"
+            "gated: decentralized-compute supply-state observations are present, but no "
+            "finalized Uniswap swap execution panel is available"
         )
     elif not finalized_uniswap_depth or not has_rfq_executions:
         comparison_status = (
@@ -293,7 +295,10 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             "finalized Uniswap depth and swap events",
             "market-wide CoW auction/settlement feed",
             "at least seven daily Akash GPU-capacity snapshots before dynamic estimates",
-            "an independent decentralized-compute capacity source if Golem becomes live again",
+            (
+                "repeated Chutes active-deployment configuration snapshots; they remain a supply "
+                "proxy, not availability, utilization, or routing outcomes"
+            ),
         ],
     }
     save_json(summary, out_dir, "h41_summary")
