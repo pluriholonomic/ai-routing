@@ -64,7 +64,10 @@ def main() -> None:
 
     sub.add_parser("discover", help="sniff a model page and dump internal API endpoints seen")
 
-    sub.add_parser("capture-gpu", help="snapshot GPU rental offers (vast.ai) + price indices")
+    sub.add_parser(
+        "capture-gpu",
+        help="snapshot Vast GPU offers plus Fabryka and Ornn public index histories",
+    )
 
     sub.add_parser("capture-direct", help="snapshot direct-provider list prices (H13 basis)")
 

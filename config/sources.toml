@@ -3,7 +3,7 @@ core = ["openrouter_api", "openrouter_frontend", "vast"]
 comparison = ["defillama", "cow", "golem", "akash", "uniswap"]
 capture = ["openrouter_api"]
 scrape = ["openrouter_frontend"]
-gpu = ["vast"]
+gpu = ["vast", "ornn"]
 market = ["defillama", "cow", "golem", "akash", "uniswap"]
 usage = ["huggingface_open_models", "ollama_library", "docker_hub"]
 
@@ -24,6 +24,12 @@ owner = "Vast.ai"
 required = true
 cadence_minutes = 130
 min_rows = 1
+
+[sources.ornn]
+owner = "Ornn AI"
+required = true
+cadence_minutes = 130
+min_rows = 5
 
 [sources.direct_providers]
 owner = "Direct inference providers"

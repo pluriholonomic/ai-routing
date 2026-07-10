@@ -10,7 +10,7 @@ memo template.  It intentionally does not contain the source dataset.
 
 ```text
 OpenRouter API / frontend APIs ─┐
-Vast + Fabryka GPU APIs         ├─> raw JSONL.gz (source of truth)
+Vast + Fabryka + Ornn GPU APIs  ├─> raw JSONL.gz (source of truth)
 Direct-provider / HF / devrel   ┘          │
                                              v
                                       curated parquet tables
@@ -34,7 +34,7 @@ only for an already-hydrated local mirror or test fixture.
 |---|---|---:|---|
 | `capture` | `models_snapshots`, `endpoints_snapshots`, `providers_snapshots`, `congestion_intraday` | 5-minute samples inside an hourly job | Captures all OpenRouter endpoint quotes; hot-40 models also get live 30-minute congestion. |
 | `scrape` | activity, app, endpoint-stat, uptime, effective-price, comparison, ranking tables | daily | Depends on undocumented frontend endpoints; preserve raw responses and treat schema or zero-count changes as source incidents. |
-| `capture-gpu` | `gpu_offers_snapshots`, `gpu_price_indices` | hourly | Vast is the active spot-book source; Fabryka is a short-history H100-equivalent index. |
+| `capture-gpu` | `gpu_offers_snapshots`, `gpu_price_indices`, `ornn_gpu_index_history` | hourly | Vast is the active spot-book source; Fabryka is a short-history H100-equivalent index; Ornn supplies public daily GPU compute-index history. |
 | `capture-direct` | `direct_prices_daily` | daily | Only DeepInfra currently produces structured prices.  The other named provider pages are raw HTML evidence, not usable rows. |
 | `capture-hf` | `hf_model_stats_daily` | daily | Leading demand signals for listed Hugging Face models. |
 | `capture-devrel` | `devrel_daily` | daily | NPM, PyPI, GitHub, and HN adoption proxies. |

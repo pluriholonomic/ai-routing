@@ -85,7 +85,7 @@ uv run orcap capture                  # one snapshot -> data/
 uv run orcap capture --samples 3      # 15-min-slot behavior
 uv run orcap scrape --limit 10        # frontend charts for 10 model×variant combos
 uv run orcap capture-open-usage       # broad open-model download/pull and runtime-adoption proxies
-uv run orcap capture-gpu              # open-GPU marketplace book
+uv run orcap capture-gpu              # Vast offer book + public Ornn GPU index history
 uv run orcap market-capture --with-uniswap --with-akash
 uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-like hypotheses)
 uv run orcap quality --profile core
