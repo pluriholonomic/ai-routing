@@ -127,6 +127,15 @@ for every provider/epoch that enters the resilience panel. A status of
 from a single failed request, and do not treat the resulting small owned-study
 panel as a platform-wide failure distribution.
 
+For the convex capacity-procurement extension, pre-register how the owner
+measures `capacity_linear_cost_usd_per_request` and
+`capacity_cost_curvature_usd_per_request_sq` before accepting any commitment.
+The former is a reservation-cost intercept and the latter a positive curvature
+parameter; neither may be inferred from a public quote. Keep the certified
+capacity ceiling, the cost methodology, and the delivery/bond rule separate so
+the single-parameter theorem is not misrepresented as private-capacity truth
+telling.
+
 ## H50 outputs and decision rule
 
 | output | meaning |

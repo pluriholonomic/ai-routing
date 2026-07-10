@@ -26,6 +26,21 @@ class ProviderOffer:
 
 
 @dataclass(frozen=True)
+class CapacityProcurementOffer:
+    """A certified capacity ceiling with a reported linear reservation cost.
+
+    The provider's capacity-acquisition cost is ``a_i k + b_i k^2 / 2`` up to
+    ``certified_capacity``. ``a_i`` is the single private report; the ceiling
+    and known positive curvature ``b_i`` are certified before procurement.
+    """
+
+    provider: str
+    reported_linear_cost: float
+    certified_capacity: float
+    capacity_cost_curvature: float
+
+
+@dataclass(frozen=True)
 class OutageScenario:
     """One joint provider-availability state for a fixed allocation epoch.
 
@@ -634,6 +649,258 @@ def procurement_report_diagnostic(
             }
         )
     return pd.DataFrame(rows)
+
+
+def capacity_procurement_allocation(
+    offers: list[CapacityProcurementOffer], demand: float
+) -> pd.Series:
+    """Minimize certified convex capacity-acquisition cost for a fixed demand.
+
+    The allocation solves ``min sum_i a_i k_i + b_i k_i^2 / 2`` subject to
+    ``sum_i k_i = min(demand, sum_i K_i)`` and ``0 <= k_i <= K_i``. It buys
+    every feasible unit when demand exceeds aggregate certified capacity. The
+    KKT solution is ``k_i = clip((lambda-a_i)/b_i, 0, K_i)``; this makes a
+    provider's capacity allocation weakly decreasing in its reported linear
+    cost.
+    """
+    if not isfinite(demand) or demand < 0:
+        raise ValueError("demand must be finite and non-negative")
+    _validate_capacity_procurement_offers(offers)
+    result = {offer.provider: 0.0 for offer in offers}
+    target = min(float(demand), sum(offer.certified_capacity for offer in offers))
+    if target == 0:
+        return pd.Series(result, dtype="float64")
+    if target == sum(offer.certified_capacity for offer in offers):
+        return pd.Series(
+            {offer.provider: offer.certified_capacity for offer in offers}, dtype="float64"
+        )
+    lower = min(offer.reported_linear_cost for offer in offers)
+    upper = max(
+        offer.reported_linear_cost + offer.capacity_cost_curvature * offer.certified_capacity
+        for offer in offers
+    )
+    for _ in range(100):
+        multiplier = (lower + upper) / 2
+        supplied = sum(_capacity_supply_at_multiplier(offer, multiplier) for offer in offers)
+        if supplied < target:
+            lower = multiplier
+        else:
+            upper = multiplier
+    return pd.Series(
+        {
+            offer.provider: _capacity_supply_at_multiplier(offer, upper)
+            for offer in offers
+        },
+        dtype="float64",
+    )
+
+
+def reported_capacity_procurement_allocation(
+    offers: list[CapacityProcurementOffer],
+    *,
+    provider: str,
+    reported_linear_cost: float,
+    demand: float,
+) -> float:
+    """Capacity assigned after one provider's single-parameter cost report."""
+    if not isfinite(reported_linear_cost) or reported_linear_cost < 0:
+        raise ValueError("reported_linear_cost must be finite and non-negative")
+    if provider not in {offer.provider for offer in offers}:
+        raise ValueError(f"unknown provider: {provider}")
+    reported_offers = [
+        (
+            CapacityProcurementOffer(
+                provider=offer.provider,
+                reported_linear_cost=reported_linear_cost,
+                certified_capacity=offer.certified_capacity,
+                capacity_cost_curvature=offer.capacity_cost_curvature,
+            )
+            if offer.provider == provider
+            else offer
+        )
+        for offer in offers
+    ]
+    return float(capacity_procurement_allocation(reported_offers, demand).get(provider, 0.0))
+
+
+def capacity_procurement_payment(
+    offers: list[CapacityProcurementOffer],
+    *,
+    provider: str,
+    reported_linear_cost: float,
+    demand: float,
+    cost_upper_bound: float,
+    quadrature_steps: int = 512,
+) -> float:
+    """Envelope payment for certified capacity procurement with convex cost.
+
+    For known curvature ``b_i`` and monotone capacity allocation ``k_i(r)``,
+    the transfer is ``r k_i(r) + b_i k_i(r)^2/2 + integral_r^abar k_i(z)dz``.
+    This is a numerical evaluation of the exact envelope formula, not a
+    budget-balance result or a solution to a privately chosen capacity ceiling.
+    """
+    _validate_capacity_procurement_payment_inputs(
+        offers, provider, reported_linear_cost, cost_upper_bound, quadrature_steps
+    )
+    offer = _capacity_procurement_offer(offers, provider)
+    allocation = reported_capacity_procurement_allocation(
+        offers,
+        provider=provider,
+        reported_linear_cost=reported_linear_cost,
+        demand=demand,
+    )
+    base_cost = (
+        reported_linear_cost * allocation
+        + offer.capacity_cost_curvature * allocation**2 / 2
+    )
+    if reported_linear_cost == cost_upper_bound:
+        return base_cost
+    step = (cost_upper_bound - reported_linear_cost) / quadrature_steps
+    previous = allocation
+    integral = 0.0
+    for index in range(1, quadrature_steps + 1):
+        report = reported_linear_cost + index * step
+        current = reported_capacity_procurement_allocation(
+            offers,
+            provider=provider,
+            reported_linear_cost=report,
+            demand=demand,
+        )
+        integral += (previous + current) * step / 2
+        previous = current
+    return base_cost + integral
+
+
+def capacity_procurement_utility(
+    offers: list[CapacityProcurementOffer],
+    *,
+    provider: str,
+    true_linear_cost: float,
+    reported_linear_cost: float,
+    demand: float,
+    cost_upper_bound: float,
+    quadrature_steps: int = 512,
+) -> float:
+    """Utility from a capacity-cost report under certified convex costs."""
+    if (
+        not isfinite(true_linear_cost)
+        or true_linear_cost < 0
+        or true_linear_cost > cost_upper_bound
+    ):
+        raise ValueError("true_linear_cost must lie in [0, cost_upper_bound]")
+    offer = _capacity_procurement_offer(offers, provider)
+    allocation = reported_capacity_procurement_allocation(
+        offers,
+        provider=provider,
+        reported_linear_cost=reported_linear_cost,
+        demand=demand,
+    )
+    payment = capacity_procurement_payment(
+        offers,
+        provider=provider,
+        reported_linear_cost=reported_linear_cost,
+        demand=demand,
+        cost_upper_bound=cost_upper_bound,
+        quadrature_steps=quadrature_steps,
+    )
+    true_cost = true_linear_cost * allocation + offer.capacity_cost_curvature * allocation**2 / 2
+    return payment - true_cost
+
+
+def capacity_procurement_report_diagnostic(
+    offers: list[CapacityProcurementOffer],
+    *,
+    provider: str,
+    true_linear_cost: float,
+    report_grid: list[float],
+    demand: float,
+    cost_upper_bound: float,
+    quadrature_steps: int = 512,
+) -> pd.DataFrame:
+    """Numerically audit monotonicity, DSIC, and IR for the capacity menu."""
+    rows = []
+    for report in report_grid:
+        allocation = reported_capacity_procurement_allocation(
+            offers, provider=provider, reported_linear_cost=report, demand=demand
+        )
+        payment = capacity_procurement_payment(
+            offers,
+            provider=provider,
+            reported_linear_cost=report,
+            demand=demand,
+            cost_upper_bound=cost_upper_bound,
+            quadrature_steps=quadrature_steps,
+        )
+        utility = capacity_procurement_utility(
+            offers,
+            provider=provider,
+            true_linear_cost=true_linear_cost,
+            reported_linear_cost=report,
+            demand=demand,
+            cost_upper_bound=cost_upper_bound,
+            quadrature_steps=quadrature_steps,
+        )
+        rows.append(
+            {
+                "reported_linear_cost": report,
+                "procured_capacity": allocation,
+                "payment": payment,
+                "utility_at_true_cost": utility,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _capacity_supply_at_multiplier(offer: CapacityProcurementOffer, multiplier: float) -> float:
+    return min(
+        offer.certified_capacity,
+        max(0.0, (multiplier - offer.reported_linear_cost) / offer.capacity_cost_curvature),
+    )
+
+
+def _capacity_procurement_offer(
+    offers: list[CapacityProcurementOffer], provider: str
+) -> CapacityProcurementOffer:
+    _validate_capacity_procurement_offers(offers)
+    for offer in offers:
+        if offer.provider == provider:
+            return offer
+    raise ValueError(f"unknown provider: {provider}")
+
+
+def _validate_capacity_procurement_offers(offers: list[CapacityProcurementOffer]) -> None:
+    if not offers:
+        raise ValueError("at least one capacity procurement offer is required")
+    if len({offer.provider for offer in offers}) != len(offers):
+        raise ValueError("provider names must be unique")
+    for offer in offers:
+        values = {
+            "reported_linear_cost": offer.reported_linear_cost,
+            "certified_capacity": offer.certified_capacity,
+            "capacity_cost_curvature": offer.capacity_cost_curvature,
+        }
+        if any(not isfinite(value) for value in values.values()):
+            raise ValueError("capacity procurement inputs must be finite")
+        if offer.reported_linear_cost < 0 or offer.certified_capacity < 0:
+            raise ValueError("capacity procurement cost and capacity must be non-negative")
+        if offer.capacity_cost_curvature <= 0:
+            raise ValueError("capacity_cost_curvature must be positive")
+
+
+def _validate_capacity_procurement_payment_inputs(
+    offers: list[CapacityProcurementOffer],
+    provider: str,
+    reported_linear_cost: float,
+    cost_upper_bound: float,
+    quadrature_steps: int,
+) -> None:
+    _capacity_procurement_offer(offers, provider)
+    if not isfinite(cost_upper_bound) or cost_upper_bound < 0:
+        raise ValueError("cost_upper_bound must be finite and non-negative")
+    if not isfinite(reported_linear_cost) or not 0 <= reported_linear_cost <= cost_upper_bound:
+        raise ValueError("reported_linear_cost must lie in [0, cost_upper_bound]")
+    if not isinstance(quadrature_steps, int) or quadrature_steps < 1:
+        raise ValueError("quadrature_steps must be a positive integer")
 
 
 def capacity_feasible(offer: ProviderOffer, allocated_requests: float) -> bool:

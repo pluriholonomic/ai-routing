@@ -119,6 +119,14 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
     if committed < 0:
         raise ValueError("committed_requests must be non-negative")
     failure_domains = _optional_string_list(record.get("failure_domains"), "failure_domains")
+    capacity_linear_cost = _number(record.get("capacity_linear_cost_usd_per_request"))
+    capacity_cost_curvature = _number(
+        record.get("capacity_cost_curvature_usd_per_request_sq")
+    )
+    if capacity_linear_cost is not None and capacity_linear_cost < 0:
+        raise ValueError("capacity_linear_cost_usd_per_request must be non-negative")
+    if capacity_cost_curvature is not None and capacity_cost_curvature <= 0:
+        raise ValueError("capacity_cost_curvature_usd_per_request_sq must be positive")
     return {
         "commitment_id": str(record["commitment_id"]),
         "observed_at": str(record["observed_at"]),
@@ -132,6 +140,8 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
         "marginal_cost_usd_per_request": _number(
             record.get("marginal_cost_usd_per_request")
         ),
+        "capacity_linear_cost_usd_per_request": capacity_linear_cost,
+        "capacity_cost_curvature_usd_per_request_sq": capacity_cost_curvature,
         "failure_domains_json": json.dumps(failure_domains, separators=(",", ":")),
         "metadata_json": json.dumps(
             record.get("metadata") or {}, separators=(",", ":"), sort_keys=True

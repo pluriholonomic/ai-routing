@@ -3,7 +3,11 @@ import pandas as pd
 import pytest
 
 from orcap.analysis import h48_capacity_mechanism as h48
-from orcap.analysis.h48_capacity_mechanism import allocation_calibration, enforcement_gate
+from orcap.analysis.h48_capacity_mechanism import (
+    allocation_calibration,
+    capacity_procurement_gate,
+    enforcement_gate,
+)
 from orcap.capacity_telemetry import write_commitments, write_outcomes
 from orcap.route_telemetry import write_attempts
 
@@ -69,6 +73,26 @@ def test_h48_capacity_gate_requires_matched_attempt_and_commitment_telemetry():
     assert gate["status"] == "partial_owned_telemetry"
     assert gate["identified_in_matched_controlled_study"]["succeeded_attempts"] == 1
     assert gate["identified_in_matched_controlled_study"]["shortfall_requests"] == 1.0
+
+
+def test_h48_capacity_procurement_gate_keeps_declared_costs_distinct_from_verification():
+    unobserved = capacity_procurement_gate(
+        {
+            "commitments": 1,
+            "capacity_linear_cost_observed": 0,
+            "capacity_cost_curvature_observed": 0,
+        }
+    )
+    assert unobserved["status"] == "cost_type_unobserved"
+    partial = capacity_procurement_gate(
+        {
+            "commitments": 100,
+            "capacity_linear_cost_observed": 100,
+            "capacity_cost_curvature_observed": 100,
+        }
+    )
+    assert partial["status"] == "declared_cost_type_coverage"
+    assert "do not verify private cost" in partial["claim_boundary"]
 
 
 def test_h48_matches_owned_attempts_to_same_provider_model_study_and_epoch(tmp_path, monkeypatch):

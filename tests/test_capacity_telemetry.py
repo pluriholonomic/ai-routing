@@ -21,6 +21,8 @@ def _commitment():
         "committed_requests": 120,
         "verification_method": "provider_signed_export",
         "marginal_cost_usd_per_request": 0.001,
+        "capacity_linear_cost_usd_per_request": 0.0002,
+        "capacity_cost_curvature_usd_per_request_sq": 0.00001,
         "failure_domains": ["cloud:example", "region:us-east"],
         "metadata": {"capacity_class": "reserved"},
     }
@@ -51,6 +53,8 @@ def test_capacity_commitment_contract_preserves_only_capacity_metadata():
     assert row["payload_retained"] is False
     assert row["metadata_json"] == '{"capacity_class":"reserved"}'
     assert row["failure_domains_json"] == '["cloud:example","region:us-east"]'
+    assert row["capacity_linear_cost_usd_per_request"] == 0.0002
+    assert row["capacity_cost_curvature_usd_per_request_sq"] == 0.00001
 
 
 def test_capacity_commitment_allows_explicit_zero_but_rejects_payloads():
@@ -67,6 +71,8 @@ def test_capacity_commitment_rejects_missing_and_negative_capacity():
         validate_commitment(_commitment() | {"model_id": ""})
     with pytest.raises(ValueError, match="non-negative"):
         validate_commitment(_commitment() | {"committed_requests": -1})
+    with pytest.raises(ValueError, match="curvature"):
+        validate_commitment(_commitment() | {"capacity_cost_curvature_usd_per_request_sq": 0})
 
 
 def test_capacity_commitment_write_uses_immutable_commitment_id(tmp_path):
