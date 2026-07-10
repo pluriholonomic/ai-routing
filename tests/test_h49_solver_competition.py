@@ -63,6 +63,33 @@ def test_h49_deduplicates_repeated_latest_snapshot_per_auction_solver():
     assert auctions.loc["a1", "relative_best_second_score_gap"] == pytest.approx(0.1)
 
 
+def test_h49_keeps_current_auction_order_counts_as_sampled_snapshot_metadata():
+    observations = pd.DataFrame(
+        [
+            {
+                "auction_id": "a1",
+                "run_ts": "20260710T000000Z",
+                "dt": "2026-07-10",
+                "candidate_order_count": 17,
+                "settlement_transaction_count": 2,
+                "auction_span_blocks": 4,
+            },
+            {
+                "auction_id": "a1",
+                "run_ts": "20260710T001500Z",
+                "dt": "2026-07-10",
+                "candidate_order_count": 19,
+                "settlement_transaction_count": 3,
+                "auction_span_blocks": 4,
+            },
+        ]
+    )
+    auction = auction_panel(_rows(), observations).set_index("auction_id").loc["a1"]
+    assert auction["candidate_order_count"] == 19
+    assert auction["settlement_transaction_count"] == 3
+    assert auction["auction_span_blocks"] == 4
+
+
 def test_h49_solver_frequencies_are_sampled_auction_statistics_only():
     solvers = solver_panel(_rows()).set_index("participant_id")
     assert solvers.loc["solver-a", "sampled_auctions"] == 2

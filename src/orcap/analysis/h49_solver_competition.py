@@ -9,6 +9,7 @@ estimator.
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
@@ -26,8 +27,11 @@ AUCTION_COLUMNS = [
     "auction_id",
     "run_ts",
     "dt",
+    "candidate_order_count",
     "candidate_solver_count",
     "winner_solver_count",
+    "settlement_transaction_count",
+    "auction_span_blocks",
     "score_observed_count",
     "best_competition_score",
     "second_competition_score",
@@ -82,6 +86,66 @@ def load_competitions() -> pd.DataFrame:
         return pd.DataFrame(columns=sorted(required))
 
 
+def load_auction_observations() -> pd.DataFrame:
+    """Load count-only fields from public sampled solver-competition snapshots.
+
+    ``auction.orders`` in the public response is a current batch's opaque order
+    UID list. We intentionally retain only its count and the settlement count;
+    neither is inferred to be full market-wide arrivals, fills, volume, or
+    demand. This lets H49 describe the intensity of the *observed* snapshots
+    without exposing identifiers that would invite a false order-flow claim.
+    """
+    glob = data.table_glob("market_events")
+    required = {"run_ts", "dt", "source", "event_type", "record_json"}
+    columns = [
+        "auction_id",
+        "run_ts",
+        "dt",
+        "candidate_order_count",
+        "settlement_transaction_count",
+        "auction_span_blocks",
+    ]
+    try:
+        schema = data.q(
+            f"describe select * from read_parquet('{glob}', union_by_name=true)"
+        ).df()
+        if not required.issubset(set(schema["column_name"])):
+            return pd.DataFrame(columns=columns)
+        rows = data.q(
+            f"""
+            select cast(run_ts as varchar) as run_ts,
+                   cast(dt as varchar) as dt,
+                   record_json
+            from read_parquet('{glob}', union_by_name=true)
+            where source = 'cow' and event_type = 'solver_competition_snapshot'
+            """
+        ).df()
+    except Exception as exc:
+        log.info("H49 auction observation data unavailable: %s", exc)
+        return pd.DataFrame(columns=columns)
+    parsed = []
+    for row in rows.itertuples(index=False):
+        try:
+            payload = json.loads(row.record_json)
+            start = int(payload["auction_start_block"])
+            deadline = int(payload["auction_deadline_block"])
+            parsed.append(
+                {
+                    "auction_id": str(payload["auction_id"]),
+                    "run_ts": row.run_ts,
+                    "dt": row.dt,
+                    "candidate_order_count": int(payload["candidate_order_count"]),
+                    "settlement_transaction_count": int(
+                        payload["settlement_transaction_count"]
+                    ),
+                    "auction_span_blocks": deadline - start,
+                }
+            )
+        except (AttributeError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            continue
+    return pd.DataFrame(parsed, columns=columns)
+
+
 def _deduplicate(rows: pd.DataFrame) -> pd.DataFrame:
     if rows.empty:
         return rows.copy()
@@ -96,7 +160,7 @@ def _deduplicate(rows: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def auction_panel(rows: pd.DataFrame) -> pd.DataFrame:
+def auction_panel(rows: pd.DataFrame, observations: pd.DataFrame | None = None) -> pd.DataFrame:
     """One observation per distinct sampled auction, with within-batch metrics."""
     rows = _deduplicate(rows)
     if rows.empty:
@@ -121,7 +185,32 @@ def auction_panel(rows: pd.DataFrame) -> pd.DataFrame:
                 "relative_best_second_score_gap": relative_gap,
             }
         )
-    return pd.DataFrame(results, columns=AUCTION_COLUMNS)
+    panel = pd.DataFrame(results)
+    if observations is not None and not observations.empty:
+        latest_observations = observations.sort_values("run_ts").drop_duplicates(
+            "auction_id", keep="last"
+        )
+        panel = panel.merge(
+            latest_observations.loc[
+                :,
+                [
+                    "auction_id",
+                    "candidate_order_count",
+                    "settlement_transaction_count",
+                    "auction_span_blocks",
+                ],
+            ],
+            on="auction_id",
+            how="left",
+        )
+    for column in (
+        "candidate_order_count",
+        "settlement_transaction_count",
+        "auction_span_blocks",
+    ):
+        if column not in panel:
+            panel[column] = None
+    return panel.loc[:, AUCTION_COLUMNS]
 
 
 def solver_panel(rows: pd.DataFrame) -> pd.DataFrame:
@@ -166,6 +255,10 @@ def summarize(auctions: pd.DataFrame, solvers: pd.DataFrame) -> dict:
         "n_candidate_solvers": int(len(solvers)),
         "median_candidate_solver_count": float(auctions["candidate_solver_count"].median()),
         "median_winner_solver_count": float(auctions["winner_solver_count"].median()),
+        "median_sampled_candidate_order_count": _median(auctions["candidate_order_count"]),
+        "median_sampled_settlement_transaction_count": _median(
+            auctions["settlement_transaction_count"]
+        ),
         "median_relative_best_second_score_gap": _median(
             auctions["relative_best_second_score_gap"]
         ),
@@ -180,6 +273,9 @@ def summarize(auctions: pd.DataFrame, solvers: pd.DataFrame) -> dict:
 
 
 def _median(values: pd.Series) -> float | None:
+    values = pd.to_numeric(values, errors="coerce").dropna()
+    if values.empty:
+        return None
     value = values.median()
     return float(value) if pd.notna(value) else None
 
@@ -194,7 +290,7 @@ def _claim_boundary() -> str:
 
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     rows = load_competitions()
-    auctions = auction_panel(rows)
+    auctions = auction_panel(rows, load_auction_observations())
     solvers = solver_panel(rows)
     save(auctions, out_dir, "h49_solver_competition_auctions")
     save(solvers, out_dir, "h49_solver_competition_solvers")

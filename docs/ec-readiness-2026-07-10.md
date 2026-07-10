@@ -66,7 +66,7 @@ counted as evidence.
 | Realized routing and capacity delivery | H48: zero route attempts, commitments, matches, or realized costs | Not identified |
 | Controlled policy effect | H50 has an immutable pre-registration, epoch-assignment, and clustered-estimation contract; no owned study rows | Not identified: tooling is not evidence |
 | Controlled reliability input | H54 has an immutable direct-provider audit schedule and exact lower-bound certificate; no owned audit rows | Not identified: tooling is not evidence |
-| CoW solver competition | H49 collector and local validation exist, but no published remote snapshots | Not yet accumulated; sampled snapshot only, never execution flow |
+| CoW solver competition | H49: 2 published sampled auctions across 1 day; 16 candidate solvers and a 7,915.5 median current-auction candidate-order count | Power-gated: needs 100 sampled auctions across 7 days; sampled state is never execution flow or market-wide order flow |
 | Direct-source breadth | DeepInfra is published; Cerebras and SambaNova structured adapters are merged and locally validated | Awaiting published repetitions |
 | Reproducibility | Full local suite: 201 passing tests after the reliability-reporting boundary addition | Strong engineering evidence, not empirical power |
 
