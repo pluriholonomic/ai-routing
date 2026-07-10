@@ -1,4 +1,5 @@
 import math
+from itertools import combinations_with_replacement
 
 import pandas as pd
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from orcap.mechanism import (
     CapacityProcurementOffer,
     CertifiedCostCurveOffer,
+    CollateralizedCapacityCurveOffer,
     OutageScenario,
     ProviderOffer,
     allocation_counterfactual,
@@ -26,6 +28,11 @@ from orcap.mechanism import (
     certified_cost_curve_vcg_report_diagnostic,
     certified_cost_curve_vcg_utility,
     certified_reliability_cost_allocation,
+    collateralized_capacity_vcg_allocation,
+    collateralized_capacity_vcg_payment,
+    collateralized_capacity_vcg_report_diagnostic,
+    collateralized_capacity_vcg_utility,
+    collateralized_reported_capacity,
     declared_capacity_payoff,
     declared_reliability_payoff,
     expected_delivered_under_outage_scenarios,
@@ -516,6 +523,83 @@ def test_cost_curve_vcg_rejects_nonconvex_or_uncertified_schedule_reports():
                 )
             ],
             demand=1,
+        )
+
+
+def test_collateralized_vcg_elicits_joint_private_capacity_and_cost_on_a_finite_grid():
+    outside, sentinel = 10.0, 100.0
+    offers = [
+        CollateralizedCapacityCurveOffer("a", 4, (1.0, 4.0, sentinel, sentinel)),
+        CollateralizedCapacityCurveOffer("b", 4, (2.0, 5.0, 6.0, sentinel)),
+    ]
+    allocation = collateralized_capacity_vcg_allocation(
+        offers,
+        demand=4,
+        outside_option_cost=outside,
+        shortfall_sentinel_cost=sentinel,
+    )
+    assert allocation.to_dict() == {"a": 2, "b": 2}
+    assert collateralized_reported_capacity(
+        offers[0], outside_option_cost=outside, shortfall_sentinel_cost=sentinel
+    ) == 2
+    payment = collateralized_capacity_vcg_payment(
+        offers,
+        provider="a",
+        demand=4,
+        outside_option_cost=outside,
+        shortfall_sentinel_cost=sentinel,
+    )
+    assert payment == pytest.approx(16.0)
+    assert collateralized_capacity_vcg_utility(
+        offers,
+        provider="a",
+        true_marginal_costs=(1.0, 4.0, sentinel, sentinel),
+        demand=4,
+        outside_option_cost=outside,
+        shortfall_sentinel_cost=sentinel,
+    ) == pytest.approx(11.0)
+
+    report_grid = [
+        tuple(costs) + (sentinel,) * (4 - capacity)
+        for capacity in range(5)
+        for costs in combinations_with_replacement((0.0, 1.0, 4.0, 7.0), capacity)
+    ]
+    diagnostic = collateralized_capacity_vcg_report_diagnostic(
+        offers,
+        provider="a",
+        true_marginal_costs=(1.0, 4.0, sentinel, sentinel),
+        report_schedules=report_grid,
+        demand=4,
+        outside_option_cost=outside,
+        shortfall_sentinel_cost=sentinel,
+    )
+    truthful = diagnostic.loc[
+        diagnostic["reported_marginal_costs"] == (1.0, 4.0, sentinel, sentinel),
+        "utility_at_true_capacity_and_cost",
+    ].iat[0]
+    assert truthful >= diagnostic["utility_at_true_capacity_and_cost"].max() - 1e-9
+    assert truthful >= 0.0
+    over = diagnostic.loc[
+        diagnostic["reported_marginal_costs"] == (1.0, 4.0, 4.0, sentinel)
+    ].iloc[0]
+    assert over["defaulted_reserved_units_at_true_capacity"] == 1
+    assert over["utility_at_true_capacity_and_cost"] < truthful
+
+
+def test_collateralized_vcg_rejects_a_nonmonotone_or_costlier_delivery_than_fallback():
+    with pytest.raises(ValueError, match="non-decreasing"):
+        collateralized_capacity_vcg_allocation(
+            [CollateralizedCapacityCurveOffer("a", 3, (1.0, 100.0, 2.0))],
+            demand=1,
+            outside_option_cost=10.0,
+            shortfall_sentinel_cost=100.0,
+        )
+    with pytest.raises(ValueError, match="below outside"):
+        collateralized_capacity_vcg_allocation(
+            [CollateralizedCapacityCurveOffer("a", 2, (11.0, 100.0))],
+            demand=1,
+            outside_option_cost=10.0,
+            shortfall_sentinel_cost=100.0,
         )
 
 
