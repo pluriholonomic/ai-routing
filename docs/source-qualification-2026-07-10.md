@@ -59,6 +59,29 @@ the same posted prices. This supports one source-qualified H13 pair, not a
 market-wide passthrough or fill claim. Preview status remains in provenance;
 the collector does not silently treat preview availability as a production SLA.
 
+## Qualified in this run: SambaNova public model API
+
+SambaNova's unauthenticated `https://api.sambanova.ai/v1/models` response
+provides literal model IDs and separate `pricing.prompt` and
+`pricing.completion` values per token. The current live response contained six
+models. It is therefore a structured public list-price source, not an account
+usage feed or fill record.
+
+Most SambaNova IDs remain in the raw direct catalog without an H13 crosswalk.
+The sole initial map, in [`direct_model_maps.toml`](../config/direct_model_maps.toml),
+is deliberately one-to-one and versioned: SambaNova `gpt-oss-120b` maps to
+OpenRouter `openai/gpt-oss-120b`. The direct catalog and current OpenRouter
+SambaNova endpoint are both retained as verification URLs, although the
+OpenRouter endpoint currently omits a provider-specific model ID. This is not
+a fuzzy name match.
+
+The live check found a posted difference for that mapped model: SambaNova
+listed `$0.22/M` input and `$0.59/M` output, while OpenRouter listed its
+SambaNova route at `$0.14/M` and `$0.95/M`. It is one current posted-price
+observation, not evidence of a fee, execution price, route selection, or
+market-wide basis. H13 remains power-gated until repeated and broad coverage
+accumulates.
+
 ## Rejected for automatic collection: credential-free Ethereum RPC
 
 The candidate `https://ethereum-rpc.publicnode.com` answered

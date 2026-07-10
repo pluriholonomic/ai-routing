@@ -31,15 +31,17 @@ MIN_PROVIDERS = 3
 MIN_PAIRS_PER_PROVIDER = 10
 
 # OpenRouter display name -> capture_direct provider key. The model key is
-# joined exactly: it is usually the provider API id, and for Cerebras can be a
-# literal first-party ``hugging_face_id`` supplied by its model API. Provider
-# aliases or product-name similarities never count as a venue-basis match.
+# joined exactly: it is usually the provider API id, can be a literal
+# first-party ``hugging_face_id`` (Cerebras), or a versioned, evidence-backed
+# one-to-one canonical map (SambaNova). Provider aliases or product-name
+# similarities never count as a venue-basis match.
 PROVIDER_MAP = {
     "Cerebras": "cerebras",
     "DeepInfra": "deepinfra",
     "Together": "together",
     "Fireworks": "fireworks",
     "Groq": "groq",
+    "SambaNova": "sambanova",
 }
 
 
@@ -95,16 +97,21 @@ def load_direct() -> pd.DataFrame:
         else "'structured_public_api'"
     )
     source_url = "direct.source_url" if "source_url" in columns else "cast(null as varchar)"
+    model_name = (
+        "coalesce(nullif(direct.canonical_model_id, ''), direct.model_name)"
+        if "canonical_model_id" in columns
+        else "direct.model_name"
+    )
     return data.q(
         f"""
         with latest_per_day as (
             select cast(direct.dt as varchar) as dt, direct.run_ts, direct.provider,
-                   direct.model_name, direct.price_input_usd as direct_in,
+                   {model_name} as model_name, direct.price_input_usd as direct_in,
                    direct.price_output_usd as direct_out,
                    {source_type} as source_type,
                    {source_url} as source_url,
                    row_number() over (
-                       partition by direct.dt, direct.provider, direct.model_name
+                       partition by direct.dt, direct.provider, {model_name}
                        order by direct.run_ts desc
                    ) as recency_rank
             from read_parquet('{glob}', union_by_name=true) as direct

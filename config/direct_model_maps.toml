@@ -1,0 +1,13 @@
+# Versioned one-to-one maps used only when a direct provider's public API ID
+# differs from OpenRouter's canonical model ID. Do not add display-name or
+# family-level mappings here: each entry needs a direct-source and a current
+# OpenRouter provider-pair verification URL.
+
+[maps.sambanova_gpt_oss_120b]
+provider = "sambanova"
+direct_provider_model_id = "gpt-oss-120b"
+canonical_model_id = "openai/gpt-oss-120b"
+mapping_type = "verified_router_canonical_pair_v1"
+direct_source_url = "https://api.sambanova.ai/v1/models"
+router_evidence_url = "https://openrouter.ai/api/v1/models/openai/gpt-oss-120b/endpoints"
+notes = "OpenRouter's current SambaNova endpoint exposes the canonical ID but no provider_model_id; SambaNova's public catalog exposes gpt-oss-120b."

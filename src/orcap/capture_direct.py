@@ -21,6 +21,8 @@ import asyncio
 import json
 import logging
 import re
+import tomllib
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +38,7 @@ log = logging.getLogger(__name__)
 
 DEEPINFRA_URL = "https://api.deepinfra.com/models/list"
 CEREBRAS_MODELS_URL = "https://api.cerebras.ai/public/v1/models"
+SAMBANOVA_MODELS_URL = "https://api.sambanova.ai/v1/models"
 TOGETHER_SERVERLESS_MODELS_URL = "https://docs.together.ai/docs/serverless/models"
 GROQ_MODELS_URL = "https://console.groq.com/docs/models"
 FIREWORKS_MODEL_PAGES = {
@@ -61,6 +64,7 @@ _FIREWORKS_SERVERLESS_PRICE = re.compile(
     r"\$(?P<input>\d+(?:\.\d+)?)\s*/\s*\$(?P<cached>\d+(?:\.\d+)?)\s*/\s*"
     r"\$(?P<output>\d+(?:\.\d+)?)\s*Per 1M Tokens \(input/cached input/output\)"
 )
+DIRECT_MODEL_MAPS_PATH = Path(__file__).resolve().parents[2] / "config" / "direct_model_maps.toml"
 DIRECT_PRICE_SCHEMA = pa.schema(
     [
         pa.field("run_ts", pa.string()),
@@ -68,6 +72,7 @@ DIRECT_PRICE_SCHEMA = pa.schema(
         pa.field("provider", pa.string()),
         pa.field("model_name", pa.string()),
         pa.field("direct_provider_model_id", pa.string()),
+        pa.field("canonical_model_id", pa.string()),
         pa.field("model_identifier_type", pa.string()),
         pa.field("model_type", pa.string()),
         pa.field("price_input_usd", pa.float64()),
@@ -97,6 +102,25 @@ def _number(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+@lru_cache(maxsize=1)
+def direct_model_maps() -> dict[tuple[str, str], dict[str, str]]:
+    """Load only versioned one-to-one direct-to-canonical identity maps."""
+    with DIRECT_MODEL_MAPS_PATH.open("rb") as handle:
+        raw = tomllib.load(handle).get("maps", {})
+    result = {}
+    for mapping in raw.values():
+        if not isinstance(mapping, dict):
+            continue
+        provider = mapping.get("provider")
+        provider_model_id = mapping.get("direct_provider_model_id")
+        canonical_model_id = mapping.get("canonical_model_id")
+        if provider and provider_model_id and canonical_model_id:
+            result[(str(provider), str(provider_model_id))] = {
+                key: str(value) for key, value in mapping.items() if value is not None
+            }
+    return result
 
 
 def _usd_per_token(value: str) -> float | None:
@@ -181,6 +205,7 @@ def cerebras_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
                 "provider": "cerebras",
                 "model_name": str(canonical_model_id),
                 "direct_provider_model_id": str(provider_model_id),
+                "canonical_model_id": str(canonical_model_id),
                 "model_identifier_type": (
                     "first_party_hugging_face_id"
                     if item.get("hugging_face_id")
@@ -196,6 +221,53 @@ def cerebras_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
                 "source_type": "structured_public_api",
                 "source_url": CEREBRAS_MODELS_URL,
                 "source_schema_version": "cerebras_public_models_v1",
+                "record_json": json.dumps(item, separators=(",", ":"), sort_keys=True),
+            }
+        )
+    return rows
+
+
+def sambanova_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize SambaNova's unauthenticated structured public model catalog."""
+    models = body.get("data") if isinstance(body, dict) else body
+    if not isinstance(models, list):
+        return []
+    rows = []
+    maps = direct_model_maps()
+    for item in models:
+        if not isinstance(item, dict):
+            continue
+        provider_model_id = item.get("id")
+        pricing = item.get("pricing") or {}
+        prompt, completion = _number(pricing.get("prompt")), _number(pricing.get("completion"))
+        if not provider_model_id or prompt is None or completion is None:
+            continue
+        if prompt <= 0 or completion <= 0:
+            continue
+        mapping = maps.get(("sambanova", str(provider_model_id)))
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "provider": "sambanova",
+                "model_name": str(provider_model_id),
+                "direct_provider_model_id": str(provider_model_id),
+                "canonical_model_id": (
+                    mapping.get("canonical_model_id") if mapping is not None else None
+                ),
+                "model_identifier_type": (
+                    mapping.get("mapping_type") if mapping is not None else "provider_api_id"
+                ),
+                "model_type": "chat",
+                "price_input_usd": prompt,
+                "price_output_usd": completion,
+                "price_cached_input_usd": _number(pricing.get("input_cache_read")),
+                "deprecated": False,
+                "preview": False,
+                "quote_unit": "usd_per_token",
+                "source_type": "structured_public_api",
+                "source_url": SAMBANOVA_MODELS_URL,
+                "source_schema_version": "sambanova_public_models_v1",
                 "record_json": json.dumps(item, separators=(",", ":"), sort_keys=True),
             }
         )
@@ -385,9 +457,10 @@ async def capture_direct(
     }
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
-        deepinfra, cerebras, *raw_pages = await asyncio.gather(
+        deepinfra, cerebras, sambanova, *raw_pages = await asyncio.gather(
             fetcher.get_json(DEEPINFRA_URL),
             fetcher.get_json(CEREBRAS_MODELS_URL),
+            fetcher.get_json(SAMBANOVA_MODELS_URL),
             *(fetcher.get_text(url) for url in page_urls.values()),
         )
         write_raw(fetcher.records, "direct_providers", raw_dir, run_ts, dt)
@@ -395,6 +468,7 @@ async def capture_direct(
     raw_by_source = dict(zip(page_urls, raw_pages, strict=True))
     deepinfra = deepinfra_rows(deepinfra, run_ts, dt)
     cerebras = cerebras_rows(cerebras, run_ts, dt)
+    sambanova = sambanova_rows(sambanova, run_ts, dt)
     groq = groq_rows(raw_by_source.get("groq"), run_ts, dt)
     together = together_rows(raw_by_source.get("together"), run_ts, dt)
     fireworks = fireworks_rows(
@@ -405,7 +479,7 @@ async def capture_direct(
         run_ts,
         dt,
     )
-    rows = deepinfra + cerebras + groq + together + fireworks
+    rows = deepinfra + cerebras + sambanova + groq + together + fireworks
     if rows:
         write_partition(direct_price_table(rows), "direct_prices_daily", run_ts, dt, curated_dir)
     write_source_run(
@@ -434,6 +508,22 @@ async def capture_direct(
             "url": CEREBRAS_MODELS_URL,
             "source_type": "structured_public_api",
             "schema_version": "cerebras_public_models_v1",
+        },
+    )
+    write_source_run(
+        "direct_sambanova_api",
+        status="success" if sambanova else "degraded",
+        rows=len(sambanova),
+        run_ts=run_ts,
+        dt=dt,
+        curated_dir=curated_dir,
+        detail={
+            "url": SAMBANOVA_MODELS_URL,
+            "source_type": "structured_public_api",
+            "schema_version": "sambanova_public_models_v1",
+            "verified_canonical_maps": sum(
+                row["canonical_model_id"] is not None for row in sambanova
+            ),
         },
     )
     write_source_run(
@@ -467,6 +557,7 @@ async def capture_direct(
         "dt": dt,
         "deepinfra_models": len(deepinfra),
         "cerebras_models": len(cerebras),
+        "sambanova_models": len(sambanova),
         "groq_models": len(groq),
         "together_models": len(together),
         "fireworks_models": len(fireworks),

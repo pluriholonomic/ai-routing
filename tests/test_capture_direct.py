@@ -10,12 +10,14 @@ from orcap.capture_direct import (
     DEEPINFRA_URL,
     FIREWORKS_MODEL_PAGES,
     GROQ_MODELS_URL,
+    SAMBANOVA_MODELS_URL,
     TOGETHER_SERVERLESS_MODELS_URL,
     cerebras_rows,
     deepinfra_rows,
     direct_price_table,
     fireworks_rows,
     groq_rows,
+    sambanova_rows,
     together_rows,
 )
 
@@ -81,6 +83,47 @@ def test_cerebras_rows_reject_missing_or_non_positive_prices():
         "20260710T000000Z",
         "2026-07-10",
     ) == []
+
+
+def test_sambanova_rows_keep_versioned_verified_canonical_map():
+    rows = sambanova_rows(
+        {
+            "data": [
+                {
+                    "id": "gpt-oss-120b",
+                    "pricing": {"prompt": "0.00000022", "completion": "0.00000059"},
+                }
+            ]
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["model_name"] == "gpt-oss-120b"
+    assert row["direct_provider_model_id"] == "gpt-oss-120b"
+    assert row["canonical_model_id"] == "openai/gpt-oss-120b"
+    assert row["model_identifier_type"] == "verified_router_canonical_pair_v1"
+    assert row["price_input_usd"] == 0.00000022
+    assert row["price_output_usd"] == 0.00000059
+    assert row["source_url"] == SAMBANOVA_MODELS_URL
+
+
+def test_sambanova_rows_keep_unmapped_id_without_fuzzy_crosswalk():
+    rows = sambanova_rows(
+        {
+            "data": [
+                {
+                    "id": "DeepSeek-V3.1",
+                    "pricing": {"prompt": "0.000003", "completion": "0.0000045"},
+                }
+            ]
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["canonical_model_id"] is None
+    assert rows[0]["model_identifier_type"] == "provider_api_id"
 
 
 def test_direct_price_table_keeps_later_provider_provenance_columns():
@@ -241,6 +284,30 @@ def test_h13_maps_cerebras_to_first_party_canonical_model_key(monkeypatch):
     monkeypatch.setattr(h13_venue_basis.data, "q", lambda _sql: Relation())
     routed = h13_venue_basis.load_routed()
     assert routed.loc[0, "provider"] == "cerebras"
+    assert routed.loc[0, "model_name"] == "openai/gpt-oss-120b"
+
+
+def test_h13_maps_sambanova_to_versioned_canonical_pair_key(monkeypatch):
+    class Relation:
+        def df(self):
+            return pd.DataFrame(
+                [
+                    {
+                        "dt": "2026-07-10",
+                        "provider_display_name": "SambaNova",
+                        "record_json": json.dumps(
+                            {
+                                "model_id": "openai/gpt-oss-120b",
+                                "pricing": {"prompt": "0.00000014", "completion": "0.00000095"},
+                            }
+                        ),
+                    }
+                ]
+            )
+
+    monkeypatch.setattr(h13_venue_basis.data, "q", lambda _sql: Relation())
+    routed = h13_venue_basis.load_routed()
+    assert routed.loc[0, "provider"] == "sambanova"
     assert routed.loc[0, "model_name"] == "openai/gpt-oss-120b"
 
 
