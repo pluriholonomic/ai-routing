@@ -6,6 +6,7 @@ from orcap.mechanism import (
     allocation_shares,
     capacity_bond_floor,
     capacity_constrained_allocation,
+    declared_capacity_payoff,
     own_price_share_elasticity,
     realized_provider_payoff,
 )
@@ -91,3 +92,27 @@ def test_capacity_counterfactual_exposes_shortfall_and_unfilled_residual():
     assert counterfactual.loc["cheap", "uncapped_capacity_shortfall"] == 70
     assert counterfactual["capacity_certified_allocated"].sum() == 30
     assert (counterfactual["capacity_certified_unfilled_demand"] == 70).all()
+
+
+def test_hard_capacity_overreport_is_worse_when_it_creates_shortfall():
+    offers = [
+        ProviderOffer("a", price=1, reliability=1, committed_capacity=30, marginal_cost=0.4),
+        ProviderOffer("b", price=1, reliability=1, committed_capacity=100, marginal_cost=0.4),
+    ]
+    truthful = declared_capacity_payoff(
+        offers,
+        provider="a",
+        actual_capacity=30,
+        reported_capacity=30,
+        demand=100,
+        bond_per_missed_request=0.1,
+    )
+    overreported = declared_capacity_payoff(
+        offers,
+        provider="a",
+        actual_capacity=30,
+        reported_capacity=100,
+        demand=100,
+        bond_per_missed_request=0.1,
+    )
+    assert truthful > overreported
