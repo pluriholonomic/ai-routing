@@ -39,6 +39,7 @@ MAX_ROUTED_QUOTE_GAP_MINUTES = 180
 # similarities never count as a venue-basis match.
 PROVIDER_MAP = {
     "Cerebras": "cerebras",
+    "Chutes": "chutes",
     "DeepInfra": "deepinfra",
     "Together": "together",
     "Fireworks": "fireworks",
@@ -182,6 +183,11 @@ def load_direct() -> pd.DataFrame:
         if "canonical_model_id" in columns
         else "direct.model_name"
     )
+    direct_provider_model_id = (
+        "coalesce(nullif(direct.direct_provider_model_id, ''), direct.model_name)"
+        if "direct_provider_model_id" in columns
+        else "direct.model_name"
+    )
     # materialize the scan before filtering: planning comparisons directly over a
     # union_by_name parquet scan can hit DuckDB's NumericValueUnionToValue internal
     # error when merging file-level column statistics (duckdb/duckdb#18267)
@@ -189,26 +195,39 @@ def load_direct() -> pd.DataFrame:
     con.execute(
         f"create temp table _h13_direct as select * from read_parquet('{glob}', union_by_name=true)"
     )
-    return con.sql(
+    direct = con.sql(
         f"""
-        with latest_per_day as (
-            select cast(direct.dt as varchar) as dt, direct.run_ts, direct.provider,
+        select cast(direct.dt as varchar) as dt, direct.run_ts, direct.provider,
+               {direct_provider_model_id} as direct_provider_model_id,
                    {model_name} as model_name, direct.price_input_usd as direct_in,
                    direct.price_output_usd as direct_out,
                    {source_type} as source_type,
-                   {source_url} as source_url,
-                   row_number() over (
-                       partition by direct.dt, direct.provider, {model_name}
-                       order by direct.run_ts desc
-                   ) as recency_rank
-            from _h13_direct as direct
-            where not direct.deprecated
-              and direct.price_input_usd > 0
-              and direct.price_output_usd > 0
-        )
-        select * exclude (recency_rank) from latest_per_day where recency_rank = 1
+               {source_url} as source_url
+        from _h13_direct as direct
+        where not direct.deprecated
+          and direct.price_input_usd > 0
+          and direct.price_output_usd > 0
         """
     ).df()
+    return latest_direct_by_provider_id(direct)
+
+
+def latest_direct_by_provider_id(direct: pd.DataFrame) -> pd.DataFrame:
+    """Keep the latest price for a stable direct-provider identity.
+
+    A versioned canonical mapping can legitimately become available after an
+    earlier raw capture. Deduplicating by canonical name would then retain both
+    the old raw id and new mapped name as separate economic observations. The
+    direct provider's own id is the stable identity; apply canonical mapping
+    only after taking its latest same-day observation.
+    """
+    if direct.empty:
+        return direct
+    return (
+        direct.sort_values("run_ts")
+        .drop_duplicates(["dt", "provider", "direct_provider_model_id"], keep="last")
+        .reset_index(drop=True)
+    )
 
 
 def nearest_same_day_quotes(direct: pd.DataFrame, routed: pd.DataFrame) -> pd.DataFrame:

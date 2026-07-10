@@ -144,6 +144,22 @@ the same displayed list prices. This supports only exact-ID direct-versus-routed
 posted-quote comparisons. It does not identify executions, provider cost,
 route-selection probability, or realized consumer spend.
 
+## Qualified in this run: Chutes public model catalog
+
+Chutes exposes an unauthenticated `GET https://llm.chutes.ai/v1/models`
+catalog with literal API IDs, model roots, quantization, and USD-per-million
+input/output prices. The collector admits only positive numeric fields in that
+structured response. Chutes's direct IDs carry a `-TEE` product suffix while
+OpenRouter's provider endpoints use canonical IDs, so the H13 join does **not**
+strip or normalize strings. It uses only a versioned one-to-one map whose
+expected catalog root and quantization must both match at capture time.
+
+The live catalog had 13 priceable entries on 2026-07-10. Eight had an active
+current Chutes OpenRouter endpoint covered by the configuration-verified map.
+This provides a model-configuration posted-quote comparison only. The public
+TEE flag is not an availability, execution, fill, or cryptographic-attestation
+claim, and the panel does not establish Chutes's routed share or cost.
+
 ## Not qualified: Hyperbolic public inference pricing
 
 On 2026-07-10, an unauthenticated request to Hyperbolic's documented
