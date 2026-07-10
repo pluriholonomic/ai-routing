@@ -67,6 +67,17 @@ USDC_ADDRESS = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 WETH_ADDRESS = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
 UNISWAP_V3_QUOTER_V2_ADDRESS = "0x61ffe014ba17989e743c5f6cb21bf9697530b21e"
 UNISWAP_V3_QUOTE_EXACT_INPUT_SINGLE_SELECTOR = "c6a5026a"
+UNISWAP_V3_MULTICALL2_ADDRESS = "0x5ba1e12693dc8f9c48aad8770482f4739beed696"
+UNISWAP_V3_TICK_LENS_ADDRESS = "0xbfd8137f7d1516d3ea5ca83523914859ec47f573"
+UNISWAP_V3_MULTICALL2_AGGREGATE_SELECTOR = "252dba42"
+UNISWAP_V3_TICK_LENS_SELECTOR = "351fb478"
+UNISWAP_V3_TICK_SPACING_SELECTOR = "d0c93a7c"
+UNISWAP_V3_SLOT0_SELECTOR = "3850c7bd"
+UNISWAP_V3_LIQUIDITY_SELECTOR = "1a686502"
+UNISWAP_V3_MIN_TICK = -887272
+UNISWAP_V3_MAX_TICK = 887272
+DEFAULT_UNISWAP_TICK_BOOK_BATCH_WORDS = 25
+DEFAULT_UNISWAP_TICK_BOOK_MAX_ROWS_PER_POOL = 100_000
 # These are deliberately a sparse, bounded ladder.  A derived capacity point
 # is a lower bound at a declared all-in price-deterioration threshold, not a
 # claim to have reconstructed the full V3 tick book or a firm fillable quote.
@@ -143,6 +154,13 @@ def _abi_uint(value: int, *, bits: int = 256) -> str:
     return f"{value:064x}"
 
 
+def _abi_int(value: int, *, bits: int = 256) -> str:
+    """Encode one bounded signed ABI integer with a full 32-byte word."""
+    if not isinstance(value, int) or not -(2 ** (bits - 1)) <= value < 2 ** (bits - 1):
+        raise ValueError(f"signed {bits}-bit ABI value is out of range")
+    return f"{value % 2**256:064x}"
+
+
 def _word(data: Any, index: int) -> int | None:
     """Decode a 32-byte ABI word from a hexadecimal event-data string."""
     if not isinstance(data, str):
@@ -182,6 +200,105 @@ def _dynamic_bytes(data: Any, offset_index: int) -> str | None:
     if len(value) < end:
         return None
     return "0x" + value[start:end]
+
+
+def _uniswap_tick_lens_calldata(pool_id: str, word_position: int) -> str:
+    """Encode TickLens's one-word populated-tick view call."""
+    return "0x" + UNISWAP_V3_TICK_LENS_SELECTOR + _abi_address(pool_id) + _abi_int(
+        word_position, bits=16
+    )
+
+
+def _multicall2_aggregate_calldata(calls: list[tuple[str, str]]) -> str:
+    """Encode Multicall2 aggregate((address,bytes)[]) without a web3 dependency."""
+    if not calls:
+        raise ValueError("Multicall2 aggregate requires at least one call")
+    encoded_calls = []
+    for target, calldata in calls:
+        data = calldata.removeprefix("0x")
+        if len(data) % 2:
+            raise ValueError("Multicall calldata must contain complete bytes")
+        try:
+            int(data or "0", 16)
+        except ValueError as exc:
+            raise ValueError("Multicall calldata must be hexadecimal") from exc
+        padded = data.ljust(((len(data) + 63) // 64) * 64, "0")
+        encoded_calls.append(
+            _abi_address(target)
+            + _abi_uint(64)
+            + _abi_uint(len(data) // 2)
+            + padded
+        )
+    offsets, position = [], 32 * len(encoded_calls)
+    for encoded in encoded_calls:
+        offsets.append(_abi_uint(position))
+        position += len(encoded) // 2
+    # The top-level function argument is one dynamic array. Within that array,
+    # offsets to each dynamic tuple are relative to the array payload after its
+    # length word, as specified by the ABI's tuple encoding rule.
+    return (
+        "0x"
+        + UNISWAP_V3_MULTICALL2_AGGREGATE_SELECTOR
+        + _abi_uint(32)
+        + _abi_uint(len(encoded_calls))
+        + "".join(offsets)
+        + "".join(encoded_calls)
+    )
+
+
+def _multicall2_aggregate_result(data: Any) -> tuple[int, list[str]] | None:
+    """Decode Multicall2's ``(uint256 blockNumber, bytes[] returnData)`` result."""
+    block_number, array_offset = _word(data, 0), _word(data, 1)
+    if block_number is None or array_offset is None or array_offset % 32:
+        return None
+    array_word = array_offset // 32
+    count = _word(data, array_word)
+    if count is None or count > 10_000:
+        return None
+    head_start = array_offset + 32
+    values = []
+    for index in range(count):
+        relative_offset = _word(data, array_word + 1 + index)
+        if relative_offset is None or relative_offset % 32:
+            return None
+        item_start = head_start + relative_offset
+        item_word = item_start // 32
+        length = _word(data, item_word)
+        if length is None:
+            return None
+        raw = str(data).removeprefix("0x")
+        start, end = (item_start + 32) * 2, (item_start + 32 + length) * 2
+        if len(raw) < end:
+            return None
+        values.append("0x" + raw[start:end])
+    return block_number, values
+
+
+def _tick_lens_populated_ticks(data: Any) -> list[dict[str, int]] | None:
+    """Decode TickLens's dynamic ``PopulatedTick[]`` output for one bitmap word."""
+    offset = _word(data, 0)
+    if offset is None or offset % 32:
+        return None
+    start_word = offset // 32
+    count = _word(data, start_word)
+    # A bitmap word has exactly 256 positions, so more records is malformed.
+    if count is None or count > 256:
+        return None
+    result = []
+    for index in range(count):
+        tick = _signed_word(data, start_word + 1 + 3 * index)
+        liquidity_net = _signed_word(data, start_word + 2 + 3 * index)
+        liquidity_gross = _word(data, start_word + 3 + 3 * index)
+        if tick is None or liquidity_net is None or liquidity_gross is None:
+            return None
+        result.append(
+            {
+                "tick": tick,
+                "liquidity_net_raw": liquidity_net,
+                "liquidity_gross_raw": liquidity_gross,
+            }
+        )
+    return result
 
 
 def _topic_address(topics: Any, index: int) -> str | None:
@@ -795,6 +912,76 @@ def uniswap_quoter_impact_capacity_rows(
                     ),
                 }
             )
+    return rows
+
+
+def uniswap_tick_book_rows(
+    tick_records: list[dict[str, Any]], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize a complete, block-pinned V3 initialized-tick snapshot.
+
+    This is exact virtual-liquidity state for a registered pool across its
+    usable tick range, but it is deliberately not converted into USD depth or
+    a firm executable quote. Those claims require an explicit swap traversal,
+    fee accounting, and a stated trade direction/notional.
+    """
+    rows = []
+    for record in tick_records:
+        spec = record.get("spec") if isinstance(record.get("spec"), dict) else {}
+        try:
+            pool_id = str(record["pool_id"]).lower()
+            block_number = int(record["block_number"])
+            tick = int(record["tick"])
+            tick_spacing = int(record["tick_spacing"])
+            word_position = int(record["word_position"])
+            current_tick = int(record["current_tick"])
+            sqrt_price_x96 = int(record["sqrt_price_x96"])
+            active_liquidity_raw = int(record["active_liquidity_raw"])
+            liquidity_net_raw = int(record["liquidity_net_raw"])
+            liquidity_gross_raw = int(record["liquidity_gross_raw"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if (
+            not pool_id
+            or tick_spacing <= 0
+            or tick % tick_spacing
+            or (tick // tick_spacing) // 256 != word_position
+            or not UNISWAP_V3_MIN_TICK <= tick <= UNISWAP_V3_MAX_TICK
+        ):
+            continue
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "uniswap",
+                "venue": "uniswap-v3",
+                "instrument_id": spec.get("canonical_instrument"),
+                "pool_id": pool_id,
+                "pool_map_id": spec.get("map_id"),
+                "block_number": block_number,
+                "tick": tick,
+                "word_position": word_position,
+                "tick_spacing": tick_spacing,
+                "current_tick": current_tick,
+                "sqrt_price_x96": str(sqrt_price_x96),
+                "active_liquidity_raw": str(active_liquidity_raw),
+                "liquidity_net_raw": str(liquidity_net_raw),
+                "liquidity_gross_raw": str(liquidity_gross_raw),
+                "finalized": True,
+                "quality_tier": (
+                    "onchain TickLens state at finality-buffered block; complete initialized "
+                    "tick book for one registered pool, not USD executable depth or a "
+                    "fill guarantee"
+                ),
+                "metric_definition": (
+                    "An initialized Uniswap V3 tick's virtual-liquidity gross and signed net "
+                    "values, returned by TickLens after scanning every usable tick-bitmap word "
+                    "at one finality-buffered block. It is not a swap traversal, dollar depth, "
+                    "market-wide book, or firm quote."
+                ),
+                "record_json": _json(record),
+            }
+        )
     return rows
 
 
@@ -2062,6 +2249,222 @@ async def _capture_uniswap_quoter_quotes(
     return records, detail
 
 
+def _uniswap_tick_book_word_positions(tick_spacing: int) -> list[int]:
+    """Return every usable V3 bitmap word for a positive pool tick spacing."""
+    if not isinstance(tick_spacing, int) or tick_spacing <= 0:
+        raise ValueError("Uniswap V3 tick spacing must be positive")
+    minimum_tick = -((abs(UNISWAP_V3_MIN_TICK) // tick_spacing) * tick_spacing)
+    maximum_tick = (UNISWAP_V3_MAX_TICK // tick_spacing) * tick_spacing
+    minimum_word = (minimum_tick // tick_spacing) // 256
+    maximum_word = (maximum_tick // tick_spacing) // 256
+    if not -(2**15) <= minimum_word <= maximum_word < 2**15:
+        raise ValueError("Uniswap V3 bitmap words exceed int16 range")
+    return list(range(minimum_word, maximum_word + 1))
+
+
+async def _capture_uniswap_tick_book(
+    fetcher: Fetcher,
+    url: str,
+    finalized_block: int | None,
+    *,
+    record_url: str = "configured:ORCAP_ETHEREUM_RPC_URL",
+    rpc_mode: str = "operator_configured",
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Capture a fail-closed, complete initialized-tick book for each registered pool.
+
+    TickLens retrieves all populated ticks in one bitmap word. Multicall2
+    batches those word calls in a single EVM ``eth_call`` so this stays bounded
+    on a public RPC without accepting a partial word range as a full book.
+    """
+    if finalized_block is None or finalized_block < 0:
+        return [], {
+            "coverage_complete": False,
+            "error": "no finalized block available for Uniswap tick-book capture",
+        }
+    batch_words = _bounded_int_env(
+        "ORCAP_UNISWAP_TICK_BOOK_BATCH_WORDS",
+        DEFAULT_UNISWAP_TICK_BOOK_BATCH_WORDS,
+        minimum=1,
+        maximum=64,
+    )
+    max_rows_per_pool = _bounded_int_env(
+        "ORCAP_UNISWAP_TICK_BOOK_MAX_ROWS_PER_POOL",
+        DEFAULT_UNISWAP_TICK_BOOK_MAX_ROWS_PER_POOL,
+        minimum=1,
+        maximum=2_000_000,
+    )
+    all_records, pool_details = [], {}
+    for pool_id, spec in sorted(uniswap_pool_specs().items()):
+        tick_spacing_data, spacing_error = await _ethereum_rpc(
+            fetcher,
+            url,
+            "eth_call",
+            [
+                {"to": pool_id, "data": "0x" + UNISWAP_V3_TICK_SPACING_SELECTOR},
+                _hex_quantity(finalized_block),
+            ],
+            record_url=record_url,
+        )
+        slot0_data, slot0_error = await _ethereum_rpc(
+            fetcher,
+            url,
+            "eth_call",
+            [
+                {"to": pool_id, "data": "0x" + UNISWAP_V3_SLOT0_SELECTOR},
+                _hex_quantity(finalized_block),
+            ],
+            record_url=record_url,
+        )
+        liquidity_data, liquidity_error = await _ethereum_rpc(
+            fetcher,
+            url,
+            "eth_call",
+            [
+                {"to": pool_id, "data": "0x" + UNISWAP_V3_LIQUIDITY_SELECTOR},
+                _hex_quantity(finalized_block),
+            ],
+            record_url=record_url,
+        )
+        tick_spacing = _signed_word(tick_spacing_data, 0)
+        sqrt_price_x96, current_tick = _word(slot0_data, 0), _signed_word(slot0_data, 1)
+        active_liquidity_raw = _word(liquidity_data, 0)
+        state_errors = [
+            error
+            for error in (spacing_error, slot0_error, liquidity_error)
+            if error is not None
+        ]
+        if (
+            state_errors
+            or tick_spacing is None
+            or tick_spacing <= 0
+            or sqrt_price_x96 is None
+            or current_tick is None
+            or active_liquidity_raw is None
+        ):
+            pool_details[pool_id] = {
+                "complete": False,
+                "error": "; ".join(state_errors) or "invalid pool state response",
+            }
+            continue
+        try:
+            word_positions = _uniswap_tick_book_word_positions(tick_spacing)
+        except ValueError as exc:
+            pool_details[pool_id] = {"complete": False, "error": str(exc)}
+            continue
+
+        pool_records, seen_ticks, error, multicall_requests = [], set(), None, 0
+        for start in range(0, len(word_positions), batch_words):
+            batch = word_positions[start : start + batch_words]
+            result, rpc_error = await _ethereum_rpc(
+                fetcher,
+                url,
+                "eth_call",
+                [
+                    {
+                        "to": UNISWAP_V3_MULTICALL2_ADDRESS,
+                        "data": _multicall2_aggregate_calldata(
+                            [
+                                (
+                                    UNISWAP_V3_TICK_LENS_ADDRESS,
+                                    _uniswap_tick_lens_calldata(pool_id, word_position),
+                                )
+                                for word_position in batch
+                            ]
+                        ),
+                    },
+                    _hex_quantity(finalized_block),
+                ],
+                record_url=record_url,
+            )
+            multicall_requests += 1
+            decoded = _multicall2_aggregate_result(result)
+            if rpc_error or decoded is None:
+                error = rpc_error or "malformed Multicall2 aggregate response"
+                break
+            returned_block, return_data = decoded
+            if returned_block != finalized_block:
+                error = (
+                    "Multicall2 block number does not match requested finalized block "
+                    f"({returned_block} != {finalized_block})"
+                )
+                break
+            if len(return_data) != len(batch):
+                error = "Multicall2 returned an incomplete TickLens word batch"
+                break
+            for word_position, word_data in zip(batch, return_data, strict=True):
+                populated_ticks = _tick_lens_populated_ticks(word_data)
+                if populated_ticks is None:
+                    error = f"malformed TickLens response for bitmap word {word_position}"
+                    break
+                for tick_data in populated_ticks:
+                    tick = tick_data["tick"]
+                    if (
+                        tick in seen_ticks
+                        or tick % tick_spacing
+                        or not UNISWAP_V3_MIN_TICK <= tick <= UNISWAP_V3_MAX_TICK
+                        or (tick // tick_spacing) // 256 != word_position
+                    ):
+                        error = (
+                            "invalid or duplicate initialized tick in bitmap word "
+                            f"{word_position}"
+                        )
+                        break
+                    seen_ticks.add(tick)
+                    pool_records.append(
+                        {
+                            "pool_id": pool_id,
+                            "spec": spec,
+                            "block_number": finalized_block,
+                            "word_position": word_position,
+                            "tick_spacing": tick_spacing,
+                            "sqrt_price_x96": sqrt_price_x96,
+                            "current_tick": current_tick,
+                            "active_liquidity_raw": active_liquidity_raw,
+                            **tick_data,
+                        }
+                    )
+                    if len(pool_records) > max_rows_per_pool:
+                        error = (
+                            "initialized-tick row cap exceeded; refusing a partial pool snapshot "
+                            f"({max_rows_per_pool})"
+                        )
+                        break
+                if error:
+                    break
+            if error:
+                break
+        pool_details[pool_id] = {
+            "complete": error is None,
+            "tick_spacing": tick_spacing,
+            "usable_bitmap_words": len(word_positions),
+            "multicall_requests": multicall_requests,
+            "initialized_tick_rows": len(pool_records) if error is None else 0,
+            "error": error,
+        }
+        # A failed last word must never appear as an apparently complete pool.
+        if error is None:
+            all_records.extend(pool_records)
+
+    coverage_complete = bool(pool_details) and all(
+        detail["complete"] for detail in pool_details.values()
+    )
+    return all_records, {
+        "coverage_complete": coverage_complete,
+        "rpc_mode": rpc_mode,
+        "recent_bounded_only": rpc_mode == "public_bounded_live",
+        "finalized_block": finalized_block,
+        "tick_lens_address": UNISWAP_V3_TICK_LENS_ADDRESS,
+        "multicall2_address": UNISWAP_V3_MULTICALL2_ADDRESS,
+        "batch_words": batch_words,
+        "max_rows_per_pool": max_rows_per_pool,
+        "pool_details": pool_details,
+        "completed_pool_count": sum(
+            detail["complete"] for detail in pool_details.values()
+        ),
+        "initialized_tick_rows": len(all_records),
+    }
+
+
 async def _capture_cow_amm_preblock_quotes(
     fetcher: Fetcher,
     url: str,
@@ -2323,6 +2726,8 @@ async def capture_markets(
         uniswap_block_times: dict[int, str | None] = {}
         uniswap_quoter_records: list[dict[str, Any]] = []
         uniswap_quoter_detail: dict[str, Any] = {}
+        uniswap_tick_records: list[dict[str, Any]] = []
+        uniswap_tick_detail: dict[str, Any] = {"coverage_complete": False}
         uniswap_rpc_detail: dict[str, Any] = {
             "rpc_configured": True,
             "rpc_mode": ethereum_rpc_mode,
@@ -2369,6 +2774,13 @@ async def capture_markets(
                 )
             )
             uniswap_quoter_records, uniswap_quoter_detail = await _capture_uniswap_quoter_quotes(
+                fetcher,
+                ethereum_rpc_url,
+                uniswap_rpc_detail.get("finalized_through_block"),
+                record_url=ethereum_rpc_record_url,
+                rpc_mode=ethereum_rpc_mode,
+            )
+            uniswap_tick_records, uniswap_tick_detail = await _capture_uniswap_tick_book(
                 fetcher,
                 ethereum_rpc_url,
                 uniswap_rpc_detail.get("finalized_through_block"),
@@ -2464,6 +2876,7 @@ async def capture_markets(
     quoter_uni_impact_capacity = uniswap_quoter_impact_capacity_rows(
         uniswap_quoter_records, run_ts, dt
     )
+    uni_tick_book = uniswap_tick_book_rows(uniswap_tick_records, run_ts, dt)
     cow_amm_counterfactual_quotes = cow_amm_preblock_quote_rows(
         cow_amm_counterfactual_records, run_ts, dt
     )
@@ -2511,6 +2924,13 @@ async def capture_markets(
     _write(
         uni_quotes + akash_quotes + geckoterminal_quotes,
         "market_quotes",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        uni_tick_book,
+        "uniswap_tick_book",
         run_ts,
         dt,
         curated_dir,
@@ -2622,6 +3042,10 @@ async def capture_markets(
                 ),
                 "finalized_execution_rows": len(rpc_uni_executions),
                 "finalized_impact_capacity_rows": len(quoter_uni_impact_capacity),
+                "finalized_tick_book_rows": len(uni_tick_book),
+                "finalized_tick_book_coverage_complete": uniswap_tick_detail.get(
+                    "coverage_complete"
+                ),
                 "finalized_liquidity_event_rows": sum(
                     event["event_type"] in {"liquidity_mint", "liquidity_burn"}
                     for event in rpc_uni_events
@@ -2631,9 +3055,32 @@ async def capture_markets(
             },
             curated_dir,
         )
+        write_source_run(
+            "uniswap_tick_book",
+            status="success" if uniswap_tick_detail.get("coverage_complete") else "degraded",
+            rows=len(uni_tick_book),
+            run_ts=run_ts,
+            dt=dt,
+            detail={
+                "resource_scope": (
+                    "initialized virtual-liquidity ticks for the registered pools only; not "
+                    "USD depth, all-market liquidity, or a fill census"
+                ),
+                **uniswap_tick_detail,
+            },
+            curated_dir=curated_dir,
+        )
     else:
         write_source_run(
             "uniswap",
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail={"reason": "flag not set"},
+            curated_dir=curated_dir,
+        )
+        write_source_run(
+            "uniswap_tick_book",
             status="skipped",
             run_ts=run_ts,
             dt=dt,
@@ -2714,6 +3161,8 @@ async def capture_markets(
         "uniswap_quotes": len(uni_quotes),
         "uniswap_finalized_quote_curve_points": len(quoter_uni_quotes),
         "uniswap_finalized_impact_capacity_points": len(quoter_uni_impact_capacity),
+        "uniswap_finalized_tick_book_rows": len(uni_tick_book),
+        "uniswap_tick_book_coverage_complete": uniswap_tick_detail.get("coverage_complete"),
         "uniswap_executions": len(uni_executions),
         "uniswap_finalized_executions": len(rpc_uni_executions),
         "uniswap_finalized_liquidity_events": sum(

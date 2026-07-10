@@ -58,15 +58,16 @@ counted as evidence.
 | Requirement | Current evidence | Status |
 |---|---|---|
 | Direct routed-versus-provider quote basis | H13: 247 pairs across 4 days, all DeepInfra; exact-zero output basis within numerical precision | Power-gated: needs 7 days and 3 providers |
-| DeFi AMM/RFQ microstructure | H41: one DefiLlama aggregate day only | Not identified: no finalized Uniswap events/depth or market-wide CoW executions |
-| Decentralized compute capacity | H41: no non-null decentralized-compute capacity in authoritative store | Not identified |
+| DeFi AMM/RFQ microstructure | H41: one day of finalized Uniswap swaps, fixed-notional QuoterV2 curves, impact-capacity lower bounds, and CoW executions; each log source has one successful 1,024-block window | Power-gated: no finalized dollar-depth measure, market-wide CoW auction panel, or repeated contiguous event history |
+| Decentralized compute capacity | H41: source-bounded Akash and Chutes supply-state rows are present | Partial: neither is delivered capacity, utilization, or a quality-matched cross-market capacity measure |
 | Open-compute bid book | H55 has a block-pinned, live-GPU-provider-filtered Akash bid contract; no published snapshots | Not yet accumulated; the eventual panel is coverage-restricted and not a fill/demand census |
+| AMM initialized tick state | H56 has a complete TickLens-plus-Multicall2 finalized-block source contract; one read-only local validation reconstructed 2,238 initialized ticks across the two registered pools | Not yet accumulated or published; virtual-liquidity state is not dollar depth or a fill guarantee |
 | Realized routing and capacity delivery | H48: zero route attempts, commitments, matches, or realized costs | Not identified |
 | Controlled policy effect | H50 has an immutable pre-registration, epoch-assignment, and clustered-estimation contract; no owned study rows | Not identified: tooling is not evidence |
 | Controlled reliability input | H54 has an immutable direct-provider audit schedule and exact lower-bound certificate; no owned audit rows | Not identified: tooling is not evidence |
 | CoW solver competition | H49 collector and local validation exist, but no published remote snapshots | Not yet accumulated; sampled snapshot only, never execution flow |
 | Direct-source breadth | DeepInfra is published; Cerebras and SambaNova structured adapters are merged and locally validated | Awaiting published repetitions |
-| Reproducibility | Full local suite: 199 passing tests after the H55 Akash bid-panel addition | Strong engineering evidence, not empirical power |
+| Reproducibility | Full local suite: 201 passing tests after the reliability-reporting boundary addition | Strong engineering evidence, not empirical power |
 
 ## Non-negotiable paper gates
 
@@ -92,8 +93,10 @@ counted as evidence.
 - Accumulate at least 6–8 weeks of coherent quote/quality panels.
 - Clear H13 breadth gates with repeated, source-qualified direct prices; keep
   mapped one-to-one IDs distinguishable from literal provider IDs.
-- Obtain finalized Uniswap swap/mint/burn data and a market-wide CoW
-  settlement/auction source. Indexed pool state and latest-auction snapshots
+- Accumulate repeated, contiguous finalized Uniswap swap/mint/burn and H56
+  initialized-tick snapshots, then pre-specify a direction/notional-aware V3
+  traversal before treating them as a depth measure. Obtain a market-wide CoW
+  settlement/auction source; indexed pool state and latest-auction snapshots
   remain controls, not substitutes.
 - Run a controlled, redacted routing study with provider/model/epoch
   commitments, selected attempts, allocated and served counts, and cost or

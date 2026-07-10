@@ -216,6 +216,24 @@ remains within the threshold versus the smallest same-block probe. This is a
 state-derived, discrete capacity proxy only; it does not reconstruct complete
 tick liquidity, total or market-wide depth, or a firm fill.
 
+## Qualified with a bounded scope: Uniswap V3 TickLens state monitor
+
+Uniswap's official Ethereum deployment list identifies TickLens at
+`0xbfd8137f7d1516D3ea5cA83523914859ec47F573` and Multicall2 at
+`0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696`. TickLens reads one populated
+tick-bitmap word at a time and returns the initialized tick, signed liquidity
+net, and liquidity gross values. The collector enumerates every usable word
+from the pool's block-pinned `tickSpacing`, batches TickLens calls through
+Multicall2, and rejects the entire pool if any returned block, word response,
+tick alignment, duplicate tick, or row-cap check fails.
+
+A read-only public-RPC validation at one finality-buffered block completed both
+registered USDC/WETH pools: 1,552 initialized ticks in the 5-bps pool and 686
+in the 30-bps pool (2,238 total). That validates the source contract and its
+runtime, not a published panel. H56 will retain only source-ledger-verified
+complete snapshots. Its virtual-liquidity state is not USD executable depth, a
+swap traversal, a firm quote, market-wide liquidity, routed flow, or welfare.
+
 The collector also uses QuoterV2 only as a parent-block simulation for the
 exact input amount in an observed USDC-to-WETH CoW Trade. That makes the H52
 comparison reproducible at a fixed pre-settlement EVM state and avoids matching
