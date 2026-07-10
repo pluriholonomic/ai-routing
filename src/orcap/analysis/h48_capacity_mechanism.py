@@ -122,6 +122,55 @@ def _commitment_coverage() -> dict:
         }
 
 
+def _outcome_coverage() -> dict:
+    """Summarize redacted allocated/served epoch aggregates when present."""
+    try:
+        rows = data.q(
+            f"""
+            with latest as (
+                select *, row_number() over (
+                    partition by outcome_id order by run_ts desc
+                ) as recency_rank
+                from read_parquet('{data.table_glob("router_capacity_epoch_outcomes")}')
+            )
+            select count(*) as outcomes,
+                   count(distinct provider) as providers,
+                   count(distinct model_id) as models,
+                   count(distinct study_id) as studies,
+                   sum(allocated_requests) as allocated_requests,
+                   sum(served_requests) as served_requests,
+                   sum(shortfall_requests) as shortfall_requests,
+                   count(realized_cost_usd) as realized_cost_observed,
+                   count(realized_revenue_usd) as realized_revenue_observed
+            from latest
+            where recency_rank = 1
+            """
+        ).fetchone()
+        return {
+            "outcomes": int(rows[0]),
+            "providers": int(rows[1]),
+            "models": int(rows[2]),
+            "studies": int(rows[3]),
+            "allocated_requests": float(rows[4] or 0.0),
+            "served_requests": float(rows[5] or 0.0),
+            "shortfall_requests": float(rows[6] or 0.0),
+            "realized_cost_observed": int(rows[7]),
+            "realized_revenue_observed": int(rows[8]),
+        }
+    except Exception:
+        return {
+            "outcomes": 0,
+            "providers": 0,
+            "models": 0,
+            "studies": 0,
+            "allocated_requests": 0.0,
+            "served_requests": 0.0,
+            "shortfall_requests": 0.0,
+            "realized_cost_observed": 0,
+            "realized_revenue_observed": 0,
+        }
+
+
 def _matched_attempt_commitment_coverage() -> dict:
     """Count selected attempts matched to the same provider/model/study epoch.
 
@@ -185,11 +234,164 @@ def _matched_attempt_commitment_coverage() -> dict:
         }
 
 
-def enforcement_gate(attempts: dict, commitments: dict, matched: dict) -> dict:
+def _matched_commitment_outcome_coverage() -> dict:
+    """Match commitments to epoch outcomes on their full controlled-study key."""
+    try:
+        rows = data.q(
+            f"""
+            with commitments as (
+                select *, row_number() over (
+                    partition by commitment_id order by run_ts desc
+                ) as recency_rank
+                from read_parquet('{data.table_glob("router_capacity_commitments")}')
+            ), outcomes as (
+                select *, row_number() over (
+                    partition by outcome_id order by run_ts desc
+                ) as recency_rank
+                from read_parquet('{data.table_glob("router_capacity_epoch_outcomes")}')
+            ), matched as (
+                select o.*
+                from outcomes o
+                where o.recency_rank = 1
+                  and exists (
+                      select 1
+                      from commitments c
+                      where c.recency_rank = 1
+                        and o.study_id = c.study_id
+                        and o.provider = c.provider
+                        and o.model_id = c.model_id
+                        and o.epoch_start = c.epoch_start
+                        and o.epoch_end = c.epoch_end
+                  )
+            )
+            select count(*) as matched_outcomes,
+                   count(distinct provider) as matched_providers,
+                   sum(allocated_requests) as allocated_requests,
+                   sum(served_requests) as served_requests,
+                   sum(shortfall_requests) as shortfall_requests,
+                   count(realized_cost_usd) as realized_cost_observed,
+                   count(realized_revenue_usd) as realized_revenue_observed
+            from matched
+            """
+        ).fetchone()
+        return {
+            "matched_outcomes": int(rows[0]),
+            "matched_providers": int(rows[1]),
+            "allocated_requests": float(rows[2] or 0.0),
+            "served_requests": float(rows[3] or 0.0),
+            "shortfall_requests": float(rows[4] or 0.0),
+            "realized_cost_observed": int(rows[5]),
+            "realized_revenue_observed": int(rows[6]),
+        }
+    except Exception:
+        return {
+            "matched_outcomes": 0,
+            "matched_providers": 0,
+            "allocated_requests": 0.0,
+            "served_requests": 0.0,
+            "shortfall_requests": 0.0,
+            "realized_cost_observed": 0,
+            "realized_revenue_observed": 0,
+        }
+
+
+def _triple_matched_attempt_coverage() -> dict:
+    """Count attempts in an epoch having both a commitment and outcome.
+
+    This avoids treating an attempt-to-commitment match in one epoch and a
+    commitment-to-outcome match in another as if they identified the same
+    controlled study observation.
+    """
+    try:
+        rows = data.q(
+            f"""
+            with attempts as (
+                select event_id, study_id, model_id, selected_provider as provider,
+                       try_cast(observed_at as timestamptz) as observed_at,
+                       outcome, cost_usd
+                from read_parquet('{data.table_glob("router_route_attempts")}')
+                where selected_provider is not null
+            ), commitments as (
+                select *, row_number() over (
+                    partition by commitment_id order by run_ts desc
+                ) as recency_rank
+                from read_parquet('{data.table_glob("router_capacity_commitments")}')
+            ), outcomes as (
+                select *, row_number() over (
+                    partition by outcome_id order by run_ts desc
+                ) as recency_rank
+                from read_parquet('{data.table_glob("router_capacity_epoch_outcomes")}')
+            ), matched_epochs as (
+                select c.study_id, c.provider, c.model_id,
+                       try_cast(c.epoch_start as timestamptz) as epoch_start,
+                       try_cast(c.epoch_end as timestamptz) as epoch_end
+                from commitments c
+                where c.recency_rank = 1
+                  and exists (
+                      select 1
+                      from outcomes o
+                      where o.recency_rank = 1
+                        and o.study_id = c.study_id
+                        and o.provider = c.provider
+                        and o.model_id = c.model_id
+                        and o.epoch_start = c.epoch_start
+                        and o.epoch_end = c.epoch_end
+                  )
+            ), matched as (
+                select a.*
+                from attempts a
+                where exists (
+                    select 1
+                    from matched_epochs m
+                    where a.study_id = m.study_id
+                      and a.provider = m.provider
+                      and a.model_id = m.model_id
+                      and a.observed_at >= m.epoch_start
+                      and a.observed_at < m.epoch_end
+                )
+            )
+            select count(*) as matched_attempts,
+                   count(distinct provider) as matched_providers,
+                   count(distinct model_id) as matched_models,
+                   count(distinct study_id) as matched_studies,
+                   count(case when outcome = 'succeeded' then 1 end) as served_observed,
+                   count(cost_usd) as realized_cost_observed
+            from matched
+            """
+        ).fetchone()
+        return {
+            "matched_attempts": int(rows[0]),
+            "matched_providers": int(rows[1]),
+            "matched_models": int(rows[2]),
+            "matched_studies": int(rows[3]),
+            "served_observed": int(rows[4]),
+            "realized_cost_observed": int(rows[5]),
+        }
+    except Exception:
+        return {
+            "matched_attempts": 0,
+            "matched_providers": 0,
+            "matched_models": 0,
+            "matched_studies": 0,
+            "served_observed": 0,
+            "realized_cost_observed": 0,
+        }
+
+
+def enforcement_gate(
+    attempts: dict,
+    commitments: dict,
+    outcomes: dict,
+    matched_outcomes: dict,
+    triple_matched_attempts: dict,
+) -> dict:
     """Expose what remains unidentified for capacity/bond counterfactuals."""
-    if not attempts["attempts"] or not commitments["commitments"]:
+    if not attempts["attempts"] or not commitments["commitments"] or not outcomes["outcomes"]:
         status = "not_identified"
-    elif not matched["matched_attempts"]:
+    elif (
+        not matched_outcomes["matched_outcomes"]
+        or not triple_matched_attempts["matched_attempts"]
+    ):
         status = "unmatched_owned_telemetry"
     else:
         status = "partial_owned_telemetry"
@@ -202,9 +404,16 @@ def enforcement_gate(attempts: dict, commitments: dict, matched: dict) -> dict:
             "realized serving cost or contribution margin",
         ],
         "identified_in_matched_controlled_study": {
-            "selected_attempts": matched["matched_attempts"],
-            "succeeded_attempts": matched["served_observed"],
-            "realized_cost_observed": matched["realized_cost_observed"],
+            "selected_attempts": triple_matched_attempts["matched_attempts"],
+            "succeeded_attempts": triple_matched_attempts["served_observed"],
+            "allocated_requests": matched_outcomes["allocated_requests"],
+            "served_requests": matched_outcomes["served_requests"],
+            "shortfall_requests": matched_outcomes["shortfall_requests"],
+            "realized_attempt_cost_observed": triple_matched_attempts[
+                "realized_cost_observed"
+            ],
+            "realized_epoch_cost_observed": matched_outcomes["realized_cost_observed"],
+            "realized_epoch_revenue_observed": matched_outcomes["realized_revenue_observed"],
         },
         "not_established_by_this_contract": [
             "market-wide allocation or demand",
@@ -219,7 +428,10 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     panel = allocation_calibration(_load_public_simulation())
     attempts = _owned_attempt_coverage()
     commitments = _commitment_coverage()
-    matched = _matched_attempt_commitment_coverage()
+    outcomes = _outcome_coverage()
+    matched_attempts = _matched_attempt_commitment_coverage()
+    matched_outcomes = _matched_commitment_outcome_coverage()
+    triple_matched_attempts = _triple_matched_attempt_coverage()
     save(panel, out_dir, "h48_capacity_mechanism_calibration")
     result = {
         "allocation_rule": "reliability_weighted_inverse_price",
@@ -232,8 +444,17 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         ),
         "owned_attempt_coverage": attempts,
         "capacity_commitment_coverage": commitments,
-        "matched_attempt_commitment_coverage": matched,
-        "enforcement_gate": enforcement_gate(attempts, commitments, matched),
+        "capacity_outcome_coverage": outcomes,
+        "matched_attempt_commitment_coverage": matched_attempts,
+        "matched_commitment_outcome_coverage": matched_outcomes,
+        "triple_matched_attempt_coverage": triple_matched_attempts,
+        "enforcement_gate": enforcement_gate(
+            attempts,
+            commitments,
+            outcomes,
+            matched_outcomes,
+            triple_matched_attempts,
+        ),
         "claim_boundary": (
             "The allocation-price elasticity is algebra implied by the disclosed inverse-square "
             "proxy. It is not an estimated realized router elasticity, an optimal mechanism, or "

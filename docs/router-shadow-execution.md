@@ -112,6 +112,24 @@ provider, model, and half-open time interval `[epoch_start, epoch_end)`.
 This records controlled-study declarations; it does not send traffic, reserve
 capacity, contact a provider, or make a public capacity claim.
 
+## Import redacted capacity outcomes
+
+After the same controlled epoch closes, import its aggregate allocation and
+delivery result without exporting prompts or per-request responses:
+
+```bash
+uv run orcap ingest-capacity-outcomes --input redacted-capacity-outcomes.jsonl
+```
+
+Each JSONL object requires `outcome_id`, `observed_at`, `study_id`, `provider`,
+`model_id`, `epoch_start`, `epoch_end`, `allocated_requests`, and
+`served_requests`. The importer derives shortfall as allocated minus served;
+optional `realized_cost_usd`, `realized_revenue_usd`, `verification_method`,
+and non-payload `metadata` are permitted. H48 only uses an outcome when its
+provider/model/study/epoch exactly matches a commitment, and only treats
+selected attempts in that same half-open epoch as controlled-study coverage.
+This is not global routing flow or a capacity proof.
+
 ## What H45 can and cannot establish
 
 H45 can identify which public/configured policy is concentrated, which
