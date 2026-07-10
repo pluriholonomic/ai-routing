@@ -399,6 +399,7 @@ def main() -> None:
             "h52": "h52_cow_amm_basis",
             "h53": "h53_chutes_invocations",
             "h54": "h54_reliability_audit",
+            "h55": "h55_akash_open_market_book",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
