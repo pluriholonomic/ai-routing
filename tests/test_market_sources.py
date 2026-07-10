@@ -31,6 +31,7 @@ from orcap.capture_markets import (
     akash_open_bid_rows,
     akash_registry_summary,
     capture_akash_open_market,
+    capture_nosana_job_activity,
     capture_nosana_node_registry,
     chutes_capacity_rows,
     cow_amm_preblock_quote_rows,
@@ -42,6 +43,7 @@ from orcap.capture_markets import (
     geckoterminal_quote_rows,
     golem_capacity_rows,
     instrument_map_rows,
+    nosana_job_activity_rows,
     nosana_node_registry_rows,
     uniswap_pool_specs,
     uniswap_quoter_impact_capacity_rows,
@@ -142,6 +144,111 @@ def test_nosana_node_registry_capture_uses_public_header_only_json_rpc_request()
     assert detail["query_succeeded"] is True
     assert detail["snapshot_slot"] == 42
     assert detail["account_records_fetched"] == 0
+
+
+def _nosana_job_activity_body():
+    return {
+        "stats": {
+            "completed": 10,
+            "duration": "3600",
+            "price": "12.5",
+            "usdReward": "3.25",
+            "retrieved": 1_783_681_800,
+        },
+        "counts": {
+            "total": 15,
+            "byState": {"QUEUED": 2, "RUNNING": 3, "COMPLETED": 10, "STOPPED": 0},
+        },
+        "running": {"market-a": {"running": 2}, "market-b": {"running": 1}},
+        "/jobs/stats/timestamps": {
+            "total": 8,
+            "data": [{"x": 1_783_678_200_000, "y": 4}, {"x": 1_783_681_800_000, "y": 4}],
+        },
+        "/jobs/stats/timestamps-hours": {
+            "total": 3.5,
+            "data": [{"x": 1_783_678_200_000, "y": 1.5}, {"x": 1_783_681_800_000, "y": 2}],
+        },
+        "period_seconds": 86_400,
+    }
+
+
+def test_nosana_job_activity_parser_keeps_only_aggregate_activity_and_market_counts():
+    rows = nosana_job_activity_rows(
+        _nosana_job_activity_body(), "20260710T000000Z", "2026-07-10"
+    )
+    assert len(rows) == 15
+    metrics = {row["metric"] for row in rows}
+    assert "source_reported_indexer_completed_jobs" in metrics
+    assert "source_reported_running_jobs_by_market" in metrics
+    assert "source_reported_completed_job_count_bucket" in metrics
+    assert "source_reported_job_duration_hours_bucket" in metrics
+    market_rows = [row for row in rows if row["market_id"] == "market-a"]
+    assert market_rows[0]["value"] == 2
+    duration = [
+        row for row in rows if row["metric"] == "source_reported_job_duration_hours_bucket"
+    ]
+    assert duration[0]["source_bucket_unix_ms"] == 1_783_678_200_000
+    assert "not independently verified GPU-hours" in duration[0]["metric_definition"]
+    assert all("jobDefinition" not in row["record_json"] for row in rows)
+
+
+def test_nosana_job_activity_capture_uses_only_public_aggregate_endpoints():
+    async def run():
+        body = _nosana_job_activity_body()
+        expected = {
+            "/api/jobs/stats": body["stats"],
+            "/api/jobs/count": body["counts"],
+            "/api/jobs/running": body["running"],
+            "/api/jobs/stats/timestamps?period=86400": body["/jobs/stats/timestamps"],
+            "/api/jobs/stats/timestamps-hours?period=86400": body[
+                "/jobs/stats/timestamps-hours"
+            ],
+        }
+
+        def handler(request):
+            assert request.method == "GET"
+            assert "authorization" not in request.headers
+            key = request.url.path + (
+                f"?{request.url.query.decode()}" if request.url.query else ""
+            )
+            assert key in expected
+            return httpx.Response(200, json=expected[key])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await capture_nosana_job_activity(
+                Fetcher(client), url="https://nosana.example/api"
+            )
+
+    body, detail = asyncio.run(run())
+    assert body["period_seconds"] == 86_400
+    assert detail["query_succeeded"] is True
+    assert detail["running_count_consistent"] is True
+    assert detail["reported_running_jobs"] == 3
+    assert detail["running_jobs_sum_across_markets"] == 3
+
+
+def test_nosana_job_activity_accepts_a_coherent_zero_running_market_response():
+    body = _nosana_job_activity_body()
+    body["counts"]["byState"]["RUNNING"] = 0
+    body["running"] = {}
+
+    class Fetcher:
+        async def get_json(self, url):
+            endpoint = url.removeprefix("https://nosana.example/api")
+            return {
+                "/jobs/stats": body["stats"],
+                "/jobs/count": body["counts"],
+                "/jobs/running": body["running"],
+                "/jobs/stats/timestamps?period=86400": body["/jobs/stats/timestamps"],
+                "/jobs/stats/timestamps-hours?period=86400": body[
+                    "/jobs/stats/timestamps-hours"
+                ],
+            }[endpoint]
+
+    _, detail = asyncio.run(capture_nosana_job_activity(Fetcher(), url="https://nosana.example/api"))
+    assert detail["query_succeeded"] is True
+    assert detail["running_market_records"] == 0
+    assert detail["running_jobs_sum_across_markets"] == 0
 
 
 def test_ethereum_rpc_config_prefers_operator_endpoint_over_public_bounded_fallback(monkeypatch):

@@ -213,3 +213,27 @@ mistaking a registration record for available capacity.
 Completion check: the source ledger certifies that every returned header
 parsed once, the snapshot slot is retained, malformed fixtures degrade the
 source, and outputs remain separate from capacity and utilization claims.
+
+## 9. Monitor public aggregate compute-job activity without collecting jobs
+
+Use for: tracking a public decentralized-compute activity control while
+excluding individual job definitions and participant-level metadata.
+
+1. Use only the documented public Explore aggregate endpoints: `/jobs/stats`,
+   `/jobs/count`, `/jobs/running`, and the aggregate timestamp endpoints. Do
+   not call `/jobs`, `/jobs/:address`, or a browser-authenticated endpoint.
+2. Retain the rolling source bucket timestamp and the collector timestamp.
+   The API may revise a historical bucket, so H59 keeps only the latest
+   captured revision per metric and bucket and retains a revision count.
+3. Require the aggregate count of running jobs to equal the sum of public
+   market-level running counts in the same capture. A mismatch degrades the
+   source rather than presenting a mixed-time snapshot as coherent.
+4. Label duration exactly as source-defined job duration. The public UI's GPU
+   compute-hours presentation does not independently prove GPU-hours,
+   completed useful work, LLM traffic, capacity, utilization, payment, or
+   routing allocation.
+
+Completion check: raw evidence contains aggregate responses only, no job
+definition or payer identifier is retained, the running-count identity holds,
+and H59 remains power-gated until seven bucket days and 100 latest buckets per
+series are present.
