@@ -164,12 +164,24 @@ AMM welfare results.
     known-primitive planner benchmark—not a welfare estimate, a private-
     information mechanism, or an assertion that any public price reveals
     cost or request value.
+13. **Audited reliability lower-bound input.** For a pre-registered direct
+    provider/model audit with `S_i` successes among `N_i` completed attempts,
+    define `L_i` as the exact one-sided Clopper–Pearson lower bound at a fixed
+    confidence level. Under the declared audit population's independent
+    Bernoulli-attempt assumption and complete outcome retention,
+    `P(q_i >= L_i)` is at least that confidence level. The mechanism may set a
+    conservative fixed score `q_i=L_i`, or require `L_i` to clear a
+    pre-registered eligibility floor, before a later allocation epoch. This is
+    a statistical certificate for the specified direct-audit population—not a
+    truthful-reliability mechanism, a platform-wide quality claim, or a model
+    of correlated outages.
 
-The next theory step is to extend these certified-input results to jointly
+The next theory step is still to extend these certified-input results to jointly
 private capacity and reliability under a stochastic health process, then
 connect the cost-curve procurement and shortfall collateral in one delivery
 mechanism and extend welfare to heterogeneous request values and controlled
-observations.
+observations. H54 supplies a defensible *exogenous input* under a controlled
+design; it does not close that private-information gap.
 
 ### Proof details and assumptions
 
@@ -269,6 +281,22 @@ on a certified `K_i`, exogenous reliability eligibility, risk-neutral
 quasilinear utility, and enforceable delivery; it does not make physical
 capacity or reliability reporting truthful.
 
+For the direct-audit certificate, fix a provider/model/workload population and
+an immutable schedule of direct provider/model/epoch audit assignments before
+outcomes. Retain every linked attempt's completed outcome, including failure
+and cancellation. Let completed outcomes be conditionally iid Bernoulli with
+success probability `q_i` in that declared population. At confidence
+`1-alpha`, define `L_i=0` for `S_i=0`, `L_i=alpha^(1/N_i)` for `S_i=N_i`, and
+otherwise let `L_i` be the `alpha` beta-quantile with parameters
+`(S_i, N_i-S_i+1)`. This is the exact Clopper–Pearson lower confidence limit,
+so its coverage is at least `1-alpha`. The requirement that both the requested
+and selected provider equal the scheduled provider isolates the measured
+delivery primitive from an endogenous router selection. It still leaves
+sampling-frame transport, incomplete logging, strategic availability around
+audits, common shocks, and provider control of the schedule outside the
+certificate; H54 fails closed on the observable design and completeness
+violations and reports those assumptions rather than absorbing them into `q_i`.
+
 For the welfare benchmark, each assigned request to provider `i` succeeds with
 probability `q_i`, produces common value `v` on success, and incurs marginal
 cost `c_i` when assigned. The marginal objective coefficient is
@@ -312,6 +340,7 @@ the observed or declared joint-outage support.
 | `p_i` | public provider quote for a fixed workload | observed every 5 minutes on OpenRouter; public Akash/Vast GPU quote panels now added |
 | `s_i` | public inverse-square simulated share | observed proxy; H43/H45/H48 explicitly label it non-realized |
 | `q_i` | uptime, error, latency, throughput, router scorecard | public proxy only; private live eligibility remains unobserved |
+| `q_i` lower certificate | pre-registered direct provider/model audit with completed outcomes | H54 contract and exact lower-bound estimator exist; no published audit rows yet. Its result is workload- and design-specific, not a platform-wide score. |
 | `x_i, y_i` | allocated and served controlled-study requests | public panels do not identify them; payload-free `router_capacity_epoch_outcomes` can record controlled provider/model/epoch aggregates, but has no published rows yet |
 | `k_i` | provider/model/time commitment | public inference capacity remains unobserved; `router_capacity_commitments` can record a redacted controlled-study declaration, but has no published rows yet; Akash/Vast capacity is an external supply comparator |
 | `a_i, b_i` | declared linear reservation cost and positive capacity-cost curvature | optional redacted controlled-study fields exist on `router_capacity_commitments`; no published or independently verified observations yet. The VCG cost-curve benchmark needs a separately versioned full convex schedule and does not treat these declarations as verified. |

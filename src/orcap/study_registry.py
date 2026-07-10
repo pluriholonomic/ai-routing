@@ -77,6 +77,33 @@ ASSIGNMENT_REQUIRED = {
     "randomization_stratum",
     "assignment_probability",
 }
+RELIABILITY_AUDIT_MANIFEST_REQUIRED = {
+    "audit_manifest_id",
+    "study_id",
+    "registered_at",
+    "planned_start_at",
+    "planned_end_at",
+    "randomization_unit",
+    "randomization_seed_commitment",
+    "routing_mode",
+    "outcome_definition",
+    "confidence_level",
+    "minimum_attempts_per_provider_model",
+    "minimum_reliability_lower_bound",
+    "stopping_rule",
+}
+RELIABILITY_AUDIT_ASSIGNMENT_REQUIRED = {
+    "audit_assignment_id",
+    "audit_manifest_id",
+    "study_id",
+    "provider",
+    "model_id",
+    "epoch_start",
+    "epoch_end",
+    "assigned_at",
+    "randomization_stratum",
+    "assignment_probability",
+}
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{1,127}$")
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 
@@ -311,6 +338,133 @@ def validate_assignment(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _reliability_confidence(value: Any) -> float:
+    try:
+        confidence = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("confidence_level must be numeric") from exc
+    if not 0.5 < confidence < 1:
+        raise ValueError("confidence_level must lie in (0.5, 1)")
+    return confidence
+
+
+def _reliability_threshold(value: Any) -> float:
+    try:
+        threshold = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("minimum_reliability_lower_bound must be numeric") from exc
+    if not 0 <= threshold < 1:
+        raise ValueError("minimum_reliability_lower_bound must lie in [0, 1)")
+    return threshold
+
+
+def validate_reliability_audit_manifest(record: dict[str, Any]) -> dict[str, Any]:
+    """Validate a pre-outcome, direct-provider reliability-audit protocol.
+
+    The schedule samples provider/model epochs before outcomes occur.  The
+    registry does not send traffic or prove that a private seed was random; an
+    auditor must later verify the disclosed seed against its commitment.
+    """
+    if not isinstance(record, dict):
+        raise ValueError("reliability audit manifest must be an object")
+    missing = _missing(record, RELIABILITY_AUDIT_MANIFEST_REQUIRED)
+    if missing:
+        raise ValueError(
+            "reliability audit manifest missing required fields: " + ", ".join(missing)
+        )
+    forbidden = sorted(_forbidden_keys(record))
+    if forbidden:
+        raise ValueError(
+            "reliability audit manifest contains forbidden payload fields: " + ", ".join(forbidden)
+        )
+    registered_at = _timestamp(record["registered_at"], "registered_at")
+    planned_start = _timestamp(record["planned_start_at"], "planned_start_at")
+    planned_end = _timestamp(record["planned_end_at"], "planned_end_at")
+    if registered_at > planned_start:
+        raise ValueError("registered_at must not be after planned_start_at")
+    if planned_start >= planned_end:
+        raise ValueError("planned_end_at must be after planned_start_at")
+    if record["randomization_unit"] != "provider_model_epoch":
+        raise ValueError("randomization_unit must be provider_model_epoch")
+    if record["routing_mode"] != "direct_provider":
+        raise ValueError("routing_mode must be direct_provider")
+    if record["outcome_definition"] != "completed_attempt_success":
+        raise ValueError("outcome_definition must be completed_attempt_success")
+    seed_commitment = record["randomization_seed_commitment"]
+    if not isinstance(seed_commitment, str) or not _SHA256.fullmatch(seed_commitment):
+        raise ValueError("randomization_seed_commitment must be a lowercase SHA-256 commitment")
+    stopping_rule = record["stopping_rule"]
+    if not isinstance(stopping_rule, str) or not stopping_rule.strip():
+        raise ValueError("stopping_rule must be a non-empty pre-registered description")
+    return {
+        "audit_manifest_id": _id(record["audit_manifest_id"], "audit_manifest_id"),
+        "study_id": _id(record["study_id"], "study_id"),
+        "registered_at": registered_at.isoformat().replace("+00:00", "Z"),
+        "planned_start_at": planned_start.isoformat().replace("+00:00", "Z"),
+        "planned_end_at": planned_end.isoformat().replace("+00:00", "Z"),
+        "randomization_unit": "provider_model_epoch",
+        "randomization_seed_commitment": seed_commitment,
+        "routing_mode": "direct_provider",
+        "outcome_definition": "completed_attempt_success",
+        "confidence_level": _reliability_confidence(record["confidence_level"]),
+        "minimum_attempts_per_provider_model": _positive_int(
+            record["minimum_attempts_per_provider_model"],
+            "minimum_attempts_per_provider_model",
+            100,
+        ),
+        "minimum_reliability_lower_bound": _reliability_threshold(
+            record["minimum_reliability_lower_bound"]
+        ),
+        "stopping_rule": stopping_rule.strip(),
+        "metadata_json": json.dumps(
+            record.get("metadata") or {}, sort_keys=True, separators=(",", ":")
+        ),
+        "payload_retained": False,
+    }
+
+
+def validate_reliability_audit_assignment(record: dict[str, Any]) -> dict[str, Any]:
+    """Validate one payload-free, pre-assigned direct-provider audit epoch."""
+    if not isinstance(record, dict):
+        raise ValueError("reliability audit assignment must be an object")
+    missing = _missing(record, RELIABILITY_AUDIT_ASSIGNMENT_REQUIRED)
+    if missing:
+        raise ValueError(
+            "reliability audit assignment missing required fields: " + ", ".join(missing)
+        )
+    forbidden = sorted(_forbidden_keys(record))
+    if forbidden:
+        raise ValueError(
+            "reliability audit assignment contains forbidden payload fields: "
+            + ", ".join(forbidden)
+        )
+    epoch_start = _timestamp(record["epoch_start"], "epoch_start")
+    epoch_end = _timestamp(record["epoch_end"], "epoch_end")
+    assigned_at = _timestamp(record["assigned_at"], "assigned_at")
+    if epoch_start >= epoch_end:
+        raise ValueError("epoch_end must be after epoch_start")
+    if assigned_at > epoch_start:
+        raise ValueError("assigned_at must not be after epoch_start")
+    return {
+        "audit_assignment_id": _id(record["audit_assignment_id"], "audit_assignment_id"),
+        "audit_manifest_id": _id(record["audit_manifest_id"], "audit_manifest_id"),
+        "study_id": _id(record["study_id"], "study_id"),
+        "provider": _id(record["provider"], "provider"),
+        "model_id": _model_id(record["model_id"]),
+        "epoch_start": epoch_start.isoformat().replace("+00:00", "Z"),
+        "epoch_end": epoch_end.isoformat().replace("+00:00", "Z"),
+        "assigned_at": assigned_at.isoformat().replace("+00:00", "Z"),
+        "randomization_stratum": _id(record["randomization_stratum"], "randomization_stratum"),
+        "assignment_probability": _probability(
+            record["assignment_probability"], "assignment_probability"
+        ),
+        "metadata_json": json.dumps(
+            record.get("metadata") or {}, sort_keys=True, separators=(",", ":")
+        ),
+        "payload_retained": False,
+    }
+
+
 def write_manifest(record: dict[str, Any], *, curated_dir: Path = CURATED_DIR) -> Path:
     row = validate_manifest(record)
     existing = _existing_ids("router_study_manifests", "manifest_id", curated_dir)
@@ -341,6 +495,50 @@ def write_assignments(
     return write_partition(
         pa.Table.from_pylist([row | {"run_ts": run_ts, "dt": dt} for row in rows]),
         "router_study_assignments",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+
+
+def write_reliability_audit_manifest(
+    record: dict[str, Any], *, curated_dir: Path = CURATED_DIR
+) -> Path:
+    """Persist an immutable direct-provider reliability-audit manifest."""
+    row = validate_reliability_audit_manifest(record)
+    existing = _existing_ids(
+        "router_reliability_audit_manifests", "audit_manifest_id", curated_dir
+    )
+    if row["audit_manifest_id"] in existing:
+        raise ValueError("audit_manifest_id is already registered and immutable")
+    run_ts, dt = run_timestamp(), dt_partition()
+    return write_partition(
+        pa.Table.from_pylist([row | {"run_ts": run_ts, "dt": dt}]),
+        "router_reliability_audit_manifests",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+
+
+def write_reliability_audit_assignments(
+    records: list[dict[str, Any]], *, curated_dir: Path = CURATED_DIR
+) -> Path | None:
+    """Persist immutable provider/model/epoch audit assignments."""
+    if not records:
+        return None
+    rows = [validate_reliability_audit_assignment(record) for record in records]
+    if len({row["audit_assignment_id"] for row in rows}) != len(rows):
+        raise ValueError("duplicate audit_assignment_id in batch")
+    existing = _existing_ids(
+        "router_reliability_audit_assignments", "audit_assignment_id", curated_dir
+    )
+    if existing.intersection(row["audit_assignment_id"] for row in rows):
+        raise ValueError("audit_assignment_id is already registered and immutable")
+    run_ts, dt = run_timestamp(), dt_partition()
+    return write_partition(
+        pa.Table.from_pylist([row | {"run_ts": run_ts, "dt": dt} for row in rows]),
+        "router_reliability_audit_assignments",
         run_ts,
         dt,
         curated_dir,
@@ -385,6 +583,24 @@ def assignments_main(path: str) -> dict[str, Any]:
     result = {
         "assignment_rows": len(records),
         "assignment_path": str(destination) if destination else None,
+    }
+    print(json.dumps(result, indent=2))
+    return result
+
+
+def register_reliability_audit_main(path: str) -> dict[str, Any]:
+    destination = write_reliability_audit_manifest(load_json(Path(path)))
+    result = {"audit_manifest_path": str(destination)}
+    print(json.dumps(result, indent=2))
+    return result
+
+
+def reliability_audit_assignments_main(path: str) -> dict[str, Any]:
+    records = load_jsonl(Path(path))
+    destination = write_reliability_audit_assignments(records)
+    result = {
+        "audit_assignment_rows": len(records),
+        "audit_assignment_path": str(destination) if destination else None,
     }
     print(json.dumps(result, indent=2))
     return result

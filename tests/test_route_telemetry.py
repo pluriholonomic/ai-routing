@@ -25,8 +25,9 @@ def _attempt():
 
 
 def test_route_telemetry_contract_preserves_route_metadata_not_payload():
-    row = validate_attempt(_attempt())
+    row = validate_attempt(_attempt() | {"reliability_audit_assignment_id": "audit-a001"})
     assert row["selected_provider"] == "deepinfra"
+    assert row["reliability_audit_assignment_id"] == "audit-a001"
     assert row["payload_retained"] is False
     assert row["metadata_json"] == '{"scenario":"short_chat"}'
 

@@ -198,6 +198,22 @@ def main() -> None:
         "--input", required=True, help="pre-assigned treatment-arm JSONL export"
     )
 
+    p_register_reliability_audit = sub.add_parser(
+        "register-reliability-audit",
+        help="register a payload-free direct-provider reliability-audit manifest",
+    )
+    p_register_reliability_audit.add_argument(
+        "--input", required=True, help="pre-outcome direct-provider audit manifest JSON"
+    )
+
+    p_ingest_reliability_assignments = sub.add_parser(
+        "ingest-reliability-audit-assignments",
+        help="ingest pre-assigned payload-free provider/model/epoch audit assignments",
+    )
+    p_ingest_reliability_assignments.add_argument(
+        "--input", required=True, help="pre-assigned direct-provider audit JSONL export"
+    )
+
     p_import_policy = sub.add_parser(
         "import-router-policy",
         help="validate and snapshot a redacted Cloudflare, Portkey, or LiteLLM policy JSON",
@@ -303,6 +319,14 @@ def main() -> None:
         from .study_registry import assignments_main
 
         assignments_main(args.input)
+    elif args.command == "register-reliability-audit":
+        from .study_registry import register_reliability_audit_main
+
+        register_reliability_audit_main(args.input)
+    elif args.command == "ingest-reliability-audit-assignments":
+        from .study_registry import reliability_audit_assignments_main
+
+        reliability_audit_assignments_main(args.input)
     elif args.command == "quality":
         from .quality import main as quality_main
 
@@ -374,6 +398,7 @@ def main() -> None:
             "h51": "h51_livepeer_gateway",
             "h52": "h52_cow_amm_basis",
             "h53": "h53_chutes_invocations",
+            "h54": "h54_reliability_audit",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
