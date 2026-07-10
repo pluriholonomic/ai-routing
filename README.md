@@ -115,6 +115,7 @@ ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h53  # Chutes publ
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h54  # direct-provider reliability lower-bound audit
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h55  # Akash block-pinned live-provider GPU bid panel
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h56  # complete block-pinned Uniswap V3 tick-book audit
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h57  # validated virtual-liquidity USDC/WETH impact traversal
 uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-like hypotheses)
 ORCAP_ANALYSIS_SOURCE=local uv run orcap route-sim-report --out analysis  # 24h public-quote route-surface test
 uv run orcap capture-hf-router --samples 4 --interval-seconds 900  # public HF router surface, no orders

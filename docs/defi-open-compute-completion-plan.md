@@ -129,6 +129,11 @@ collector fails closed at the pool level when a state call, word, or returned
 block fails validation. H56 reports source-ledger-verified snapshot integrity
 and tick-state coverage only; it does not turn virtual liquidity into USD
 depth, a swap traversal, a firm executable quote, or a market-wide book.
+H57 is the explicitly separate next layer: it traverses the complete state for
+USDC-to-WETH, applies the pool fee, targets a declared *post-swap spot-price*
+deterioration, and checks its predicted final sqrt price against same-block
+QuoterV2 rows. That validates state arithmetic, not EVM step rounding, gas,
+ordering, fillability, cross-pool routing, total market depth, or welfare.
 
 The same archive-capable RPC path also queries the verified mainnet
 `GPv2Settlement` contract for `Trade` and `Settlement` events in a separate

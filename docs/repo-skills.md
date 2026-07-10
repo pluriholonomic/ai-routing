@@ -181,7 +181,9 @@ TickLens/Multicall2 collector.
    dollar-depth estimator.
 6. Before reporting depth, pre-register trade direction, token decimals,
    notional grid, fee treatment, tick-crossing traversal, and a same-block
-   QuoterV2 validation. Keep that estimator distinct from H56's state audit.
+   QuoterV2 validation. H57 implements the USDC-to-WETH post-spot-impact
+   version and retains its Quoter error panel; keep it distinct from H56's
+   state audit and from a realized execution claim.
 
 Completion check: a source-ledger-verified H56 snapshot has one final block per
 pool, every usable word was scanned, every tick maps back to its bitmap word,

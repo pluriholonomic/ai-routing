@@ -401,6 +401,7 @@ def main() -> None:
             "h54": "h54_reliability_audit",
             "h55": "h55_akash_open_market_book",
             "h56": "h56_uniswap_tick_book",
+            "h57": "h57_uniswap_virtual_depth",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
