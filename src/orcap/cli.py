@@ -73,6 +73,15 @@ def main() -> None:
 
     sub.add_parser("capture-hf", help="snapshot HF Hub model stats (demand leading indicator)")
 
+    p_hf_router = sub.add_parser(
+        "capture-hf-router",
+        help="snapshot public Hugging Face Inference Providers quotes and performance",
+    )
+    p_hf_router.add_argument("--samples", type=int, default=1, help="snapshots to take")
+    p_hf_router.add_argument(
+        "--interval-seconds", type=float, default=900.0, help="spacing between snapshots"
+    )
+
     sub.add_parser(
         "capture-open-usage",
         help="capture public open-model download/pull and serving-runtime adoption proxies",
@@ -116,6 +125,12 @@ def main() -> None:
         help="evaluate whether public quote snapshots changed simulated routing",
     )
     p_route_report.add_argument("--out", default="analysis", help="output directory")
+
+    p_ingest_route = sub.add_parser(
+        "ingest-route-attempts",
+        help="validate and ingest redacted owned-router attempt telemetry from JSONL",
+    )
+    p_ingest_route.add_argument("--input", required=True, help="redacted JSONL export path")
 
     sub.add_parser("memo", help="render the screening memo from latest analysis outputs")
 
@@ -169,6 +184,21 @@ def main() -> None:
         from .capture_hf_stats import main as hf_main
 
         _collector("huggingface", hf_main)
+    elif args.command == "capture-hf-router":
+        from .capture_hf_router import main as hf_router_main
+
+        print(
+            json.dumps(
+                _collector(
+                    "huggingface_inference_providers",
+                    lambda: hf_router_main(
+                        samples=args.samples, interval_seconds=args.interval_seconds
+                    ),
+                ),
+                indent=2,
+                default=str,
+            )
+        )
     elif args.command == "capture-open-usage":
         from .capture_open_usage import main as open_usage_main
 
@@ -241,6 +271,7 @@ def main() -> None:
             "h41": "h41_market_comparison",
             "h42": "h42_routing_mev",
             "h43": "h43_routing_simulation",
+            "h44": "h44_cross_router",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
@@ -263,6 +294,14 @@ def main() -> None:
         from .analysis.h43_routing_simulation import run as route_simulation_report
 
         print(json.dumps(route_simulation_report(Path(args.out)), indent=2, default=str))
+    elif args.command == "ingest-route-attempts":
+        from pathlib import Path
+
+        from .route_telemetry import load_jsonl, write_attempts
+
+        events = load_jsonl(Path(args.input))
+        output = write_attempts(events)
+        print(json.dumps({"rows": len(events), "path": str(output) if output else None}, indent=2))
 
 
 if __name__ == "__main__":

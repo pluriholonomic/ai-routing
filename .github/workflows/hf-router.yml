@@ -1,0 +1,45 @@
+name: hf-router
+
+# GitHub cron only reliably supplies an hourly slot on this repository.  Each
+# run takes four public /v1/models snapshots 15 minutes apart, matching the
+# cross-router quote panel without submitting inference requests.
+on:
+  schedule:
+    - cron: "37 * * * *"
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: "snapshots this run"
+        default: "4"
+
+concurrency:
+  group: hf-router
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: capture Hugging Face Inference Providers surface
+        run: |
+          uv run orcap capture-hf-router \
+            --samples "${{ github.event.inputs.samples || '4' }}" \
+            --interval-seconds 900
+      - name: validate router-comparator source health
+        run: uv run orcap quality --profile router_comparator
+      - name: buffer output as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hf-router-${{ github.run_id }}
+          path: data/
+          retention-days: 7
+          compression-level: 0

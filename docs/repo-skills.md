@@ -100,7 +100,29 @@ Completion check: `routing_simulation_runs` explains all absent groups,
 `h43_routing_simulation_summary` passes its coverage gate, and the conclusion
 states the simulated-versus-realized boundary.
 
-## 5. Publish and operate a live monitor
+## 5. Add a cross-router comparator or owned-route telemetry
+
+Use for: Hugging Face Inference Providers, an AI gateway, or a controlled
+provider-selection calibration study.
+
+1. Separate public quote/performance data from owned request telemetry. Neither
+   is a substitute for market-wide routed-volume data.
+2. Match models through an explicit, versioned alias map. Never infer that two
+   similarly named listings represent the same model revision.
+3. Keep router-policy simulations separate by policy and disclose all missing
+   health/capability fields. A public fastest/cheapest reconstruction is not a
+   route-decision log.
+4. Land owned attempts in `router_route_attempts` only after removing prompts,
+   completions, and raw request/response bodies. Link a salted request reference
+   to quote snapshot, policy, and study id.
+5. Before paid probes, pre-register workload shapes, randomization, rate and
+   spend limits, retry handling, and a stop condition. Do not use a gateway's
+   outer upstream label as the final provider inside another router.
+
+Completion check: public source health is green, quote/policy output joins only
+through the versioned alias map, and owned telemetry contains no payload fields.
+
+## 6. Publish and operate a live monitor
 
 Use for: dashboards, alerts, memo deployment, and scheduled research.
 
