@@ -38,6 +38,9 @@ capacity and full-collateral assumptions:
    pure-cheapest and reliability-only rules for equal request values.
 10. a conditional VCG procurement benchmark for an entire privately reported
     convex cost curve, with certified capacity and reliability eligibility.
+11. an exact one-sided lower reliability-bound input for a pre-registered,
+    direct provider/model audit population, conditional on complete retained
+    outcomes and the audit's independent-attempt assumption.
 
 These are useful lemmas. They do **not** establish Bayesian incentive
 compatibility with jointly private capacity/curvature/reliability, an empirical
@@ -56,9 +59,10 @@ counted as evidence.
 | Decentralized compute capacity | H41: no non-null decentralized-compute capacity in authoritative store | Not identified |
 | Realized routing and capacity delivery | H48: zero route attempts, commitments, matches, or realized costs | Not identified |
 | Controlled policy effect | H50 has an immutable pre-registration, epoch-assignment, and clustered-estimation contract; no owned study rows | Not identified: tooling is not evidence |
+| Controlled reliability input | H54 has an immutable direct-provider audit schedule and exact lower-bound certificate; no owned audit rows | Not identified: tooling is not evidence |
 | CoW solver competition | H49 collector and local validation exist, but no published remote snapshots | Not yet accumulated; sampled snapshot only, never execution flow |
 | Direct-source breadth | DeepInfra is published; Cerebras and SambaNova structured adapters are merged and locally validated | Awaiting published repetitions |
-| Reproducibility | Full local suite: 145 passing tests after the H50 and QuoterV2 additions | Strong engineering evidence, not empirical power |
+| Reproducibility | Full local suite: 192 passing tests after the H54 audit-certificate addition | Strong engineering evidence, not empirical power |
 
 ## Non-negotiable paper gates
 
@@ -89,6 +93,10 @@ counted as evidence.
   commitments, selected attempts, allocated and served counts, and cost or
   margin fields. Register the model-epoch assignment ledger and stopping rule
   before the first epoch, then use H50's clustered treatment contrasts.
+- Run a separate pre-registered direct-provider reliability audit with a
+  disclosed later-verifiable sampling seed, complete failure/cancellation
+  retention, and enough completed attempts to clear a stated lower-bound
+  eligibility threshold. Do not reuse router-selected traffic as this audit.
 - Pre-register shocks, outcome variables, minimum event counts, inference
   clusters, negative controls, and stopping rules before dynamic estimation.
 

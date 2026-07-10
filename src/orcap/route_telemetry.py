@@ -118,6 +118,7 @@ def validate_attempt(event: dict[str, Any]) -> dict[str, Any]:
         "fallback_triggered": bool(event.get("fallback_triggered", False)),
         "policy": event.get("policy"),
         "quote_snapshot_id": event.get("quote_snapshot_id"),
+        "reliability_audit_assignment_id": event.get("reliability_audit_assignment_id"),
         "input_tokens": _number(event.get("input_tokens")),
         "output_tokens": _number(event.get("output_tokens")),
         "cost_usd": _number(event.get("cost_usd")),
@@ -265,6 +266,9 @@ def _native_event(
         ),
         "policy": _value(record, "policy", "routing_policy"),
         "quote_snapshot_id": _value(record, "quote_snapshot_id", "pricing_snapshot_id"),
+        "reliability_audit_assignment_id": _value(
+            record, "reliability_audit_assignment_id", "audit_assignment_id"
+        ),
         "input_tokens": _value(record, "input_tokens", "usage.prompt_tokens"),
         "output_tokens": _value(record, "output_tokens", "usage.completion_tokens"),
         "cost_usd": _value(record, "cost_usd", "total_cost", "usage.cost"),

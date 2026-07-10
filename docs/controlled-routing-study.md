@@ -147,6 +147,47 @@ and record it on each capacity outcome. It is an owner value proxy with a
 fixed workload definition, never inferred willingness to pay or social
 welfare. Do not change it after observing an arm's delivery outcome.
 
+## Separate direct-provider reliability audit (H54)
+
+H50 randomizes a **policy** and therefore cannot by itself identify a
+provider's delivery reliability: the policy may select providers precisely when
+they look healthy. H54 is a separate, pre-registered audit of a fixed
+provider–model–workload population. It registers a payload-free
+`provider_model_epoch` schedule before outcomes, then retains only direct
+attempts that explicitly link to that schedule and satisfy both
+`requested_provider == selected_provider == assigned provider`.
+
+The schedule is a sampling design, not an automated traffic sender. An
+operator must separately authorize direct routing, use a fixed workload and
+safety limits, retain the private seed, and later let an auditor verify the
+revealed seed against the stored SHA-256 commitment. A direct attempt with an
+unknown outcome, an unlinked audit identifier, a different selected provider,
+or an attempt outside its assigned epoch cannot support a certificate.
+
+```bash
+uv run orcap register-reliability-audit --input redacted-reliability-audit.json
+uv run orcap ingest-reliability-audit-assignments --input redacted-direct-audit.jsonl
+uv run orcap ingest-route-attempts --input redacted-direct-attempts.jsonl --format canonical
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h54 --out analysis
+```
+
+The manifest fixes a confidence level, a minimum completed-attempt count per
+provider/model, a lower-reliability eligibility floor, and the outcome rule
+`completed_attempt_success`. H54 reports the exact one-sided
+Clopper–Pearson lower bound `L` from completed direct attempts. Under the
+declared audit population's independent Bernoulli-attempt assumption,
+pre-assigned sampling schedule, and complete redacted outcome logging,
+`P(q >= L)` is at least the declared confidence level. Only a provider/model
+with no schedule or attempt-design error, no unresolved outcome, enough
+completed attempts, and `L` at or above the pre-registered floor is
+`reliability_certified`.
+
+This is intentionally narrow. It does not prove a provider's platform-wide or
+future reliability, reveal a router's endogenous selection process, establish
+independence across failures, make a provider's reliability report truthful,
+or estimate welfare. It produces a conservative fixed eligibility or score
+input for a subsequent allocation epoch.
+
 ## H50 outputs and decision rule
 
 | output | meaning |
@@ -155,6 +196,7 @@ welfare. Do not change it after observing an arm's delivery outcome.
 | `h50_routing_epoch_panel` | one redacted aggregate outcome vector per assigned model epoch |
 | `h50_routing_effects` | stratum-standardized treatment-minus-baseline cluster contrasts, standard errors, intervals, and normal approximations |
 | `h50_summary` | study power/validity status and the claim boundary |
+| `h54_reliability_certificates` | provider/model lower-bound audit certificates, with fail-closed design and completeness gates |
 
 H50 reports `not_identified` without a manifest/assignment ledger,
 `invalid_design` for a pre-registration or policy-consistency failure, and
