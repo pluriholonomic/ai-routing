@@ -108,6 +108,7 @@ ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h47  # exact-spec 
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h48  # routing-mechanism calibration sheet
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h49  # sampled CoW solver competition
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h50  # randomized owned-study estimator
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h52  # parent-block CoW-versus-AMM gross basis, power-gated
 uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-like hypotheses)
 ORCAP_ANALYSIS_SOURCE=local uv run orcap route-sim-report --out analysis  # 24h public-quote route-surface test
 uv run orcap capture-hf-router --samples 4 --interval-seconds 900  # public HF router surface, no orders

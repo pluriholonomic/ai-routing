@@ -53,6 +53,7 @@ DEFAULT_ETHEREUM_FINALITY_BLOCKS = 64
 # cadence and remains within the validated public dRPC response envelope.
 DEFAULT_UNISWAP_LOG_WINDOW_BLOCKS = 1024
 DEFAULT_COW_LOG_WINDOW_BLOCKS = 1024
+DEFAULT_COW_AMM_COUNTERFACTUAL_BATCH_SIZE = 100
 GPV2_SETTLEMENT_ADDRESS = "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
 GPV2_TRADE_TOPIC = "0xa07a543ab8a018198e99ca0184c93fe9050a79400a0a723441f84de1d972cc17"
 GPV2_SETTLEMENT_TOPIC = "0x40338ce1a7c49204f0099533b1e9a7ee0a3d261f84974ab7af36105b8c4e9db4"
@@ -683,6 +684,73 @@ def uniswap_quoter_quote_rows(
                 "quality_tier": (
                     "onchain-quoter-v2 simulation at finality-buffered block; fixed-notional "
                     "price-impact point, not a fill guarantee or market-wide executable depth"
+                ),
+                "record_json": _json(record),
+            }
+        )
+    return rows
+
+
+def cow_amm_preblock_quote_rows(
+    quote_records: list[dict[str, Any]], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize parent-block AMM simulations matched to exact CoW USDC sells.
+
+    The parent block is the most recent universally reproducible EVM state
+    before the CoW settlement block. It cannot reconstruct intra-block ordering
+    or a contemporaneous firm quote, so these rows are a pre-block gross-price
+    counterfactual rather than an adverse-selection, surplus, or best-execution
+    measurement.
+    """
+    rows = []
+    for record in quote_records:
+        spec = record.get("spec") if isinstance(record.get("spec"), dict) else {}
+        amount_out_raw = _word(record.get("result"), 0)
+        if amount_out_raw is None:
+            continue
+        try:
+            amount_in_raw = int(record["amount_in_raw"])
+            input_amount = amount_in_raw / 10 ** int(spec["token0_decimals"])
+            output_amount = amount_out_raw / 10 ** int(spec["token1_decimals"])
+            state_block = int(record["state_block_number"])
+            event_block = int(record["reference_event_block_number"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if input_amount <= 0 or output_amount <= 0 or state_block < 0 or event_block <= state_block:
+            continue
+        pool_id = str(record.get("pool_id") or "").lower()
+        execution_id = str(record.get("reference_execution_id") or "")
+        if not pool_id or not execution_id:
+            continue
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "uniswap",
+                "venue": "uniswap-v3",
+                "quote_id": f"{execution_id}:{pool_id}:parent-block:{state_block}",
+                "reference_source": "cow",
+                "reference_execution_id": execution_id,
+                "reference_event_block_number": event_block,
+                "state_block_number": state_block,
+                "instrument_id": spec.get("canonical_instrument"),
+                "pool_id": pool_id,
+                "quote_side": "usdc_to_weth_preblock_exact_input_counterfactual",
+                "quote_unit": "usdc_per_weth",
+                "input_amount": input_amount,
+                "input_amount_raw": str(amount_in_raw),
+                "output_amount": output_amount,
+                "output_amount_raw": str(amount_out_raw),
+                "price_usdc_per_weth": input_amount / output_amount,
+                "native_price": output_amount / input_amount,
+                "finalized": True,
+                "quality_tier": (
+                    "onchain-quoter-v2 parent-block state simulation matched to one finalized "
+                    "CoW USDC-to-WETH Trade; not an intra-block quote, fill guarantee, or depth"
+                ),
+                "metric_definition": (
+                    "Pre-block gross AMM counterfactual for the exact CoW sell amount. It excludes "
+                    "CoW fee, gas, surplus, intra-block ordering, and subsequent price movement."
                 ),
                 "record_json": _json(record),
             }
@@ -1607,6 +1675,83 @@ async def _capture_uniswap_quoter_quotes(
     return records, detail
 
 
+async def _capture_cow_amm_preblock_quotes(
+    fetcher: Fetcher,
+    url: str,
+    cow_executions: list[dict[str, Any]],
+    *,
+    record_url: str = "configured:ORCAP_ETHEREUM_RPC_URL",
+    rpc_mode: str = "operator_configured",
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Quote each exact CoW USDC sell against registered pools at its parent block."""
+    candidates = []
+    for execution in cow_executions:
+        if execution.get("side") != "usdc_to_weth":
+            continue
+        try:
+            amount_in_raw = int(execution["sell_amount_raw"])
+            event_block = int(execution["event_block_number"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if amount_in_raw <= 0 or event_block <= 0 or not execution.get("execution_id"):
+            continue
+        candidates.append(
+            {
+                "reference_execution_id": str(execution["execution_id"]),
+                "reference_event_block_number": event_block,
+                "state_block_number": event_block - 1,
+                "amount_in_raw": amount_in_raw,
+            }
+        )
+    tasks = [
+        candidate | {"pool_id": pool_id, "spec": spec}
+        for candidate in sorted(candidates, key=lambda item: item["reference_execution_id"])
+        for pool_id, spec in sorted(uniswap_pool_specs().items())
+        if spec["token0_address"] == USDC_ADDRESS and spec["token1_address"] == WETH_ADDRESS
+    ]
+    batch_size = _bounded_int_env(
+        "ORCAP_COW_AMM_COUNTERFACTUAL_BATCH_SIZE",
+        DEFAULT_COW_AMM_COUNTERFACTUAL_BATCH_SIZE,
+        minimum=1,
+        maximum=500,
+    )
+    # dRPC's public endpoint serves ordinary historical ``eth_call`` but
+    # rejects JSON-RPC batches. Keep the bounded batch-size configuration as a
+    # provenance field for an operator endpoint, while issue public calls one
+    # at a time so a failed batch never becomes a false zero-counterfactual.
+    records, errors = [], []
+    for start in range(0, len(tasks), batch_size):
+        batch = tasks[start : start + batch_size]
+        for task in batch:
+            result, error = await _ethereum_rpc(
+                fetcher,
+                url,
+                "eth_call",
+                [
+                    {
+                        "to": UNISWAP_V3_QUOTER_V2_ADDRESS,
+                        "data": _uniswap_quoter_calldata(task["spec"], task["amount_in_raw"]),
+                    },
+                    _hex_quantity(task["state_block_number"]),
+                ],
+                record_url=record_url,
+            )
+            if error or result is None:
+                errors.append(error or "eth_call returned an empty result")
+            else:
+                records.append(task | {"result": result})
+    detail = {
+        "counterfactual_state_basis": "parent_block",
+        "counterfactual_rpc_mode": rpc_mode,
+        "counterfactual_candidate_executions": len(candidates),
+        "counterfactual_requested_quotes": len(tasks),
+        "counterfactual_quote_rows": len(records),
+        "counterfactual_quote_errors": len(errors),
+        "counterfactual_batch_size": batch_size,
+    }
+    return records, detail
+
+
 async def _capture_cow_rpc_logs(
     fetcher: Fetcher,
     url: str,
@@ -1772,6 +1917,15 @@ async def capture_markets(
         cow = await fetcher.get_json(cow_url) if cow_url else None
         cow_rpc_logs: list[dict[str, Any]] = []
         cow_block_times: dict[int, str | None] = {}
+        cow_rpc_executions: list[dict[str, Any]] = []
+        cow_rpc_events: list[dict[str, Any]] = []
+        cow_amm_counterfactual_records: list[dict[str, Any]] = []
+        cow_amm_counterfactual_detail: dict[str, Any] = {
+            "counterfactual_state_basis": "not_collected",
+            "counterfactual_candidate_executions": 0,
+            "counterfactual_requested_quotes": 0,
+            "counterfactual_quote_rows": 0,
+        }
         cow_rpc_detail: dict[str, Any] = {
             "rpc_configured": True,
             "rpc_mode": ethereum_rpc_mode,
@@ -1840,6 +1994,19 @@ async def capture_markets(
             record_url=ethereum_rpc_record_url,
             rpc_mode=ethereum_rpc_mode,
         )
+        cow_rpc_executions, cow_rpc_events = cow_rpc_log_rows(
+            cow_rpc_logs, cow_block_times, run_ts, dt
+        )
+        if with_uniswap and cow_rpc_detail.get("log_query_succeeded") is True:
+            cow_amm_counterfactual_records, cow_amm_counterfactual_detail = (
+                await _capture_cow_amm_preblock_quotes(
+                    fetcher,
+                    ethereum_rpc_url,
+                    cow_rpc_executions,
+                    record_url=ethereum_rpc_record_url,
+                    rpc_mode=ethereum_rpc_mode,
+                )
+            )
 
         akash = None
         akash_gpu_prices = None
@@ -1884,9 +2051,6 @@ async def capture_markets(
         dict(zip(GECKOTERMINAL_POOLS, geckoterminal_bodies, strict=True)), run_ts, dt
     )
     configured_cow_executions = cow_execution_rows(cow, run_ts, dt)
-    cow_rpc_executions, cow_rpc_events = cow_rpc_log_rows(
-        cow_rpc_logs, cow_block_times, run_ts, dt
-    )
     cow_executions = (
         cow_rpc_executions if cow_rpc_detail["rpc_configured"] else configured_cow_executions
     )
@@ -1900,6 +2064,9 @@ async def capture_markets(
         uniswap, run_ts, dt
     )
     quoter_uni_quotes = uniswap_quoter_quote_rows(uniswap_quoter_records, run_ts, dt)
+    cow_amm_counterfactual_quotes = cow_amm_preblock_quote_rows(
+        cow_amm_counterfactual_records, run_ts, dt
+    )
     uni_quotes = graph_uni_quotes + quoter_uni_quotes
     rpc_uni_executions, rpc_uni_events = uniswap_rpc_log_rows(
         uniswap_rpc_logs, uniswap_block_times, run_ts, dt
@@ -1920,6 +2087,13 @@ async def capture_markets(
     _write(
         participants + cow_participants + cow_rpc_participants,
         "market_participants",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        cow_amm_counterfactual_quotes,
+        "market_counterfactual_quotes",
         run_ts,
         dt,
         curated_dir,
@@ -1985,6 +2159,7 @@ async def capture_markets(
             "finalized_trade_rows": len(cow_rpc_executions),
             "finalized_solver_identified_trade_rows": len(cow_rpc_participants),
             **cow_rpc_detail,
+            **cow_amm_counterfactual_detail,
         },
         curated_dir,
     )
@@ -2088,6 +2263,7 @@ async def capture_markets(
         "cow_executions": len(cow_executions),
         "cow_finalized_executions": len(cow_rpc_executions),
         "cow_finalized_solver_identified_executions": len(cow_rpc_participants),
+        "cow_amm_preblock_counterfactual_quotes": len(cow_amm_counterfactual_quotes),
         "cow_competition_participants": len(cow_participants),
         "cow_competition_events": len(cow_competition_events),
         "golem_capacity": len(golem_capacity),

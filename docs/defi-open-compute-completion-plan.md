@@ -94,6 +94,14 @@ and input-USDC bucket, while CoW's exact-pair fills are reported separately by
 direction in the explicit `usdc_per_weth` quote unit. Neither object is silently
 converted to USD or treated as executable depth.
 
+H52 additionally simulates each observed exact USDC-to-WETH CoW sell through
+each registered pool at the settlement block's parent state, for the identical
+USDC input. This yields a reproducible **pre-block gross venue basis** by pool.
+It excludes CoW fees, gas, surplus, intra-block ordering, and price movement in
+the settlement block; it is not a best-execution, adverse-selection, depth, or
+market-wide CoW claim. The analysis stays power-gated until it has 500 fills,
+seven days, and both registered pools.
+
 The monitor additionally calls the official mainnet
 [Uniswap V3 QuoterV2](https://developers.uniswap.org/docs/protocols/v3/deployments/v3-ethereum-deployments)
 with four exact-USDC input buckets for each registered pool, pinned to the
