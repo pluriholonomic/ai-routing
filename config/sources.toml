@@ -105,6 +105,12 @@ required = false
 cadence_minutes = 1560
 min_rows = 1
 
+[sources.runpod_gpu_pricing]
+owner = "Runpod"
+required = false
+cadence_minutes = 1560
+min_rows = 10
+
 [sources.direct_together_docs]
 owner = "Together AI"
 required = false

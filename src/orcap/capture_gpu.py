@@ -11,6 +11,9 @@ Sources:
   - Lambda's public instance page: literal per-GPU-hour list prices by GPU
     family and 1x/2x/4x/8x instance size -> gpu_published_prices. These are
     commercial posted quotes, not offer-book depth, utilization, or fills.
+  - Runpod's public Pods pricing page (opt-in): literal Pods GPU card prices
+    -> gpu_published_prices. It is a public posted-price surface, not the
+    authenticated availability API, an offer book, utilization, or fills.
 
 Historical backfill (one-time, separate): Wayback snapshots of provider
 pricing pages + published monthly medians — see analysis/h7 notes.
@@ -38,6 +41,7 @@ VAST_URL = "https://console.vast.ai/api/v0/bundles/"
 FABRYKA_URL = "https://gpu-price-index.vercel.app/api/prices"
 ORNN_URL = "https://api.ornnai.com/api/gpu/{gpu_name}/index-history"
 LAMBDA_GPU_PRICING_URL = "https://lambda.ai/instances"
+RUNPOD_GPU_PRICING_URL = "https://www.runpod.io/pricing"
 
 GPU_CLASSES = [
     "H100 SXM",
@@ -84,6 +88,8 @@ _LAMBDA_HEADERS = ["plan", "vram/gpu", "vcpus", "ram", "storage", "price/gpu/hr*
 _LAMBDA_DOLLAR = re.compile(r"^\$(\d+(?:\.\d+)?)$")
 _LAMBDA_VRAM_GB = re.compile(r"^(\d+(?:\.\d+)?)\s*gb$", re.IGNORECASE)
 _LAMBDA_INSTANCE_SIZE = re.compile(r"^(\d+)x$")
+_RUNPOD_DOLLAR_PER_HOUR = re.compile(r"^\$(\d+(?:\.\d+)?)/hr$")
+_RUNPOD_VRAM_GB = re.compile(r"(\d+(?:\.\d+)?)\s*GB\s*(?:VRAM|HBM\d+e?)", re.IGNORECASE)
 
 
 def _vast_query(gpu_name: str, offer_type: str) -> str:
@@ -250,6 +256,67 @@ def _lambda_gpu_price_rows(body: str | None, run_ts: str, dt: str) -> list[dict[
     return rows
 
 
+def _runpod_gpu_price_rows(body: str | None, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Parse only literal public Pods GPU cards from Runpod's pricing page.
+
+    The page includes Serverless, Cluster, storage, and public-endpoint prices.
+    This parser accepts only the server-rendered Pods card class, a labeled GPU
+    name, a single literal ``$x/hr`` value, and an explicit VRAM/HBM field.
+    Anything else yields no row rather than being coerced into a GPU quote.
+    """
+    if not body:
+        return []
+    try:
+        tree = html.fromstring(body)
+    except (TypeError, ValueError, etree.ParserError):
+        return []
+    rows = []
+    seen: set[str] = set()
+    card_xpath = "//*[@role='listitem' and contains(@class, 'gpu_collection-item')]"
+    for card in tree.xpath(card_xpath):
+        table_row = card.xpath("./div[contains(@class, 'gpu_table-row')]")
+        if len(table_row) != 1:
+            continue
+        table_row = table_row[0]
+        names = table_row.xpath(
+            ".//*[contains(@class, 'gpu_name') and contains(@class, 'is-pricing-page')]"
+        )
+        prices = table_row.xpath("./div[contains(@class, 'gpu_table-pricing')]")
+        tags = table_row.xpath("./div[contains(@class, 'gpu_table-tags')]")
+        if len(names) != 1 or len(prices) != 1 or len(tags) != 1:
+            continue
+        gpu_class = " ".join(names[0].text_content().split())
+        price_text = "".join(prices[0].text_content().split())
+        price_match = _RUNPOD_DOLLAR_PER_HOUR.fullmatch(price_text)
+        vram_match = _RUNPOD_VRAM_GB.search(" ".join(tags[0].text_content().split()))
+        if not gpu_class or gpu_class in seen or not price_match or not vram_match:
+            continue
+        seen.add(gpu_class)
+        record = {
+            "product": "pods",
+            "gpu_class": gpu_class,
+            "price_per_gpu_hour": price_text,
+            "gpu_vram_gb": vram_match.group(1),
+        }
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "runpod",
+                "gpu_class": gpu_class,
+                "instance_gpu_count": 1,
+                "gpu_vram_gb": float(vram_match.group(1)),
+                "usd_per_gpu_hour": float(price_match.group(1)),
+                "quote_unit": "usd_per_gpu_hour",
+                "quote_type": "published_pods_gpu_list_price",
+                "source_url": RUNPOD_GPU_PRICING_URL,
+                "source_schema_version": "runpod_pods_gpu_cards_v1",
+                "record_json": json.dumps(record, separators=(",", ":"), sort_keys=True),
+            }
+        )
+    return rows
+
+
 def _float(value: Any) -> float | None:
     try:
         return float(value)
@@ -257,7 +324,12 @@ def _float(value: Any) -> float | None:
         return None
 
 
-async def capture_gpu(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) -> dict[str, Any]:
+async def capture_gpu(
+    raw_dir: Path = RAW_DIR,
+    curated_dir: Path = CURATED_DIR,
+    *,
+    with_runpod: bool = False,
+) -> dict[str, Any]:
     run_ts = run_timestamp()
     dt = dt_partition()
 
@@ -269,9 +341,10 @@ async def capture_gpu(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) 
         vast_bodies = await asyncio.gather(
             *(fetcher.get_json(_vast_query(g, t)) for g, t in combos)
         )
-        fabryka, lambda_pricing = await asyncio.gather(
+        fabryka, lambda_pricing, runpod_pricing = await asyncio.gather(
             fetcher.get_json(FABRYKA_URL),
             fetcher.get_text(LAMBDA_GPU_PRICING_URL),
+            fetcher.get_text(RUNPOD_GPU_PRICING_URL) if with_runpod else _none(),
         )
         ornn_bodies = await asyncio.gather(
             *(
@@ -289,6 +362,7 @@ async def capture_gpu(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) 
         offer_rows += _offer_rows(body, gpu_class, offer_type, run_ts, dt)
     index_rows = _index_rows(fabryka, run_ts, dt)
     lambda_rows = _lambda_gpu_price_rows(lambda_pricing, run_ts, dt)
+    runpod_rows = _runpod_gpu_price_rows(runpod_pricing, run_ts, dt)
     ornn_rows: list[dict[str, Any]] = []
     for gpu_class, body in zip(ORNN_GPU_CLASSES, ornn_bodies, strict=True):
         ornn_rows += _ornn_index_rows(body, gpu_class, run_ts, dt)
@@ -302,10 +376,12 @@ async def capture_gpu(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) 
         tbl = pa.Table.from_pylist(index_rows)
         write_partition(tbl, "gpu_price_indices", run_ts, dt, curated_dir)
     summary["gpu_index_rows"] = len(index_rows)
-    if lambda_rows:
-        tbl = pa.Table.from_pylist(lambda_rows)
+    published_rows = lambda_rows + runpod_rows
+    if published_rows:
+        tbl = pa.Table.from_pylist(published_rows)
         write_partition(tbl, "gpu_published_prices", run_ts, dt, curated_dir)
     summary["lambda_gpu_price_rows"] = len(lambda_rows)
+    summary["runpod_gpu_price_rows"] = len(runpod_rows)
     if ornn_rows:
         tbl = pa.Table.from_pylist(ornn_rows)
         write_partition(tbl, "ornn_gpu_index_history", run_ts, dt, curated_dir)
@@ -323,6 +399,24 @@ async def capture_gpu(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) 
         dt=dt,
         curated_dir=curated_dir,
     )
+    if with_runpod:
+        write_source_run(
+            "runpod_gpu_pricing",
+            status="success" if runpod_rows else "degraded",
+            rows=len(runpod_rows),
+            detail={
+                "url": RUNPOD_GPU_PRICING_URL,
+                "source_type": "published_pods_gpu_list_price",
+                "schema_version": "runpod_pods_gpu_cards_v1",
+                "metric_boundary": (
+                    "literal public Pods GPU list prices only; not authenticated availability, "
+                    "an offer book, utilization, reservations, or fills"
+                ),
+            },
+            run_ts=run_ts,
+            dt=dt,
+            curated_dir=curated_dir,
+        )
     write_source_run(
         "ornn",
         status="success" if ornn_rows else "degraded",
@@ -341,10 +435,14 @@ async def capture_gpu(raw_dir: Path = RAW_DIR, curated_dir: Path = CURATED_DIR) 
     return summary
 
 
-def main() -> dict[str, Any]:
+async def _none() -> None:
+    return None
+
+
+def main(*, with_runpod: bool = False) -> dict[str, Any]:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    summary = asyncio.run(capture_gpu())
+    summary = asyncio.run(capture_gpu(with_runpod=with_runpod))
     print(json.dumps(summary, indent=2))
     return summary
 

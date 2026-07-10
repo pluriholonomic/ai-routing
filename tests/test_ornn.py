@@ -3,7 +3,13 @@ import json
 import pandas as pd
 
 from orcap.analysis.h7_passthrough import align_ornn_h100
-from orcap.capture_gpu import LAMBDA_GPU_PRICING_URL, _lambda_gpu_price_rows, _ornn_index_rows
+from orcap.capture_gpu import (
+    LAMBDA_GPU_PRICING_URL,
+    RUNPOD_GPU_PRICING_URL,
+    _lambda_gpu_price_rows,
+    _ornn_index_rows,
+    _runpod_gpu_price_rows,
+)
 from orcap.observability import source_spec
 
 
@@ -66,6 +72,9 @@ def test_ornn_is_required_for_gpu_source_health():
     spec = source_spec("ornn")
     assert spec.required is True
     assert spec.min_rows == 5
+    runpod = source_spec("runpod_gpu_pricing")
+    assert runpod.required is False
+    assert runpod.min_rows == 10
 
 
 def test_lambda_rows_require_labeled_tabular_gpu_prices():
@@ -92,3 +101,50 @@ def test_lambda_rows_require_labeled_tabular_gpu_prices():
 
 def test_lambda_rows_reject_unlabeled_price_or_changed_headers():
     assert _lambda_gpu_price_rows("<html></html>", "20260710T000000Z", "2026-07-10") == []
+
+
+def test_runpod_rows_keep_only_labeled_public_pods_gpu_cards():
+    body = """
+    <div role="listitem" class="gpu_collection-item w-dyn-item">
+      <div class="gpu_table-row">
+        <div class="gpu_name-wrapper"><p class="gpu_name is-pricing-page">H100 SXM</p></div>
+        <div class="gpu_table-tags">80 GB VRAM 125 GB RAM 20 vCPUs</div>
+        <div class="gpu_table-pricing">$2.99/hr</div>
+      </div>
+    </div>
+    <div role="listitem" class="clusters_list-item">
+      <div>H100 SXM</div><div class="clusters_item-price">$4.31/hr</div>
+    </div>
+    """
+
+    rows = _runpod_gpu_price_rows(body, "20260710T000000Z", "2026-07-10")
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["source"] == "runpod"
+    assert row["gpu_class"] == "H100 SXM"
+    assert row["gpu_vram_gb"] == 80.0
+    assert row["usd_per_gpu_hour"] == 2.99
+    assert row["quote_type"] == "published_pods_gpu_list_price"
+    assert row["source_url"] == RUNPOD_GPU_PRICING_URL
+    assert json.loads(row["record_json"])["product"] == "pods"
+
+
+def test_runpod_rows_fail_closed_on_ambiguous_price_or_missing_vram():
+    ambiguous = """
+    <div role="listitem" class="gpu_collection-item"><div class="gpu_table-row">
+      <p class="gpu_name is-pricing-page">H100 SXM</p>
+      <div class="gpu_table-tags">80 GB VRAM</div>
+      <div class="gpu_table-pricing">from $2.99/hr</div>
+    </div></div>
+    """
+    missing_vram = """
+    <div role="listitem" class="gpu_collection-item"><div class="gpu_table-row">
+      <p class="gpu_name is-pricing-page">H100 SXM</p>
+      <div class="gpu_table-tags">high memory</div>
+      <div class="gpu_table-pricing">$2.99/hr</div>
+    </div></div>
+    """
+
+    assert _runpod_gpu_price_rows(ambiguous, "20260710T000000Z", "2026-07-10") == []
+    assert _runpod_gpu_price_rows(missing_vram, "20260710T000000Z", "2026-07-10") == []

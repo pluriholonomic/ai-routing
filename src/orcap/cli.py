@@ -64,9 +64,14 @@ def main() -> None:
 
     sub.add_parser("discover", help="sniff a model page and dump internal API endpoints seen")
 
-    sub.add_parser(
+    p_gpu = sub.add_parser(
         "capture-gpu",
         help="snapshot Vast GPU offers plus Fabryka and Ornn public index histories",
+    )
+    p_gpu.add_argument(
+        "--with-runpod",
+        action="store_true",
+        help="capture public Runpod Pods list prices; does not query account availability",
     )
 
     sub.add_parser("capture-direct", help="snapshot direct-provider list prices (H13 basis)")
@@ -275,7 +280,7 @@ def main() -> None:
     elif args.command == "capture-gpu":
         from .capture_gpu import main as gpu_main
 
-        _collector("vast", gpu_main)
+        _collector("vast", lambda: gpu_main(with_runpod=args.with_runpod))
     elif args.command == "capture-direct":
         from .capture_direct import main as direct_main
 
