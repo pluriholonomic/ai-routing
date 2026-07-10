@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from math import isclose, isfinite
 
 import pandas as pd
+from scipy.optimize import linprog
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,45 @@ class OutageScenario:
 
     probability: float
     unavailable_providers: frozenset[str]
+
+
+def _validated_allocation(allocation: pd.Series) -> pd.Series:
+    """Return a finite, uniquely indexed non-negative allocation series."""
+    numeric_allocation = pd.to_numeric(allocation, errors="coerce")
+    if (
+        numeric_allocation.index.has_duplicates
+        or numeric_allocation.isna().any()
+        or any(not isfinite(float(value)) or float(value) < 0 for value in numeric_allocation)
+    ):
+        raise ValueError("allocation must be finite, non-negative, and uniquely indexed")
+    return numeric_allocation.astype("float64")
+
+
+def _validated_outage_scenarios(
+    scenarios: list[OutageScenario], known_providers: set[str]
+) -> list[OutageScenario]:
+    """Validate and normalize a probability distribution over joint outages."""
+    if not scenarios:
+        raise ValueError("at least one outage scenario is required")
+    normalized: list[OutageScenario] = []
+    for scenario in scenarios:
+        try:
+            probability = float(scenario.probability)
+            unavailable = frozenset(scenario.unavailable_providers)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "outage scenarios must contain numeric probabilities and providers"
+            ) from exc
+        if not isfinite(probability) or probability < 0:
+            raise ValueError("outage scenario probabilities must be finite and non-negative")
+        unknown = unavailable - known_providers
+        if unknown:
+            raise ValueError(f"outage scenario names unknown providers: {sorted(unknown)}")
+        normalized.append(OutageScenario(probability, unavailable))
+    total_probability = sum(scenario.probability for scenario in normalized)
+    if not isclose(total_probability, 1.0, rel_tol=0.0, abs_tol=1e-9):
+        raise ValueError("outage scenario probabilities must sum to one")
+    return normalized
 
 
 def allocation_shares(offers: list[ProviderOffer], eta: float = 2.0) -> pd.Series:
@@ -211,23 +251,154 @@ def expected_delivered_under_outage_scenarios(
     under hard commitments; correlated physical failures require this separate
     joint availability input before any reliability or welfare statement.
     """
-    numeric_allocation = pd.to_numeric(allocation, errors="coerce")
-    if numeric_allocation.isna().any() or (numeric_allocation < 0).any():
-        raise ValueError("allocation must be finite and non-negative")
-    if not scenarios:
-        raise ValueError("at least one outage scenario is required")
-    total_probability = sum(scenario.probability for scenario in scenarios)
-    if not isclose(total_probability, 1.0, rel_tol=0.0, abs_tol=1e-9):
-        raise ValueError("outage scenario probabilities must sum to one")
+    numeric_allocation = _validated_allocation(allocation)
+    scenarios = _validated_outage_scenarios(scenarios, set(numeric_allocation.index))
     delivered = 0.0
     for scenario in scenarios:
-        if not isfinite(scenario.probability) or scenario.probability < 0:
-            raise ValueError("outage scenario probabilities must be finite and non-negative")
         available = numeric_allocation.drop(
             labels=list(scenario.unavailable_providers), errors="ignore"
         )
         delivered += scenario.probability * float(available.sum())
     return delivered
+
+
+def robust_outage_allocation(
+    offers: list[ProviderOffer],
+    demand: float,
+    scenarios: list[OutageScenario],
+    eta: float = 2.0,
+) -> pd.Series:
+    """Maximize the delivered-request floor over an explicit joint outage law.
+
+    This is a *non-replicated* robust allocation. It solves
+
+    ``max_{x,z} z`` subject to ``sum_i x_i <= D``, ``0 <= x_i <= k_i``, and
+    ``sum_{i available in omega} x_i >= z`` for every positive-probability
+    joint scenario. A second linear program applies score weights only to break
+    ties among max-min-optimal allocations. Thus it cannot convert marginal
+    uptime into independent availability, or a nominal shortfall bond into
+    insurance against a physical correlated outage.
+    """
+    if demand < 0:
+        raise ValueError("demand must be non-negative")
+    if eta <= 0:
+        raise ValueError("eta must be positive")
+    if len({offer.provider for offer in offers}) != len(offers):
+        raise ValueError("provider names must be unique")
+    all_providers = {offer.provider for offer in offers}
+    scenarios = _validated_outage_scenarios(scenarios, all_providers)
+    eligible = [
+        offer
+        for offer in offers
+        if offer.price > 0 and offer.reliability > 0 and offer.committed_capacity > 0
+    ]
+    if demand == 0 or not eligible:
+        return pd.Series({offer.provider: 0.0 for offer in offers}, dtype="float64")
+    providers = [offer.provider for offer in eligible]
+    capacities = [max(0.0, offer.committed_capacity) for offer in eligible]
+    positive_scenarios = [scenario for scenario in scenarios if scenario.probability > 0]
+    # ``z - availability dot x <= 0`` enforces the delivery floor in each
+    # scenario. A capacity-certified score allocation is feasible in this LP,
+    # so its minimum delivery cannot exceed this optimum.
+    constraints = [[1.0] * len(providers) + [0.0]]
+    rhs = [float(demand)]
+    for scenario in positive_scenarios:
+        constraints.append(
+            [
+                -1.0 if provider not in scenario.unavailable_providers else 0.0
+                for provider in providers
+            ]
+            + [1.0]
+        )
+        rhs.append(0.0)
+    bounds = [(0.0, capacity) for capacity in capacities] + [(0.0, float(demand))]
+    first = linprog(
+        [0.0] * len(providers) + [-1.0],
+        A_ub=constraints,
+        b_ub=rhs,
+        bounds=bounds,
+        method="highs",
+    )
+    if not first.success:
+        raise RuntimeError(f"robust outage allocation failed: {first.message}")
+    floor = max(0.0, float(first.x[-1]))
+    weights = [offer.reliability * offer.price ** (-eta) for offer in eligible]
+    total_weight = sum(weights)
+    if total_weight > 0:
+        weights = [weight / total_weight for weight in weights]
+    second = linprog(
+        [-weight for weight in weights] + [0.0],
+        A_ub=constraints,
+        b_ub=rhs,
+        bounds=[(0.0, capacity) for capacity in capacities] + [(floor, floor)],
+        method="highs",
+    )
+    allocation = second.x[:-1] if second.success else first.x[:-1]
+    result = {offer.provider: 0.0 for offer in offers}
+    result.update(dict(zip(providers, allocation, strict=True)))
+    return pd.Series(result, dtype="float64")
+
+
+def outage_delivery_profile(
+    allocation: pd.Series, scenarios: list[OutageScenario]
+) -> pd.DataFrame:
+    """Return the exact delivered count in each declared joint outage state."""
+    numeric_allocation = _validated_allocation(allocation)
+    scenarios = _validated_outage_scenarios(scenarios, set(numeric_allocation.index))
+    rows = []
+    for index, scenario in enumerate(scenarios):
+        delivered = float(
+            numeric_allocation.drop(
+                labels=list(scenario.unavailable_providers), errors="ignore"
+            ).sum()
+        )
+        rows.append(
+            {
+                "scenario_index": index,
+                "probability": scenario.probability,
+                "unavailable_provider_count": len(scenario.unavailable_providers),
+                "delivered_requests": delivered,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def robust_outage_counterfactual(
+    offers: list[ProviderOffer],
+    demand: float,
+    scenarios: list[OutageScenario],
+    eta: float = 2.0,
+) -> pd.DataFrame:
+    """Compare score water-fill with the max-min joint-outage allocation.
+
+    The reported worst-case improvement is a theorem conditional on the supplied
+    scenario support and hard capacities; it is not an empirical reliability or
+    welfare estimate. Expected delivery is included only under the same
+    explicitly supplied joint law.
+    """
+    score = capacity_constrained_allocation(offers, demand, eta)
+    robust = robust_outage_allocation(offers, demand, scenarios, eta)
+    score_profile = outage_delivery_profile(score, scenarios)
+    robust_profile = outage_delivery_profile(robust, scenarios)
+    result = pd.DataFrame(
+        {
+            "provider": robust.index,
+            "score_waterfill_allocation": score.reindex(robust.index, fill_value=0.0).to_numpy(),
+            "robust_outage_allocation": robust.to_numpy(),
+        }
+    )
+    result["score_worst_case_delivered"] = score_profile["delivered_requests"].min()
+    result["robust_worst_case_delivered"] = robust_profile["delivered_requests"].min()
+    result["robust_worst_case_delivery_gain"] = (
+        result["robust_worst_case_delivered"] - result["score_worst_case_delivered"]
+    )
+    result["score_expected_delivered"] = (
+        score_profile["probability"] * score_profile["delivered_requests"]
+    ).sum()
+    result["robust_expected_delivered"] = (
+        robust_profile["probability"] * robust_profile["delivered_requests"]
+    ).sum()
+    return result
 
 
 def realized_provider_payoff(

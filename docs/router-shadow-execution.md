@@ -112,6 +112,12 @@ provider, model, and half-open time interval `[epoch_start, epoch_end)`.
 This records controlled-study declarations; it does not send traffic, reserve
 capacity, contact a provider, or make a public capacity claim.
 
+For a correlated-outage study, an owner may additionally supply
+`failure_domains` as a de-duplicated list of non-payload labels such as
+`["cloud:example", "region:us-east"]`. These are declared exposure labels,
+not inferred uptime or proof of common ownership. They make a later
+joint-outage model auditable without collecting request content.
+
 ## Import redacted capacity outcomes
 
 After the same controlled epoch closes, import its aggregate allocation and
@@ -129,6 +135,13 @@ and non-payload `metadata` are permitted. H48 only uses an outcome when its
 provider/model/study/epoch exactly matches a commitment, and only treats
 selected attempts in that same half-open epoch as controlled-study coverage.
 This is not global routing flow or a capacity proof.
+
+An outcome may also state `availability_status` (`available`, `unavailable`,
+or `unknown`). An `unavailable` record must include a shared, non-payload
+`outage_event_id`; all providers affected by the same observed incident use
+the same identifier. This permits a controlled study to construct joint
+availability states. It does not establish an outage cause, a failure
+probability, or global router health.
 
 ## What H45 can and cannot establish
 

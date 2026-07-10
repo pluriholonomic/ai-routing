@@ -47,6 +47,7 @@ FORBIDDEN = {
     "secret",
     "token",
 }
+AVAILABILITY_STATUSES = {"available", "unavailable", "unknown"}
 
 
 def _forbidden_keys(value: Any) -> set[str]:
@@ -73,6 +74,29 @@ def _missing_required(record: dict[str, Any], required: set[str]) -> list[str]:
     )
 
 
+def _optional_string_list(value: Any, field: str) -> list[str]:
+    """Normalize a JSON-safe set of named failure domains."""
+    if value is None:
+        return []
+    invalid = not isinstance(value, list) or any(
+        not isinstance(item, str) or not item.strip() for item in value
+    )
+    if invalid:
+        raise ValueError(f"{field} must be a list of non-empty strings")
+    cleaned = [item.strip() for item in value]
+    if len(set(cleaned)) != len(cleaned):
+        raise ValueError(f"{field} must not contain duplicates")
+    return sorted(cleaned)
+
+
+def _optional_identifier(value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must be a non-empty string when supplied")
+    return value.strip()
+
+
 def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
     """Validate one privacy-preserving provider/model/epoch commitment.
 
@@ -94,6 +118,7 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("committed_requests must be numeric") from exc
     if committed < 0:
         raise ValueError("committed_requests must be non-negative")
+    failure_domains = _optional_string_list(record.get("failure_domains"), "failure_domains")
     return {
         "commitment_id": str(record["commitment_id"]),
         "observed_at": str(record["observed_at"]),
@@ -107,6 +132,7 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
         "marginal_cost_usd_per_request": _number(
             record.get("marginal_cost_usd_per_request")
         ),
+        "failure_domains_json": json.dumps(failure_domains, separators=(",", ":")),
         "metadata_json": json.dumps(
             record.get("metadata") or {}, separators=(",", ":"), sort_keys=True
         ),
@@ -164,6 +190,14 @@ def validate_outcome(record: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("allocated_requests and served_requests must be non-negative")
     if served > allocated:
         raise ValueError("served_requests cannot exceed allocated_requests")
+    availability_status = record.get("availability_status")
+    if availability_status is not None and availability_status not in AVAILABILITY_STATUSES:
+        raise ValueError(
+            "availability_status must be one of: " + ", ".join(sorted(AVAILABILITY_STATUSES))
+        )
+    outage_event_id = _optional_identifier(record.get("outage_event_id"), "outage_event_id")
+    if availability_status == "unavailable" and outage_event_id is None:
+        raise ValueError("unavailable capacity outcomes require an outage_event_id")
     return {
         "outcome_id": str(record["outcome_id"]),
         "observed_at": str(record["observed_at"]),
@@ -178,6 +212,8 @@ def validate_outcome(record: dict[str, Any]) -> dict[str, Any]:
         "verification_method": record.get("verification_method"),
         "realized_cost_usd": _number(record.get("realized_cost_usd")),
         "realized_revenue_usd": _number(record.get("realized_revenue_usd")),
+        "availability_status": availability_status,
+        "outage_event_id": outage_event_id,
         "metadata_json": json.dumps(
             record.get("metadata") or {}, separators=(",", ":"), sort_keys=True
         ),

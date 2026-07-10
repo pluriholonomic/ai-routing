@@ -21,6 +21,7 @@ def _commitment():
         "committed_requests": 120,
         "verification_method": "provider_signed_export",
         "marginal_cost_usd_per_request": 0.001,
+        "failure_domains": ["cloud:example", "region:us-east"],
         "metadata": {"capacity_class": "reserved"},
     }
 
@@ -39,6 +40,7 @@ def _outcome():
         "verification_method": "router_epoch_ledger",
         "realized_cost_usd": 0.12,
         "realized_revenue_usd": 0.18,
+        "availability_status": "available",
         "metadata": {"workload_class": "short_chat"},
     }
 
@@ -48,6 +50,7 @@ def test_capacity_commitment_contract_preserves_only_capacity_metadata():
     assert row["committed_requests"] == 120.0
     assert row["payload_retained"] is False
     assert row["metadata_json"] == '{"capacity_class":"reserved"}'
+    assert row["failure_domains_json"] == '["cloud:example","region:us-east"]'
 
 
 def test_capacity_commitment_allows_explicit_zero_but_rejects_payloads():
@@ -90,6 +93,20 @@ def test_capacity_outcome_rejects_impossible_counts_and_payloads():
         validate_outcome(_outcome() | {"served_requests": 121})
     with pytest.raises(ValueError, match="forbidden"):
         validate_outcome(_outcome() | {"metadata": {"messages": ["do not persist"]}})
+    with pytest.raises(ValueError, match="outage_event_id"):
+        validate_outcome(_outcome() | {"availability_status": "unavailable"})
+
+
+def test_capacity_outcome_records_aggregate_joint_outage_identifier_without_payload():
+    row = validate_outcome(
+        _outcome()
+        | {
+            "availability_status": "unavailable",
+            "outage_event_id": "outage-2026-07-10-us-east-a",
+        }
+    )
+    assert row["availability_status"] == "unavailable"
+    assert row["outage_event_id"] == "outage-2026-07-10-us-east-a"
 
 
 def test_capacity_outcome_write_uses_immutable_outcome_id(tmp_path):

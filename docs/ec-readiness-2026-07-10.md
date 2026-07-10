@@ -29,6 +29,8 @@ capacity and full-collateral assumptions:
    requests have equal value.
 6. conditional dominant-strategy cost reporting and individual rationality for
    a direct procurement menu with fixed hard capacity and reliability.
+7. conditional max-min delivery-floor dominance over score water-filling when
+   the router has a declared joint-outage support and hard commitments.
 
 These are useful lemmas. They do **not** establish Bayesian incentive
 compatibility, individual rationality with capacity acquisition, welfare with
@@ -60,8 +62,10 @@ counted as evidence.
   and a capacity-acquisition cost.
 - Compare expected welfare with pure cheapest routing and a reliability-only
   baseline under a declared welfare function.
-- Analyze limited liability and correlated outages rather than assuming full
-  collectible bonds.
+- Estimate or externally validate a joint-outage panel and analyze limited
+  liability rather than assuming fully collectible bonds or independent
+  provider failures. The current max-min outage allocation is conditional on
+  the supplied support, not evidence that the support is complete.
 
 ### Empirics
 
