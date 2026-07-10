@@ -29,6 +29,7 @@ from orcap.capture_markets import (
     golem_capacity_rows,
     instrument_map_rows,
     uniswap_pool_specs,
+    uniswap_quoter_impact_capacity_rows,
     uniswap_quoter_quote_rows,
     uniswap_rows,
     uniswap_rpc_log_rows,
@@ -107,6 +108,47 @@ def test_uniswap_quoter_rows_keep_fixed_notional_simulation_distinct_from_depth(
     assert rows[0]["depth_usd"] is None
     assert rows[0]["finalized"] is True
     assert "not a fill guarantee" in rows[0]["quality_tier"]
+
+
+def test_uniswap_quoter_impact_capacity_is_a_discrete_lower_bound_not_depth():
+    pool_id = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+    spec = uniswap_pool_specs()[pool_id]
+
+    def result(amount_out_raw: int) -> str:
+        return "0x" + f"{amount_out_raw:064x}"
+
+    rows = uniswap_quoter_impact_capacity_rows(
+        [
+            {
+                "pool_id": pool_id,
+                "spec": spec,
+                "block_number": 25500656,
+                "amount_in_raw": 100 * 10**6,
+                "result": result(50_000_000_000_000_000),
+            },
+            {
+                "pool_id": pool_id,
+                "spec": spec,
+                "block_number": 25500656,
+                "amount_in_raw": 1_000 * 10**6,
+                "result": result(500_000_000_000_000_000),
+            },
+            {
+                "pool_id": pool_id,
+                "spec": spec,
+                "block_number": 25500656,
+                "amount_in_raw": 10_000 * 10**6,
+                "result": result(4_500_000_000_000_000_000),
+            },
+        ],
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    by_target = {row["impact_target_bps"]: row for row in rows}
+    assert by_target[100]["impact_capacity_lower_bound_usdc"] == 1_000.0
+    assert by_target[500]["impact_capacity_lower_bound_usdc"] == 1_000.0
+    assert "lower bound" in by_target[100]["quality_tier"]
+    assert "not total liquidity" in by_target[100]["metric_definition"]
 
 
 def test_cow_amm_preblock_rows_keep_parent_block_counterfactual_distinct_from_fill():

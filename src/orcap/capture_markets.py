@@ -62,7 +62,11 @@ USDC_ADDRESS = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 WETH_ADDRESS = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
 UNISWAP_V3_QUOTER_V2_ADDRESS = "0x61ffe014ba17989e743c5f6cb21bf9697530b21e"
 UNISWAP_V3_QUOTE_EXACT_INPUT_SINGLE_SELECTOR = "c6a5026a"
-UNISWAP_USDC_QUOTE_BUCKETS = (100, 1_000, 10_000, 100_000)
+# These are deliberately a sparse, bounded ladder.  A derived capacity point
+# is a lower bound at a declared all-in price-deterioration threshold, not a
+# claim to have reconstructed the full V3 tick book or a firm fillable quote.
+UNISWAP_USDC_QUOTE_BUCKETS = (100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000)
+UNISWAP_USDC_IMPACT_TARGET_BPS = (100, 500)
 
 
 def _json(value: Any) -> str:
@@ -688,6 +692,104 @@ def uniswap_quoter_quote_rows(
                 "record_json": _json(record),
             }
         )
+    return rows
+
+
+def uniswap_quoter_impact_capacity_rows(
+    quote_records: list[dict[str, Any]], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Derive discrete all-in price-impact capacity lower bounds from QuoterV2.
+
+    Within a pool/block, the smallest successful USDC probe is the explicit
+    all-in reference price.  For each declared deterioration threshold, this
+    reports the largest successful input-ladder point whose simulated price is
+    still within the threshold.  It is a repeatable state-derived lower bound:
+    a sparse ladder cannot locate the exact threshold crossing, and QuoterV2
+    does not guarantee a subsequently executable fill.
+    """
+    points: dict[tuple[str, int], list[dict[str, Any]]] = {}
+    for record in quote_records:
+        spec = record.get("spec") if isinstance(record.get("spec"), dict) else {}
+        amount_out_raw = _word(record.get("result"), 0)
+        try:
+            amount_in_raw = int(record["amount_in_raw"])
+            block_number = int(record["block_number"])
+            input_amount = amount_in_raw / 10 ** int(spec["token0_decimals"])
+            output_amount = amount_out_raw / 10 ** int(spec["token1_decimals"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        pool_id = str(record.get("pool_id") or "").lower()
+        if not pool_id or amount_out_raw is None or input_amount <= 0 or output_amount <= 0:
+            continue
+        points.setdefault((pool_id, block_number), []).append(
+            {
+                "input_amount": input_amount,
+                "price_usdc_per_weth": input_amount / output_amount,
+                "record": record,
+                "spec": spec,
+            }
+        )
+
+    rows = []
+    for (pool_id, block_number), candidates in sorted(points.items()):
+        candidates.sort(key=lambda item: item["input_amount"])
+        reference = candidates[0]
+        reference_price = reference["price_usdc_per_weth"]
+        if reference_price <= 0:
+            continue
+        for target_bps in UNISWAP_USDC_IMPACT_TARGET_BPS:
+            threshold = reference_price * (1 + target_bps / 10_000)
+            eligible = [item for item in candidates if item["price_usdc_per_weth"] <= threshold]
+            if not eligible:
+                continue
+            lower_bound = max(eligible, key=lambda item: item["input_amount"])
+            spec = lower_bound["spec"]
+            rows.append(
+                {
+                    "run_ts": run_ts,
+                    "dt": dt,
+                    "source": "uniswap",
+                    "venue": "uniswap-v3",
+                    "instrument_id": spec.get("canonical_instrument"),
+                    "pool_id": pool_id,
+                    "quote_id": (
+                        f"{pool_id}:quoter-v2-impact-capacity:{block_number}:{target_bps}bps"
+                    ),
+                    "quote_side": "usdc_to_weth_all_in_impact_capacity_lower_bound",
+                    "quote_unit": "usdc",
+                    "impact_target_bps": target_bps,
+                    "impact_capacity_lower_bound_usdc": lower_bound["input_amount"],
+                    "reference_input_amount_usdc": reference["input_amount"],
+                    "reference_price_usdc_per_weth": reference_price,
+                    "price_usdc_per_weth": lower_bound["price_usdc_per_weth"],
+                    "block_number": block_number,
+                    "finalized": True,
+                    "quality_tier": (
+                        "onchain-quoter-v2 finality-buffered state simulation; sparse-ladder "
+                        "all-in price-impact capacity lower bound, not tick-book depth or a "
+                        "fill guarantee"
+                    ),
+                    "metric_definition": (
+                        "Largest successful declared USDC input ladder point whose all-in "
+                        "simulated USDC/WETH price is within impact_target_bps of the smallest "
+                        "successful "
+                        "same-block probe. It is a discrete lower bound, not total liquidity, "
+                        "market-wide depth, or a firm executable quote."
+                    ),
+                    "record_json": _json(
+                        {
+                            "reference": reference["record"],
+                            "eligible_ladder_points": [
+                                {
+                                    "input_amount_usdc": item["input_amount"],
+                                    "price_usdc_per_weth": item["price_usdc_per_weth"],
+                                }
+                                for item in eligible
+                            ],
+                        }
+                    ),
+                }
+            )
     return rows
 
 
@@ -2064,10 +2166,13 @@ async def capture_markets(
         uniswap, run_ts, dt
     )
     quoter_uni_quotes = uniswap_quoter_quote_rows(uniswap_quoter_records, run_ts, dt)
+    quoter_uni_impact_capacity = uniswap_quoter_impact_capacity_rows(
+        uniswap_quoter_records, run_ts, dt
+    )
     cow_amm_counterfactual_quotes = cow_amm_preblock_quote_rows(
         cow_amm_counterfactual_records, run_ts, dt
     )
-    uni_quotes = graph_uni_quotes + quoter_uni_quotes
+    uni_quotes = graph_uni_quotes + quoter_uni_quotes + quoter_uni_impact_capacity
     rpc_uni_executions, rpc_uni_events = uniswap_rpc_log_rows(
         uniswap_rpc_logs, uniswap_block_times, run_ts, dt
     )
@@ -2211,6 +2316,7 @@ async def capture_markets(
                     len(graph_uni_executions) if uniswap_rpc_detail["rpc_configured"] else 0
                 ),
                 "finalized_execution_rows": len(rpc_uni_executions),
+                "finalized_impact_capacity_rows": len(quoter_uni_impact_capacity),
                 "finalized_liquidity_event_rows": sum(
                     event["event_type"] in {"liquidity_mint", "liquidity_burn"}
                     for event in rpc_uni_events
@@ -2271,6 +2377,7 @@ async def capture_markets(
         "geckoterminal_quotes": len(geckoterminal_quotes),
         "uniswap_quotes": len(uni_quotes),
         "uniswap_finalized_quote_curve_points": len(quoter_uni_quotes),
+        "uniswap_finalized_impact_capacity_points": len(quoter_uni_impact_capacity),
         "uniswap_executions": len(uni_executions),
         "uniswap_finalized_executions": len(rpc_uni_executions),
         "uniswap_finalized_liquidity_events": sum(
