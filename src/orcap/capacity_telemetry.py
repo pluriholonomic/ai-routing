@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from math import isclose, isfinite
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,51 @@ def _optional_identifier(value: Any, field: str) -> str | None:
     return value.strip()
 
 
+def _optional_cost_curve(value: Any, committed_requests: float) -> list[dict[str, float]]:
+    """Validate a compressed, non-decreasing marginal reservation-cost curve.
+
+    Each breakpoint gives the cumulative request count through which a single
+    marginal reservation cost applies. The final breakpoint must equal the
+    declared commitment, so a report cannot silently leave an unpriced tail.
+    It is an owner declaration for the VCG counterfactual, never evidence that
+    a provider's costs or physical capacity have been independently verified.
+    """
+    if value is None:
+        return []
+    if not isinstance(value, list) or not value:
+        raise ValueError("capacity_cost_curve must be a non-empty list when supplied")
+    curve: list[dict[str, float]] = []
+    previous_end = 0.0
+    previous_cost = 0.0
+    for point in value:
+        if not isinstance(point, dict):
+            raise ValueError("capacity_cost_curve entries must be objects")
+        try:
+            end_requests = float(point["end_requests"])
+            marginal_cost = float(point["marginal_cost_usd_per_request"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                "capacity_cost_curve entries need numeric end_requests and "
+                "marginal_cost_usd_per_request"
+            ) from exc
+        if not isfinite(end_requests) or end_requests <= previous_end:
+            raise ValueError("capacity_cost_curve end_requests must be finite and increasing")
+        if not isfinite(marginal_cost) or marginal_cost < 0:
+            raise ValueError("capacity_cost_curve marginal costs must be finite and non-negative")
+        if marginal_cost < previous_cost:
+            raise ValueError("capacity_cost_curve marginal costs must be non-decreasing")
+        curve.append(
+            {
+                "end_requests": end_requests,
+                "marginal_cost_usd_per_request": marginal_cost,
+            }
+        )
+        previous_end, previous_cost = end_requests, marginal_cost
+    if not isclose(previous_end, committed_requests, rel_tol=0.0, abs_tol=1e-9):
+        raise ValueError("capacity_cost_curve final end_requests must equal committed_requests")
+    return curve
+
+
 def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
     """Validate one privacy-preserving provider/model/epoch commitment.
 
@@ -116,8 +162,8 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
         committed = float(record["committed_requests"])
     except (TypeError, ValueError) as exc:
         raise ValueError("committed_requests must be numeric") from exc
-    if committed < 0:
-        raise ValueError("committed_requests must be non-negative")
+    if not isfinite(committed) or committed < 0:
+        raise ValueError("committed_requests must be finite and non-negative")
     failure_domains = _optional_string_list(record.get("failure_domains"), "failure_domains")
     capacity_linear_cost = _number(record.get("capacity_linear_cost_usd_per_request"))
     capacity_cost_curvature = _number(
@@ -127,6 +173,7 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("capacity_linear_cost_usd_per_request must be non-negative")
     if capacity_cost_curvature is not None and capacity_cost_curvature <= 0:
         raise ValueError("capacity_cost_curvature_usd_per_request_sq must be positive")
+    capacity_cost_curve = _optional_cost_curve(record.get("capacity_cost_curve"), committed)
     return {
         "commitment_id": str(record["commitment_id"]),
         "observed_at": str(record["observed_at"]),
@@ -142,6 +189,9 @@ def validate_commitment(record: dict[str, Any]) -> dict[str, Any]:
         ),
         "capacity_linear_cost_usd_per_request": capacity_linear_cost,
         "capacity_cost_curvature_usd_per_request_sq": capacity_cost_curvature,
+        "capacity_cost_curve_json": json.dumps(
+            capacity_cost_curve, separators=(",", ":"), sort_keys=True
+        ),
         "failure_domains_json": json.dumps(failure_domains, separators=(",", ":")),
         "metadata_json": json.dumps(
             record.get("metadata") or {}, separators=(",", ":"), sort_keys=True

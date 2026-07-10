@@ -113,6 +113,7 @@ def _commitment_coverage() -> dict:
             "committed_requests": float(rows[6] or 0.0),
             "capacity_linear_cost_observed": 0,
             "capacity_cost_curvature_observed": 0,
+            "capacity_cost_curve_observed": 0,
         }
         schema = data.q(
             f"describe select * from read_parquet('{glob}', union_by_name=true)"
@@ -131,6 +132,14 @@ def _commitment_coverage() -> dict:
             ).fetchone()
             result["capacity_linear_cost_observed"] = int(cost_rows[0])
             result["capacity_cost_curvature_observed"] = int(cost_rows[1])
+        if "capacity_cost_curve_json" in columns:
+            curve_rows = data.q(
+                f"""
+                select count(nullif(capacity_cost_curve_json, '[]'))
+                from read_parquet('{glob}', union_by_name=true)
+                """
+            ).fetchone()
+            result["capacity_cost_curve_observed"] = int(curve_rows[0])
         return result
     except Exception:
         return {
@@ -143,6 +152,7 @@ def _commitment_coverage() -> dict:
             "committed_requests": 0.0,
             "capacity_linear_cost_observed": 0,
             "capacity_cost_curvature_observed": 0,
+            "capacity_cost_curve_observed": 0,
         }
 
 
@@ -469,6 +479,17 @@ def capacity_procurement_gate(commitments: dict) -> dict:
         commitments["capacity_linear_cost_observed"],
         commitments["capacity_cost_curvature_observed"],
     )
+    cost_curve_observed = commitments.get("capacity_cost_curve_observed", 0)
+    if commitments["commitments"] and cost_curve_observed:
+        return {
+            "status": "declared_cost_curve_coverage",
+            "declared_cost_curve_rows": cost_curve_observed,
+            "claim_boundary": (
+                "A declared piecewise-convex reservation-cost curve can calibrate the "
+                "conditional VCG counterfactual, but it does not verify private cost, "
+                "capacity, reliability, or enforceable delivery."
+            ),
+        }
     if not commitments["commitments"]:
         status = "not_identified"
     elif not observed:
@@ -481,6 +502,7 @@ def capacity_procurement_gate(commitments: dict) -> dict:
         "status": status,
         "declared_linear_cost_rows": commitments["capacity_linear_cost_observed"],
         "declared_curvature_rows": commitments["capacity_cost_curvature_observed"],
+        "declared_cost_curve_rows": cost_curve_observed,
         "minimum_declared_cost_rows": MIN_CAPACITY_PROCUREMENT_COMMITMENTS,
         "claim_boundary": (
             "Declared reservation-cost fields support only a controlled-study calibration input. "

@@ -76,6 +76,27 @@ def test_capacity_commitment_rejects_missing_and_negative_capacity():
         validate_commitment(_commitment() | {"capacity_cost_curvature_usd_per_request_sq": 0})
 
 
+def test_capacity_commitment_accepts_only_complete_non_decreasing_cost_curves():
+    curve = [
+        {"end_requests": 50, "marginal_cost_usd_per_request": 0.0002},
+        {"end_requests": 120, "marginal_cost_usd_per_request": 0.0004},
+    ]
+    row = validate_commitment(_commitment() | {"capacity_cost_curve": curve})
+    assert row["capacity_cost_curve_json"].startswith('[{"end_requests":50.0')
+    with pytest.raises(ValueError, match="final end_requests"):
+        validate_commitment(_commitment() | {"capacity_cost_curve": curve[:-1]})
+    with pytest.raises(ValueError, match="non-decreasing"):
+        validate_commitment(
+            _commitment()
+            | {
+                "capacity_cost_curve": [
+                    {"end_requests": 50, "marginal_cost_usd_per_request": 0.0004},
+                    {"end_requests": 120, "marginal_cost_usd_per_request": 0.0002},
+                ]
+            }
+        )
+
+
 def test_capacity_commitment_write_uses_immutable_commitment_id(tmp_path):
     path = write_commitments([_commitment()], curated_dir=tmp_path)
     assert path is not None
