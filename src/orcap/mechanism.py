@@ -366,6 +366,425 @@ def collateralized_capacity_vcg_report_diagnostic(
     return pd.DataFrame(rows)
 
 
+def _validate_collateralized_capacity_reliability_inputs(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    reported_reliability: dict[str, float],
+    value_per_success: float,
+    shortfall_sentinel_cost: float,
+) -> dict[str, float]:
+    """Validate a finite capacity/cost/reliability report profile.
+
+    ``value_per_success`` is also the maximum economically relevant marginal
+    cost in this no-service outside-option model. The existing collateralized
+    validator therefore makes every true sentinel more expensive than any
+    possible success value, so an unavailable truthful slot has non-positive
+    reported surplus at every reliability report.
+    """
+    if not isfinite(value_per_success) or value_per_success <= 0:
+        raise ValueError("value_per_success must be finite and strictly positive")
+    _validate_collateralized_capacity_curve_offers(
+        offers,
+        outside_option_cost=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    return _validate_reliability_reports(offers, reported_reliability)
+
+
+def _collateralized_capacity_curve_cost(
+    offer: CollateralizedCapacityCurveOffer, units: int
+) -> float:
+    if not isinstance(units, int) or units < 0 or units > offer.registered_slot_limit:
+        raise ValueError("reserved units must lie within registered_slot_limit")
+    return float(sum(offer.reported_marginal_costs[:units]))
+
+
+def collateralized_capacity_reliability_allocation(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+    shortfall_sentinel_cost: float,
+) -> pd.Series:
+    """Positive-surplus finite VCG allocation with private capacity/cost.
+
+    Under a truthful report, every unavailable sentinel costs more than any
+    success value and is excluded. A false capacity report can make such a
+    unit reserveable, but its true utility charges the sentinel collateral
+    loss. This is a reservation-stage primitive, not an observed-router model.
+    """
+    demand = _validate_integer_demand(demand)
+    reports = _validate_collateralized_capacity_reliability_inputs(
+        offers,
+        reported_reliability=reported_reliability,
+        value_per_success=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    allocation = {offer.provider: 0 for offer in offers}
+    marginal_units = []
+    for offer in offers:
+        benefit = reports[offer.provider] * value_per_success
+        for unit, cost in enumerate(offer.reported_marginal_costs, start=1):
+            surplus = benefit - float(cost)
+            marginal_units.append((-surplus, offer.provider, unit, surplus))
+    for _, provider, _, surplus in sorted(marginal_units):
+        if sum(allocation.values()) >= demand or surplus <= 0:
+            break
+        allocation[provider] += 1
+    return pd.Series(allocation, dtype="int64")
+
+
+def collateralized_capacity_reliability_reported_welfare(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+    shortfall_sentinel_cost: float,
+    allocation: pd.Series | None = None,
+) -> float:
+    """Reported expected surplus for the finite collateralized domain."""
+    demand = _validate_integer_demand(demand)
+    reports = _validate_collateralized_capacity_reliability_inputs(
+        offers,
+        reported_reliability=reported_reliability,
+        value_per_success=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    chosen = (
+        collateralized_capacity_reliability_allocation(
+            offers,
+            reported_reliability=reports,
+            demand=demand,
+            value_per_success=value_per_success,
+            shortfall_sentinel_cost=shortfall_sentinel_cost,
+        )
+        if allocation is None
+        else _validated_allocation(allocation).reindex(
+            [offer.provider for offer in offers], fill_value=0.0
+        )
+    )
+    if any(chosen[offer.provider] > offer.registered_slot_limit for offer in offers):
+        raise ValueError("allocation exceeds registered_slot_limit")
+    if float(chosen.sum()) > demand:
+        raise ValueError("allocation exceeds demand")
+    return sum(
+        reports[offer.provider] * value_per_success * float(chosen[offer.provider])
+        - _collateralized_capacity_curve_cost(offer, int(chosen[offer.provider]))
+        for offer in offers
+    )
+
+
+def collateralized_capacity_reliability_vcg_payment(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    provider: str,
+    reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+    shortfall_sentinel_cost: float,
+) -> float:
+    """Clarke-pivot reservation payment conditional on reliability reports."""
+    reports = _validate_collateralized_capacity_reliability_inputs(
+        offers,
+        reported_reliability=reported_reliability,
+        value_per_success=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    if provider not in reports:
+        raise ValueError(f"unknown provider: {provider}")
+    allocation = collateralized_capacity_reliability_allocation(
+        offers,
+        reported_reliability=reports,
+        demand=demand,
+        value_per_success=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    without = [offer for offer in offers if offer.provider != provider]
+    without_reports = {name: value for name, value in reports.items() if name != provider}
+    welfare_without = collateralized_capacity_reliability_reported_welfare(
+        without,
+        reported_reliability=without_reports,
+        demand=demand,
+        value_per_success=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    others_welfare = sum(
+        reports[offer.provider] * value_per_success * float(allocation[offer.provider])
+        - _collateralized_capacity_curve_cost(offer, int(allocation[offer.provider]))
+        for offer in without
+    )
+    own_reported_buyer_value = reports[provider] * value_per_success * float(allocation[provider])
+    return own_reported_buyer_value + others_welfare - welfare_without
+
+
+def collateralized_capacity_reliability_vcg_utility(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+    shortfall_sentinel_cost: float,
+) -> float:
+    """True reservation utility before the independent audit score."""
+    _validate_collateralized_capacity_reliability_inputs(
+        offers,
+        reported_reliability=reported_reliability,
+        value_per_success=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    by_provider = {offer.provider: offer for offer in offers}
+    if provider not in by_provider:
+        raise ValueError(f"unknown provider: {provider}")
+    true_offer = CollateralizedCapacityCurveOffer(
+        provider=provider,
+        registered_slot_limit=by_provider[provider].registered_slot_limit,
+        reported_marginal_costs=tuple(true_marginal_costs),
+    )
+    _validate_collateralized_capacity_curve_offers(
+        [true_offer],
+        outside_option_cost=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    allocation = collateralized_capacity_reliability_allocation(
+        offers,
+        reported_reliability=reported_reliability,
+        demand=demand,
+        value_per_success=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    payment = collateralized_capacity_reliability_vcg_payment(
+        offers,
+        provider=provider,
+        reported_reliability=reported_reliability,
+        demand=demand,
+        value_per_success=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    return payment - _collateralized_capacity_curve_cost(
+        true_offer, int(allocation[provider])
+    )
+
+
+def _replace_collateralized_capacity_curve_report(
+    offers: list[CollateralizedCapacityCurveOffer],
+    provider: str,
+    schedule: tuple[float, ...],
+) -> list[CollateralizedCapacityCurveOffer]:
+    return [
+        (
+            CollateralizedCapacityCurveOffer(
+                provider=offer.provider,
+                registered_slot_limit=offer.registered_slot_limit,
+                reported_marginal_costs=tuple(schedule),
+            )
+            if offer.provider == provider
+            else offer
+        )
+        for offer in offers
+    ]
+
+
+def collateralized_capacity_reliability_minimum_score_scale(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    reliability_grid: tuple[float, ...],
+    other_reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+    shortfall_sentinel_cost: float,
+    audit_probability: float,
+    strict_advantage: float = 0.0,
+) -> float:
+    """Audit-score scale for every finite reliability report gain.
+
+    The private capacity/cost curve is held truthful for this calculation. The
+    VCG argument separately handles every capacity/cost report at each fixed
+    reliability report, so this scale is the remaining reliability incentive.
+    """
+    grid, _ = _validated_audit_grid(reliability_grid)
+    _reliability_vector_for_provider_report(
+        offers,
+        provider=provider,
+        other_reported_reliability=other_reported_reliability,
+        provider_report=grid[0],
+    )
+    if not isfinite(audit_probability) or not 0.0 < audit_probability <= 1.0:
+        raise ValueError("audit_probability must lie in (0, 1]")
+    if not isfinite(strict_advantage) or strict_advantage < 0.0:
+        raise ValueError("strict_advantage must be finite and non-negative")
+    truthful_offers = _replace_collateralized_capacity_curve_report(
+        offers, provider, true_marginal_costs
+    )
+    _validate_collateralized_capacity_curve_offers(
+        truthful_offers,
+        outside_option_cost=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    base_utility = {}
+    for report in grid:
+        reports = _reliability_vector_for_provider_report(
+            truthful_offers,
+            provider=provider,
+            other_reported_reliability=other_reported_reliability,
+            provider_report=report,
+        )
+        base_utility[report] = collateralized_capacity_reliability_vcg_utility(
+            truthful_offers,
+            provider=provider,
+            true_marginal_costs=true_marginal_costs,
+            reported_reliability=reports,
+            demand=demand,
+            value_per_success=value_per_success,
+            shortfall_sentinel_cost=shortfall_sentinel_cost,
+        )
+    required_scale = 0.0
+    for true_q in grid:
+        for report in grid:
+            if report == true_q:
+                continue
+            base_gain = max(0.0, base_utility[report] - base_utility[true_q])
+            kl_divergence = true_q * log(true_q / report) + (1.0 - true_q) * log(
+                (1.0 - true_q) / (1.0 - report)
+            )
+            required_scale = max(
+                required_scale,
+                (base_gain + strict_advantage) / (audit_probability * kl_divergence),
+            )
+    return required_scale
+
+
+def collateralized_capacity_reliability_product_report_diagnostic(
+    offers: list[CollateralizedCapacityCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    capacity_cost_report_schedules: list[tuple[float, ...]],
+    reliability_grid: tuple[float, ...],
+    other_reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+    shortfall_sentinel_cost: float,
+    audit_probability: float,
+    audit_score_scale: float,
+) -> pd.DataFrame:
+    """Audit every supplied joint capacity/cost/reliability deviation.
+
+    The finite report grid is diagnostic only: conditional VCG truth extends to
+    the complete validated capacity/cost report domain. The funded log score
+    controls reliability only on the stated finite clipped grid.
+    """
+    grid, report_floor = _validated_audit_grid(reliability_grid)
+    if not isfinite(audit_probability) or not 0.0 < audit_probability <= 1.0:
+        raise ValueError("audit_probability must lie in (0, 1]")
+    if not isfinite(audit_score_scale) or audit_score_scale < 0.0:
+        raise ValueError("audit_score_scale must be finite and non-negative")
+    truthful_offers = _replace_collateralized_capacity_curve_report(
+        offers, provider, true_marginal_costs
+    )
+    _validate_collateralized_capacity_curve_offers(
+        truthful_offers,
+        outside_option_cost=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    actual_capacity = collateralized_reported_capacity(
+        next(offer for offer in truthful_offers if offer.provider == provider),
+        outside_option_cost=value_per_success,
+        shortfall_sentinel_cost=shortfall_sentinel_cost,
+    )
+    rows = []
+    for true_q in grid:
+        truth_reports = _reliability_vector_for_provider_report(
+            truthful_offers,
+            provider=provider,
+            other_reported_reliability=other_reported_reliability,
+            provider_report=true_q,
+        )
+        truthful_base = collateralized_capacity_reliability_vcg_utility(
+            truthful_offers,
+            provider=provider,
+            true_marginal_costs=true_marginal_costs,
+            reported_reliability=truth_reports,
+            demand=demand,
+            value_per_success=value_per_success,
+            shortfall_sentinel_cost=shortfall_sentinel_cost,
+        )
+        truthful_score = audit_probability * audit_score_scale * expected_bounded_log_score(
+            actual_reliability=true_q,
+            reported_reliability=true_q,
+            report_floor=report_floor,
+        )
+        truthful_total = truthful_base + truthful_score
+        for reliability_report in grid:
+            reports = _reliability_vector_for_provider_report(
+                truthful_offers,
+                provider=provider,
+                other_reported_reliability=other_reported_reliability,
+                provider_report=reliability_report,
+            )
+            for cost_report in capacity_cost_report_schedules:
+                reported_offers = _replace_collateralized_capacity_curve_report(
+                    truthful_offers, provider, cost_report
+                )
+                _validate_collateralized_capacity_curve_offers(
+                    reported_offers,
+                    outside_option_cost=value_per_success,
+                    shortfall_sentinel_cost=shortfall_sentinel_cost,
+                )
+                allocation = collateralized_capacity_reliability_allocation(
+                    reported_offers,
+                    reported_reliability=reports,
+                    demand=demand,
+                    value_per_success=value_per_success,
+                    shortfall_sentinel_cost=shortfall_sentinel_cost,
+                )
+                reported_offer = next(
+                    offer for offer in reported_offers if offer.provider == provider
+                )
+                base_utility = collateralized_capacity_reliability_vcg_utility(
+                    reported_offers,
+                    provider=provider,
+                    true_marginal_costs=true_marginal_costs,
+                    reported_reliability=reports,
+                    demand=demand,
+                    value_per_success=value_per_success,
+                    shortfall_sentinel_cost=shortfall_sentinel_cost,
+                )
+                score = audit_probability * audit_score_scale * expected_bounded_log_score(
+                    actual_reliability=true_q,
+                    reported_reliability=reliability_report,
+                    report_floor=report_floor,
+                )
+                rows.append(
+                    {
+                        "true_reliability": true_q,
+                        "reported_reliability": reliability_report,
+                        "reported_marginal_costs": tuple(float(cost) for cost in cost_report),
+                        "reported_capacity": collateralized_reported_capacity(
+                            reported_offer,
+                            outside_option_cost=value_per_success,
+                            shortfall_sentinel_cost=shortfall_sentinel_cost,
+                        ),
+                        "actual_capacity": actual_capacity,
+                        "reserved_units": int(allocation[provider]),
+                        "defaulted_reserved_units_at_true_capacity": max(
+                            0, int(allocation[provider]) - actual_capacity
+                        ),
+                        "base_vcg_utility_at_true_capacity_and_cost": base_utility,
+                        "expected_audit_score": score,
+                        "combined_expected_payoff": base_utility + score,
+                        "truthful_joint_payoff_advantage": truthful_total
+                        - (base_utility + score),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
 @dataclass(frozen=True)
 class OutageScenario:
     """One joint provider-availability state for a fixed allocation epoch.

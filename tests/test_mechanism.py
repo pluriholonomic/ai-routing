@@ -28,6 +28,9 @@ from orcap.mechanism import (
     certified_cost_curve_vcg_report_diagnostic,
     certified_cost_curve_vcg_utility,
     certified_reliability_cost_allocation,
+    collateralized_capacity_reliability_allocation,
+    collateralized_capacity_reliability_minimum_score_scale,
+    collateralized_capacity_reliability_product_report_diagnostic,
     collateralized_capacity_vcg_allocation,
     collateralized_capacity_vcg_payment,
     collateralized_capacity_vcg_report_diagnostic,
@@ -601,6 +604,74 @@ def test_collateralized_vcg_rejects_a_nonmonotone_or_costlier_delivery_than_fall
             outside_option_cost=10.0,
             shortfall_sentinel_cost=100.0,
         )
+
+
+def test_audited_collateralized_vcg_controls_joint_capacity_cost_and_reliability_reports():
+    sentinel = 100.0
+    offers = [
+        CollateralizedCapacityCurveOffer("a", 4, (1.0, 6.0, sentinel, sentinel)),
+        CollateralizedCapacityCurveOffer("b", 4, (3.0, 5.0, 9.0, sentinel)),
+    ]
+    low = collateralized_capacity_reliability_allocation(
+        offers,
+        reported_reliability={"a": 0.3, "b": 0.5},
+        demand=3,
+        value_per_success=10.0,
+        shortfall_sentinel_cost=sentinel,
+    )
+    high = collateralized_capacity_reliability_allocation(
+        offers,
+        reported_reliability={"a": 0.8, "b": 0.5},
+        demand=3,
+        value_per_success=10.0,
+        shortfall_sentinel_cost=sentinel,
+    )
+    assert low.to_dict() == {"a": 1, "b": 1}
+    assert high.to_dict() == {"a": 2, "b": 1}
+
+    scale = collateralized_capacity_reliability_minimum_score_scale(
+        offers,
+        provider="a",
+        true_marginal_costs=(1.0, 6.0, sentinel, sentinel),
+        reliability_grid=(0.3, 0.8),
+        other_reported_reliability={"b": 0.5},
+        demand=3,
+        value_per_success=10.0,
+        shortfall_sentinel_cost=sentinel,
+        audit_probability=0.2,
+        strict_advantage=1e-5,
+    )
+    report_grid = [
+        tuple(costs) + (sentinel,) * (4 - capacity)
+        for capacity in range(5)
+        for costs in combinations_with_replacement((0.0, 1.0, 3.0, 6.0, 9.0), capacity)
+    ]
+    diagnostic = collateralized_capacity_reliability_product_report_diagnostic(
+        offers,
+        provider="a",
+        true_marginal_costs=(1.0, 6.0, sentinel, sentinel),
+        capacity_cost_report_schedules=report_grid,
+        reliability_grid=(0.3, 0.8),
+        other_reported_reliability={"b": 0.5},
+        demand=3,
+        value_per_success=10.0,
+        shortfall_sentinel_cost=sentinel,
+        audit_probability=0.2,
+        audit_score_scale=scale,
+    )
+    assert (diagnostic["truthful_joint_payoff_advantage"] >= -1e-9).all()
+    off_grid = diagnostic.loc[
+        (diagnostic["reported_marginal_costs"] == (1.0, 6.0, sentinel, sentinel))
+        & (diagnostic["true_reliability"] != diagnostic["reported_reliability"])
+    ]
+    assert (off_grid["truthful_joint_payoff_advantage"] > 0).all()
+    over = diagnostic.loc[
+        (diagnostic["true_reliability"] == 0.8)
+        & (diagnostic["reported_reliability"] == 0.8)
+        & (diagnostic["reported_marginal_costs"] == (1.0, 6.0, 6.0, sentinel))
+    ].iloc[0]
+    assert over["defaulted_reserved_units_at_true_capacity"] == 1
+    assert over["truthful_joint_payoff_advantage"] > 0
 
 
 def test_audited_vcg_synthesis_controls_joint_finite_grid_cost_and_reliability_reports():

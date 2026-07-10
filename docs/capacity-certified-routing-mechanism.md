@@ -251,11 +251,33 @@ AMM welfare results.
     physical-capacity certificate, prove payment-on-success delivery, budget
     balance, endogenous investment, private/continuous reliability, audit
     selection, or correlated-outage results.
+18. **Audited product-report VCG with private finite capacity, convex cost,
+    and finite-grid reliability.** Retain the complete collateralized report
+    domain from item 17, let reliability lie in a finite clipped grid, assign
+    an independent Bernoulli audit with probability `rho`, and give the
+    provider a bounded, externally funded log score on the audit outcome. For
+    any fixed reliability report, the allocation maximizes reported positive
+    expected surplus `r_i v-c_iu` and the pivot transfer makes the complete
+    capacity/cost report weakly dominant: an unavailable true sentinel unit
+    costs more than `v`, and an over-reported allocated unit therefore incurs
+    its true collateral loss. Holding the true capacity/cost curve, compute
+    the largest finite-grid VCG gain from every reliability report and choose
+    the score scale above that gain divided by `rho KL(Bern(q)||Bern(r))`
+    (plus a desired strict margin). Truth is then strictly best in reliability,
+    and the two inequalities compose so no joint capacity/cost/reliability
+    report is profitable. The `collateralized_capacity_reliability_*` routines
+    implement the allocation, pivot payment, exact score scale, and joint
+    diagnostic. This is a **finite-slot, fully collateralized,
+    reservation-stage, independently audited, externally funded** DSIC/IR
+    construction. It still does not establish continuous/private reliability,
+    payment-on-success delivery, endogenous capacity investment, funded
+    collateral, audit selection, budget balance, correlated failures, or a
+    welfare estimate with observed heterogeneous requests.
 
-The next theory step is to compose the finite private-capacity/cost construction
-with privately reported reliability under a stochastic health process, then
-connect the reservation transfer, funded audit score, and payment-on-success
-delivery in one mechanism with a declared liability limit. It must also extend
+The next theory step is to relax the finite slot/reliability grid and compose
+the reservation transfer, funded audit score, and payment-on-success delivery
+in one mechanism with a declared liability limit. It must also endogenize or
+validate collateral funding, model stochastic/correlated health, and extend
 welfare to heterogeneous request values and controlled observations. H54
 supplies a defensible *exogenous input* under a controlled design; the
 finite-bond boundary, finite-grid audit construction, and collateralized
