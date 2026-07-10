@@ -36,6 +36,8 @@ capacity and full-collateral assumptions:
    curvature are certified and only the linear cost is private.
 9. a known-primitive expected-net-welfare allocation that weakly dominates
    pure-cheapest and reliability-only rules for equal request values.
+10. a conditional VCG procurement benchmark for an entire privately reported
+    convex cost curve, with certified capacity and reliability eligibility.
 
 These are useful lemmas. They do **not** establish Bayesian incentive
 compatibility with jointly private capacity/curvature/reliability, an empirical

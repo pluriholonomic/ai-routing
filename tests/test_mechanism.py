@@ -5,6 +5,7 @@ import pytest
 
 from orcap.mechanism import (
     CapacityProcurementOffer,
+    CertifiedCostCurveOffer,
     OutageScenario,
     ProviderOffer,
     allocation_counterfactual,
@@ -14,6 +15,10 @@ from orcap.mechanism import (
     capacity_procurement_allocation,
     capacity_procurement_report_diagnostic,
     capacity_procurement_utility,
+    certified_cost_curve_allocation,
+    certified_cost_curve_vcg_payment,
+    certified_cost_curve_vcg_report_diagnostic,
+    certified_cost_curve_vcg_utility,
     declared_capacity_payoff,
     expected_delivered_under_outage_scenarios,
     expected_net_welfare,
@@ -329,6 +334,64 @@ def test_convex_capacity_procurement_menu_is_monotone_truthful_and_individually_
         cost_upper_bound=4.0,
     )
     assert upper_type_utility == pytest.approx(0.0)
+
+
+def test_cost_curve_vcg_procures_least_cost_certified_units_and_pays_pivot_externality():
+    offers = [
+        CertifiedCostCurveOffer("a", certified_capacity=2, reported_marginal_costs=(1.0, 3.0)),
+        CertifiedCostCurveOffer("b", certified_capacity=2, reported_marginal_costs=(2.0, 4.0)),
+    ]
+    allocation = certified_cost_curve_allocation(offers, demand=2)
+    assert allocation.to_dict() == {"a": 1, "b": 1}
+    payment = certified_cost_curve_vcg_payment(
+        offers, provider="a", demand=2, unfilled_penalty=20.0
+    )
+    assert payment == pytest.approx(4.0)
+    utility = certified_cost_curve_vcg_utility(
+        offers,
+        provider="a",
+        true_marginal_costs=(1.0, 3.0),
+        demand=2,
+        unfilled_penalty=20.0,
+    )
+    assert utility == pytest.approx(3.0)
+
+
+def test_cost_curve_vcg_has_truthful_best_response_on_a_convex_schedule_grid():
+    offers = [
+        CertifiedCostCurveOffer("a", certified_capacity=2, reported_marginal_costs=(1.0, 3.0)),
+        CertifiedCostCurveOffer("b", certified_capacity=2, reported_marginal_costs=(2.0, 4.0)),
+    ]
+    diagnostic = certified_cost_curve_vcg_report_diagnostic(
+        offers,
+        provider="a",
+        true_marginal_costs=(1.0, 3.0),
+        report_schedules=[(0.0, 0.0), (1.0, 3.0), (5.0, 6.0)],
+        demand=2,
+        unfilled_penalty=20.0,
+    )
+    truth = diagnostic.loc[
+        diagnostic["reported_marginal_costs"] == (1.0, 3.0), "utility_at_true_cost_curve"
+    ].iat[0]
+    assert truth >= diagnostic["utility_at_true_cost_curve"].max() - 1e-9
+    assert truth >= 0
+
+
+def test_cost_curve_vcg_rejects_nonconvex_or_uncertified_schedule_reports():
+    with pytest.raises(ValueError, match="length"):
+        certified_cost_curve_allocation(
+            [CertifiedCostCurveOffer("a", certified_capacity=2, reported_marginal_costs=(1.0,))],
+            demand=1,
+        )
+    with pytest.raises(ValueError, match="non-decreasing"):
+        certified_cost_curve_allocation(
+            [
+                CertifiedCostCurveOffer(
+                    "a", certified_capacity=2, reported_marginal_costs=(2.0, 1.0)
+                )
+            ],
+            demand=1,
+        )
 
 
 def test_known_primitive_welfare_rule_dominates_price_and_reliability_baselines():
