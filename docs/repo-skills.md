@@ -122,6 +122,16 @@ provider-selection calibration study.
 Completion check: public source health is green, quote/policy output joins only
 through the versioned alias map, and owned telemetry contains no payload fields.
 
+### Shadow-routing extension
+
+Use `config/router_registry.toml` to add a router only after identifying whether
+its policy is publicly documented or account configured. Put public quote or
+performance feeds into a labeled simulation; import configured Cloudflare,
+Portkey, and LiteLLM policies through `orcap import-router-policy`; and run H45
+for base shares, outage states, and quote-flip conditions. Do not label any of
+those outputs as realized selection without a redacted controlled attempt in
+`router_route_attempts`.
+
 ## 6. Publish and operate a live monitor
 
 Use for: dashboards, alerts, memo deployment, and scheduled research.

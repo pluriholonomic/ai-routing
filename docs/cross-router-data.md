@@ -39,6 +39,21 @@ routers, or whether price- and throughput-prioritized policies disagree. It
 cannot answer either router's global routed share, actual route selection, or
 provider profit.
 
+## Common shadow-execution screen
+
+H45 converts the existing public OpenRouter and Hugging Face policy surfaces
+into a common representation and adds any owner-imported Cloudflare AI Gateway,
+Portkey, or LiteLLM configuration. It emits the base policy share, each
+single-provider outage state, a top-two outage state, and the quote cut needed
+to tie the current lowest public quote.
+
+```bash
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h45 --out analysis
+```
+
+See [`router-shadow-execution.md`](router-shadow-execution.md) for the import
+schema and exact claim boundary.
+
 ## Owned request telemetry contract
 
 `router_route_attempts` is intentionally a separate, private table for traffic
@@ -55,6 +70,18 @@ customer content.
 ```bash
 uv run orcap ingest-route-attempts --input redacted-route-attempts.jsonl
 ```
+
+For a redacted source-native export, declare its adapter and study explicitly:
+
+```bash
+uv run orcap ingest-route-attempts \
+  --input redacted-portkey-events.jsonl --format portkey --study-id routing-v1
+```
+
+The adapters accept only a narrow event subset (event time/id, model, provider,
+cost/tokens/latency, retry/fallback metadata). They reject prompts,
+completions, raw request/response objects, credentials, and tokens before
+anything is written.
 
 ## Activation sequence for paid controlled probes
 
