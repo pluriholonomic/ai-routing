@@ -10,6 +10,10 @@ from orcap.mechanism import (
     ProviderOffer,
     allocation_counterfactual,
     allocation_shares,
+    audited_reliability_minimum_score_scale,
+    audited_reliability_report_diagnostic,
+    audited_reliability_report_payoff,
+    bounded_log_score,
     capacity_bond_floor,
     capacity_constrained_allocation,
     capacity_procurement_allocation,
@@ -125,6 +129,70 @@ def test_reliability_report_payoff_requires_a_bounded_probability_and_nonnegativ
             marginal_margin_per_success=1,
             nominal_bond_per_missed_request=1,
             collectible_liability_cap=1,
+        )
+
+
+def test_bounded_audit_score_recovers_truthfulness_on_an_explicit_finite_grid():
+    grid = (0.5, 0.9, 0.99)
+    allocation = {0.5: 1.0, 0.9: 5.0, 0.99: 10.0}
+    scale = audited_reliability_minimum_score_scale(
+        reliability_grid=grid,
+        allocation_by_report=allocation,
+        marginal_margin_per_success=0.6,
+        nominal_bond_per_missed_request=1.0,
+        collectible_liability_cap=1.0,
+        audit_probability=0.1,
+        strict_advantage=1e-5,
+    )
+    truthful = audited_reliability_report_payoff(
+        actual_reliability=0.9,
+        reported_reliability=0.9,
+        allocated_requests=allocation[0.9],
+        marginal_margin_per_success=0.6,
+        nominal_bond_per_missed_request=1.0,
+        collectible_liability_cap=1.0,
+        audit_probability=0.1,
+        audit_score_scale=scale,
+        report_floor=0.01,
+    )
+    overreported = audited_reliability_report_payoff(
+        actual_reliability=0.9,
+        reported_reliability=0.99,
+        allocated_requests=allocation[0.99],
+        marginal_margin_per_success=0.6,
+        nominal_bond_per_missed_request=1.0,
+        collectible_liability_cap=1.0,
+        audit_probability=0.1,
+        audit_score_scale=scale,
+        report_floor=0.01,
+    )
+    assert truthful > overreported
+    diagnostic = audited_reliability_report_diagnostic(
+        reliability_grid=grid,
+        allocation_by_report=allocation,
+        marginal_margin_per_success=0.6,
+        nominal_bond_per_missed_request=1.0,
+        collectible_liability_cap=1.0,
+        audit_probability=0.1,
+        audit_score_scale=scale,
+    )
+    off_diagonal = diagnostic[diagnostic["true_reliability"] != diagnostic["reported_reliability"]]
+    assert (off_diagonal["truthful_payoff_advantage"] > 0).all()
+
+
+def test_bounded_log_score_requires_clipping_but_has_finite_nonnegative_transfers():
+    assert bounded_log_score(reported_reliability=0.01, audit_success=True, report_floor=0.01) == 0
+    assert bounded_log_score(reported_reliability=0.99, audit_success=True, report_floor=0.01) > 0
+    with pytest.raises(ValueError, match="clipped"):
+        bounded_log_score(reported_reliability=1.0, audit_success=True, report_floor=0.01)
+    with pytest.raises(ValueError, match="audit_probability"):
+        audited_reliability_minimum_score_scale(
+            reliability_grid=(0.5, 0.9),
+            allocation_by_report={0.5: 1.0, 0.9: 2.0},
+            marginal_margin_per_success=0.6,
+            nominal_bond_per_missed_request=1.0,
+            collectible_liability_cap=1.0,
+            audit_probability=0.0,
         )
     with pytest.raises(ValueError, match="bond"):
         expected_reliability_report_payoff(

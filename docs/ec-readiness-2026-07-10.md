@@ -75,9 +75,10 @@ counted as evidence.
 ### Theory
 
 - Extend the explicit single-parameter cost type to jointly private capacity,
-  curvature, and reliability. The finite-bond direct-reliability boundary is a
-  useful partial impossibility result, but not yet a full characterization of
-  audit/scoring transfers, correlated failures, or endogenous reliability.
+  curvature, and reliability. The finite-bond direct-reliability boundary and
+  the bounded finite-grid audited-score construction are useful partial
+  results, but not a full characterization of continuous reports, funding,
+  audit selection, correlated failures, or endogenous reliability.
 - Connect the capacity-reservation transfer and shortfall collateral in one
   report-and-delivery mechanism under a declared liability limit.
 - Compare expected welfare with pure cheapest routing and a reliability-only

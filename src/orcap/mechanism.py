@@ -10,7 +10,7 @@ mechanism-design proposal, not a claim about any existing router's policy.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import isclose, isfinite
+from math import isclose, isfinite, log
 
 import pandas as pd
 from scipy.optimize import linprog
@@ -505,6 +505,209 @@ def expected_reliability_report_payoff(
         actual_reliability * marginal_margin_per_success
         - (1.0 - actual_reliability) * collectible_bond
     )
+
+
+def bounded_log_score(
+    *, reported_reliability: float, audit_success: bool, report_floor: float
+) -> float:
+    """A non-negative, bounded log score for a clipped reliability report.
+
+    The additive ``-log(report_floor)`` shift makes the transfer non-negative;
+    it does not change report incentives.  Restricting reports to
+    ``[report_floor, 1-report_floor]`` makes the score and every conditional
+    audit transfer finite.  This is an audit *payment*, not a shortfall bond.
+    """
+    if not isfinite(report_floor) or not 0 < report_floor < 0.5:
+        raise ValueError("report_floor must lie in (0, 0.5)")
+    if not isfinite(reported_reliability) or not (
+        report_floor <= reported_reliability <= 1.0 - report_floor
+    ):
+        raise ValueError("reported_reliability must lie in the clipped report domain")
+    probability = reported_reliability if audit_success else 1.0 - reported_reliability
+    return log(probability) - log(report_floor)
+
+
+def expected_bounded_log_score(
+    *, actual_reliability: float, reported_reliability: float, report_floor: float
+) -> float:
+    """Expected bounded log score under an independent Bernoulli audit outcome."""
+    if not isfinite(actual_reliability) or not 0.0 <= actual_reliability <= 1.0:
+        raise ValueError("actual_reliability must lie in [0, 1]")
+    return actual_reliability * bounded_log_score(
+        reported_reliability=reported_reliability,
+        audit_success=True,
+        report_floor=report_floor,
+    ) + (1.0 - actual_reliability) * bounded_log_score(
+        reported_reliability=reported_reliability,
+        audit_success=False,
+        report_floor=report_floor,
+    )
+
+
+def audited_reliability_report_payoff(
+    *,
+    actual_reliability: float,
+    reported_reliability: float,
+    allocated_requests: float,
+    marginal_margin_per_success: float,
+    nominal_bond_per_missed_request: float,
+    collectible_liability_cap: float,
+    audit_probability: float,
+    audit_score_scale: float,
+    report_floor: float,
+) -> float:
+    """Expected allocation payoff plus an independently-audited proper score.
+
+    An audit occurs independently with probability ``audit_probability`` and
+    pays ``audit_score_scale * bounded_log_score(report, outcome)``. This
+    transfer is finite and non-negative on the clipped report domain. It can
+    counter an allocation benefit from over-reporting, but requires an audit
+    population independent of allocation and an explicitly funded transfer.
+    """
+    if not isfinite(audit_probability) or not 0.0 <= audit_probability <= 1.0:
+        raise ValueError("audit_probability must lie in [0, 1]")
+    if not isfinite(audit_score_scale) or audit_score_scale < 0.0:
+        raise ValueError("audit_score_scale must be finite and non-negative")
+    allocation_payoff = expected_reliability_report_payoff(
+        actual_reliability=actual_reliability,
+        allocated_requests=allocated_requests,
+        marginal_margin_per_success=marginal_margin_per_success,
+        nominal_bond_per_missed_request=nominal_bond_per_missed_request,
+        collectible_liability_cap=collectible_liability_cap,
+    )
+    return allocation_payoff + audit_probability * audit_score_scale * expected_bounded_log_score(
+        actual_reliability=actual_reliability,
+        reported_reliability=reported_reliability,
+        report_floor=report_floor,
+    )
+
+
+def audited_reliability_minimum_score_scale(
+    *,
+    reliability_grid: tuple[float, ...],
+    allocation_by_report: dict[float, float],
+    marginal_margin_per_success: float,
+    nominal_bond_per_missed_request: float,
+    collectible_liability_cap: float,
+    audit_probability: float,
+    strict_advantage: float = 0.0,
+) -> float:
+    """Scale needed for truthful reports on a finite clipped type/report grid.
+
+    For every true grid point ``q`` and alternative report ``r``, the proper
+    score supplies ``rho*A*KL(Bern(q)||Bern(r))`` in expected truthful-report
+    advantage. The allocation side can gain at most its exact report-induced
+    payoff difference. The returned scale makes truthful reporting weakly
+    optimal; any positive ``strict_advantage`` makes it strictly optimal on
+    each distinct report pair. This is deliberately a finite-grid theorem, not
+    a continuous-type or budget-balance result.
+    """
+    grid = tuple(float(value) for value in reliability_grid)
+    if len(grid) < 2 or len(set(grid)) != len(grid) or tuple(sorted(grid)) != grid:
+        raise ValueError("reliability_grid must contain at least two sorted unique reports")
+    if any(not isfinite(value) or not 0.0 < value < 1.0 for value in grid):
+        raise ValueError("reliability_grid must lie strictly inside (0, 1)")
+    if set(allocation_by_report) != set(grid):
+        raise ValueError("allocation_by_report keys must equal reliability_grid")
+    if any(
+        not isfinite(value) or value < 0.0 for value in allocation_by_report.values()
+    ):
+        raise ValueError("allocations must be finite and non-negative")
+    if not isfinite(audit_probability) or not 0.0 < audit_probability <= 1.0:
+        raise ValueError("audit_probability must lie in (0, 1]")
+    if not isfinite(strict_advantage) or strict_advantage < 0.0:
+        raise ValueError("strict_advantage must be finite and non-negative")
+    if not all(
+        isfinite(value)
+        for value in (
+            marginal_margin_per_success,
+            nominal_bond_per_missed_request,
+            collectible_liability_cap,
+        )
+    ):
+        raise ValueError("allocation-payoff inputs must be finite")
+    if nominal_bond_per_missed_request < 0 or collectible_liability_cap < 0:
+        raise ValueError("bond and liability cap must be non-negative")
+    collectible_bond = min(nominal_bond_per_missed_request, collectible_liability_cap)
+    required_scale = 0.0
+    for true_q in grid:
+        payoff_per_assignment = (
+            true_q * marginal_margin_per_success - (1.0 - true_q) * collectible_bond
+        )
+        truthful_allocation = allocation_by_report[true_q]
+        for report in grid:
+            if report == true_q:
+                continue
+            allocation_gain = max(
+                0.0, (allocation_by_report[report] - truthful_allocation) * payoff_per_assignment
+            )
+            kl_divergence = true_q * log(true_q / report) + (1.0 - true_q) * log(
+                (1.0 - true_q) / (1.0 - report)
+            )
+            required_scale = max(
+                required_scale,
+                (allocation_gain + strict_advantage) / (audit_probability * kl_divergence),
+            )
+    return required_scale
+
+
+def audited_reliability_report_diagnostic(
+    *,
+    reliability_grid: tuple[float, ...],
+    allocation_by_report: dict[float, float],
+    marginal_margin_per_success: float,
+    nominal_bond_per_missed_request: float,
+    collectible_liability_cap: float,
+    audit_probability: float,
+    audit_score_scale: float,
+) -> pd.DataFrame:
+    """Evaluate every finite-grid report pair under the audited score design."""
+    # Reuse the full validation and guarantee a valid clipped scoring domain.
+    audited_reliability_minimum_score_scale(
+        reliability_grid=reliability_grid,
+        allocation_by_report=allocation_by_report,
+        marginal_margin_per_success=marginal_margin_per_success,
+        nominal_bond_per_missed_request=nominal_bond_per_missed_request,
+        collectible_liability_cap=collectible_liability_cap,
+        audit_probability=audit_probability,
+    )
+    grid = tuple(float(value) for value in reliability_grid)
+    report_floor = min(grid[0], 1.0 - grid[-1])
+    rows = []
+    for true_q in grid:
+        truthful = audited_reliability_report_payoff(
+            actual_reliability=true_q,
+            reported_reliability=true_q,
+            allocated_requests=allocation_by_report[true_q],
+            marginal_margin_per_success=marginal_margin_per_success,
+            nominal_bond_per_missed_request=nominal_bond_per_missed_request,
+            collectible_liability_cap=collectible_liability_cap,
+            audit_probability=audit_probability,
+            audit_score_scale=audit_score_scale,
+            report_floor=report_floor,
+        )
+        for report in grid:
+            payoff = audited_reliability_report_payoff(
+                actual_reliability=true_q,
+                reported_reliability=report,
+                allocated_requests=allocation_by_report[report],
+                marginal_margin_per_success=marginal_margin_per_success,
+                nominal_bond_per_missed_request=nominal_bond_per_missed_request,
+                collectible_liability_cap=collectible_liability_cap,
+                audit_probability=audit_probability,
+                audit_score_scale=audit_score_scale,
+                report_floor=report_floor,
+            )
+            rows.append(
+                {
+                    "true_reliability": true_q,
+                    "reported_reliability": report,
+                    "allocated_requests": allocation_by_report[report],
+                    "expected_payoff": payoff,
+                    "truthful_payoff_advantage": truthful - payoff,
+                }
+            )
+    return pd.DataFrame(rows)
 
 
 def declared_reliability_payoff(
