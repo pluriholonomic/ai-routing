@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 
 DEFILLAMA_PROTOCOLS_URL = "https://api.llama.fi/protocols"
 GOLEM_ONLINE_URL = "https://api.stats.golem.network/v1/network/online"
+COW_SOLVER_COMPETITION_LATEST_URL = "https://api.cow.fi/mainnet/api/v2/solver_competition/latest"
 AKASH_CONSOLE_PROVIDERS_URL = "https://console-api.akash.network/v1/providers"
 AKASH_GPU_PRICES_URL = "https://console-api.akash.network/v1/gpu-prices"
 AKASH_LEASES_URL = (
@@ -149,6 +150,93 @@ def cow_execution_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+def cow_competition_rows(
+    body: Any, run_ts: str, dt: str
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Normalize the public *latest* CoW solver competition as a live snapshot.
+
+    This endpoint exposes one current/recent batch and candidate solutions. It
+    is not paginated market-wide trade history, does not identify all failed
+    orders, and must not be used as a settlement/execution panel. The raw
+    response is retained separately; normalized rows deliberately keep only
+    aggregate auction properties and solver-proposal metadata.
+    """
+    if not isinstance(body, dict) or body.get("auctionId") is None:
+        return [], []
+    auction_id = str(body["auctionId"])
+    auction = body.get("auction") if isinstance(body.get("auction"), dict) else {}
+    orders = auction.get("orders") if isinstance(auction.get("orders"), list) else []
+    solutions = _as_list(body, "solutions")
+    auction_start_block = _integer(body.get("auctionStartBlock"))
+    auction_deadline_block = _integer(body.get("auctionDeadlineBlock"))
+    winner_count = sum(solution.get("isWinner") is True for solution in solutions)
+    event_summary = {
+        "auction_id": auction_id,
+        "auction_start_block": auction_start_block,
+        "auction_deadline_block": auction_deadline_block,
+        "candidate_order_count": len(orders),
+        "solver_solution_count": len(solutions),
+        "winner_count": winner_count,
+        "settlement_transaction_count": len(body.get("transactionHashes") or []),
+        "schema": "cow_solver_competition_latest_v1",
+    }
+    event = {
+        "run_ts": run_ts,
+        "dt": dt,
+        "source": "cow",
+        "event_id": f"cow:solver-competition:{auction_id}",
+        "event_type": "solver_competition_snapshot",
+        # The endpoint has blocks but no auction timestamp. ``run_ts`` is an
+        # observation time, so it must not be substituted as event time.
+        "event_time": None,
+        "instrument_id": "multi-asset-batch",
+        "auction_start_block": auction_start_block,
+        "auction_deadline_block": auction_deadline_block,
+        "record_json": _json(event_summary),
+    }
+    participants = []
+    for solution in solutions:
+        solver = solution.get("solverAddress")
+        if not solver:
+            continue
+        solution_orders = solution.get("orders")
+        solution_summary = {
+            **event_summary,
+            "solver_address": str(solver).lower(),
+            "ranking": _integer(solution.get("ranking")),
+            "is_winner": solution.get("isWinner") is True,
+            "filtered_out": solution.get("filteredOut") is True,
+            "candidate_order_count_in_solution": (
+                len(solution_orders) if isinstance(solution_orders, list) else 0
+            ),
+            "has_settlement_transaction": bool(solution.get("txHash")),
+        }
+        participants.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "cow",
+                "venue": "cow-protocol",
+                "participant_id": str(solver).lower(),
+                "participant_name": None,
+                "instrument_id": "multi-asset-batch",
+                "metric": "solver_competition_candidate",
+                # Score units are protocol-objective units, not a comparable
+                # price, volume, or liquidity measure. Preserve it separately.
+                "value": None,
+                "competition_score": _float(solution.get("score")),
+                "ranking": _integer(solution.get("ranking")),
+                "is_winner": solution.get("isWinner") is True,
+                "quality_tier": (
+                    "official-live-solver-competition; snapshot only, not market-wide "
+                    "trades, fills, or execution outcomes"
+                ),
+                "record_json": _json(solution_summary),
+            }
+        )
+    return participants, [event]
 
 
 def uniswap_rows(
@@ -499,6 +587,13 @@ def _float(value: Any) -> float | None:
         return None
 
 
+def _integer(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _ratio(numerator: Any, denominator: Any) -> float | None:
     n, d = _float(numerator), _float(denominator)
     return n / d if n is not None and d not in (None, 0) else None
@@ -585,9 +680,13 @@ async def capture_markets(
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
         cow_url = os.environ.get("ORCAP_COW_TRADES_URL")
-        defillama, golem = await asyncio.gather(
+        cow_competition_url = os.environ.get(
+            "ORCAP_COW_SOLVER_COMPETITION_URL", COW_SOLVER_COMPETITION_LATEST_URL
+        )
+        defillama, golem, cow_competition = await asyncio.gather(
             fetcher.get_json(DEFILLAMA_PROTOCOLS_URL),
             fetcher.get_json(os.environ.get("ORCAP_GOLEM_STATS_URL", GOLEM_ONLINE_URL)),
+            fetcher.get_json(cow_competition_url),
         )
         geckoterminal_bodies = await asyncio.gather(
             *(
@@ -670,6 +769,9 @@ async def capture_markets(
         dict(zip(GECKOTERMINAL_POOLS, geckoterminal_bodies, strict=True)), run_ts, dt
     )
     cow_executions = cow_execution_rows(cow, run_ts, dt)
+    cow_participants, cow_competition_events = cow_competition_rows(
+        cow_competition, run_ts, dt
+    )
     golem_capacity = golem_capacity_rows(golem, run_ts, dt)
     uni_quotes, uni_executions, uni_events = uniswap_rows(uniswap, run_ts, dt)
     akash_capacity = akash_capacity_rows(akash, run_ts, dt)
@@ -677,7 +779,7 @@ async def capture_markets(
     akash_quotes = akash_gpu_quote_rows(akash_gpu_prices, run_ts, dt)
     akash_leases_rows = akash_lease_execution_rows(akash_leases, akash_block_times, run_ts, dt)
     instrument_map = instrument_map_rows(run_ts, dt)
-    _write(participants, "market_participants", run_ts, dt, curated_dir)
+    _write(participants + cow_participants, "market_participants", run_ts, dt, curated_dir)
     _write(
         cow_executions + uni_executions + akash_leases_rows,
         "market_executions",
@@ -695,6 +797,7 @@ async def capture_markets(
     _write(golem_capacity + akash_capacity, "market_capacity", run_ts, dt, curated_dir)
     _write(
         execution_events(cow_executions, "trade")
+        + cow_competition_events
         + execution_events(akash_leases_rows, "lease_lifecycle")
         + uni_events,
         "market_events",
@@ -712,17 +815,22 @@ async def capture_markets(
         {"url": DEFILLAMA_PROTOCOLS_URL},
         curated_dir,
     )
-    if cow_url:
-        _run_status("cow", len(cow_executions), run_ts, dt, {"url": cow_url}, curated_dir)
-    else:
-        write_source_run(
-            "cow",
-            status="skipped",
-            run_ts=run_ts,
-            dt=dt,
-            detail={"reason": "set ORCAP_COW_TRADES_URL to a scoped official feed"},
-            curated_dir=curated_dir,
-        )
+    _run_status(
+        "cow",
+        len(cow_executions) + len(cow_participants) + len(cow_competition_events),
+        run_ts,
+        dt,
+        {
+            "competition_url": cow_competition_url,
+            "competition_auction_id": (
+                cow_competition.get("auctionId") if isinstance(cow_competition, dict) else None
+            ),
+            "competition_snapshot_rows": len(cow_participants) + len(cow_competition_events),
+            "trade_feed_configured": bool(cow_url),
+            "trade_feed_rows": len(cow_executions),
+        },
+        curated_dir,
+    )
     _run_status(
         "golem",
         len(golem_capacity),
@@ -789,6 +897,8 @@ async def capture_markets(
         "dt": dt,
         "defillama_participants": len(participants),
         "cow_executions": len(cow_executions),
+        "cow_competition_participants": len(cow_participants),
+        "cow_competition_events": len(cow_competition_events),
         "golem_capacity": len(golem_capacity),
         "geckoterminal_quotes": len(geckoterminal_quotes),
         "uniswap_quotes": len(uni_quotes),
