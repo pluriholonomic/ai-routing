@@ -19,10 +19,13 @@ from orcap.mechanism import (
     capacity_procurement_allocation,
     capacity_procurement_report_diagnostic,
     capacity_procurement_utility,
+    certified_audited_vcg_minimum_score_scale,
+    certified_audited_vcg_product_report_diagnostic,
     certified_cost_curve_allocation,
     certified_cost_curve_vcg_payment,
     certified_cost_curve_vcg_report_diagnostic,
     certified_cost_curve_vcg_utility,
+    certified_reliability_cost_allocation,
     declared_capacity_payoff,
     declared_reliability_payoff,
     expected_delivered_under_outage_scenarios,
@@ -514,6 +517,57 @@ def test_cost_curve_vcg_rejects_nonconvex_or_uncertified_schedule_reports():
             ],
             demand=1,
         )
+
+
+def test_audited_vcg_synthesis_controls_joint_finite_grid_cost_and_reliability_reports():
+    offers = [
+        CertifiedCostCurveOffer("a", certified_capacity=2, reported_marginal_costs=(1.0, 6.0)),
+        CertifiedCostCurveOffer("b", certified_capacity=2, reported_marginal_costs=(3.0, 5.0)),
+    ]
+    low = certified_reliability_cost_allocation(
+        offers,
+        reported_reliability={"a": 0.3, "b": 0.5},
+        demand=2,
+        value_per_success=10.0,
+    )
+    high = certified_reliability_cost_allocation(
+        offers,
+        reported_reliability={"a": 0.8, "b": 0.5},
+        demand=2,
+        value_per_success=10.0,
+    )
+    assert low.to_dict() == {"a": 1, "b": 1}
+    assert high.to_dict() == {"a": 2, "b": 0}
+
+    scale = certified_audited_vcg_minimum_score_scale(
+        offers,
+        provider="a",
+        true_marginal_costs=(1.0, 6.0),
+        reliability_grid=(0.3, 0.8),
+        other_reported_reliability={"b": 0.5},
+        demand=2,
+        value_per_success=10.0,
+        audit_probability=0.2,
+        strict_advantage=1e-5,
+    )
+    diagnostic = certified_audited_vcg_product_report_diagnostic(
+        offers,
+        provider="a",
+        true_marginal_costs=(1.0, 6.0),
+        cost_report_schedules=[(0.0, 0.0), (1.0, 6.0), (9.0, 10.0)],
+        reliability_grid=(0.3, 0.8),
+        other_reported_reliability={"b": 0.5},
+        demand=2,
+        value_per_success=10.0,
+        audit_probability=0.2,
+        audit_score_scale=scale,
+    )
+    assert (diagnostic["truthful_joint_payoff_advantage"] >= -1e-9).all()
+    off_grid = diagnostic.loc[
+        (diagnostic["reported_marginal_costs"] == (1.0, 6.0))
+        & (diagnostic["true_reliability"] != diagnostic["reported_reliability"])
+    ]
+    assert (off_grid["truthful_joint_payoff_advantage"] > 0).all()
 
 
 def test_known_primitive_welfare_rule_dominates_price_and_reliability_baselines():

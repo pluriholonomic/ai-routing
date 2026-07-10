@@ -206,15 +206,36 @@ AMM welfare results.
     selection, correlated outcomes, budget balance, nor funding: it is a
     conditional audit-subsidy construction, not a claim that a finite bond can
     elicit reliability.
+16. **Audited VCG procurement with a finite reliability grid, conditional
+    product-report DSIC and IR.** Fix each physical capacity ceiling, let a
+    provider report its complete non-decreasing reservation-cost curve and a
+    reliability report in a finite clipped grid, and let a known buyer value
+    per successful reservation be `v`. The allocation selects positive
+    reported-surplus marginal units `r_i v-c_iu` and pays the VCG pivot
+    externality conditional on all reliability reports. For any fixed
+    reliability report, truthful full cost-curve reporting is VCG-dominant.
+    Holding the true curve, let `U_i^0(r)` be its base VCG utility under
+    reliability report `r`; an independently audited bounded log-score scale
+    exceeding the largest positive `U_i^0(r)-U_i^0(q)` divided by
+    `rho KL(Bern(q)||Bern(r))` (plus a strict margin) makes truth-telling
+    strictly best on the finite grid. The two inequalities compose, so no
+    joint curve/reliability deviation is profitable. The
+    `certified_reliability_cost_*` and `certified_audited_vcg_*` routines make
+    the allocation, pivot payment, exact required scale, and finite-grid
+    product-report diagnostic auditable. This is a **certified-capacity,
+    finite-grid, independently audited, externally funded** proposition; it
+    does not elicit private capacity, cover continuous reliability, make audit
+    selection truthful, guarantee delivery, integrate a shortfall bond, prove
+    budget balance, or model correlated failure.
 
 The next theory step is still to extend these certified-input results to jointly
 private capacity and reliability under a stochastic health process, then
-connect the cost-curve procurement, shortfall collateral, and (if used) funded
-audit score in one delivery mechanism and extend welfare to heterogeneous
-request values and controlled observations. H54 supplies a defensible
-*exogenous input* under a controlled design; the finite-bond boundary and the
-finite-grid audit construction together explain why an unsupported direct
-provider score is not enough.
+connect the now-composed cost-curve procurement and funded audit score to
+shortfall collateral in one delivery mechanism and extend welfare to
+heterogeneous request values and controlled observations. H54 supplies a
+defensible *exogenous input* under a controlled design; the finite-bond
+boundary and the finite-grid audit construction together explain why an
+unsupported direct provider score is not enough.
 
 ### Proof details and assumptions
 
@@ -389,6 +410,36 @@ types outside the grid, and cannot use selectively retained router traffic as
 its audit outcome; H54's direct, pre-assigned audit design is the appropriate
 measurement prerequisite.
 
+The combined VCG-and-audit construction makes the product-report statement
+precise without hiding its type restrictions. Fix certified integer capacities,
+a known common success value `v`, a finite clipped reliability grid `R`, and
+an independently sampled audit. At reported reliability vector `r`, select up
+to demand units with positive reported surplus `r_i v-c_iu^r`; let the
+provider receive its Clarke-pivot payment. Conditional on `r`, the expected
+buyer-value terms are fixed with respect to provider `i`'s cost-curve report,
+so the VCG argument makes its true convex curve weakly best among all feasible
+convex curve reports. Let `U_i^0(r_i)` denote that provider's true-curve VCG
+utility after holding other reports fixed. It may increase when `r_i` increases
+because the reported buyer value changes allocation and the pivot payment.
+
+For a true finite-grid reliability `q` and alternative report `r`, the
+independent bounded-log score adds an expected truthful advantage
+`rho A KL(Bern(q)||Bern(r))`. Select `A` strictly above
+
+`max_{q != r} ([U_i^0(r)-U_i^0(q)]_+ + delta) / [rho KL(Bern(q)||Bern(r))]`.
+
+Then truthful reliability strictly dominates every distinct grid report at the
+true curve. For any joint deviation `(c_i', r)`, conditional VCG cost truth
+first gives `U_i(c_i',r;q) <= U_i(c_i,r;q)`; the score is independent of the
+cost report, and the scale inequality then gives
+`U_i(c_i,r;q)+S(q,r) < U_i(c_i,q;q)+S(q,q)` for `r != q`. Thus the product
+report is DSIC on this restricted domain, and truthful VCG IR is retained
+because the bounded score is non-negative. This requires reservation cost to
+be the provider's cost primitive independently of the reliability outcome; it
+does not establish incentive-compatible delivery or a physical reliability
+process. The construction may require an arbitrary external score subsidy and
+does not imply budget balance.
+
 For the robust correlated-outage proposition, fix a finite, declared set of
 joint states with positive probability. The linear program's feasible set is
 nonempty (`x=0,z=0`) and bounded by demand and hard commitments, so it has an
@@ -411,6 +462,7 @@ the observed or declared joint-outage support.
 | `q_i` | uptime, error, latency, throughput, router scorecard | public proxy only; private live eligibility remains unobserved |
 | `q_i` lower certificate | pre-registered direct provider/model audit with completed outcomes | H54 contract and exact lower-bound estimator exist; no published audit rows yet. Its result is workload- and design-specific, not a platform-wide score. |
 | audited reliability score | independent audit outcome, clipped report grid, audit probability, and funded transfer scale | conditional finite-grid theorem only; H54 supplies the intended independent-audit design, but no score-transfer study or funding evidence exists |
+| audited VCG cost/reliability menu | certified integer cap, full convex cost curve, finite reliability report grid, known success value, independent audit, and funded score scale | conditional product-report DSIC/IR theorem only; no controlled inputs, delivery enforcement, audit funding, or private-capacity result exists |
 | `x_i, y_i` | allocated and served controlled-study requests | public panels do not identify them; payload-free `router_capacity_epoch_outcomes` can record controlled provider/model/epoch aggregates, but has no published rows yet |
 | `k_i` | provider/model/time commitment | public inference capacity remains unobserved; `router_capacity_commitments` can record a redacted controlled-study declaration, but has no published rows yet; Akash/Vast capacity is an external supply comparator |
 | `a_i, b_i` | declared linear reservation cost and positive capacity-cost curvature | optional redacted controlled-study fields exist on `router_capacity_commitments`; no published or independently verified observations yet. The VCG cost-curve benchmark needs a separately versioned full convex schedule and does not treat these declarations as verified. |

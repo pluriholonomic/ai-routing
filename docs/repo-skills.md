@@ -237,3 +237,30 @@ Completion check: raw evidence contains aggregate responses only, no job
 definition or payer identifier is retained, the running-count identity holds,
 and H59 remains power-gated until seven bucket days and 100 latest buckets per
 series are present.
+
+## 10. Audit the finite-grid audited-VCG cost/reliability synthesis
+
+Use for: testing the narrow theory layer that joins full convex reservation-cost
+reports with a private reliability report, without overstating it as a
+continuous or private-capacity mechanism.
+
+1. Fix certified integer capacity ceilings, known buyer value per successful
+   reservation, a finite clipped reliability grid, independent audit
+   probability, and an external source of score-transfer funding. These are
+   theorem assumptions, not quantities inferred from public market data.
+2. Use `certified_reliability_cost_allocation` and its VCG pivot payment only
+   with a complete non-decreasing cost vector for every certified unit. For a
+   fixed reliability report, VCG makes the true cost vector weakly dominant.
+3. Compute `certified_audited_vcg_minimum_score_scale` from *true-curve* VCG
+   utility across every reliability-grid report. The scale must cover the
+   largest report-induced utility gain plus a declared strict margin.
+4. Run `certified_audited_vcg_product_report_diagnostic` on a transparent cost
+   report grid. It should show no profitable joint report; deviations in
+   reliability with the true cost curve should lose strictly when the margin is
+   positive.
+
+Completion check: the diagnostic covers all stated finite reliability reports,
+the cost reports are valid convex vectors, every joint deviation is weakly
+dominated, and documentation continues to exclude private capacity, continuous
+reliability, audit selection, delivery enforcement, funding evidence,
+budget-balance, and correlated-failure claims.

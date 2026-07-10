@@ -260,6 +260,365 @@ def certified_cost_curve_vcg_report_diagnostic(
     return pd.DataFrame(rows)
 
 
+def _validate_reliability_reports(
+    offers: list[CertifiedCostCurveOffer], reported_reliability: dict[str, float]
+) -> dict[str, float]:
+    """Validate a complete report vector without inferring a health process."""
+    providers = {offer.provider for offer in offers}
+    if set(reported_reliability) != providers:
+        raise ValueError("reported reliability keys must equal the provider set")
+    reports = {provider: float(value) for provider, value in reported_reliability.items()}
+    if any(not isfinite(value) or not 0.0 <= value <= 1.0 for value in reports.values()):
+        raise ValueError("reported reliability values must lie in [0, 1]")
+    return reports
+
+
+def certified_reliability_cost_allocation(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+) -> pd.Series:
+    """Maximize reported expected net value with certified capacity and costs.
+
+    Every marginal capacity unit for provider ``i`` has reported buyer benefit
+    ``r_i * v`` and reported reservation cost ``c_iu``.  The mechanism takes
+    only strictly positive-surplus units, subject to demand and certified
+    integer caps. It is a finite-capacity VCG allocation primitive, not an
+    estimate of actual reliability, welfare, or delivered work.
+    """
+    demand = _validate_integer_demand(demand)
+    _validate_certified_cost_curve_offers(offers)
+    reports = _validate_reliability_reports(offers, reported_reliability)
+    if not isfinite(value_per_success) or value_per_success < 0:
+        raise ValueError("value_per_success must be finite and non-negative")
+    allocation = {offer.provider: 0 for offer in offers}
+    marginal_units = []
+    for offer in offers:
+        benefit = reports[offer.provider] * float(value_per_success)
+        for unit, cost in enumerate(offer.reported_marginal_costs, start=1):
+            surplus = benefit - float(cost)
+            marginal_units.append((-surplus, offer.provider, unit, surplus))
+    for _, provider, _, surplus in sorted(marginal_units):
+        if sum(allocation.values()) >= demand or surplus <= 0:
+            break
+        allocation[provider] += 1
+    return pd.Series(allocation, dtype="int64")
+
+
+def certified_reliability_cost_reported_welfare(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+    allocation: pd.Series | None = None,
+) -> float:
+    """Reported buyer-value-minus-reservation-cost welfare for one allocation."""
+    demand = _validate_integer_demand(demand)
+    _validate_certified_cost_curve_offers(offers)
+    reports = _validate_reliability_reports(offers, reported_reliability)
+    if not isfinite(value_per_success) or value_per_success < 0:
+        raise ValueError("value_per_success must be finite and non-negative")
+    chosen = (
+        certified_reliability_cost_allocation(
+            offers,
+            reported_reliability=reports,
+            demand=demand,
+            value_per_success=value_per_success,
+        )
+        if allocation is None
+        else _validated_allocation(allocation).reindex(
+            [offer.provider for offer in offers], fill_value=0.0
+        )
+    )
+    if any(chosen[offer.provider] > offer.certified_capacity for offer in offers):
+        raise ValueError("allocation exceeds certified capacity")
+    if float(chosen.sum()) > demand:
+        raise ValueError("allocation exceeds demand")
+    return sum(
+        reports[offer.provider] * float(value_per_success) * float(chosen[offer.provider])
+        - _cost_curve_total_cost(offer, int(chosen[offer.provider]))
+        for offer in offers
+    )
+
+
+def certified_reliability_cost_vcg_payment(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    provider: str,
+    reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+) -> float:
+    """Clarke-pivot payment with reported expected buyer value.
+
+    Conditional on the reliability reports, the reported expected buyer values
+    are fixed terms in the allocation objective. Thus this is the usual VCG
+    payment to a provider for its complete convex cost-curve report; it is not
+    itself incentive compatible for a private reliability report.
+    """
+    _validate_certified_cost_curve_offers(offers)
+    reports = _validate_reliability_reports(offers, reported_reliability)
+    if provider not in reports:
+        raise ValueError(f"unknown provider: {provider}")
+    allocation = certified_reliability_cost_allocation(
+        offers,
+        reported_reliability=reports,
+        demand=demand,
+        value_per_success=value_per_success,
+    )
+    without = [offer for offer in offers if offer.provider != provider]
+    without_reports = {name: value for name, value in reports.items() if name != provider}
+    welfare_without = certified_reliability_cost_reported_welfare(
+        without,
+        reported_reliability=without_reports,
+        demand=demand,
+        value_per_success=value_per_success,
+    )
+    others_welfare = sum(
+        reports[offer.provider] * float(value_per_success) * float(allocation[offer.provider])
+        - _cost_curve_total_cost(offer, int(allocation[offer.provider]))
+        for offer in without
+    )
+    own_reported_buyer_value = (
+        reports[provider] * float(value_per_success) * float(allocation[provider])
+    )
+    return own_reported_buyer_value + others_welfare - welfare_without
+
+
+def certified_reliability_cost_vcg_utility(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+) -> float:
+    """Provider utility at an audited true convex cost curve, before audit score."""
+    _validate_certified_cost_curve_offers(offers)
+    by_provider = {offer.provider: offer for offer in offers}
+    if provider not in by_provider:
+        raise ValueError(f"unknown provider: {provider}")
+    true_offer = CertifiedCostCurveOffer(
+        provider=provider,
+        certified_capacity=by_provider[provider].certified_capacity,
+        reported_marginal_costs=tuple(true_marginal_costs),
+    )
+    _validate_certified_cost_curve_offers([true_offer])
+    allocation = certified_reliability_cost_allocation(
+        offers,
+        reported_reliability=reported_reliability,
+        demand=demand,
+        value_per_success=value_per_success,
+    )
+    payment = certified_reliability_cost_vcg_payment(
+        offers,
+        provider=provider,
+        reported_reliability=reported_reliability,
+        demand=demand,
+        value_per_success=value_per_success,
+    )
+    return payment - _cost_curve_total_cost(true_offer, int(allocation[provider]))
+
+
+def _validated_audit_grid(reliability_grid: tuple[float, ...]) -> tuple[tuple[float, ...], float]:
+    grid = tuple(float(value) for value in reliability_grid)
+    if len(grid) < 2 or len(set(grid)) != len(grid) or tuple(sorted(grid)) != grid:
+        raise ValueError("reliability_grid must contain at least two sorted unique reports")
+    if any(not isfinite(value) or not 0.0 < value < 1.0 for value in grid):
+        raise ValueError("reliability_grid must lie strictly inside (0, 1)")
+    return grid, min(grid[0], 1.0 - grid[-1])
+
+
+def _reliability_vector_for_provider_report(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    provider: str,
+    other_reported_reliability: dict[str, float],
+    provider_report: float,
+) -> dict[str, float]:
+    providers = {offer.provider for offer in offers}
+    if provider not in providers:
+        raise ValueError(f"unknown provider: {provider}")
+    if set(other_reported_reliability) != providers - {provider}:
+        raise ValueError("other reported reliability keys must equal the other provider set")
+    reports = dict(other_reported_reliability) | {provider: float(provider_report)}
+    return _validate_reliability_reports(offers, reports)
+
+
+def _replace_cost_curve_report(
+    offers: list[CertifiedCostCurveOffer], provider: str, schedule: tuple[float, ...]
+) -> list[CertifiedCostCurveOffer]:
+    return [
+        (
+            CertifiedCostCurveOffer(
+                provider=offer.provider,
+                certified_capacity=offer.certified_capacity,
+                reported_marginal_costs=tuple(schedule),
+            )
+            if offer.provider == provider
+            else offer
+        )
+        for offer in offers
+    ]
+
+
+def certified_audited_vcg_minimum_score_scale(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    reliability_grid: tuple[float, ...],
+    other_reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+    audit_probability: float,
+    strict_advantage: float = 0.0,
+) -> float:
+    """Audit-score scale that offsets every finite-grid VCG reliability gain.
+
+    Capacity is certified and the provider's complete convex cost curve is held
+    truthful in this calculation. The score scale makes the independently
+    audited reliability report strictly optimal on the stated finite grid; the
+    separate VCG argument controls any cost-curve misreport conditional on a
+    reliability report.
+    """
+    _validate_certified_cost_curve_offers(offers)
+    grid, _ = _validated_audit_grid(reliability_grid)
+    _reliability_vector_for_provider_report(
+        offers,
+        provider=provider,
+        other_reported_reliability=other_reported_reliability,
+        provider_report=grid[0],
+    )
+    if not isfinite(audit_probability) or not 0.0 < audit_probability <= 1.0:
+        raise ValueError("audit_probability must lie in (0, 1]")
+    if not isfinite(strict_advantage) or strict_advantage < 0.0:
+        raise ValueError("strict_advantage must be finite and non-negative")
+    truthful_offers = _replace_cost_curve_report(offers, provider, true_marginal_costs)
+    base_utility = {}
+    for report in grid:
+        reports = _reliability_vector_for_provider_report(
+            truthful_offers,
+            provider=provider,
+            other_reported_reliability=other_reported_reliability,
+            provider_report=report,
+        )
+        base_utility[report] = certified_reliability_cost_vcg_utility(
+            truthful_offers,
+            provider=provider,
+            true_marginal_costs=true_marginal_costs,
+            reported_reliability=reports,
+            demand=demand,
+            value_per_success=value_per_success,
+        )
+    required_scale = 0.0
+    for true_q in grid:
+        for report in grid:
+            if report == true_q:
+                continue
+            base_gain = max(0.0, base_utility[report] - base_utility[true_q])
+            kl_divergence = true_q * log(true_q / report) + (1.0 - true_q) * log(
+                (1.0 - true_q) / (1.0 - report)
+            )
+            required_scale = max(
+                required_scale,
+                (base_gain + strict_advantage) / (audit_probability * kl_divergence),
+            )
+    return required_scale
+
+
+def certified_audited_vcg_product_report_diagnostic(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    cost_report_schedules: list[tuple[float, ...]],
+    reliability_grid: tuple[float, ...],
+    other_reported_reliability: dict[str, float],
+    demand: int,
+    value_per_success: float,
+    audit_probability: float,
+    audit_score_scale: float,
+) -> pd.DataFrame:
+    """Audit finite reliability and declared convex-cost report deviations.
+
+    The diagnostic is not the theorem's domain restriction: VCG cost truth is
+    over every feasible convex cost report. It makes the product-report logic
+    inspectable on a supplied report grid and displays the funded audit score.
+    """
+    _validate_certified_cost_curve_offers(offers)
+    grid, report_floor = _validated_audit_grid(reliability_grid)
+    if not isfinite(audit_probability) or not 0.0 < audit_probability <= 1.0:
+        raise ValueError("audit_probability must lie in (0, 1]")
+    if not isfinite(audit_score_scale) or audit_score_scale < 0.0:
+        raise ValueError("audit_score_scale must be finite and non-negative")
+    truthful_offers = _replace_cost_curve_report(offers, provider, true_marginal_costs)
+    _validate_certified_cost_curve_offers(truthful_offers)
+    rows = []
+    for true_q in grid:
+        truth_reports = _reliability_vector_for_provider_report(
+            truthful_offers,
+            provider=provider,
+            other_reported_reliability=other_reported_reliability,
+            provider_report=true_q,
+        )
+        truthful_base = certified_reliability_cost_vcg_utility(
+            truthful_offers,
+            provider=provider,
+            true_marginal_costs=true_marginal_costs,
+            reported_reliability=truth_reports,
+            demand=demand,
+            value_per_success=value_per_success,
+        )
+        truthful_score = audit_probability * audit_score_scale * expected_bounded_log_score(
+            actual_reliability=true_q,
+            reported_reliability=true_q,
+            report_floor=report_floor,
+        )
+        truthful_total = truthful_base + truthful_score
+        for reliability_report in grid:
+            reports = _reliability_vector_for_provider_report(
+                truthful_offers,
+                provider=provider,
+                other_reported_reliability=other_reported_reliability,
+                provider_report=reliability_report,
+            )
+            for cost_report in cost_report_schedules:
+                reported_offers = _replace_cost_curve_report(
+                    truthful_offers, provider, cost_report
+                )
+                _validate_certified_cost_curve_offers(reported_offers)
+                base_utility = certified_reliability_cost_vcg_utility(
+                    reported_offers,
+                    provider=provider,
+                    true_marginal_costs=true_marginal_costs,
+                    reported_reliability=reports,
+                    demand=demand,
+                    value_per_success=value_per_success,
+                )
+                score = audit_probability * audit_score_scale * expected_bounded_log_score(
+                    actual_reliability=true_q,
+                    reported_reliability=reliability_report,
+                    report_floor=report_floor,
+                )
+                rows.append(
+                    {
+                        "true_reliability": true_q,
+                        "reported_reliability": reliability_report,
+                        "reported_marginal_costs": tuple(float(cost) for cost in cost_report),
+                        "base_vcg_utility_at_true_cost": base_utility,
+                        "expected_audit_score": score,
+                        "combined_expected_payoff": base_utility + score,
+                        "truthful_joint_payoff_advantage": truthful_total - (base_utility + score),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
 def _validated_allocation(allocation: pd.Series) -> pd.Series:
     """Return a finite, uniquely indexed non-negative allocation series."""
     numeric_allocation = pd.to_numeric(allocation, errors="coerce")
