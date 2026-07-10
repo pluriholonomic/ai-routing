@@ -29,6 +29,20 @@ This is still posted-price evidence, not a firm quote, request outcome, or
 fill.  The collector records it as `published_model_page` and gives it its own
 source-health record.
 
+## Qualified in this run: Groq public model table
+
+Groq's public supported-models page provides literal API model IDs and a
+two-sided input/output price cell per one million tokens. The direct collector
+accepts a row only when the table has the exact `Model ID` and `Price Per 1M
+Tokens` headers and the price cell has explicit input and output dollars; it
+does not infer a price from rate limits or a display name. The live capture
+produced ten rows.
+
+A public OpenRouter endpoint check confirmed the identity and current prices
+for `meta-llama/llama-4-scout-17b-16e-instruct`: both surfaces listed
+`$0.11/M` input and `$0.34/M` output. This is a posted-price source check,
+not evidence of a fill or a claim that every Groq route is passed through.
+
 ## Rejected for automatic collection: credential-free Ethereum RPC
 
 The candidate `https://ethereum-rpc.publicnode.com` answered
