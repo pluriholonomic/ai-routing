@@ -15,6 +15,26 @@ The raw provenance file contains only these aggregate query responses. It never
 requests or stores log-stream lines, manifest IDs, session IDs, client IPs, or
 orchestrator identities.
 
+## Historical aggregate backfill
+
+The same public Loki API exposes `query_range` for aggregate counters. The
+manual historical command requests only the existing `sum by (region)` LogQL
+counters, never raw stream lines or additional labels:
+
+```bash
+uv run orcap capture-livepeer-history --lookback-hours 24 --step-minutes 5
+```
+
+The command accepts a maximum 168-hour lookback to bound load on the public
+endpoint. Its rows retain the capture time separately from each source window
+end, so H51 clusters and deduplicates on the source observation timestamp. It
+does not add the collector to a scheduled workflow or upload captured data.
+
+The public API had non-empty aggregate regional windows when checked at one
+hour, seven days, and 30 days back on 2026-07-10. That establishes accessible
+retention at those sampled points only; it does not promise a fixed retention
+period or complete coverage between them.
+
 ## Economic use and boundary
 
 This is the first public source in the project that observes an actual

@@ -53,6 +53,17 @@ def test_h51_decision_panel_bounds_inflight_count_and_builds_shares():
     assert panel.loc[("20260710T000000Z", "nyc"), "inflight_reuse_share"] == 1.0
 
 
+def test_h51_uses_historical_source_time_for_snapshot_identity():
+    rows = _rows().iloc[:2].copy()
+    rows["source_observed_at"] = ["2026-07-09T23:55:00Z", "2026-07-09T23:55:00Z"]
+
+    panel = decision_panel(rows)
+
+    assert panel["run_ts"].unique().tolist() == ["20260709T235500Z"]
+    assert panel["capture_run_ts"].unique().tolist() == ["20260710T000000Z"]
+    assert panel["dt"].unique().tolist() == ["2026-07-09"]
+
+
 def test_h51_short_panel_is_power_gated_and_not_openrouter_evidence():
     summary = summarize(decision_panel(_rows()))
     assert summary["evidence_status"] == "power_gated"
@@ -63,9 +74,7 @@ def test_h51_response_uses_snapshot_clustered_external_control_specification():
     response = switch_response(decision_panel(_rows()))
     assert response is None
     repeated = pd.concat([_rows()] * 3, ignore_index=True)
-    repeated["run_ts"] = [
-        f"20260710T{i:06d}Z" for i in range(len(repeated))
-    ]
+    repeated["run_ts"] = [f"20260710T{i:06d}Z" for i in range(len(repeated))]
     response = switch_response(decision_panel(repeated))
     assert response is not None
     assert response["n_snapshot_clusters"] == len(repeated)

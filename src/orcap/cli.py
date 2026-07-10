@@ -96,6 +96,23 @@ def main() -> None:
         "--interval-seconds", type=float, default=300.0, help="spacing between snapshots"
     )
 
+    p_livepeer_history = sub.add_parser(
+        "capture-livepeer-history",
+        help="backfill bounded public aggregate Livepeer Gateway routing counters",
+    )
+    p_livepeer_history.add_argument(
+        "--lookback-hours",
+        type=int,
+        default=24,
+        help="public aggregate history to request (1-168; default: 24)",
+    )
+    p_livepeer_history.add_argument(
+        "--step-minutes",
+        type=int,
+        default=5,
+        help="aggregate LogQL window and sample step (1-60; default: 5)",
+    )
+
     sub.add_parser(
         "capture-open-usage",
         help="capture public open-model download/pull and serving-runtime adoption proxies",
@@ -320,6 +337,13 @@ def main() -> None:
                 indent=2,
                 default=str,
             )
+        )
+    elif args.command == "capture-livepeer-history":
+        from .capture_livepeer_history import main as livepeer_history_main
+
+        livepeer_history_main(
+            lookback_hours=args.lookback_hours,
+            step_minutes=args.step_minutes,
         )
     elif args.command == "capture-open-usage":
         from .capture_open_usage import main as open_usage_main

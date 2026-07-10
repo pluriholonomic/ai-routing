@@ -26,6 +26,8 @@ MIN_DAYS = 7
 MIN_REGIONS = 2
 PANEL_COLUMNS = [
     "run_ts",
+    "capture_run_ts",
+    "source_observed_at",
     "dt",
     "region",
     "rolling_window_minutes",
@@ -54,9 +56,15 @@ def load_metrics() -> pd.DataFrame:
         schema = data.q(f"describe select * from read_parquet('{glob}', union_by_name=true)").df()
         if not required.issubset(set(schema["column_name"])):
             return pd.DataFrame(columns=PANEL_COLUMNS)
+        observation_column = (
+            "cast(source_observed_at as varchar)"
+            if "source_observed_at" in set(schema["column_name"])
+            else "cast(NULL as varchar)"
+        )
         return data.q(
             f"""
             select cast(run_ts as varchar) as run_ts,
+                   {observation_column} as source_observed_at,
                    cast(dt as varchar) as dt,
                    cast(region as varchar) as region,
                    rolling_window_minutes, swap_events, reuse_events,
@@ -75,6 +83,19 @@ def decision_panel(rows: pd.DataFrame) -> pd.DataFrame:
     if rows.empty:
         return pd.DataFrame(columns=PANEL_COLUMNS)
     panel = rows.copy()
+    panel["capture_run_ts"] = panel["run_ts"]
+    source_observed = (
+        pd.to_datetime(panel["source_observed_at"], utc=True, errors="coerce")
+        if "source_observed_at" in panel
+        else pd.Series(pd.NaT, index=panel.index, dtype="datetime64[ns, UTC]")
+    )
+    captured_at = pd.to_datetime(panel["run_ts"], utc=True, errors="coerce")
+    effective_at = source_observed.fillna(captured_at)
+    panel = panel.loc[effective_at.notna()].copy()
+    effective_at = effective_at.loc[panel.index]
+    panel["run_ts"] = effective_at.dt.strftime("%Y%m%dT%H%M%SZ")
+    panel["source_observed_at"] = effective_at.dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    panel["dt"] = effective_at.dt.strftime("%Y-%m-%d")
     for column in ("swap_events", "reuse_events", "inflight_reuse_events"):
         panel[column] = pd.to_numeric(panel[column], errors="coerce").fillna(0).clip(lower=0)
     panel["inflight_reuse_events"] = panel[["inflight_reuse_events", "reuse_events"]].min(axis=1)
@@ -82,11 +103,11 @@ def decision_panel(rows: pd.DataFrame) -> pd.DataFrame:
     panel["switch_share"] = panel["swap_events"] / panel["decision_events"].where(
         panel["decision_events"] > 0
     )
-    panel["inflight_reuse_share"] = panel["inflight_reuse_events"] / panel[
-        "reuse_events"
-    ].where(panel["reuse_events"] > 0)
+    panel["inflight_reuse_share"] = panel["inflight_reuse_events"] / panel["reuse_events"].where(
+        panel["reuse_events"] > 0
+    )
     return (
-        panel.sort_values("run_ts")
+        panel.sort_values(["run_ts", "capture_run_ts"])
         .drop_duplicates(["run_ts", "region"], keep="last")
         .loc[:, PANEL_COLUMNS]
     )
