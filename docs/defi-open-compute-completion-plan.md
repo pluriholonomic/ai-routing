@@ -84,6 +84,15 @@ are redacted from raw evidence. Swap logs identify finalized execution and
 liquidity-event incidence, not USD executable depth; depth still needs a
 position/tick construction at explicit notional buckets.
 
+The monitor additionally calls the official mainnet
+[Uniswap V3 QuoterV2](https://developers.uniswap.org/docs/protocols/v3/deployments/v3-ethereum-deployments)
+with four exact-USDC input buckets for each registered pool, pinned to the
+same finality-buffered block. These rows are a reproducible fixed-notional
+price-impact curve (amount out, post-quote price state, initialized ticks
+crossed, and quoted gas), not a transaction, firm quote, fill guarantee, or
+market-wide executable depth. They strengthen the AMM comparison but do not
+clear the depth gate on their own.
+
 The same archive-capable RPC path also queries the verified mainnet
 `GPv2Settlement` contract for `Trade` and `Settlement` events in a separate
 bounded window (`ORCAP_COW_LOG_WINDOW_BLOCKS`, with the same finality buffer).

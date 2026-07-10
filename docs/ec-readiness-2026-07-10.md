@@ -46,9 +46,10 @@ counted as evidence.
 | DeFi AMM/RFQ microstructure | H41: one DefiLlama aggregate day only | Not identified: no finalized Uniswap events/depth or market-wide CoW executions |
 | Decentralized compute capacity | H41: no non-null decentralized-compute capacity in authoritative store | Not identified |
 | Realized routing and capacity delivery | H48: zero route attempts, commitments, matches, or realized costs | Not identified |
+| Controlled policy effect | H50 has an immutable pre-registration, epoch-assignment, and clustered-estimation contract; no owned study rows | Not identified: tooling is not evidence |
 | CoW solver competition | H49 collector and local validation exist, but no published remote snapshots | Not yet accumulated; sampled snapshot only, never execution flow |
 | Direct-source breadth | DeepInfra is published; Cerebras and SambaNova structured adapters are merged and locally validated | Awaiting published repetitions |
-| Reproducibility | Full local suite: 110 passing tests at the most recent source expansion | Strong engineering evidence, not empirical power |
+| Reproducibility | Full local suite: 145 passing tests after the H50 and QuoterV2 additions | Strong engineering evidence, not empirical power |
 
 ## Non-negotiable paper gates
 
@@ -72,7 +73,8 @@ counted as evidence.
   remain controls, not substitutes.
 - Run a controlled, redacted routing study with provider/model/epoch
   commitments, selected attempts, allocated and served counts, and cost or
-  margin fields.
+  margin fields. Register the model-epoch assignment ledger and stopping rule
+  before the first epoch, then use H50's clustered treatment contrasts.
 - Pre-register shocks, outcome variables, minimum event counts, inference
   clusters, negative controls, and stopping rules before dynamic estimation.
 

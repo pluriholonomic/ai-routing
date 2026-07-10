@@ -262,6 +262,17 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     finalized_uniswap_depth = (
         uniswap_depth.notna() & uniswap_depth_finalized.eq(True)
     ).any()
+    uniswap_quote_side = (
+        uniswap_quotes["quote_side"]
+        if "quote_side" in uniswap_quotes
+        else pd.Series("", index=uniswap_quotes.index)
+    )
+    finalized_uniswap_quote_curve = bool(
+        (
+            uniswap_depth_finalized.eq(True)
+            & uniswap_quote_side.eq("usdc_to_weth_exact_input_simulation")
+        ).any()
+    )
     has_rfq_executions = bool((execution_sources == "cow").any())
     if not sources:
         comparison_status = "gated: no canonical market-source tables available"
@@ -273,8 +284,13 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             "finalized Uniswap swap execution panel is available"
         )
     elif not finalized_uniswap_depth or not has_rfq_executions:
+        uniswap_object = (
+            "finalized fixed-notional quote curves"
+            if finalized_uniswap_quote_curve
+            else "finalized Uniswap swaps"
+        )
         comparison_status = (
-            "gated: finalized Uniswap swaps are observed, but finalized depth and/or market-wide "
+            f"gated: {uniswap_object} are observed, but finalized depth and/or market-wide "
             "RFQ execution panels are incomplete"
         )
     else:
@@ -289,6 +305,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "indexed_amm_controls": [source for source in sources if source == "geckoterminal"],
         "finalized_uniswap_swap_observed": bool(finalized_uniswap),
         "finalized_uniswap_depth_observed": bool(finalized_uniswap_depth),
+        "finalized_uniswap_quote_curve_observed": finalized_uniswap_quote_curve,
         "cow_execution_observed": has_rfq_executions,
         "comparison_status": comparison_status,
         "required_next": [

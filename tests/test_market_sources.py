@@ -11,6 +11,7 @@ from orcap.capture_markets import (
     _ethereum_rpc_config,
     _log_block_times,
     _union_table,
+    _uniswap_quoter_calldata,
     _write,
     akash_capacity_rows,
     akash_gpu_quote_rows,
@@ -26,6 +27,7 @@ from orcap.capture_markets import (
     golem_capacity_rows,
     instrument_map_rows,
     uniswap_pool_specs,
+    uniswap_quoter_quote_rows,
     uniswap_rows,
     uniswap_rpc_log_rows,
 )
@@ -73,6 +75,35 @@ def test_log_block_timestamps_are_available_only_when_provider_explicitly_suppli
         ]
     )
     assert times == {16: "2026-07-10T06:45:11Z"}
+
+
+def test_uniswap_quoter_rows_keep_fixed_notional_simulation_distinct_from_depth():
+    pool_id = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+    spec = uniswap_pool_specs()[pool_id]
+    calldata = _uniswap_quoter_calldata(spec, 1_000_000)
+    assert calldata.startswith("0xc6a5026a")
+    assert len(calldata) == 2 + 8 + 64 * 5
+
+    result = "0x" + "".join(f"{value:064x}" for value in (500_000_000_000_000, 1, 2, 3))
+    rows = uniswap_quoter_quote_rows(
+        [
+            {
+                "pool_id": pool_id,
+                "spec": spec,
+                "block_number": 25500656,
+                "input_bucket_usdc": 1,
+                "amount_in_raw": 1_000_000,
+                "result": result,
+            }
+        ],
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["price_usd"] is None
+    assert rows[0]["price_usdc_per_weth"] == 2000.0
+    assert rows[0]["depth_usd"] is None
+    assert rows[0]["finalized"] is True
+    assert "not a fill guarantee" in rows[0]["quality_tier"]
 
 
 def test_golem_capacity_keeps_hardware_metadata():
