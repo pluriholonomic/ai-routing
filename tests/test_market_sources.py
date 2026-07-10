@@ -2,6 +2,7 @@ from pyarrow.parquet import ParquetFile
 
 from orcap.capture_markets import (
     _block_time,
+    _configured_url,
     _union_table,
     _write,
     akash_capacity_rows,
@@ -26,6 +27,13 @@ def test_defillama_rows_preserve_source_identity():
     )
     assert rows[0]["participant_id"] == "uniswap"
     assert rows[0]["value"] == 12.5
+
+
+def test_blank_actions_url_override_uses_public_default(monkeypatch):
+    monkeypatch.setenv("ORCAP_AKASH_NETWORK_URL", "")
+    assert _configured_url("ORCAP_AKASH_NETWORK_URL", "https://public.example") == (
+        "https://public.example"
+    )
 
 
 def test_golem_capacity_keeps_hardware_metadata():
