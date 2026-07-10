@@ -41,6 +41,22 @@ class CapacityProcurementOffer:
 
 
 @dataclass(frozen=True)
+class CertifiedCostCurveOffer:
+    """A certified integer capacity ceiling and a reported convex cost curve.
+
+    ``reported_marginal_costs[u]`` is the reported cost of reserving unit
+    ``u + 1``. The whole non-decreasing vector is the private report, so it
+    contains both a linear term and arbitrary discrete convex curvature. The
+    physical ceiling and reliability eligibility are certified outside this
+    mechanism; this is not a solution to private capacity or reliability.
+    """
+
+    provider: str
+    certified_capacity: int
+    reported_marginal_costs: tuple[float, ...]
+
+
+@dataclass(frozen=True)
 class OutageScenario:
     """One joint provider-availability state for a fixed allocation epoch.
 
@@ -51,6 +67,197 @@ class OutageScenario:
 
     probability: float
     unavailable_providers: frozenset[str]
+
+
+def _validate_certified_cost_curve_offers(offers: list[CertifiedCostCurveOffer]) -> None:
+    if len({offer.provider for offer in offers}) != len(offers):
+        raise ValueError("provider names must be unique")
+    for offer in offers:
+        if not isinstance(offer.certified_capacity, int) or isinstance(
+            offer.certified_capacity, bool
+        ):
+            raise ValueError("certified capacity must be an integer")
+        if offer.certified_capacity < 0:
+            raise ValueError("certified capacity must be non-negative")
+        costs = tuple(offer.reported_marginal_costs)
+        if len(costs) != offer.certified_capacity:
+            raise ValueError("marginal-cost schedule length must equal certified capacity")
+        if any(not isfinite(float(cost)) or float(cost) < 0 for cost in costs):
+            raise ValueError("marginal costs must be finite and non-negative")
+        if any(float(left) > float(right) for left, right in zip(costs, costs[1:], strict=False)):
+            raise ValueError("marginal-cost schedule must be non-decreasing")
+
+
+def _validate_integer_demand(demand: int) -> int:
+    if not isinstance(demand, int) or isinstance(demand, bool) or demand < 0:
+        raise ValueError("demand must be a non-negative integer")
+    return demand
+
+
+def _cost_curve_total_cost(offer: CertifiedCostCurveOffer, units: int) -> float:
+    if not isinstance(units, int) or units < 0 or units > offer.certified_capacity:
+        raise ValueError("procured units must lie within certified capacity")
+    return float(sum(offer.reported_marginal_costs[:units]))
+
+
+def certified_cost_curve_allocation(
+    offers: list[CertifiedCostCurveOffer], demand: int
+) -> pd.Series:
+    """Minimize reported convex reservation cost under certified integer caps.
+
+    The mechanism procures ``min(D, sum_i K_i)`` units. Selecting the globally
+    cheapest reported marginal units is optimal because every accepted schedule
+    is non-decreasing, so no later unit of a provider can be selected before
+    its earlier units. Any residual is explicit unfilled demand, not a
+    fictitious reservation beyond certified caps.
+    """
+    demand = _validate_integer_demand(demand)
+    _validate_certified_cost_curve_offers(offers)
+    allocation = {offer.provider: 0 for offer in offers}
+    target = min(demand, sum(offer.certified_capacity for offer in offers))
+    marginal_units = [
+        (float(cost), offer.provider, unit)
+        for offer in offers
+        for unit, cost in enumerate(offer.reported_marginal_costs, start=1)
+    ]
+    for _, provider, _ in sorted(marginal_units)[:target]:
+        allocation[provider] += 1
+    return pd.Series(allocation, dtype="int64")
+
+
+def certified_cost_curve_system_cost(
+    offers: list[CertifiedCostCurveOffer],
+    demand: int,
+    *,
+    unfilled_penalty: float,
+) -> float:
+    """Reported procurement cost plus an explicit forced-shortfall penalty."""
+    demand = _validate_integer_demand(demand)
+    _validate_certified_cost_curve_offers(offers)
+    if not isfinite(unfilled_penalty) or unfilled_penalty < 0:
+        raise ValueError("unfilled_penalty must be finite and non-negative")
+    allocation = certified_cost_curve_allocation(offers, demand)
+    reported_cost = sum(
+        _cost_curve_total_cost(offer, int(allocation[offer.provider])) for offer in offers
+    )
+    return reported_cost + float(unfilled_penalty) * (demand - int(allocation.sum()))
+
+
+def certified_cost_curve_vcg_payment(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    provider: str,
+    demand: int,
+    unfilled_penalty: float,
+) -> float:
+    """Clarke-pivot procurement payment for a reported convex cost curve.
+
+    The payment equals the cost imposed on every *other* participant and on
+    the router's declared unfilled-demand outside option. It intentionally
+    excludes the reporting provider's own reported cost. With a truthful
+    curve, this is DSIC and individually rational over the entire convex
+    schedule, but it need not be budget balanced.
+    """
+    demand = _validate_integer_demand(demand)
+    _validate_certified_cost_curve_offers(offers)
+    if provider not in {offer.provider for offer in offers}:
+        raise ValueError(f"unknown provider: {provider}")
+    if not isfinite(unfilled_penalty) or unfilled_penalty < 0:
+        raise ValueError("unfilled_penalty must be finite and non-negative")
+    allocation = certified_cost_curve_allocation(offers, demand)
+    without = [offer for offer in offers if offer.provider != provider]
+    cost_without_provider = certified_cost_curve_system_cost(
+        without, demand, unfilled_penalty=unfilled_penalty
+    )
+    others_cost = sum(
+        _cost_curve_total_cost(offer, int(allocation[offer.provider]))
+        for offer in without
+    )
+    others_cost += float(unfilled_penalty) * (demand - int(allocation.sum()))
+    return cost_without_provider - others_cost
+
+
+def certified_cost_curve_vcg_utility(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    demand: int,
+    unfilled_penalty: float,
+) -> float:
+    """Counterfactual utility when true convex costs are supplied for an audit."""
+    _validate_certified_cost_curve_offers(offers)
+    by_provider = {offer.provider: offer for offer in offers}
+    if provider not in by_provider:
+        raise ValueError(f"unknown provider: {provider}")
+    offer = by_provider[provider]
+    true_offer = CertifiedCostCurveOffer(
+        provider=provider,
+        certified_capacity=offer.certified_capacity,
+        reported_marginal_costs=true_marginal_costs,
+    )
+    _validate_certified_cost_curve_offers([true_offer])
+    allocation = certified_cost_curve_allocation(offers, demand)
+    payment = certified_cost_curve_vcg_payment(
+        offers,
+        provider=provider,
+        demand=demand,
+        unfilled_penalty=unfilled_penalty,
+    )
+    true_cost = _cost_curve_total_cost(true_offer, int(allocation[provider]))
+    return payment - true_cost
+
+
+def certified_cost_curve_vcg_report_diagnostic(
+    offers: list[CertifiedCostCurveOffer],
+    *,
+    provider: str,
+    true_marginal_costs: tuple[float, ...],
+    report_schedules: list[tuple[float, ...]],
+    demand: int,
+    unfilled_penalty: float,
+) -> pd.DataFrame:
+    """Audit multi-dimensional VCG incentives over a declared report grid."""
+    _validate_certified_cost_curve_offers(offers)
+    if provider not in {offer.provider for offer in offers}:
+        raise ValueError(f"unknown provider: {provider}")
+    rows = []
+    for schedule in report_schedules:
+        reported_offers = [
+            (
+                CertifiedCostCurveOffer(
+                    provider=offer.provider,
+                    certified_capacity=offer.certified_capacity,
+                    reported_marginal_costs=schedule,
+                )
+                if offer.provider == provider
+                else offer
+            )
+            for offer in offers
+        ]
+        allocation = certified_cost_curve_allocation(reported_offers, demand)
+        payment = certified_cost_curve_vcg_payment(
+            reported_offers,
+            provider=provider,
+            demand=demand,
+            unfilled_penalty=unfilled_penalty,
+        )
+        utility = certified_cost_curve_vcg_utility(
+            reported_offers,
+            provider=provider,
+            true_marginal_costs=true_marginal_costs,
+            demand=demand,
+            unfilled_penalty=unfilled_penalty,
+        )
+        rows.append(
+            {
+                "reported_marginal_costs": tuple(float(cost) for cost in schedule),
+                "procured_capacity": int(allocation[provider]),
+                "payment": payment,
+                "utility_at_true_cost_curve": utility,
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def _validated_allocation(allocation: pd.Series) -> pd.Series:

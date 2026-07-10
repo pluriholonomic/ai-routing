@@ -140,7 +140,20 @@ AMM welfare results.
     model; it does not elicit a privately chosen ceiling, a private curvature,
     reliability, correlated physical availability, or a budget-balanced
     mechanism.
-11. **Known-primitive welfare benchmark.** With equal request value `v`, known
+11. **Multi-dimensional convex-cost-curve procurement, conditional DSIC and
+    IR.** Fix a certified integer capacity ceiling and pre-allocation
+    reliability eligibility, but let a provider report its entire
+    non-decreasing discrete marginal reservation-cost curve. The curve contains
+    both its linear term and arbitrary discrete convex curvature. The router
+    procures the least-cost feasible certified units and pays the Clarke-pivot
+    externality on other reported costs plus a declared unfilled-demand outside
+    option. Truthful curve reporting is dominant and truthful utility is
+    non-negative. `CertifiedCostCurveOffer` and the
+    `certified_cost_curve_vcg_*` functions implement this benchmark. It is a
+    VCG result, so it need not be budget balanced and requires certified
+    capacity and reliability; it neither elicits a private physical ceiling nor
+    a private reliability process.
+12. **Known-primitive welfare benchmark.** With equal request value `v`, known
     reliability `q_i`, known marginal serving cost `c_i`, and hard capacity
     `k_i`, expected net welfare from allocation `x` is
     `sum_i x_i(v q_i-c_i)`. `welfare_capacity_allocation` assigns positive-
@@ -152,9 +165,10 @@ AMM welfare results.
     information mechanism, or an assertion that any public price reveals
     cost or request value.
 
-The next theory step is to extend these single-parameter results to jointly
-private capacity, curvature, and reliability under a stochastic health process,
-then extend the welfare benchmark to heterogeneous request value and controlled
+The next theory step is to extend these certified-input results to jointly
+private capacity and reliability under a stochastic health process, then
+connect the cost-curve procurement and shortfall collateral in one delivery
+mechanism and extend welfare to heterogeneous request values and controlled
 observations.
 
 ### Proof details and assumptions
@@ -235,6 +249,26 @@ ceiling, known curvature, one-dimensional linear reservation cost, and
 feasible delivery. A provider able to choose or lie about `K_i` or `b_i`, or
 to manipulate reliability, has a multi-dimensional type outside this result.
 
+The cost-curve VCG benchmark relaxes only the known-curvature restriction. Let
+the certified capacity be integer `K_i` and let provider `i` report a
+non-decreasing vector `r_i=(r_{i1},...,r_{iK_i})`, with reported reservation
+cost `C_i^r(k)=sum_{u<=k} r_{iu}`. For fixed demand, the allocation chooses the
+least reported-cost feasible units and explicitly charges a fixed outside cost
+for forced unfilled units. Let `C_{-i}^*` be the least system cost without
+provider `i`, and let `C_{-i}(x^r)` be the other-provider plus outside cost
+under the selected allocation. The payment is
+`P_i(r)=C_{-i}^*-C_{-i}(x^r)`.
+
+For true curve `C_i`, utility after report `r` is
+`C_{-i}^*-[C_i(x_i^r)+C_{-i}(x^r)]`. Truthful reporting selects an allocation
+that minimizes the bracketed true system cost, so it weakly maximizes utility
+over the convex report domain. Removing a provider only restricts the feasible
+set, so truthful utility is non-negative. This proves DSIC and IR for a
+multi-dimensional *cost curve*, but it is not budget balanced. It still relies
+on a certified `K_i`, exogenous reliability eligibility, risk-neutral
+quasilinear utility, and enforceable delivery; it does not make physical
+capacity or reliability reporting truthful.
+
 For the welfare benchmark, each assigned request to provider `i` succeeds with
 probability `q_i`, produces common value `v` on success, and incurs marginal
 cost `c_i` when assigned. The marginal objective coefficient is
@@ -280,7 +314,7 @@ the observed or declared joint-outage support.
 | `q_i` | uptime, error, latency, throughput, router scorecard | public proxy only; private live eligibility remains unobserved |
 | `x_i, y_i` | allocated and served controlled-study requests | public panels do not identify them; payload-free `router_capacity_epoch_outcomes` can record controlled provider/model/epoch aggregates, but has no published rows yet |
 | `k_i` | provider/model/time commitment | public inference capacity remains unobserved; `router_capacity_commitments` can record a redacted controlled-study declaration, but has no published rows yet; Akash/Vast capacity is an external supply comparator |
-| `a_i, b_i` | declared linear reservation cost and positive capacity-cost curvature | optional redacted controlled-study fields exist on `router_capacity_commitments`; no published or independently verified observations yet |
+| `a_i, b_i` | declared linear reservation cost and positive capacity-cost curvature | optional redacted controlled-study fields exist on `router_capacity_commitments`; no published or independently verified observations yet. The VCG cost-curve benchmark needs a separately versioned full convex schedule and does not treat these declarations as verified. |
 | `v` | pre-registered owner-declared value per served request | optional redacted `declared_value_usd_per_served_request` on controlled epoch outcomes; a study proxy, not consumer surplus or market-wide welfare |
 | joint outage support | named shared failure domains plus provider/epoch availability | `router_capacity_commitments` can record declared failure domains and `router_capacity_epoch_outcomes` can record an aggregate availability state and common outage identifier; neither creates joint-outage observations on its own |
 | `c_i` | realized GPU-seconds times cost | not observed; no profit or optimal-bond claim is permitted |
