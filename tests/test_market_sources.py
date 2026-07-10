@@ -8,6 +8,7 @@ from orcap.capture_markets import (
     _block_time,
     _capture_uniswap_rpc_logs,
     _configured_url,
+    _cow_usdc_weth_execution_fields,
     _ethereum_rpc_config,
     _log_block_times,
     _union_table,
@@ -100,6 +101,7 @@ def test_uniswap_quoter_rows_keep_fixed_notional_simulation_distinct_from_depth(
         "2026-07-10",
     )
     assert rows[0]["price_usd"] is None
+    assert rows[0]["pool_id"] == pool_id
     assert rows[0]["price_usdc_per_weth"] == 2000.0
     assert rows[0]["depth_usd"] is None
     assert rows[0]["finalized"] is True
@@ -423,6 +425,34 @@ def test_cow_rpc_logs_match_solver_only_from_same_transaction_settlement_event()
     assert {event["event_type"] for event in events} == {"trade", "settlement"}
     participant_rows = cow_rpc_participant_rows(executions)
     assert participant_rows[0]["participant_id"] == solver
+
+
+def test_cow_usdc_weth_cohort_uses_registered_decimals_and_never_labels_the_quote_usd():
+    usdc_to_weth = _cow_usdc_weth_execution_fields(
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        2_000_000_000,
+        10**18,
+    )
+    weth_to_usdc = _cow_usdc_weth_execution_fields(
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        10**18,
+        1_900_000_000,
+    )
+    assert usdc_to_weth == {
+        "instrument_id": "ethereum:USDC/WETH",
+        "side": "usdc_to_weth",
+        "requested_size": 2_000.0,
+        "filled_size": 1.0,
+        "native_price": 0.0005,
+        "price_usdc_per_weth": 2_000.0,
+        "price_unit": "usdc_per_weth",
+        "metric_definition": usdc_to_weth["metric_definition"],
+    }
+    assert weth_to_usdc["side"] == "weth_to_usdc"
+    assert weth_to_usdc["price_usdc_per_weth"] == 1_900.0
+    assert "stablecoin-peg-adjusted USD price" in usdc_to_weth["metric_definition"]
 
 
 def test_geckoterminal_rows_preserve_indexed_state_boundary():

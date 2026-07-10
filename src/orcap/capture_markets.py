@@ -47,11 +47,18 @@ UNISWAP_V3_SWAP_TOPIC = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004
 UNISWAP_V3_MINT_TOPIC = "0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde"
 UNISWAP_V3_BURN_TOPIC = "0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c"
 DEFAULT_ETHEREUM_FINALITY_BLOCKS = 64
-DEFAULT_UNISWAP_LOG_WINDOW_BLOCKS = 128
+# The market workflow runs hourly. Ethereum has recently advanced ~400 blocks
+# per hour, so this must materially overlap adjacent runs rather than merely
+# sample a recent slice. 1024 blocks is roughly 2--2.5 hours at observed
+# cadence and remains within the validated public dRPC response envelope.
+DEFAULT_UNISWAP_LOG_WINDOW_BLOCKS = 1024
+DEFAULT_COW_LOG_WINDOW_BLOCKS = 1024
 GPV2_SETTLEMENT_ADDRESS = "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
 GPV2_TRADE_TOPIC = "0xa07a543ab8a018198e99ca0184c93fe9050a79400a0a723441f84de1d972cc17"
 GPV2_SETTLEMENT_TOPIC = "0x40338ce1a7c49204f0099533b1e9a7ee0a3d261f84974ab7af36105b8c4e9db4"
 PUBLIC_ETHEREUM_RPC_URL = "https://eth.drpc.org"
+USDC_ADDRESS = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+WETH_ADDRESS = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
 UNISWAP_V3_QUOTER_V2_ADDRESS = "0x61ffe014ba17989e743c5f6cb21bf9697530b21e"
 UNISWAP_V3_QUOTE_EXACT_INPUT_SINGLE_SELECTOR = "c6a5026a"
 UNISWAP_USDC_QUOTE_BUCKETS = (100, 1_000, 10_000, 100_000)
@@ -655,6 +662,7 @@ def uniswap_quoter_quote_rows(
                 "source": "uniswap",
                 "venue": "uniswap-v3",
                 "instrument_id": spec.get("canonical_instrument"),
+                "pool_id": pool_id,
                 "quote_id": f"{pool_id}:quoter-v2:{block_number}:{amount_in_raw}",
                 "quote_side": "usdc_to_weth_exact_input_simulation",
                 "quote_unit": "usdc_per_weth",
@@ -817,6 +825,45 @@ def uniswap_rpc_log_rows(
     return executions, events
 
 
+def _cow_usdc_weth_execution_fields(
+    sell_token: str, buy_token: str, sell_amount: int, buy_amount: int
+) -> dict[str, Any] | None:
+    """Normalize the one exact CoW cohort with checked token-decimal metadata.
+
+    Most GPv2 Trade records only expose raw token amounts. For USDC/WETH both
+    mainnet token addresses and decimals are explicitly registered, allowing a
+    comparable per-fill price without pretending that every CoW asset has a
+    complete token/FX map. USDC is retained as the quote unit, never silently
+    converted into a USD execution claim.
+    """
+    if {sell_token, buy_token} != {USDC_ADDRESS, WETH_ADDRESS}:
+        return None
+    sell_amount_normalized = sell_amount / (10**6 if sell_token == USDC_ADDRESS else 10**18)
+    buy_amount_normalized = buy_amount / (10**6 if buy_token == USDC_ADDRESS else 10**18)
+    if sell_amount_normalized <= 0 or buy_amount_normalized <= 0:
+        return None
+    if sell_token == USDC_ADDRESS:
+        price_usdc_per_weth = sell_amount_normalized / buy_amount_normalized
+        side = "usdc_to_weth"
+    else:
+        price_usdc_per_weth = buy_amount_normalized / sell_amount_normalized
+        side = "weth_to_usdc"
+    return {
+        "instrument_id": "ethereum:USDC/WETH",
+        "side": side,
+        "requested_size": sell_amount_normalized,
+        "filled_size": buy_amount_normalized,
+        "native_price": buy_amount_normalized / sell_amount_normalized,
+        "price_usdc_per_weth": price_usdc_per_weth,
+        "price_unit": "usdc_per_weth",
+        "metric_definition": (
+            "Finalized GPv2 Trade for the exact USDC/WETH pair, normalized using registered "
+            "mainnet token decimals. price_usdc_per_weth is a USDC quote-unit execution price, "
+            "not a stablecoin-peg-adjusted USD price, gas-inclusive cost, or surplus estimate."
+        ),
+    }
+
+
 def cow_rpc_log_rows(
     logs: Any, block_times: dict[int, str | None], run_ts: str, dt: str
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -895,6 +942,9 @@ def cow_rpc_log_rows(
             "fee_amount_raw": str(fee_amount),
             "order_uid": order_uid,
         }
+        normalized = _cow_usdc_weth_execution_fields(
+            sell_token, buy_token, sell_amount, buy_amount
+        )
         record_json = _json({"log": log_row, "parsed": parsed})
         executions.append(
             {
@@ -903,19 +953,27 @@ def cow_rpc_log_rows(
                 "source": "cow",
                 "venue": "cow-protocol",
                 "execution_id": event_id,
-                "instrument_id": f"ethereum:{sell_token}/{buy_token}",
+                "instrument_id": (
+                    normalized["instrument_id"]
+                    if normalized is not None
+                    else f"ethereum:{sell_token}/{buy_token}"
+                ),
                 "executed_at": block_times.get(block_number),
                 "event_block_number": block_number,
                 "finalized": True,
-                "side": "sell_token_to_buy_token",
-                # Token decimal metadata is not present in GPv2 Trade. Preserve
-                # exact raw values rather than manufacture normalized amounts.
-                "requested_size": None,
-                "filled_size": None,
+                "side": normalized["side"] if normalized is not None else "sell_token_to_buy_token",
+                # Generic GPv2 trades preserve raw amounts. Only the explicit
+                # USDC/WETH cohort below has independently registered decimals.
+                "requested_size": normalized["requested_size"] if normalized is not None else None,
+                "filled_size": normalized["filled_size"] if normalized is not None else None,
                 "sell_amount_raw": str(sell_amount),
                 "buy_amount_raw": str(buy_amount),
                 "gross_price_usd": None,
-                "native_price": None,
+                "native_price": normalized["native_price"] if normalized is not None else None,
+                "price_usdc_per_weth": (
+                    normalized["price_usdc_per_weth"] if normalized is not None else None
+                ),
+                "price_unit": normalized["price_unit"] if normalized is not None else None,
                 "fee_native": None,
                 "fee_amount_raw": str(fee_amount),
                 "gas_native": None,
@@ -927,9 +985,13 @@ def cow_rpc_log_rows(
                     "matched to same-transaction Settlement event"
                 ),
                 "metric_definition": (
-                    "One finalized GPv2 Trade event per executed order. Amounts are raw token "
-                    "units; no USD price, gas-inclusive execution cost, surplus, or solver is "
-                    "imputed."
+                    normalized["metric_definition"]
+                    if normalized is not None
+                    else (
+                        "One finalized GPv2 Trade event per executed order. Amounts are raw token "
+                        "units; no USD price, gas-inclusive execution cost, surplus, or solver is "
+                        "imputed."
+                    )
                 ),
                 "record_json": record_json,
             }
@@ -1451,6 +1513,10 @@ async def _capture_uniswap_rpc_logs(
     if logs_error:
         detail["error"] = logs_error
         return [], {}, detail
+    # An empty result is still a successful observation of every block in the
+    # requested range. Record that distinction so H41 can measure continuity
+    # without confusing a failed JSON-RPC call for an event-free interval.
+    detail["log_query_succeeded"] = True
     block_numbers = sorted(
         {block for item in logs if (block := _hex_int(item.get("blockNumber"))) is not None}
     )
@@ -1567,7 +1633,7 @@ async def _capture_cow_rpc_logs(
     )
     window_blocks = _bounded_int_env(
         "ORCAP_COW_LOG_WINDOW_BLOCKS",
-        DEFAULT_UNISWAP_LOG_WINDOW_BLOCKS,
+        DEFAULT_COW_LOG_WINDOW_BLOCKS,
         minimum=1,
         maximum=10_000,
     )
@@ -1611,6 +1677,7 @@ async def _capture_cow_rpc_logs(
     if logs_error:
         detail["error"] = logs_error
         return [], {}, detail
+    detail["log_query_succeeded"] = True
     block_numbers = sorted(
         {block for item in logs if (block := _hex_int(item.get("blockNumber"))) is not None}
     )

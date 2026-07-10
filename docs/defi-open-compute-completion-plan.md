@@ -84,6 +84,16 @@ are redacted from raw evidence. Swap logs identify finalized execution and
 liquidity-event incidence, not USD executable depth; depth still needs a
 position/tick construction at explicit notional buckets.
 
+The default finalized log window is 1,024 blocks, deliberately overlapping the
+hourly workflow by roughly an hour or more at observed Ethereum cadence. H41
+now computes the union and uncovered blocks across recorded Uniswap and CoW
+query windows. A single valid window is not treated as a continuous panel;
+dynamic estimates require repeated overlap and explicit zero uncovered blocks.
+For the registered USDC/WETH pools, H41 keeps QuoterV2 prices separate by pool
+and input-USDC bucket, while CoW's exact-pair fills are reported separately by
+direction in the explicit `usdc_per_weth` quote unit. Neither object is silently
+converted to USD or treated as executable depth.
+
 The monitor additionally calls the official mainnet
 [Uniswap V3 QuoterV2](https://developers.uniswap.org/docs/protocols/v3/deployments/v3-ethereum-deployments)
 with four exact-USDC input buckets for each registered pool, pinned to the

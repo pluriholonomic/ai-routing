@@ -1,7 +1,7 @@
 import pandas as pd
 
 from orcap.analysis import h41_market_comparison as h41
-from orcap.analysis.h41_market_comparison import metric_panel
+from orcap.analysis.h41_market_comparison import finalized_log_window_coverage, metric_panel
 
 
 def test_common_metric_panel_keeps_source_and_market_boundaries():
@@ -167,7 +167,7 @@ def test_h41_does_not_treat_indexed_uniswap_depth_as_finalized_depth(monkeypatch
             ]
         ),
     }
-    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables[name])
+    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables.get(name, pd.DataFrame()))
     summary = h41.run(tmp_path)
     assert summary["finalized_uniswap_swap_observed"] is False
     assert summary["finalized_uniswap_depth_observed"] is False
@@ -190,7 +190,7 @@ def test_h41_requires_capacity_from_the_compute_market(monkeypatch, tmp_path):
             ]
         ),
     }
-    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables[name])
+    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables.get(name, pd.DataFrame()))
     summary = h41.run(tmp_path)
     assert "no non-null decentralized-compute capacity" in summary["comparison_status"]
 
@@ -237,8 +237,141 @@ def test_h41_labels_fixed_notional_quote_curve_as_distinct_from_depth(monkeypatc
             ]
         ),
     }
-    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables[name])
+    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables.get(name, pd.DataFrame()))
     summary = h41.run(tmp_path)
     assert summary["finalized_uniswap_quote_curve_observed"] is True
     assert summary["finalized_uniswap_depth_observed"] is False
     assert "fixed-notional quote curves" in summary["comparison_status"]
+
+
+def test_h41_finalized_log_coverage_counts_gaps_between_query_windows():
+    coverage = finalized_log_window_coverage(
+        pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "detail_json": '{"from_block":100,"to_block":200,"log_query_succeeded":true}',
+                },
+                {
+                    "dt": "2026-07-11",
+                    "source": "uniswap",
+                    "detail_json": '{"from_block":201,"to_block":300,"log_query_succeeded":true}',
+                },
+                {
+                    "dt": "2026-07-12",
+                    "source": "uniswap",
+                    "detail_json": '{"from_block":350,"to_block":400,"log_query_succeeded":true}',
+                },
+                {
+                    "dt": "2026-07-12",
+                    "source": "uniswap",
+                    "detail_json": '{"from_block":401,"to_block":500}',
+                },
+            ]
+        ),
+        "uniswap",
+    )
+    assert coverage["window_count"] == 3
+    assert coverage["covered_blocks"] == 252
+    assert coverage["uncovered_blocks_between_windows"] == 49
+    assert coverage["contiguous_observed"] is False
+    assert coverage["observation_days"] == 3
+    assert coverage["dynamic_panel_ready"] is False
+
+
+def test_h41_keeps_usdc_weth_prices_separate_by_fixed_quote_bucket_and_direction():
+    panel = metric_panel(
+        pd.DataFrame(),
+        pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "cow",
+                    "execution_id": "buy-1",
+                    "success": True,
+                    "side": "usdc_to_weth",
+                    "price_unit": "usdc_per_weth",
+                    "price_usdc_per_weth": 2_000,
+                },
+                {
+                    "dt": "2026-07-10",
+                    "source": "cow",
+                    "execution_id": "buy-2",
+                    "success": True,
+                    "side": "usdc_to_weth",
+                    "price_unit": "usdc_per_weth",
+                    "price_usdc_per_weth": 2_100,
+                },
+                {
+                    "dt": "2026-07-10",
+                    "source": "cow",
+                    "execution_id": "sell-1",
+                    "success": True,
+                    "side": "weth_to_usdc",
+                    "price_unit": "usdc_per_weth",
+                    "price_usdc_per_weth": 1_900,
+                },
+            ]
+        ),
+        pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "quote_unit": "usdc_per_weth",
+                    "input_bucket_usdc": 100,
+                    "price_usdc_per_weth": 2_001,
+                },
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "quote_unit": "usdc_per_weth",
+                    "input_bucket_usdc": 1_000,
+                    "price_usdc_per_weth": 2_010,
+                },
+            ]
+        ),
+        pd.DataFrame(),
+    )
+    usdc_prices = panel[panel["metric"].str.contains("price_usdc_per_weth")]
+    by_cohort = usdc_prices.set_index("cohort")
+    assert by_cohort.loc["side:usdc_to_weth", "value"] == 2_050
+    assert by_cohort.loc["side:weth_to_usdc", "value"] == 1_900
+    assert by_cohort.loc["input_bucket_usdc:100", "value"] == 2_001
+    assert by_cohort.loc["input_bucket_usdc:1000", "value"] == 2_010
+
+
+def test_h41_does_not_pool_fixed_notional_quotes_across_amm_pools():
+    panel = metric_panel(
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "quote_unit": "usdc_per_weth",
+                    "pool_id": "0xlowfee",
+                    "input_bucket_usdc": 1_000,
+                    "price_usdc_per_weth": 2_000,
+                },
+                {
+                    "dt": "2026-07-10",
+                    "source": "uniswap",
+                    "quote_unit": "usdc_per_weth",
+                    "pool_id": "0xhighfee",
+                    "input_bucket_usdc": 1_000,
+                    "price_usdc_per_weth": 2_020,
+                },
+            ]
+        ),
+        pd.DataFrame(),
+    )
+    quotes = panel[panel["metric"] == "median_quote_price_usdc_per_weth"].set_index("cohort")
+    assert set(quotes.index) == {
+        "pool:0xlowfee;input_bucket_usdc:1000",
+        "pool:0xhighfee;input_bucket_usdc:1000",
+    }
+    assert quotes.loc["pool:0xlowfee;input_bucket_usdc:1000", "value"] == 2_000
+    assert quotes.loc["pool:0xhighfee;input_bucket_usdc:1000", "value"] == 2_020
