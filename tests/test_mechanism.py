@@ -1,5 +1,8 @@
 import math
 
+import pandas as pd
+import pytest
+
 from orcap.mechanism import (
     OutageScenario,
     ProviderOffer,
@@ -16,6 +19,8 @@ from orcap.mechanism import (
     procurement_utility,
     realized_provider_payoff,
     reported_cost_allocation,
+    robust_outage_allocation,
+    robust_outage_counterfactual,
 )
 
 
@@ -80,6 +85,74 @@ def test_joint_outage_scenarios_need_not_follow_marginal_uptime():
         ],
     )
     assert expected == 8.0
+
+
+def test_robust_outage_allocation_weakly_improves_the_joint_worst_case():
+    offers = [
+        ProviderOffer("cheap", price=1, reliability=1, committed_capacity=10, marginal_cost=0.5),
+        ProviderOffer(
+            "independent", price=2, reliability=1, committed_capacity=10, marginal_cost=0.5
+        ),
+    ]
+    scenarios = [
+        OutageScenario(0.8, frozenset()),
+        OutageScenario(0.2, frozenset({"cheap"})),
+    ]
+    robust = robust_outage_allocation(offers, demand=10, scenarios=scenarios)
+    assert robust["cheap"] == 0
+    assert robust["independent"] == 10
+    diagnostic = robust_outage_counterfactual(offers, demand=10, scenarios=scenarios)
+    assert diagnostic["robust_worst_case_delivered"].iat[0] == 10
+    assert diagnostic["score_worst_case_delivered"].iat[0] < 10
+    assert diagnostic["robust_worst_case_delivery_gain"].iat[0] > 0
+
+
+def test_robust_outage_allocation_rejects_unknown_joint_failure_domains():
+    offers = [
+        ProviderOffer("a", price=1, reliability=1, committed_capacity=10, marginal_cost=0.5)
+    ]
+    try:
+        robust_outage_allocation(
+            offers,
+            demand=1,
+            scenarios=[OutageScenario(1.0, frozenset({"not-a-provider"}))],
+        )
+    except ValueError as exc:
+        assert "unknown providers" in str(exc)
+    else:
+        raise AssertionError("unknown outage provider should be rejected")
+
+
+def test_zero_probability_outages_do_not_change_the_robust_support_problem():
+    offers = [
+        ProviderOffer("cheap", price=1, reliability=1, committed_capacity=10, marginal_cost=0.5),
+        ProviderOffer(
+            "expensive", price=2, reliability=1, committed_capacity=10, marginal_cost=0.5
+        ),
+    ]
+    allocation = robust_outage_allocation(
+        offers,
+        demand=10,
+        scenarios=[
+            OutageScenario(1.0, frozenset()),
+            OutageScenario(0.0, frozenset({"cheap"})),
+        ],
+    )
+    assert allocation["cheap"] == 10
+    assert allocation["expensive"] == 0
+
+
+def test_outage_profiles_reject_unknown_or_non_finite_provider_allocations():
+    with pytest.raises(ValueError, match="unknown providers"):
+        expected_delivered_under_outage_scenarios(
+            allocation_shares([ProviderOffer("a", 1, 1, 1, 0.5)]),
+            [OutageScenario(1.0, frozenset({"missing"}))],
+        )
+    with pytest.raises(ValueError, match="finite"):
+        expected_delivered_under_outage_scenarios(
+            pd.Series({"a": float("inf")}),
+            [OutageScenario(1.0, frozenset())],
+        )
 
 
 def test_zero_margin_requires_positive_bond_for_strict_delivery_preference():

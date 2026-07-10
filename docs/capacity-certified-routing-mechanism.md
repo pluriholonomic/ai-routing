@@ -115,6 +115,17 @@ AMM welfare results.
    establish a reliability or welfare ranking under correlated physical
    outages. `OutageScenario` therefore requires a joint availability law;
    marginal uptime cannot be substituted for it.
+9. **Robust correlated-outage feasibility.** Given an externally declared
+   joint-outage support with positive probability, choose the non-replicated
+   allocation that solves `max_{x,z} z` subject to `sum_i x_i <= D`,
+   `0 <= x_i <= k_i`, and `sum_{i available in omega} x_i >= z` for every
+   supported state `omega`. `robust_outage_allocation` implements this linear
+   program and uses inverse-price/reliability scores only to break max-min
+   ties. The resulting delivery floor weakly exceeds that of capped
+   score-water-filling on the same hard capacities and outage support. This is
+   a conditional resilience guarantee, not an estimate of outage risk,
+   expected welfare, insurance value, or a reason to infer independence from
+   marginal uptime.
 
 The next theory step is to extend this one-period result to private capacity
 and a stochastic health process, then prove an individually rational
@@ -194,6 +205,19 @@ The function `expected_delivered_under_outage_scenarios` records that quantity,
 but it intentionally does not infer independent failures or choose a robust
 portfolio without an empirical joint-outage panel.
 
+For the robust correlated-outage proposition, fix a finite, declared set of
+joint states with positive probability. The linear program's feasible set is
+nonempty (`x=0,z=0`) and bounded by demand and hard commitments, so it has an
+optimizer. Capped score water-filling is one feasible allocation in this set;
+set its `z` to its minimum delivered count across the same support. The robust
+optimizer therefore has a delivery floor weakly at least as high. The second
+linear program changes only the objective among allocations attaining that
+floor, so it cannot weaken the guarantee. Probability weights enter the
+reported expected-delivery diagnostic but not the max-min objective; a
+zero-probability state is deliberately excluded. This is not a distributionally
+robust result, does not permit replicated delivery, and is only as credible as
+the observed or declared joint-outage support.
+
 ## Empirical mapping and gates
 
 | model object | measurement | current status |
@@ -203,6 +227,7 @@ portfolio without an empirical joint-outage panel.
 | `q_i` | uptime, error, latency, throughput, router scorecard | public proxy only; private live eligibility remains unobserved |
 | `x_i, y_i` | allocated and served controlled-study requests | public panels do not identify them; payload-free `router_capacity_epoch_outcomes` can record controlled provider/model/epoch aggregates, but has no published rows yet |
 | `k_i` | provider/model/time commitment | public inference capacity remains unobserved; `router_capacity_commitments` can record a redacted controlled-study declaration, but has no published rows yet; Akash/Vast capacity is an external supply comparator |
+| joint outage support | named shared failure domains plus provider/epoch availability | `router_capacity_commitments` can record declared failure domains and `router_capacity_epoch_outcomes` can record an aggregate availability state and common outage identifier; neither creates joint-outage observations on its own |
 | `c_i` | realized GPU-seconds times cost | not observed; no profit or optimal-bond claim is permitted |
 
 H48 is a calibration sheet rather than a fitted structural model. The bond
@@ -224,6 +249,14 @@ three-way match: selected route attempts, a capacity commitment, and an epoch
 outcome. It keeps attempt outcomes and epoch aggregates distinct, so the
 contract supports controlled-study calibration rather than a claim about a
 router's global allocation or a provider's total delivered capacity.
+
+For a correlated-outage extension, commitments may include declared named
+failure domains and outcomes may include an aggregate availability status plus
+a common non-payload outage identifier. A shared identifier is required when
+the status is `unavailable`, so a controlled study can recover a declared joint
+state across providers. These fields do not establish causality, common cloud
+ownership, a complete outage distribution, or a live router's private health
+filter.
 
 `docs/controlled-routing-study.md` adds the necessary causal layer: a
 pre-outcome manifest and non-overlapping randomized model-epoch assignment

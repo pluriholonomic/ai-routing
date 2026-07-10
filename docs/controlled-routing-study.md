@@ -119,6 +119,14 @@ For capacity-certified epochs, the commitment and outcome keys must agree on
 field equal to the registered treatment-arm name on every attempt. Do not
 backfill a different policy name after seeing outcomes.
 
+If the study evaluates correlated-outage resilience, pre-register the named
+failure-domain taxonomy and the rule for assigning a shared `outage_event_id`.
+Record `failure_domains` on commitments and an outcome `availability_status`
+for every provider/epoch that enters the resilience panel. A status of
+`unavailable` requires the common event identifier. Do not infer an incident
+from a single failed request, and do not treat the resulting small owned-study
+panel as a platform-wide failure distribution.
+
 ## H50 outputs and decision rule
 
 | output | meaning |
