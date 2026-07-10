@@ -1,5 +1,9 @@
+from pyarrow.parquet import ParquetFile
+
 from orcap.capture_markets import (
     _block_time,
+    _union_table,
+    _write,
     akash_capacity_rows,
     akash_gpu_quote_rows,
     akash_lease_execution_rows,
@@ -88,9 +92,37 @@ def test_cow_latest_competition_is_live_solver_metadata_not_trade_execution():
     assert events[0]["event_time"] is None
     assert "order-uid-a" not in events[0]["record_json"]
     assert participants[0]["participant_id"] == "0xsolvera"
+    assert participants[0]["auction_id"] == "123"
     assert participants[0]["value"] is None
     assert participants[0]["competition_score"] == 10.0
     assert "not market-wide trades" in participants[0]["quality_tier"]
+
+
+def test_market_union_table_keeps_later_source_specific_columns(tmp_path):
+    table = _union_table(
+        [
+            {"source": "defillama", "participant_id": "protocol", "value": 1.0},
+            {
+                "source": "cow",
+                "participant_id": "solver",
+                "competition_score": 2.0,
+                "is_winner": True,
+            },
+        ]
+    )
+    assert table.column_names == [
+        "competition_score",
+        "is_winner",
+        "participant_id",
+        "source",
+        "value",
+    ]
+    _write(table.to_pylist(), "market_participants", "20260710T000000Z", "2026-07-10", tmp_path)
+    row = ParquetFile(
+        tmp_path / "market_participants" / "dt=2026-07-10" / "20260710T000000Z.parquet"
+    ).read().to_pylist()[1]
+    assert row["competition_score"] == 2.0
+    assert row["is_winner"] is True
 
 
 def test_uniswap_rows_keep_quote_and_execution_separate():
