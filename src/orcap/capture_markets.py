@@ -223,6 +223,9 @@ def cow_competition_rows(
                 "participant_name": None,
                 "instrument_id": "multi-asset-batch",
                 "metric": "solver_competition_candidate",
+                "auction_id": auction_id,
+                "auction_start_block": auction_start_block,
+                "auction_deadline_block": auction_deadline_block,
                 # Score units are protocol-objective units, not a comparable
                 # price, volume, or liquidity measure. Preserve it separately.
                 "value": None,
@@ -608,9 +611,22 @@ def _first_number(*values: Any) -> float | None:
     return None
 
 
+def _union_table(rows: list[dict[str, Any]]) -> pa.Table:
+    """Build a table from all observed keys, not just the first source row.
+
+    Market tables intentionally combine heterogeneous source adapters. PyArrow
+    infers ``from_pylist`` fields from the first row, which would drop fields
+    unique to a later source (for example CoW solver metadata after
+    DefiLlama participants). Building column arrays across the whole batch
+    retains those fields while preserving nulls for sources that lack them.
+    """
+    fields = sorted({field for row in rows for field in row})
+    return pa.Table.from_pydict({field: [row.get(field) for row in rows] for field in fields})
+
+
 def _write(rows: list[dict[str, Any]], table: str, run_ts: str, dt: str, curated_dir: Path) -> None:
     if rows:
-        write_partition(pa.Table.from_pylist(rows), table, run_ts, dt, curated_dir)
+        write_partition(_union_table(rows), table, run_ts, dt, curated_dir)
 
 
 def instrument_map_rows(run_ts: str, dt: str) -> list[dict[str, Any]]:

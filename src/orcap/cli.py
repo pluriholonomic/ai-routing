@@ -315,6 +315,7 @@ def main() -> None:
             "h45": "h45_shadow_execution",
             "h47": "h47_gpu_venue_basis",
             "h48": "h48_capacity_mechanism",
+            "h49": "h49_solver_competition",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
