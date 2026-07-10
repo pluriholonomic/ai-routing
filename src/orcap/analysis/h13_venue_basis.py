@@ -6,10 +6,10 @@ around provider repricing events measure the router's quote-refresh latency.
 
 Providers covered = whatever ``capture_direct`` parses (currently DeepInfra,
 Cerebras, and SambaNova structured APIs; Groq and Together published tables;
-Novita's literal-ID public SSR catalog; and a bounded Fireworks first-party
-model-page list). Source type is retained in the output: published-page and
-SSR-catalog observations are posted list quotes, not evidence of an API-level
-firm quote or a fill.
+Novita's literal-ID and BaseTen's publisher/library public SSR catalogs; and a
+bounded Fireworks first-party model-page list). Source type is retained in the
+output: published-page and SSR-catalog observations are posted list quotes,
+not evidence of an API-level firm quote or a fill.
 
   h13_basis          per provider × model × day: nearest routed vs direct price, basis
   h13_summary        share of exact matches, basis distribution
@@ -46,6 +46,7 @@ PROVIDER_MAP = {
     "Groq": "groq",
     "Novita": "novita",
     "SambaNova": "sambanova",
+    "BaseTen": "baseten",
 }
 
 

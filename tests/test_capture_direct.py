@@ -6,6 +6,7 @@ import pandas as pd
 
 from orcap.analysis import h13_venue_basis
 from orcap.capture_direct import (
+    BASETEN_PRICING_URL,
     CEREBRAS_MODELS_URL,
     CHUTES_MODELS_URL,
     DEEPINFRA_URL,
@@ -14,6 +15,7 @@ from orcap.capture_direct import (
     NOVITA_PRICING_URL,
     SAMBANOVA_MODELS_URL,
     TOGETHER_SERVERLESS_MODELS_URL,
+    baseten_rows,
     cerebras_rows,
     chutes_rows,
     deepinfra_rows,
@@ -57,6 +59,13 @@ GROQ_MODELS_TABLE = """
 
 def _novita_pricing_page(models):
     payload = '0:{"initialFullLLMModels":' + json.dumps(models, separators=(",", ":")) + "}"
+    return "<script>self.__next_f.push(" + json.dumps([1, payload]) + ")</script>"
+
+
+def _baseten_pricing_page(models):
+    payload = "0:" + json.dumps(
+        {"modelList": models}, separators=(",", ":")
+    )
     return "<script>self.__next_f.push(" + json.dumps([1, payload]) + ")</script>"
 
 
@@ -323,6 +332,64 @@ def test_novita_rows_reject_missing_flight_catalog_or_unlabeled_prices():
     assert novita_rows(page, "20260710T000000Z", "2026-07-10") == []
 
 
+def test_baseten_rows_require_literal_catalog_identity_and_versioned_router_pair():
+    rows = baseten_rows(
+        _baseten_pricing_page(
+            [
+                {
+                    "__typename": "LibraryModelRecord",
+                    "id": "baseten-glm-51",
+                    "name": "GLM 5.1",
+                    "slug": "glm-51",
+                    "publisher": {"name": "Z AI", "slug": "z-ai"},
+                    "perfCost": 1.3,
+                    "perfCostCacheInput": 0.26,
+                    "perfCostOutput": 4.3,
+                },
+                {
+                    "__typename": "LibraryModelRecord",
+                    "id": "baseten-unmapped",
+                    "name": "Do not infer a router identity",
+                    "slug": "unknown-model",
+                    "publisher": {"name": "Unknown", "slug": "unknown"},
+                    "perfCost": 1.0,
+                    "perfCostOutput": 2.0,
+                },
+            ]
+        ),
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert len(rows) == 2
+    row = rows[0]
+    assert row["direct_provider_model_id"] == "z-ai/glm-51"
+    assert row["canonical_model_id"] == "z-ai/glm-5.1"
+    assert row["model_identifier_type"] == "verified_published_library_router_pair_v1"
+    assert row["price_input_usd"] == 1.3 / 1_000_000
+    assert row["price_cached_input_usd"] == 0.26 / 1_000_000
+    assert row["price_output_usd"] == 4.3 / 1_000_000
+    assert row["source_url"] == BASETEN_PRICING_URL
+    assert rows[1]["canonical_model_id"] is None
+
+
+def test_baseten_rows_reject_missing_flight_catalog_or_unlabeled_prices():
+    assert baseten_rows("<html></html>", "20260710T000000Z", "2026-07-10") == []
+    page = _baseten_pricing_page(
+        [
+            {
+                "__typename": "LibraryModelRecord",
+                "id": "baseten-invalid",
+                "name": "GLM 5.1",
+                "slug": "glm-51",
+                "publisher": {"slug": "z-ai"},
+                "perfCost": "starting at 1.3",
+                "perfCostOutput": 4.3,
+            }
+        ]
+    )
+    assert baseten_rows(page, "20260710T000000Z", "2026-07-10") == []
+
+
 def test_fireworks_rows_require_literal_provider_id_and_labeled_price_block():
     model_id = "accounts/fireworks/models/gpt-oss-20b"
     rows = fireworks_rows({model_id: FIREWORKS_MODEL_PAGE}, "20260710T000000Z", "2026-07-10")
@@ -498,6 +565,28 @@ def test_h13_api_snapshot_preserves_exact_novita_provider_and_model_id(monkeypat
             "routed_source": "api_endpoint_snapshot",
         }
     ]
+
+
+def test_h13_api_snapshot_uses_only_the_versioned_baseten_canonical_pair(monkeypatch):
+    class Relation:
+        def df(self):
+            return pd.DataFrame(
+                [
+                    {
+                        "dt": "2026-07-10",
+                        "run_ts": "20260710T065500Z",
+                        "provider_name": "BaseTen",
+                        "model_id": "z-ai/glm-5.1",
+                        "price_prompt": 0.0000013,
+                        "price_completion": 0.0000043,
+                    }
+                ]
+            )
+
+    monkeypatch.setattr(h13_venue_basis.data, "q", lambda _sql: Relation())
+    routed = h13_venue_basis._load_api_routed()
+    assert routed.loc[0, "provider"] == "baseten"
+    assert routed.loc[0, "model_name"] == "z-ai/glm-5.1"
 
 
 def test_h13_selects_nearest_quote_and_rejects_stale_same_day_quote():
