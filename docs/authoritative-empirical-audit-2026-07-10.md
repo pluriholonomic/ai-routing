@@ -17,6 +17,23 @@ than a forecast from local staging files.
 | H58 Nosana registry | 19 NodeAccount rows and one source-ledger-certified complete snapshot | Power-gated at 1/7 days and 1/20 snapshots. These remain declared registration fields, not availability, price, GPU count/model, utilization, or delivery. |
 | H59 Nosana aggregate activity | 93 aggregate-only rows, including 25 completed-job buckets, 25 duration buckets, and 34 market running totals; the source-reported running count equals their sum | Power-gated at 2/7 source-bucket days and 25/100 buckets per series. It is not LLM routing, token flow, verified GPU-hours, capacity, utilization, payment, revenue, welfare, or causal demand. |
 
+## Why H13 has only one provider today
+
+The latest published `direct_prices_daily` run is `20260710T045016Z` and
+contains 197 DeepInfra rows. This is not yet evidence that the newer adapters
+failed: the Cerebras, SambaNova, Novita, Chutes, and BaseTen adapter commits
+landed after that daily scrape began at 04:37 UTC. The next scheduled scrape is
+the first normal publication opportunity for those adapters.
+
+The next source-health check must therefore distinguish two outcomes:
+
+- **Pass:** the source-run ledger records the newly merged adapters and
+  `direct_prices_daily` contains their qualified rows; H13 then re-evaluates
+  exact mapped pairs and still applies its three-provider gate.
+- **Fail/degraded:** an adapter records zero rows or a schema/identity failure;
+  preserve its raw response and diagnose its source contract rather than
+  treating the absent provider as a zero-price or zero-demand observation.
+
 ## Evidence-backed next gates
 
 1. Let the scheduled monitor accumulate at least three more daily direct-price
