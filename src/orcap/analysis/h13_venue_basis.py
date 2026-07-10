@@ -25,6 +25,11 @@ from .common import DEFAULT_OUT, save, save_json
 
 log = logging.getLogger(__name__)
 
+MIN_DAYS = 7
+MIN_PAIRS = 50
+MIN_PROVIDERS = 3
+MIN_PAIRS_PER_PROVIDER = 10
+
 # OpenRouter display name -> capture_direct provider key.  The model identifier
 # is joined exactly: provider aliases or product-name similarities never count
 # as a venue-basis match.
@@ -87,6 +92,66 @@ def load_direct() -> pd.DataFrame:
     ).df()
 
 
+def summarize(m: pd.DataFrame) -> dict:
+    """Report H13 coverage before interpreting a broker-basis estimate.
+
+    An exact match between one router price and one posted provider page is a
+    useful source check.  It is not evidence that the inference market as a
+    whole passes through maker quotes.  The pre-declared gate requires breadth
+    across providers, repeated daily observations, and enough matches within
+    each provider to prevent a single catalog from carrying the conclusion.
+    """
+    if m.empty:
+        return {
+            "n_pairs": 0,
+            "evidence_status": "power_gated",
+            "note": "no overlapping (dt, provider, model) yet",
+        }
+    provider_counts = m.groupby("provider").size().sort_index()
+    days = int(m["dt"].nunique())
+    reasons = []
+    if days < MIN_DAYS:
+        reasons.append(f"only {days}/{MIN_DAYS} daily observations")
+    if len(m) < MIN_PAIRS:
+        reasons.append(f"only {len(m)}/{MIN_PAIRS} matched pairs")
+    if len(provider_counts) < MIN_PROVIDERS:
+        reasons.append(f"only {len(provider_counts)}/{MIN_PROVIDERS} providers")
+    thin = provider_counts[provider_counts < MIN_PAIRS_PER_PROVIDER]
+    if not thin.empty:
+        reasons.append(
+            "providers below "
+            f"{MIN_PAIRS_PER_PROVIDER} pairs: {', '.join(thin.index.tolist())}"
+        )
+    return {
+        "n_pairs": int(len(m)),
+        "n_days": days,
+        "providers": sorted(m["provider"].unique()),
+        "provider_pairs": {provider: int(count) for provider, count in provider_counts.items()},
+        "source_types": {
+            provider: sorted(group["source_type"].dropna().unique())
+            for provider, group in m.groupby("provider")
+        },
+        "share_exact_zero_basis": float((m["basis_out_pct"].abs() < 0.01).mean()),
+        "max_abs_basis_pct": float(m["basis_out_pct"].abs().max()),
+        "rfq_null": "basis ≡ 0 (quote passthrough); deviations = stale-quote windows",
+        "temporal_boundary": (
+            "daily matched posted quotes; this panel cannot identify intraday refresh latency"
+        ),
+        "power_gate": {
+            "min_days": MIN_DAYS,
+            "min_pairs": MIN_PAIRS,
+            "min_providers": MIN_PROVIDERS,
+            "min_pairs_per_provider": MIN_PAIRS_PER_PROVIDER,
+        },
+        "evidence_status": "provisional_descriptive" if not reasons else "power_gated",
+        "gate_reasons": reasons,
+        "claim_boundary": (
+            "posted list-price comparison only; it does not identify executable fills, "
+            "routing decisions, or market-wide quote passthrough"
+        ),
+    }
+
+
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     routed, direct = load_routed(), load_direct()
     m = routed.merge(direct, on=["dt", "provider", "model_name"])
@@ -94,24 +159,19 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     m["basis_out_pct"] = (m["routed_out"] / m["direct_out"] - 1) * 100
     m["basis_in_pct"] = (m["routed_in"] / m["direct_in"] - 1) * 100
     save(m, out_dir, "h13_basis")
-    if m.empty:
-        results = {"n_pairs": 0, "note": "no overlapping (dt, provider, model) yet"}
-    else:
-        results = {
-            "n_pairs": int(len(m)),
-            "n_days": int(m["dt"].nunique()),
-            "providers": sorted(m["provider"].unique()),
-            "source_types": {
-                provider: sorted(group["source_type"].dropna().unique())
-                for provider, group in m.groupby("provider")
-            },
-            "share_exact_zero_basis": float((m["basis_out_pct"].abs() < 0.01).mean()),
-            "max_abs_basis_pct": float(m["basis_out_pct"].abs().max()),
-            "rfq_null": "basis ≡ 0 (quote passthrough); deviations = stale-quote windows",
-            "temporal_boundary": (
-                "daily matched posted quotes; this panel cannot identify intraday refresh latency"
-            ),
-        }
+    if not m.empty:
+        provider_day = (
+            m.groupby(["dt", "provider", "source_type"], as_index=False)
+            .agg(
+                matched_models=("model_name", "nunique"),
+                median_basis_out_pct=("basis_out_pct", "median"),
+                median_basis_in_pct=("basis_in_pct", "median"),
+                exact_zero_share=("basis_out_pct", lambda x: (x.abs() < 0.01).mean()),
+            )
+            .sort_values(["dt", "provider"])
+        )
+        save(provider_day, out_dir, "h13_provider_day")
+    results = summarize(m)
     save_json(results, out_dir, "h13_summary")
     log.info("H13: %s", results)
     return results

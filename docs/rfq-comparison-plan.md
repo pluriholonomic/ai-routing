@@ -77,6 +77,10 @@ serverless model pages.*
 - Threshold: |basis| median <1% ⇒ pure-broker (quote passthrough) — matches
   how RFQ aggregators display maker quotes; systematically positive ⇒
   venue-rent, unlike RFQ.
+- Coverage gate: call the result only a **provisional descriptive**
+  multi-provider finding after at least seven days, 50 matched pairs, three
+  providers, and ten pairs per provider. Before that it is power-gated source
+  evidence; even after the gate it remains posted-price rather than fill data.
 
 **H14 — Order-type mix.** *Data: `model_activity_daily` by variant.*
 - Shares of `:floor` (price-priority), `:nitro` (speed-priority), default,

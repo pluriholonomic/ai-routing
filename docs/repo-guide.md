@@ -91,6 +91,10 @@ or git history.
 - Each hypothesis module exports `run(out_dir)`, writes named parquet results
   and a JSON summary, and should be independently executable with
   `orcap analyze --hypothesis <name>`.
+- H13 writes both match-level `h13_basis` and daily provider/source coverage in
+  `h13_provider_day`. Its summary is explicitly `power_gated` until the
+  multi-provider and repeated-observation threshold is met; do not promote a
+  zero basis from a single catalog into a market-wide result.
 - Tests are synthetic recovery tests: plant a known signal, then assert the
   estimator recovers it.  Add source-schema and failure-mode tests alongside
   them for every new collector.
