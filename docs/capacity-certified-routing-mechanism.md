@@ -62,11 +62,15 @@ AMM welfare results.
 1. **Price incentive.** Holding eligibility and reliability fixed,
    `d log(s_i) / d log(p_i) = -eta(1-s_i)`. H48 computes this algebraic
    benchmark from public simulated shares; it is not a realized elasticity.
-2. **No deliberate quote-and-ration.** If a provider receives payment only for
-   delivered requests and `b_i > max(0, p_i-c_i)`, deliberately refusing an
-   otherwise serviceable allocated request is strictly dominated in the
-   one-period model. This does not cover private costs, correlated outages,
-   or a provider that cannot serve the request.
+2. **No deliberate quote-and-ration.** For a feasible assigned request,
+   delivering rather than deliberately refusing it changes provider payoff by
+   `p_i-c_i+b_i`. The exact strict condition is `b_i > c_i-p_i`; with
+   non-negative bonds, `b_i > max(0, c_i-p_i)` is a simple sufficient rule.
+   If `p_i>c_i`, a zero bond already strictly prefers delivery; if `p_i=c_i`,
+   an arbitrarily small positive bond breaks the tie. The bond must be posted
+   in enforceable collateral before allocation. This one-period result does
+   not cover private costs, limited liability, correlated outages, or a
+   provider that cannot physically serve the request.
 3. **Capacity feasibility.** A provider that commits `k_i >= x_i` can serve
    the allocation without bond loss. The practical design question is how to
    verify or insure `k_i`; the model makes that missing object observable
@@ -82,6 +86,28 @@ The next theory step is to extend this one-period result to private capacity
 and a stochastic health process, then prove an individually rational
 reliability-adjusted scoring rule. It must compare welfare with (a) pure
 cheapest routing and (b) a reliability-only rule.
+
+### Proof details and assumptions
+
+The reduced form makes four assumptions that the empirical section must test
+or maintain as explicit design requirements: (i) payment `p_i` is due only for
+delivery, (ii) a feasible delivery has incremental cost `c_i`, (iii) the
+shortfall bond is fully collateralized and collectible, and (iv) the provider
+does not obtain an external benefit from refusing an otherwise feasible
+request. For one assigned feasible request, delivery yields `p_i-c_i` and
+deliberate refusal yields `-b_i`; their difference is `p_i-c_i+b_i`. This
+proves the condition above. It is a delivery-incentive proposition, not a
+truthful-capacity-reporting theorem.
+
+For the allocation proposition, set `w_i=q_i p_i^{-eta}` and consider
+positive-weight providers. The derivative of the entropy-regularized objective
+is `log(w_i)-log(x_i)-1`. KKT stationarity therefore gives
+`x_i=tau w_i` for an uncapped provider and `x_i=k_i` for a capped one, hence
+`x_i=min(k_i,tau w_i)`. The left side is continuous and nondecreasing in
+`tau`, so there is a unique allocation when `D <= sum_i k_i`; if aggregate
+commitment is lower, allocating each `k_i` leaves the residual explicitly
+unfilled. This proves feasibility conditional on verified commitments, not
+truthful commitment revelation or optimality under private information.
 
 ## Empirical mapping and gates
 
