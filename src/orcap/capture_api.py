@@ -257,8 +257,18 @@ async def capture(
 
 def price_map(summary_paths: dict[str, Any]) -> dict[tuple, float]:
     """(model, provider, tag, fingerprint) -> completion price from a snapshot file."""
-    tbl = pq.ParquetFile(summary_paths["endpoints_snapshots"]).read(
+    return endpoint_snapshot_price_map(summary_paths["endpoints_snapshots"])
+
+
+def endpoint_snapshot_price_map(path: str | Path) -> dict[tuple, float]:
+    """Load the latest quote per endpoint key from a retained snapshot file.
+
+    A compacted parquet file can contain more than one capture. Selecting its
+    latest ``run_ts`` per endpoint makes it safe as a pre-run event baseline.
+    """
+    tbl = pq.ParquetFile(path).read(
         columns=[
+            "run_ts",
             "model_id",
             "provider_name",
             "tag",
@@ -266,13 +276,16 @@ def price_map(summary_paths: dict[str, Any]) -> dict[tuple, float]:
             "price_completion",
         ]
     )
-    out = {}
-    for r in tbl.to_pylist():
-        if r["price_completion"] is not None:
-            out[(r["model_id"], r["provider_name"], r["tag"], r["endpoint_fingerprint"])] = r[
-                "price_completion"
-            ]
-    return out
+    out: dict[tuple, tuple[str, float]] = {}
+    for row in tbl.to_pylist():
+        price = row["price_completion"]
+        if price is None:
+            continue
+        key = (row["model_id"], row["provider_name"], row["tag"], row["endpoint_fingerprint"])
+        run_ts = str(row.get("run_ts") or "")
+        if key not in out or run_ts >= out[key][0]:
+            out[key] = (run_ts, float(price))
+    return {key: price for key, (_, price) in out.items()}
 
 
 def diff_models(prev: dict[tuple, float], cur: dict[tuple, float]) -> set[str]:
@@ -338,7 +351,12 @@ def canonical_slug_map(snapshot_path: str | Path, model_ids: set[str]) -> dict[s
     }
 
 
-async def capture_loop(samples: int, interval_seconds: float) -> list[dict[str, Any]]:
+async def capture_loop(
+    samples: int,
+    interval_seconds: float,
+    *,
+    baseline_endpoints: str | Path | None = None,
+) -> list[dict[str, Any]]:
     """Take N snapshots spaced interval_seconds apart within one job.
 
     EVENT-DRIVEN LAYER: consecutive samples are diffed in-flight; when an
@@ -349,7 +367,7 @@ async def capture_loop(samples: int, interval_seconds: float) -> list[dict[str, 
     import time
 
     summaries: list[dict[str, Any]] = []
-    prev: dict[tuple, float] = {}
+    prev = endpoint_snapshot_price_map(baseline_endpoints) if baseline_endpoints else {}
     hot: set[str] = set()
     hot_canonical_slugs: dict[str, str] = {}
     for i in range(samples):
@@ -411,10 +429,17 @@ def consolidate_local(curated_dir: Path = CURATED_DIR) -> int:
     return merged
 
 
-def main(samples: int = 1, interval_seconds: float = 300.0) -> list[dict[str, Any]]:
+def main(
+    samples: int = 1,
+    interval_seconds: float = 300.0,
+    *,
+    baseline_endpoints: str | Path | None = None,
+) -> list[dict[str, Any]]:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    out = asyncio.run(capture_loop(samples, interval_seconds))
+    out = asyncio.run(
+        capture_loop(samples, interval_seconds, baseline_endpoints=baseline_endpoints)
+    )
     consolidate_local()
     return out
 

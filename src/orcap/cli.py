@@ -50,6 +50,11 @@ def main() -> None:
     p_capture.add_argument(
         "--interval-seconds", type=float, default=300.0, help="spacing between samples"
     )
+    p_capture.add_argument(
+        "--baseline-endpoints",
+        default=None,
+        help="optional retained endpoints parquet for first-snapshot price-event detection",
+    )
 
     p_push = sub.add_parser("push", help="upload the local data dir to the HF dataset repo")
     p_push.add_argument("--message", default=None)
@@ -282,7 +287,9 @@ def main() -> None:
                 _collector(
                     "openrouter_api",
                     lambda: capture_main(
-                        samples=args.samples, interval_seconds=args.interval_seconds
+                        samples=args.samples,
+                        interval_seconds=args.interval_seconds,
+                        baseline_endpoints=args.baseline_endpoints,
                     ),
                 ),
                 indent=2,

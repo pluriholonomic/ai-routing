@@ -1,7 +1,7 @@
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from orcap.capture_api import canonical_slug_map, diff_models
+from orcap.capture_api import canonical_slug_map, diff_models, endpoint_snapshot_price_map
 
 
 def test_diff_detects_change_and_skips_variants():
@@ -34,3 +34,42 @@ def test_canonical_slug_map_uses_versioned_stats_identifier(tmp_path):
     assert canonical_slug_map(path, {"vendor/model", "missing/model"}) == {
         "vendor/model": "vendor/model-20260709"
     }
+
+
+def test_endpoint_snapshot_price_map_uses_the_latest_retained_quote_as_a_baseline(tmp_path):
+    path = tmp_path / "endpoints.parquet"
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "run_ts": "20260710T000000Z",
+                    "model_id": "vendor/model",
+                    "provider_name": "provider",
+                    "tag": "default",
+                    "endpoint_fingerprint": "endpoint-a",
+                    "price_completion": 1.0,
+                },
+                {
+                    "run_ts": "20260710T000500Z",
+                    "model_id": "vendor/model",
+                    "provider_name": "provider",
+                    "tag": "default",
+                    "endpoint_fingerprint": "endpoint-a",
+                    "price_completion": 1.5,
+                },
+                {
+                    "run_ts": "20260710T000500Z",
+                    "model_id": "vendor/other",
+                    "provider_name": "provider",
+                    "tag": "default",
+                    "endpoint_fingerprint": "endpoint-b",
+                    "price_completion": None,
+                },
+            ]
+        ),
+        path,
+    )
+
+    prices = endpoint_snapshot_price_map(path)
+
+    assert prices == {("vendor/model", "provider", "default", "endpoint-a"): 1.5}
