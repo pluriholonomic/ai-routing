@@ -126,3 +126,20 @@ sender. It is code-ready but **not yet source-qualified in production**: no
 configured archive endpoint has accumulated rows, and raw token amounts still
 need an explicit decimal/price mapping before they can support USD execution
 comparisons.
+
+## Qualified in this run: Novita public SSR pricing catalog
+
+Novita's public pricing page embeds a named `initialFullLLMModels` catalog in
+its React-flight response. Each qualifying entry has a literal provider API ID,
+an active chat-completions endpoint, and explicit rendered input/output
+USD-per-million-token fields. The collector decodes that named JSON payload
+without executing page JavaScript; it does not scrape model display names or
+guess an identifier. It rejects inactive, non-chat, zero-priced, missing-price,
+and schema-mismatched records.
+
+The live catalog yielded 91 active, positive-price chat records on 2026-07-10.
+An independent OpenRouter endpoint lookup confirmed that `openai/gpt-oss-20b`
+and `openai/gpt-oss-120b` use the same literal IDs at provider `Novita`, with
+the same displayed list prices. This supports only exact-ID direct-versus-routed
+posted-quote comparisons. It does not identify executions, provider cost,
+route-selection probability, or realized consumer spend.

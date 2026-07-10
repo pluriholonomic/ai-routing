@@ -1,7 +1,7 @@
 """Daily capture of DIRECT provider list prices, for the venue-basis test (H13):
 what does the same model cost from the provider's own API vs via OpenRouter?
 
-Three source tiers, kept explicitly separate in the curated provenance:
+Four source tiers, kept explicitly separate in the curated provenance:
   - Structured public API: DeepInfra's model-list JSON.
   - Published docs table: Together's public serverless catalog.  It has exact
     API model IDs and per-million-token list prices, but it is a rendered
@@ -12,9 +12,13 @@ Three source tiers, kept explicitly separate in the curated provenance:
     explicit list of current models.  Each page must state the exact Fireworks
     API model ID and its three per-million-token rates.  We do not crawl the
     provider's broad historical sitemap every day.
+  - Published SSR pricing catalog: Novita's public pricing page embeds a
+    literal active-model catalog with API IDs and displayed USD-per-million
+    token prices.  The parser reads its named React-flight payload without
+    executing page JavaScript; an envelope or schema change yields no rows.
 
-The remaining provider pages are raw-archived for later parser work.  Raw
-evidence alone is not a usable H13 list-price observation.
+Remaining provider pages are raw-archived for later parser work.  Raw evidence
+alone is not a usable H13 list-price observation.
 """
 
 import asyncio
@@ -41,6 +45,7 @@ CEREBRAS_MODELS_URL = "https://api.cerebras.ai/public/v1/models"
 SAMBANOVA_MODELS_URL = "https://api.sambanova.ai/v1/models"
 TOGETHER_SERVERLESS_MODELS_URL = "https://docs.together.ai/docs/serverless/models"
 GROQ_MODELS_URL = "https://console.groq.com/docs/models"
+NOVITA_PRICING_URL = "https://novita.ai/pricing"
 FIREWORKS_MODEL_PAGES = {
     "accounts/fireworks/models/gpt-oss-20b": "https://fireworks.ai/models/fireworks/gpt-oss-20b",
     "accounts/fireworks/models/gpt-oss-120b": "https://fireworks.ai/models/fireworks/gpt-oss-120b",
@@ -48,7 +53,7 @@ FIREWORKS_MODEL_PAGES = {
 
 RAW_PAGES = {
     "groq": GROQ_MODELS_URL,
-    "novita_llm": "https://novita.ai/pricing",
+    "novita_llm": NOVITA_PRICING_URL,
     "together": TOGETHER_SERVERLESS_MODELS_URL,
     "fireworks": "https://fireworks.ai/pricing",
     "lambda": "https://lambda.ai/inference",
@@ -59,6 +64,7 @@ RAW_PAGES = {
 _MILLION = 1_000_000
 _USD_PRICE = re.compile(r"^\$(\d+(?:\.\d+)?)$")
 _GROQ_PRICE = re.compile(r"^\$(\d+(?:\.\d+)?)\s*input\s*\$(\d+(?:\.\d+)?)\s*output$")
+_NOVITA_PRICE_PER_MILLION = re.compile(r"^\d+(?:\.\d+)?$")
 _FIREWORKS_SERVERLESS_PRICE = re.compile(
     r"Available Serverless\s*Run queries immediately, pay only for usage\s*"
     r"\$(?P<input>\d+(?:\.\d+)?)\s*/\s*\$(?P<cached>\d+(?:\.\d+)?)\s*/\s*"
@@ -132,6 +138,13 @@ def _usd_per_token(value: str) -> float | None:
     """
     match = _USD_PRICE.fullmatch(value.strip())
     return float(match.group(1)) / _MILLION if match else None
+
+
+def _usd_per_token_from_million(value: Any) -> float | None:
+    """Convert Novita's literal server-rendered USD-per-million display field."""
+    if not isinstance(value, str) or not _NOVITA_PRICE_PER_MILLION.fullmatch(value.strip()):
+        return None
+    return float(value) / _MILLION
 
 
 def direct_price_table(rows: list[dict[str, Any]]) -> pa.Table:
@@ -393,6 +406,106 @@ def groq_rows(body: str | None, run_ts: str, dt: str) -> list[dict[str, Any]]:
     return rows
 
 
+def _novita_pricing_models(body: str | None) -> list[dict[str, Any]]:
+    """Extract the public Next.js model catalog without executing page JavaScript.
+
+    The pricing page embeds an escaped React-flight payload in
+    ``self.__next_f.push``. Parse that JSON envelope first, then decode only
+    the named ``initialFullLLMModels`` array. A page layout change, malformed
+    flight chunk, or missing exact key produces no rows instead of a guessed
+    price catalog.
+    """
+    if not body:
+        return []
+    chunks = re.findall(r"<script>self\.__next_f\.push\((.*?)\)</script>", body, re.DOTALL)
+    decoder = json.JSONDecoder()
+    for chunk in chunks:
+        try:
+            envelope = json.loads(chunk)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(envelope, list) or len(envelope) < 2 or not isinstance(envelope[1], str):
+            continue
+        payload = envelope[1]
+        key = '"initialFullLLMModels":'
+        offset = payload.find(key)
+        if offset < 0:
+            continue
+        try:
+            models, _ = decoder.raw_decode(payload[offset + len(key) :])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(models, list) and all(isinstance(item, dict) for item in models):
+            return models
+    return []
+
+
+def novita_rows(body: str | None, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize Novita's literal-ID public serverless chat price catalog.
+
+    Novita provides both internal scaled fields and explicitly rendered
+    ``*_toString`` USD-per-million-token values. This adapter uses only the
+    latter, rejects inactive/non-chat records, and does not map display names
+    to router identifiers. The direct provider API ID stays the H13 join key.
+    """
+    rows = []
+    seen: set[str] = set()
+    for item in _novita_pricing_models(body):
+        model_id = item.get("id")
+        endpoints = item.get("endpoints")
+        input_price = _usd_per_token_from_million(item.get("input_token_price_per_m_toString"))
+        output_price = _usd_per_token_from_million(item.get("output_token_price_per_m_toString"))
+        if (
+            not isinstance(model_id, str)
+            or not model_id
+            or model_id in seen
+            or item.get("type") != "Chat"
+            or item.get("status") != 1
+            or not isinstance(endpoints, list)
+            or "chat/completions" not in endpoints
+            or input_price is None
+            or output_price is None
+            or input_price <= 0
+            or output_price <= 0
+        ):
+            continue
+        seen.add(model_id)
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "provider": "novita",
+                "model_name": model_id,
+                "direct_provider_model_id": model_id,
+                "canonical_model_id": None,
+                "model_identifier_type": "provider_api_id",
+                "model_type": "chat",
+                "price_input_usd": input_price,
+                "price_output_usd": output_price,
+                "price_cached_input_usd": None,
+                "deprecated": False,
+                "preview": False,
+                "quote_unit": "usd_per_token",
+                "source_type": "published_ssr_pricing_catalog",
+                "source_url": NOVITA_PRICING_URL,
+                "source_schema_version": "novita_pricing_flight_catalog_v1",
+                "record_json": json.dumps(
+                    {
+                        "direct_provider_model_id": model_id,
+                        "type": item.get("type"),
+                        "endpoints": endpoints,
+                        "status": item.get("status"),
+                        "input_usd_per_million": item.get("input_token_price_per_m_toString"),
+                        "output_usd_per_million": item.get("output_token_price_per_m_toString"),
+                    },
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            }
+        )
+    return rows
+
+
 def fireworks_rows(
     body_by_model_id: dict[str, str | None], run_ts: str, dt: str
 ) -> list[dict[str, Any]]:
@@ -470,6 +583,7 @@ async def capture_direct(
     cerebras = cerebras_rows(cerebras, run_ts, dt)
     sambanova = sambanova_rows(sambanova, run_ts, dt)
     groq = groq_rows(raw_by_source.get("groq"), run_ts, dt)
+    novita = novita_rows(raw_by_source.get("novita_llm"), run_ts, dt)
     together = together_rows(raw_by_source.get("together"), run_ts, dt)
     fireworks = fireworks_rows(
         {
@@ -479,7 +593,7 @@ async def capture_direct(
         run_ts,
         dt,
     )
-    rows = deepinfra + cerebras + sambanova + groq + together + fireworks
+    rows = deepinfra + cerebras + sambanova + groq + novita + together + fireworks
     if rows:
         write_partition(direct_price_table(rows), "direct_prices_daily", run_ts, dt, curated_dir)
     write_source_run(
@@ -487,6 +601,19 @@ async def capture_direct(
         status="success" if groq else "degraded",
         rows=len(groq), run_ts=run_ts, dt=dt, curated_dir=curated_dir,
         detail={"url": GROQ_MODELS_URL, "source_type": "published_docs_table"},
+    )
+    write_source_run(
+        "direct_novita_pricing",
+        status="success" if novita else "degraded",
+        rows=len(novita),
+        run_ts=run_ts,
+        dt=dt,
+        curated_dir=curated_dir,
+        detail={
+            "url": NOVITA_PRICING_URL,
+            "source_type": "published_ssr_pricing_catalog",
+            "schema_version": "novita_pricing_flight_catalog_v1",
+        },
     )
     write_source_run(
         "direct_deepinfra_api",
@@ -559,6 +686,7 @@ async def capture_direct(
         "cerebras_models": len(cerebras),
         "sambanova_models": len(sambanova),
         "groq_models": len(groq),
+        "novita_models": len(novita),
         "together_models": len(together),
         "fireworks_models": len(fireworks),
         "direct_price_rows": len(rows),

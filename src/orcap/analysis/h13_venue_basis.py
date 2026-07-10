@@ -41,6 +41,7 @@ PROVIDER_MAP = {
     "Together": "together",
     "Fireworks": "fireworks",
     "Groq": "groq",
+    "Novita": "novita",
     "SambaNova": "sambanova",
 }
 
