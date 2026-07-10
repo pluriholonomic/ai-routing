@@ -35,6 +35,8 @@ AKASH_LEASES_URL = (
 )
 AKASH_RPC_URL = "https://rpc.akashnet.net:443"
 GECKOTERMINAL_POOL_URL = "https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_id}"
+CHUTES_MODELS_URL = "https://llm.chutes.ai/v1/models"
+CHUTES_DETAIL_URL = "https://api.chutes.ai/chutes/{chute_id}"
 GECKOTERMINAL_POOLS = (
     "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
     "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8",
@@ -49,6 +51,7 @@ DEFAULT_UNISWAP_LOG_WINDOW_BLOCKS = 128
 GPV2_SETTLEMENT_ADDRESS = "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
 GPV2_TRADE_TOPIC = "0xa07a543ab8a018198e99ca0184c93fe9050a79400a0a723441f84de1d972cc17"
 GPV2_SETTLEMENT_TOPIC = "0x40338ce1a7c49204f0099533b1e9a7ee0a3d261f84974ab7af36105b8c4e9db4"
+PUBLIC_ETHEREUM_RPC_URL = "https://eth.drpc.org"
 
 
 def _json(value: Any) -> str:
@@ -58,6 +61,20 @@ def _json(value: Any) -> str:
 def _configured_url(name: str, default: str) -> str:
     """Use the public default when Actions injects an empty optional variable."""
     return os.environ.get(name) or default
+
+
+def _ethereum_rpc_config() -> tuple[str, str, str]:
+    """Choose an operator RPC when present, otherwise a bounded public feed.
+
+    The public endpoint is deliberately only a recent-window monitor. It must
+    never be used as an archive/backfill source, and its raw provenance remains
+    distinct from a configured provider URL that may include credentials.
+    """
+    configured = os.environ.get("ORCAP_ETHEREUM_RPC_URL")
+    if configured:
+        return configured, "configured:ORCAP_ETHEREUM_RPC_URL", "operator_configured"
+    public = os.environ.get("ORCAP_PUBLIC_ETHEREUM_RPC_URL") or PUBLIC_ETHEREUM_RPC_URL
+    return public, "public:dRPC-bounded-live", "public_bounded_live"
 
 
 def _bounded_int_env(name: str, default: int, *, minimum: int, maximum: int) -> int:
@@ -147,6 +164,26 @@ def _ethereum_block_time(body: Any) -> str | None:
     if timestamp is None:
         return None
     return datetime.fromtimestamp(timestamp, UTC).isoformat().replace("+00:00", "Z")
+
+
+def _log_block_times(logs: list[dict[str, Any]]) -> dict[int, str]:
+    """Read explicit provider-supplied block timestamps from log records.
+
+    Standard Ethereum logs do not carry a timestamp, but some public RPCs add
+    ``blockTimestamp``. It is used only as a fallback when a canonical
+    ``eth_getBlockByNumber`` lookup is unavailable; logs with no explicit
+    timestamp remain time-unidentified.
+    """
+    result = {}
+    for log_row in logs:
+        block_number = _hex_int(log_row.get("blockNumber"))
+        timestamp = _hex_int(log_row.get("blockTimestamp"))
+        if block_number is None or timestamp is None:
+            continue
+        result[block_number] = datetime.fromtimestamp(timestamp, UTC).isoformat().replace(
+            "+00:00", "Z"
+        )
+    return result
 
 
 def uniswap_pool_specs() -> dict[str, dict[str, Any]]:
@@ -249,6 +286,90 @@ def golem_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]
                 "region": attrs.get("golem.inf.location.country"),
                 "quality_tier": "provider-reported",
                 "record_json": _json(item),
+            }
+        )
+    return rows
+
+
+def chutes_capacity_rows(
+    models_body: Any, detail_bodies: list[Any], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize public Chutes deployment configuration as a supply proxy.
+
+    Chutes reports active deployment instances and each chute's requested GPU
+    selector. Their product is a count of active configured GPUs—not open
+    capacity, throughput, token demand, or utilization. Keep those fields
+    separate so H41 cannot convert it into a false clearing-capacity claim.
+    """
+    models = _as_list(models_body, "data")
+    model_by_chute_id = {
+        str(model["chute_id"]): model
+        for model in models
+        if model.get("chute_id") and isinstance(model, dict)
+    }
+    rows = []
+    for detail in detail_bodies:
+        if not isinstance(detail, dict):
+            continue
+        chute_id = detail.get("chute_id")
+        if not chute_id:
+            continue
+        model = model_by_chute_id.get(str(chute_id), {})
+        selector = (
+            detail.get("node_selector")
+            if isinstance(detail.get("node_selector"), dict)
+            else {}
+        )
+        instances = detail.get("instances") if isinstance(detail.get("instances"), list) else []
+        active_instances = sum(
+            isinstance(instance, dict) and instance.get("active") is True for instance in instances
+        )
+        verified_instances = sum(
+            isinstance(instance, dict)
+            and instance.get("active") is True
+            and instance.get("verified") is True
+            for instance in instances
+        )
+        configured_gpus_per_instance = _float(selector.get("gpu_count"))
+        active_configured_gpus = (
+            active_instances * configured_gpus_per_instance
+            if configured_gpus_per_instance is not None
+            else None
+        )
+        estimated_price = detail.get("current_estimated_price")
+        hourly_price = (
+            ((estimated_price.get("usd") or {}).get("hour"))
+            if isinstance(estimated_price, dict)
+            else None
+        )
+        gpu_types = selector.get("supported_gpus") or detail.get("supported_gpus") or []
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "chutes",
+                "venue": "chutes-public-inference",
+                "participant_id": str(chute_id),
+                "resource_id": model.get("id") or detail.get("name") or str(chute_id),
+                "resource_kind": "active_configured_gpu",
+                "available": None,
+                "total": active_configured_gpus,
+                "used": None,
+                "active_instances": active_instances,
+                "verified_active_instances": verified_instances,
+                "configured_gpus_per_instance": configured_gpus_per_instance,
+                "configured_concurrency": _float(detail.get("concurrency")),
+                "gpu_types": [str(gpu) for gpu in gpu_types],
+                "cumulative_invocations": _float(detail.get("invocation_count")),
+                "estimated_deployment_usd_hour": _float(hourly_price),
+                "preemptible": detail.get("preemptible"),
+                "quality_tier": "public-active-deployment-configuration-proxy",
+                "metric_definition": (
+                    "Active Chutes instances times the chute NodeSelector's configured GPU count. "
+                    "This is an active deployment configuration proxy, not available capacity, "
+                    "throughput, token demand, utilization, or realized routing allocation."
+                ),
+                "record_json": _json(detail),
             }
         )
     return rows
@@ -1085,13 +1206,18 @@ def execution_events(rows: list[dict[str, Any]], event_type: str) -> list[dict[s
 
 
 async def _ethereum_rpc(
-    fetcher: Fetcher, url: str, method: str, params: list[Any]
+    fetcher: Fetcher,
+    url: str,
+    method: str,
+    params: list[Any],
+    *,
+    record_url: str = "configured:ORCAP_ETHEREUM_RPC_URL",
 ) -> tuple[Any | None, str | None]:
     """Make one JSON-RPC call while retaining only a redacted endpoint label."""
     body = await fetcher.post_json(
         url,
         {"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
-        record_url="configured:ORCAP_ETHEREUM_RPC_URL",
+        record_url=record_url,
     )
     if not isinstance(body, dict):
         return None, "no JSON-RPC response"
@@ -1103,7 +1229,11 @@ async def _ethereum_rpc(
 
 
 async def _ethereum_rpc_batch(
-    fetcher: Fetcher, url: str, calls: list[tuple[int, str, list[Any]]]
+    fetcher: Fetcher,
+    url: str,
+    calls: list[tuple[int, str, list[Any]]],
+    *,
+    record_url: str = "configured:ORCAP_ETHEREUM_RPC_URL",
 ) -> tuple[dict[int, Any], list[str]]:
     """Fetch block headers in one standard JSON-RPC batch request."""
     if not calls:
@@ -1114,7 +1244,7 @@ async def _ethereum_rpc_batch(
             {"jsonrpc": "2.0", "id": call_id, "method": method, "params": params}
             for call_id, method, params in calls
         ],
-        record_url="configured:ORCAP_ETHEREUM_RPC_URL",
+        record_url=record_url,
     )
     if not isinstance(body, list):
         return {}, ["no JSON-RPC batch response"]
@@ -1134,13 +1264,23 @@ async def _ethereum_rpc_batch(
 
 
 async def _capture_uniswap_rpc_logs(
-    fetcher: Fetcher, url: str
+    fetcher: Fetcher,
+    url: str,
+    *,
+    record_url: str = "configured:ORCAP_ETHEREUM_RPC_URL",
+    rpc_mode: str = "operator_configured",
 ) -> tuple[list[dict[str, Any]], dict[int, str | None], dict[str, Any]]:
     """Fetch a bounded, finalized log window for registered Uniswap V3 pools."""
-    latest_raw, latest_error = await _ethereum_rpc(fetcher, url, "eth_blockNumber", [])
+    latest_raw, latest_error = await _ethereum_rpc(
+        fetcher, url, "eth_blockNumber", [], record_url=record_url
+    )
     latest_block = _hex_int(latest_raw)
     if latest_block is None:
-        return [], {}, {"rpc_configured": True, "error": latest_error or "invalid latest block"}
+        return [], {}, {
+            "rpc_configured": True,
+            "rpc_mode": rpc_mode,
+            "error": latest_error or "invalid latest block",
+        }
     finality_blocks = _bounded_int_env(
         "ORCAP_ETHEREUM_FINALITY_BLOCKS",
         DEFAULT_ETHEREUM_FINALITY_BLOCKS,
@@ -1157,6 +1297,7 @@ async def _capture_uniswap_rpc_logs(
     if finalized_through < 0:
         return [], {}, {
             "rpc_configured": True,
+            "rpc_mode": rpc_mode,
             "latest_block": latest_block,
             "finality_blocks": finality_blocks,
             "error": "chain height is below requested finality depth",
@@ -1174,10 +1315,13 @@ async def _capture_uniswap_rpc_logs(
                 "topics": [[UNISWAP_V3_SWAP_TOPIC, UNISWAP_V3_MINT_TOPIC, UNISWAP_V3_BURN_TOPIC]],
             }
         ],
+        record_url=record_url,
     )
     logs = [item for item in result if isinstance(item, dict)] if isinstance(result, list) else []
     detail: dict[str, Any] = {
         "rpc_configured": True,
+        "rpc_mode": rpc_mode,
+        "recent_bounded_only": rpc_mode == "public_bounded_live",
         "latest_block": latest_block,
         "finality_blocks": finality_blocks,
         "finalized_through_block": finalized_through,
@@ -1199,25 +1343,48 @@ async def _capture_uniswap_rpc_logs(
             (index, "eth_getBlockByNumber", [_hex_quantity(block_number), False])
             for index, block_number in enumerate(block_numbers, start=1)
         ],
+        record_url=record_url,
     )
-    block_times = {
+    header_block_times = {
         block_number: _ethereum_block_time(responses.get(index))
         for index, block_number in enumerate(block_numbers, start=1)
     }
+    metadata_block_times = _log_block_times(logs)
+    block_times = {
+        block_number: header_block_times.get(block_number) or metadata_block_times.get(block_number)
+        for block_number in block_numbers
+    }
     detail["block_timestamp_rows"] = sum(value is not None for value in block_times.values())
+    detail["log_metadata_timestamp_rows"] = sum(
+        block_number not in {
+            key for key, value in header_block_times.items() if value is not None
+        }
+        and value is not None
+        for block_number, value in block_times.items()
+    )
     if errors:
         detail["block_timestamp_errors"] = len(errors)
     return logs, block_times, detail
 
 
 async def _capture_cow_rpc_logs(
-    fetcher: Fetcher, url: str
+    fetcher: Fetcher,
+    url: str,
+    *,
+    record_url: str = "configured:ORCAP_ETHEREUM_RPC_URL",
+    rpc_mode: str = "operator_configured",
 ) -> tuple[list[dict[str, Any]], dict[int, str | None], dict[str, Any]]:
     """Fetch a bounded, finalized GPv2Settlement event window."""
-    latest_raw, latest_error = await _ethereum_rpc(fetcher, url, "eth_blockNumber", [])
+    latest_raw, latest_error = await _ethereum_rpc(
+        fetcher, url, "eth_blockNumber", [], record_url=record_url
+    )
     latest_block = _hex_int(latest_raw)
     if latest_block is None:
-        return [], {}, {"rpc_configured": True, "error": latest_error or "invalid latest block"}
+        return [], {}, {
+            "rpc_configured": True,
+            "rpc_mode": rpc_mode,
+            "error": latest_error or "invalid latest block",
+        }
     finality_blocks = _bounded_int_env(
         "ORCAP_ETHEREUM_FINALITY_BLOCKS",
         DEFAULT_ETHEREUM_FINALITY_BLOCKS,
@@ -1234,6 +1401,7 @@ async def _capture_cow_rpc_logs(
     if finalized_through < 0:
         return [], {}, {
             "rpc_configured": True,
+            "rpc_mode": rpc_mode,
             "latest_block": latest_block,
             "finality_blocks": finality_blocks,
             "error": "chain height is below requested finality depth",
@@ -1251,10 +1419,13 @@ async def _capture_cow_rpc_logs(
                 "topics": [[GPV2_TRADE_TOPIC, GPV2_SETTLEMENT_TOPIC]],
             }
         ],
+        record_url=record_url,
     )
     logs = [item for item in result if isinstance(item, dict)] if isinstance(result, list) else []
     detail: dict[str, Any] = {
         "rpc_configured": True,
+        "rpc_mode": rpc_mode,
+        "recent_bounded_only": rpc_mode == "public_bounded_live",
         "latest_block": latest_block,
         "finality_blocks": finality_blocks,
         "finalized_through_block": finalized_through,
@@ -1276,12 +1447,25 @@ async def _capture_cow_rpc_logs(
             (index, "eth_getBlockByNumber", [_hex_quantity(block_number), False])
             for index, block_number in enumerate(block_numbers, start=1)
         ],
+        record_url=record_url,
     )
-    block_times = {
+    header_block_times = {
         block_number: _ethereum_block_time(responses.get(index))
         for index, block_number in enumerate(block_numbers, start=1)
     }
+    metadata_block_times = _log_block_times(logs)
+    block_times = {
+        block_number: header_block_times.get(block_number) or metadata_block_times.get(block_number)
+        for block_number in block_numbers
+    }
     detail["block_timestamp_rows"] = sum(value is not None for value in block_times.values())
+    detail["log_metadata_timestamp_rows"] = sum(
+        block_number not in {
+            key for key, value in header_block_times.items() if value is not None
+        }
+        and value is not None
+        for block_number, value in block_times.items()
+    )
     if errors:
         detail["block_timestamp_errors"] = len(errors)
     return logs, block_times, detail
@@ -1316,6 +1500,7 @@ async def capture_markets(
     run_ts, dt = run_timestamp(), dt_partition()
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
+        ethereum_rpc_url, ethereum_rpc_record_url, ethereum_rpc_mode = _ethereum_rpc_config()
         cow_url = os.environ.get("ORCAP_COW_TRADES_URL")
         cow_competition_url = _configured_url(
             "ORCAP_COW_SOLVER_COMPETITION_URL", COW_SOLVER_COMPETITION_LATEST_URL
@@ -1324,6 +1509,18 @@ async def capture_markets(
             fetcher.get_json(DEFILLAMA_PROTOCOLS_URL),
             fetcher.get_json(_configured_url("ORCAP_GOLEM_STATS_URL", GOLEM_ONLINE_URL)),
             fetcher.get_json(cow_competition_url),
+        )
+        chutes_models = await fetcher.get_json(CHUTES_MODELS_URL)
+        chute_ids = [
+            str(model["chute_id"])
+            for model in _as_list(chutes_models, "data")
+            if model.get("chute_id")
+        ]
+        chutes_details = await asyncio.gather(
+            *(
+                fetcher.get_json(CHUTES_DETAIL_URL.format(chute_id=chute_id))
+                for chute_id in chute_ids
+            )
         )
         geckoterminal_bodies = await asyncio.gather(
             *(
@@ -1335,14 +1532,16 @@ async def capture_markets(
         cow_rpc_logs: list[dict[str, Any]] = []
         cow_block_times: dict[int, str | None] = {}
         cow_rpc_detail: dict[str, Any] = {
-            "rpc_configured": bool(os.environ.get("ORCAP_ETHEREUM_RPC_URL"))
+            "rpc_configured": True,
+            "rpc_mode": ethereum_rpc_mode,
         }
 
         uniswap = None
         uniswap_rpc_logs: list[dict[str, Any]] = []
         uniswap_block_times: dict[int, str | None] = {}
         uniswap_rpc_detail: dict[str, Any] = {
-            "rpc_configured": bool(os.environ.get("ORCAP_ETHEREUM_RPC_URL"))
+            "rpc_configured": True,
+            "rpc_mode": ethereum_rpc_mode,
         }
         graph_key, subgraph_id = (
             os.environ.get("GRAPH_API_KEY"),
@@ -1376,15 +1575,21 @@ async def capture_markets(
                     "https://gateway.thegraph.com/api/[redacted]/subgraphs/id/" + subgraph_id
                 ),
             )
-        ethereum_rpc_url = os.environ.get("ORCAP_ETHEREUM_RPC_URL")
-        if with_uniswap and ethereum_rpc_url:
+        if with_uniswap:
             uniswap_rpc_logs, uniswap_block_times, uniswap_rpc_detail = (
-                await _capture_uniswap_rpc_logs(fetcher, ethereum_rpc_url)
+                await _capture_uniswap_rpc_logs(
+                    fetcher,
+                    ethereum_rpc_url,
+                    record_url=ethereum_rpc_record_url,
+                    rpc_mode=ethereum_rpc_mode,
+                )
             )
-        if ethereum_rpc_url:
-            cow_rpc_logs, cow_block_times, cow_rpc_detail = await _capture_cow_rpc_logs(
-                fetcher, ethereum_rpc_url
-            )
+        cow_rpc_logs, cow_block_times, cow_rpc_detail = await _capture_cow_rpc_logs(
+            fetcher,
+            ethereum_rpc_url,
+            record_url=ethereum_rpc_record_url,
+            rpc_mode=ethereum_rpc_mode,
+        )
 
         akash = None
         akash_gpu_prices = None
@@ -1440,6 +1645,7 @@ async def capture_markets(
         cow_competition, run_ts, dt
     )
     golem_capacity = golem_capacity_rows(golem, run_ts, dt)
+    chutes_capacity = chutes_capacity_rows(chutes_models, chutes_details, run_ts, dt)
     uni_quotes, graph_uni_executions, graph_uni_events = uniswap_rows(uniswap, run_ts, dt)
     rpc_uni_executions, rpc_uni_events = uniswap_rpc_log_rows(
         uniswap_rpc_logs, uniswap_block_times, run_ts, dt
@@ -1478,7 +1684,13 @@ async def capture_markets(
         dt,
         curated_dir,
     )
-    _write(golem_capacity + akash_capacity, "market_capacity", run_ts, dt, curated_dir)
+    _write(
+        golem_capacity + akash_capacity + chutes_capacity,
+        "market_capacity",
+        run_ts,
+        dt,
+        curated_dir,
+    )
     _write(
         (
             cow_rpc_events
@@ -1519,6 +1731,25 @@ async def capture_markets(
             "finalized_trade_rows": len(cow_rpc_executions),
             "finalized_solver_identified_trade_rows": len(cow_rpc_participants),
             **cow_rpc_detail,
+        },
+        curated_dir,
+    )
+    _run_status(
+        "chutes",
+        len(chutes_capacity),
+        run_ts,
+        dt,
+        {
+            "models_url": CHUTES_MODELS_URL,
+            "catalog_models": len(chute_ids),
+            "detail_responses": sum(isinstance(body, dict) for body in chutes_details),
+            "active_instances": sum(row["active_instances"] for row in chutes_capacity),
+            "active_configured_gpus": sum(
+                row["total"] for row in chutes_capacity if row["total"] is not None
+            ),
+            "metric_boundary": (
+                "active deployment configuration proxy; not availability or utilization"
+            ),
         },
         curated_dir,
     )
@@ -1605,6 +1836,7 @@ async def capture_markets(
         "cow_competition_participants": len(cow_participants),
         "cow_competition_events": len(cow_competition_events),
         "golem_capacity": len(golem_capacity),
+        "chutes_capacity": len(chutes_capacity),
         "geckoterminal_quotes": len(geckoterminal_quotes),
         "uniswap_quotes": len(uni_quotes),
         "uniswap_executions": len(uni_executions),

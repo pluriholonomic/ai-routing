@@ -93,7 +93,9 @@ def main() -> None:
         "market-capture", help="capture DeFi and decentralized-compute comparison sources"
     )
     p_market.add_argument(
-        "--with-uniswap", action="store_true", help="query configured Uniswap Graph endpoint"
+        "--with-uniswap",
+        action="store_true",
+        help="query finalized Uniswap logs (public bounded fallback or configured RPC)",
     )
     p_market.add_argument(
         "--with-akash", action="store_true", help="query configured Akash network endpoint"

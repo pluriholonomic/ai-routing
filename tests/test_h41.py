@@ -98,6 +98,29 @@ def test_geckoterminal_is_an_indexed_amm_control_not_unknown_market():
     assert set(panel["market"]) == {"defi_amm_indexed_control"}
 
 
+def test_chutes_active_deployment_proxy_is_kept_in_decentralized_compute_market():
+    panel = metric_panel(
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "chutes",
+                    "participant_id": "chute-1",
+                    "resource_kind": "active_configured_gpu",
+                    "total": 16.0,
+                    "available": None,
+                    "used": None,
+                }
+            ]
+        ),
+    )
+    assert set(panel["market"]) == {"decentralized_compute"}
+    assert panel.loc[panel["metric"] == "reported_capacity", "value"].iloc[0] == 16.0
+
+
 def test_participant_count_does_not_coerce_non_comparable_metadata_into_a_value():
     panel = metric_panel(
         pd.DataFrame(
@@ -149,3 +172,24 @@ def test_h41_does_not_treat_indexed_uniswap_depth_as_finalized_depth(monkeypatch
     assert summary["finalized_uniswap_swap_observed"] is False
     assert summary["finalized_uniswap_depth_observed"] is False
     assert "no finalized Uniswap swap" in summary["comparison_status"]
+
+
+def test_h41_requires_capacity_from_the_compute_market(monkeypatch, tmp_path):
+    tables = {
+        "market_participants": pd.DataFrame(),
+        "market_executions": pd.DataFrame(),
+        "market_quotes": pd.DataFrame(),
+        "market_capacity": pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "defillama",
+                    "participant_id": "not-a-compute-provider",
+                    "total": 8.0,
+                }
+            ]
+        ),
+    }
+    monkeypatch.setattr(h41, "_table", lambda name, _columns: tables[name])
+    summary = h41.run(tmp_path)
+    assert "no non-null decentralized-compute capacity" in summary["comparison_status"]

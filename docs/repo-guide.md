@@ -88,12 +88,14 @@ Graph collectors should use environment-only `DUNE_API_KEY` and
 `GRAPH_API_KEY`; no credential belongs in code, raw payload, generated memo,
 or git history.
 
-The hourly market workflow can additionally use the `ORCAP_ETHEREUM_RPC_URL`
-repository secret for a bounded, finalized Uniswap V3 log window over the two
-registered USDC/WETH pools. This is optional but is the source required for
-finalized swap and liquidity-event data; Graph and GeckoTerminal observations
-remain indexed-state controls. The collector redacts the configured RPC URL
-from raw provenance, including providers that put an API key in the URL.
+The hourly market workflow defaults to dRPC's documented public Ethereum RPC
+for a **bounded recent-finality** window over the two registered USDC/WETH
+pools and GPv2Settlement. Set `ORCAP_ETHEREUM_RPC_URL` to override it with an
+operator-selected archive-capable endpoint for stronger uptime and historical
+coverage. The public fallback is never an archive/backfill source; Graph and
+GeckoTerminal remain indexed-state controls. The collector records public and
+configured RPC provenance separately and redacts configured URLs that may
+contain API keys.
 
 ## Analysis conventions
 

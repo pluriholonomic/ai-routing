@@ -8,12 +8,15 @@ from orcap.capture_markets import (
     _block_time,
     _capture_uniswap_rpc_logs,
     _configured_url,
+    _ethereum_rpc_config,
+    _log_block_times,
     _union_table,
     _write,
     akash_capacity_rows,
     akash_gpu_quote_rows,
     akash_lease_execution_rows,
     akash_registry_summary,
+    chutes_capacity_rows,
     cow_competition_rows,
     cow_execution_rows,
     cow_rpc_log_rows,
@@ -46,6 +49,32 @@ def test_blank_actions_url_override_uses_public_default(monkeypatch):
     )
 
 
+def test_ethereum_rpc_config_prefers_operator_endpoint_over_public_bounded_fallback(monkeypatch):
+    monkeypatch.delenv("ORCAP_ETHEREUM_RPC_URL", raising=False)
+    monkeypatch.setenv("ORCAP_PUBLIC_ETHEREUM_RPC_URL", "https://public.example")
+    assert _ethereum_rpc_config() == (
+        "https://public.example",
+        "public:dRPC-bounded-live",
+        "public_bounded_live",
+    )
+    monkeypatch.setenv("ORCAP_ETHEREUM_RPC_URL", "https://operator.example/key")
+    assert _ethereum_rpc_config() == (
+        "https://operator.example/key",
+        "configured:ORCAP_ETHEREUM_RPC_URL",
+        "operator_configured",
+    )
+
+
+def test_log_block_timestamps_are_available_only_when_provider_explicitly_supplies_them():
+    times = _log_block_times(
+        [
+            {"blockNumber": "0x10", "blockTimestamp": "0x6a5094f7"},
+            {"blockNumber": "0x11"},
+        ]
+    )
+    assert times == {16: "2026-07-10T06:45:11Z"}
+
+
 def test_golem_capacity_keeps_hardware_metadata():
     rows = golem_capacity_rows(
         {"providers": [{"node_id": "n1", "data": {"golem.inf.cpu.cores": 8}}]},
@@ -54,6 +83,36 @@ def test_golem_capacity_keeps_hardware_metadata():
     )
     assert rows[0]["participant_id"] == "n1"
     assert rows[0]["cpu_cores"] == 8.0
+
+
+def test_chutes_capacity_is_active_deployment_configuration_not_available_capacity():
+    rows = chutes_capacity_rows(
+        {"data": [{"id": "Qwen/Qwen3-32B-TEE", "chute_id": "chute-1"}]},
+        [
+            {
+                "chute_id": "chute-1",
+                "node_selector": {"gpu_count": 8, "supported_gpus": ["pro_6000"]},
+                "instances": [
+                    {"active": True, "verified": True},
+                    {"active": True, "verified": False},
+                    {"active": False, "verified": True},
+                ],
+                "concurrency": 192,
+                "invocation_count": 1000,
+                "current_estimated_price": {"usd": {"hour": 14.4}},
+                "preemptible": True,
+            }
+        ],
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["resource_id"] == "Qwen/Qwen3-32B-TEE"
+    assert rows[0]["active_instances"] == 2
+    assert rows[0]["verified_active_instances"] == 1
+    assert rows[0]["total"] == 16.0
+    assert rows[0]["available"] is None
+    assert rows[0]["used"] is None
+    assert "not available capacity" in rows[0]["metric_definition"]
 
 
 def test_cow_execution_uses_immutable_trade_identity():
@@ -272,6 +331,7 @@ def test_uniswap_rpc_capture_uses_a_bounded_finalized_window_and_redacts_url(mon
     assert block_times == {}
     assert detail["finalized_through_block"] == 192
     assert detail["from_block"] == 190
+    assert detail["recent_bounded_only"] is False
     assert {record["url"] for record in records} == {"configured:ORCAP_ETHEREUM_RPC_URL"}
 
 

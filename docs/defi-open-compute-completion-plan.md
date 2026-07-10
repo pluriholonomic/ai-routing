@@ -46,6 +46,7 @@ context and must never substitute for Tier 1.
 | CoW Protocol order/trade/auction data plus settlement logs | RFQ/solver comparator: orders, fills, solver outcomes, settlement prices, surplus and auction cadence | auction/trade; ingest every 5–15 minutes | The public `solver_competition/latest` endpoint now yields a bounded live competition snapshot (auction block range, candidate-solver ranks, and winner flag). It is not historical trade history or a fill feed. For Tier 1, index GPv2Settlement or use a properly scoped official/Dune feed; transaction sender alone is not a solver identity. |
 | [Akash public Network Data API and chain REST/RPC](https://akash.network/docs/api-documentation/getting-started/) | decentralized compute provider-level GPU availability, aggregate model USD/hour quotes, and lease-contract lifecycle | hourly availability/quotes and newest lease contracts with RPC header timestamps | Implemented without credentials. Provider GPU totals are not allocated across advertised models; lease state/native rate is not a workload-success. H47 only compares explicit exact GPU specifications to Vast offers. |
 | [Golem Stats API](https://docs.stats.golem.network/) | independent decentralized-compute provider availability, requestor activity, agreement outcomes, and provider hardware | hourly network/provider snapshots | Free public JSON API.  It is a distinct, lower-capability network, so analyze separately instead of blending its prices with GPU cloud rates. |
+| [Chutes public model and chute-detail APIs](https://llm.chutes.ai/v1/models) | independent decentralized serverless-inference supply configuration: model quote, active deployment instances, requested GPUs per instance, configured concurrency, and cumulative invocations | hourly catalog plus one public detail response per current chute | Implemented. Active instances × configured GPUs is a deployment-configuration proxy, not available capacity, throughput, utilization, tokens served, or realized routing allocation. |
 | [Vast offer book](https://docs.vast.ai/api-reference/search/search-offers) (existing) | high-frequency open GPU supply, interruption premium, hardware and host attributes | hourly full-book snapshots | Keep on-demand and bid offers separate; add region, reliability, GPU RAM, verification, duration, and rentable/rented status to the canonical index. |
 
 ### Tier 2: market-wide controls and validation
@@ -70,16 +71,18 @@ the current Golem endpoint, `ORCAP_AKASH_NETWORK_URL` and optional
 subgraph/cohort. Until configured and producing data, they remain visibly
 degraded rather than being treated as a complete comparison.
 
-For finalized Uniswap event collection, set the `ORCAP_ETHEREUM_RPC_URL`
-secret to an archive-capable Ethereum JSON-RPC endpoint. The monitor queries a
-bounded window of the two registered USDC/WETH pools only after a 64-block
-default reorg buffer; operators may set `ORCAP_ETHEREUM_FINALITY_BLOCKS` and
+For finalized Uniswap event collection, the monitor defaults to dRPC's
+documented public Ethereum RPC for a bounded recent window and a 64-block
+reorg buffer. Set `ORCAP_ETHEREUM_RPC_URL` to an archive-capable endpoint to
+override this fallback for stronger uptime and historical coverage. Operators
+may set `ORCAP_ETHEREUM_FINALITY_BLOCKS` and
 `ORCAP_UNISWAP_LOG_WINDOW_BLOCKS` within the documented 1--10,000 bounds. It
 normalizes `Swap`, `Mint`, and `Burn` logs with an immutable
-transaction-hash/log-index identity. The endpoint itself is redacted from the
-raw evidence layer. Swap logs identify finalized execution and liquidity-event
-incidence, not USD executable depth; depth still needs a position/tick
-construction at explicit notional buckets.
+transaction-hash/log-index identity. The public fallback is strictly a
+recent-finality monitor, never an archive/backfill source; configured endpoints
+are redacted from raw evidence. Swap logs identify finalized execution and
+liquidity-event incidence, not USD executable depth; depth still needs a
+position/tick construction at explicit notional buckets.
 
 The same archive-capable RPC path also queries the verified mainnet
 `GPv2Settlement` contract for `Trade` and `Settlement` events in a separate
