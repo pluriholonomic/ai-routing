@@ -21,6 +21,7 @@ COLUMNS = [
     "market",
     "source",
     "resource_kind",
+    "quote_unit",
     "metric",
     "value",
     "n_observations",
@@ -74,11 +75,35 @@ def metric_panel(
                 ]
             )
     if not quotes.empty:
-        for (dt, source), group in quotes.groupby(["dt", "source"]):
+        quoted = quotes.copy()
+        if "quote_unit" in quoted:
+            quoted["quote_unit"] = quoted["quote_unit"].fillna("unspecified")
+        else:
+            quoted["quote_unit"] = "unspecified"
+        quoted["price_usd"] = pd.to_numeric(quoted.get("price_usd"), errors="coerce")
+        quoted["depth_usd"] = pd.to_numeric(quoted.get("depth_usd"), errors="coerce")
+        for (dt, source, quote_unit), group in quoted.groupby(["dt", "source", "quote_unit"]):
+            price_count = int(group["price_usd"].notna().sum())
+            depth_count = int(group["depth_usd"].notna().sum())
             rows.extend(
                 [
-                    _row(dt, source, "quotes", len(group), len(group)),
-                    _row(dt, source, "median_depth_usd", group["depth_usd"].median(), len(group)),
+                    _row(dt, source, "quotes", len(group), len(group), quote_unit=quote_unit),
+                    _row(
+                        dt,
+                        source,
+                        "median_quote_price_usd",
+                        group["price_usd"].median() if price_count else None,
+                        price_count,
+                        quote_unit=quote_unit,
+                    ),
+                    _row(
+                        dt,
+                        source,
+                        "median_depth_usd",
+                        group["depth_usd"].median() if depth_count else None,
+                        depth_count,
+                        quote_unit=quote_unit,
+                    ),
                 ]
             )
     if not capacity.empty:
@@ -144,13 +169,20 @@ def metric_panel(
 
 
 def _row(
-    dt: str, source: str, metric: str, value, n: int, resource_kind: str | None = None
+    dt: str,
+    source: str,
+    metric: str,
+    value,
+    n: int,
+    resource_kind: str | None = None,
+    quote_unit: str | None = None,
 ) -> dict:
     return {
         "dt": str(dt),
         "market": MARKETS.get(source, "unknown"),
         "source": source,
         "resource_kind": resource_kind,
+        "quote_unit": quote_unit,
         "metric": metric,
         "value": float(value) if pd.notna(value) else None,
         "n_observations": int(n),
@@ -160,7 +192,7 @@ def _row(
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     participants = _table("market_participants", "dt, source, participant_id, value")
     executions = _table("market_executions", "dt, run_ts, source, execution_id, success")
-    quotes = _table("market_quotes", "dt, source, depth_usd")
+    quotes = _table("market_quotes", "*")
     capacity = _table("market_capacity", "*")
     panel = metric_panel(participants, executions, quotes, capacity)
     save(panel, out_dir, "h41_market_comparison")

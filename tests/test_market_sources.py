@@ -1,6 +1,7 @@
 from orcap.capture_markets import (
     _block_time,
     akash_capacity_rows,
+    akash_gpu_quote_rows,
     akash_lease_execution_rows,
     akash_registry_summary,
     cow_execution_rows,
@@ -183,6 +184,31 @@ def test_akash_lease_lifecycle_preserves_native_rate_without_claiming_workload_s
     assert _block_time({"result": {"header": {"time": "2026-07-10T00:00:00Z"}}}) == (
         "2026-07-10T00:00:00Z"
     )
+
+
+def test_akash_gpu_quotes_preserve_exact_model_and_hourly_quote_unit():
+    rows = akash_gpu_quote_rows(
+        {
+            "models": [
+                {
+                    "vendor": "nvidia",
+                    "model": "h100",
+                    "ram": "80Gi",
+                    "interface": "SXM5",
+                    "availability": {"total": 8, "available": 2},
+                    "providerAvailability": {"total": 3, "available": 2},
+                    "price": {"currency": "USD", "weightedAverage": 2.4, "med": 2.5},
+                    "priceUakt": {"currency": "uakt", "weightedAverage": 4_000_000},
+                }
+            ]
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["instrument_id"] == "gpu:nvidia:h100:80Gi:SXM5"
+    assert rows[0]["price_usd"] == 2.4
+    assert rows[0]["quote_unit"] == "usd_per_gpu_hour"
+    assert rows[0]["available_units"] == 2.0
 
 
 def test_instrument_map_is_versioned_and_source_scoped():

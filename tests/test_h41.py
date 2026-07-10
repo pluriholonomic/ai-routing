@@ -54,3 +54,25 @@ def test_capacity_panel_preserves_resource_units_and_does_not_turn_missing_into_
     assert gpu.loc["reported_capacity", "value"] == 8.0
     assert gpu.loc["reported_utilization", "value"] == 0.25
     assert gpu.loc["capacity_reporting_share", "value"] == 0.5
+
+
+def test_quote_panel_keeps_quote_unit_with_aggregate_gpu_price():
+    panel = metric_panel(
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "akash",
+                    "quote_unit": "usd_per_gpu_hour",
+                    "price_usd": 2.4,
+                    "depth_usd": None,
+                }
+            ]
+        ),
+        pd.DataFrame(),
+    )
+    quote = panel.set_index("metric")
+    assert quote.loc["median_quote_price_usd", "value"] == 2.4
+    assert quote.loc["median_quote_price_usd", "quote_unit"] == "usd_per_gpu_hour"
