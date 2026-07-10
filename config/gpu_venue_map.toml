@@ -1,0 +1,17 @@
+mapping_version = "v1-20260710"
+
+# Exact public specifications only. Datacenter GPUs are intentionally absent:
+# the public Akash interface/RAM specification is not enough to prove it is
+# identical to a Vast class such as H100 SXM.
+
+[cohorts.rtx3090_pcie_24g]
+akash_quote_id = "nvidia:rtx3090:24Gi:PCIe"
+vast_gpu_class = "RTX 3090"
+
+[cohorts.rtx4090_pcie_24g]
+akash_quote_id = "nvidia:rtx4090:24Gi:PCIe"
+vast_gpu_class = "RTX 4090"
+
+[cohorts.rtx5090_pcie_32g]
+akash_quote_id = "nvidia:rtx5090:32Gi:PCIe"
+vast_gpu_class = "RTX 5090"

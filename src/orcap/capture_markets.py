@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 DEFILLAMA_PROTOCOLS_URL = "https://api.llama.fi/protocols"
 GOLEM_ONLINE_URL = "https://api.stats.golem.network/v1/network/online"
 AKASH_CONSOLE_PROVIDERS_URL = "https://console-api.akash.network/v1/providers"
+AKASH_GPU_PRICES_URL = "https://console-api.akash.network/v1/gpu-prices"
 AKASH_LEASES_URL = (
     "https://console-api.akash.network/akash/market/v1beta5/leases/list"
     "?pagination.limit=50&pagination.reverse=true"
@@ -313,6 +314,57 @@ def akash_registry_summary(body: Any) -> dict[str, int]:
     }
 
 
+def akash_gpu_quote_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize public aggregate Akash GPU quotes without fabricating fills.
+
+    The Console response aggregates provider offers by exact GPU model/RAM/
+    interface and already reports USD-per-hour price statistics.  Availability
+    is retained on the quote row because the source does not map aggregate
+    model units back to individual provider capacity rows.
+    """
+    models = _as_list(body, "models", "data")
+    rows = []
+    for model in models:
+        price = model.get("price") or {}
+        weighted = _float(price.get("weightedAverage"))
+        median = _float(price.get("med"))
+        if weighted is None and median is None:
+            continue
+        vendor = model.get("vendor") or "unknown"
+        name = model.get("model") or "unknown"
+        ram = model.get("ram") or "unknown"
+        interface = model.get("interface") or "unknown"
+        availability = model.get("availability") or {}
+        provider_availability = model.get("providerAvailability") or {}
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "akash",
+                "venue": "akash-network",
+                "instrument_id": f"gpu:{vendor}:{name}:{ram}:{interface}",
+                "quote_id": f"{vendor}:{name}:{ram}:{interface}",
+                "quote_side": "aggregate_weighted_provider_quote",
+                "quote_unit": "usd_per_gpu_hour",
+                "price_usd": weighted if weighted is not None else median,
+                "native_price": _float((model.get("priceUakt") or {}).get("weightedAverage")),
+                "price_min_usd_hr": _float(price.get("min")),
+                "price_max_usd_hr": _float(price.get("max")),
+                "price_avg_usd_hr": _float(price.get("avg")),
+                "price_weighted_avg_usd_hr": weighted,
+                "price_median_usd_hr": median,
+                "available_units": _float(availability.get("available")),
+                "total_units": _float(availability.get("total")),
+                "provider_available_count": _float(provider_availability.get("available")),
+                "provider_total_count": _float(provider_availability.get("total")),
+                "depth_usd": None,
+                "quality_tier": "public-aggregate-gpu-quote",
+                "record_json": _json(model),
+            }
+        )
+    return rows
+
+
 def _lease_id(lease: dict[str, Any]) -> str | None:
     identifier = lease.get("id") or {}
     fields = ("owner", "dseq", "gseq", "oseq", "provider", "bseq")
@@ -526,6 +578,7 @@ async def capture_markets(
             )
 
         akash = None
+        akash_gpu_prices = None
         akash_leases = None
         akash_block_times: dict[int, str | None] = {}
         akash_url = os.environ.get("ORCAP_AKASH_NETWORK_URL", AKASH_CONSOLE_PROVIDERS_URL)
@@ -536,6 +589,9 @@ async def capture_markets(
                 else None
             )
             akash = await fetcher.get_json(akash_url, headers=headers)
+            akash_gpu_prices = await fetcher.get_json(
+                os.environ.get("ORCAP_AKASH_GPU_PRICES_URL", AKASH_GPU_PRICES_URL)
+            )
             akash_leases = await fetcher.get_json(
                 os.environ.get("ORCAP_AKASH_LEASES_URL", AKASH_LEASES_URL)
             )
@@ -565,6 +621,7 @@ async def capture_markets(
     uni_quotes, uni_executions, uni_events = uniswap_rows(uniswap, run_ts, dt)
     akash_capacity = akash_capacity_rows(akash, run_ts, dt)
     akash_coverage = akash_registry_summary(akash)
+    akash_quotes = akash_gpu_quote_rows(akash_gpu_prices, run_ts, dt)
     akash_leases_rows = akash_lease_execution_rows(akash_leases, akash_block_times, run_ts, dt)
     instrument_map = instrument_map_rows(run_ts, dt)
     _write(participants, "market_participants", run_ts, dt, curated_dir)
@@ -575,7 +632,7 @@ async def capture_markets(
         dt,
         curated_dir,
     )
-    _write(uni_quotes, "market_quotes", run_ts, dt, curated_dir)
+    _write(uni_quotes + akash_quotes, "market_quotes", run_ts, dt, curated_dir)
     _write(golem_capacity + akash_capacity, "market_capacity", run_ts, dt, curated_dir)
     _write(
         execution_events(cow_executions, "trade")
@@ -636,11 +693,12 @@ async def capture_markets(
     if with_akash:
         _run_status(
             "akash",
-            len(akash_capacity) + len(akash_leases_rows),
+            len(akash_capacity) + len(akash_quotes) + len(akash_leases_rows),
             run_ts,
             dt,
             {
                 "configured": bool(akash_url),
+                "gpu_quote_rows": len(akash_quotes),
                 "lease_lifecycle_rows": len(akash_leases_rows),
                 "lease_blocks_timestamped": sum(
                     row["executed_at"] is not None for row in akash_leases_rows
@@ -668,6 +726,7 @@ async def capture_markets(
         "uniswap_quotes": len(uni_quotes),
         "uniswap_executions": len(uni_executions),
         "akash_capacity": len(akash_capacity),
+        "akash_gpu_quotes": len(akash_quotes),
         "akash_coverage": akash_coverage,
         "akash_lease_lifecycle_rows": len(akash_leases_rows),
     }

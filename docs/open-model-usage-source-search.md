@@ -14,7 +14,7 @@ does not invite an unsupported conversion into inference tokens or revenue.
 | Which local-model families are being acquired? | [Ollama Library](https://ollama.com/library) | `open_model_usage_daily`, 236 ranked families and cumulative pulls | Pulls are model acquisition, not completions, active installs, or distinct users. The public page is HTML rather than a documented aggregate API, so the parser has a row-count health gate and raw HTML retention. |
 | Is self-hosted serving adoption growing? | [Docker Hub API](https://docs.docker.com/reference/api/hub/latest/) | `oss_runtime_adoption_daily` for Ollama, vLLM, and SGLang images | Image pulls are a deployment proxy, not model usage. Docker notes that pulls include some version checks in its [pull definition](https://docs.docker.com/docker-hub/usage/pulls/). |
 | What is actual routed demand? | OpenRouter frontend model activity, rankings, effective-pricing, and endpoint-stat captures | Existing `model_activity_daily`, `rankings_weekly`, `effective_pricing_daily`, and `congestion_intraday` | These are the only captured token/request measures. They cover the OpenRouter marketplace, not all model consumption. |
-| What decentralized compute capacity and contract lifecycle are publicly observable? | [Akash Console Network Data API](https://akash.network/docs/api-documentation/rest-api/) plus official [RPC](https://akash.network/docs/node-operators/architecture/api-layer/) block headers | `market_capacity` contains only live, version-valid provider-level GPU totals; `market_executions` contains timestamped lease lifecycle contracts | GPU-model mix is not allocated to capacity counts. A lease close is not a successful workload, GPU-hours consumed, or USD execution price. |
+| What decentralized compute capacity, posted GPU quotes, and contract lifecycle are publicly observable? | [Akash Console Network Data API](https://akash.network/docs/api-documentation/rest-api/) plus official [RPC](https://akash.network/docs/node-operators/architecture/api-layer/) block headers | `market_capacity` contains only live, version-valid provider-level GPU totals; `market_quotes` contains public model-level USD/hour aggregates; `market_executions` contains timestamped lease lifecycle contracts | GPU-model mix is not allocated to provider capacity counts. A lease close is not a successful workload, GPU-hours consumed, or USD execution price. |
 
 ## Sources rejected or held behind explicit gates
 
@@ -55,5 +55,9 @@ does not invite an unsupported conversion into inference tokens or revenue.
 - H31 now records the Vast on-demand rented-share/rent association with a
   seven-day, three-GPU-class power gate. It remains descriptive until an
   exogenous supply or demand instrument is added.
+- H47 compares only versioned, exact consumer-GPU specifications between
+  Akash's aggregate USD/hour quotes and Vast on-demand offers. It requires
+  seven days, two cohorts, and 50 synchronized quote pairs; H100-class
+  matches remain excluded pending a verifiable interface-equivalence map.
 - Accumulate at least 6–8 weeks of daily public adoption snapshots before
   estimating cross-source lead/lag relationships.
