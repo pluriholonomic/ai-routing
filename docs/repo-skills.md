@@ -158,3 +158,32 @@ Use for: dashboards, alerts, memo deployment, and scheduled research.
 Completion check: a deliberately malformed source response fails or degrades
 the monitor in the intended way, produces an actionable alert, and does not
 publish a falsely healthy memo.
+
+## 7. Audit a block-pinned Uniswap V3 tick book
+
+Use for: V3 depth research, concentration diagnostics, or changes to the
+TickLens/Multicall2 collector.
+
+1. Treat `uniswap_tick_book` as virtual-liquidity state for the two registered
+   pools—not an order book, dollar depth, route, or fill log.
+2. Require the corresponding `uniswap_tick_book` source-run ledger row to be
+   `success`, `coverage_complete=true`, and complete for every registered pool
+   before using a snapshot. H56 also requires its certified tick-row total to
+   match the curated rows, and rejects unverified or truncated snapshots.
+3. Keep the state block finality-buffered and require Multicall2's returned
+   block number to equal the requested block. A current-state call mixed with
+   historical state is an invalid snapshot.
+4. Scan every usable bitmap word from the on-chain `tickSpacing`; a partial
+   range, malformed word, duplicate tick, or row-cap breach invalidates that
+   pool's entire snapshot.
+5. Preserve raw signed liquidity net and gross values exactly. The zero sum of
+   signed net liquidity across initialized ticks is a bookkeeping check, not a
+   dollar-depth estimator.
+6. Before reporting depth, pre-register trade direction, token decimals,
+   notional grid, fee treatment, tick-crossing traversal, and a same-block
+   QuoterV2 validation. Keep that estimator distinct from H56's state audit.
+
+Completion check: a source-ledger-verified H56 snapshot has one final block per
+pool, every usable word was scanned, every tick maps back to its bitmap word,
+and any executable-depth conclusion is supported by a separately documented
+traversal rather than by the raw tick table alone.

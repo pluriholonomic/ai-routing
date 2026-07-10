@@ -28,8 +28,8 @@ controls, but are not the primary comparison dataset.
 | Direct inference basis | structured daily DeepInfra, Cerebras, SambaNova, and Chutes catalogs; Groq/Together exact-ID docs tables; Novita and BaseTen literal public SSR catalogs; and two Fireworks exact-ID serverless pages | Groq, Together, Novita, BaseTen, and Fireworks are posted quotes. Chutes's TEE-suffixed IDs and BaseTen's publisher/library slugs require versioned one-to-one maps before joining OpenRouter canonical IDs. Coverage remains too narrow for a market-wide conclusion. |
 | Open GPU supply | hourly Vast offer books (on-demand and bid) plus Lambda's published per-GPU-hour instance tables | Vast is the only offer book; Lambda list prices carry no availability, utilization, or execution evidence, and there is no region/quality-normalized cross-venue index |
 | Forward/carry | Vast duration buckets plus static anchors | heterogeneous, sparse forward anchors; no tradable same-venue curve |
-| DeFi macro controls | base fee, two Uniswap V3 pool prices, CoW sender counts, BTC funding/hashprice | no event-level depth, volume, gas-inclusive execution, solver identity, or time-aligned cross-venue universe |
-| DeFi monitoring | manual `orcap defi` fetch and cached parquet | no workflow, freshness SLO, source status, raw archive, or downstream analysis integration |
+| DeFi microstructure | finalized bounded Uniswap and GPv2Settlement logs, QuoterV2 fixed-notional curves, CoW solver identities only when linked to a same-transaction settlement, and state impact-capacity lower bounds | young live panel; no market-wide CoW order/auction source, gas-inclusive execution measure, or dollar-depth construction |
+| DeFi monitoring | hourly market workflow with raw provenance, source-run ledger, finality buffer, and H41 gap accounting | public dRPC path is recent-window only; the panel needs repeated contiguous coverage and an archive RPC for historical repair/backfill |
 | Reproducibility | raw capture, source registry/run ledger, and synthetic estimator tests for core collectors | DeFi feeds still lack complete production schemas and freshness coverage; analyses need final matched-data gates before any full-market claim |
 
 ## Source plan
@@ -42,7 +42,7 @@ context and must never substitute for Tier 1.
 
 | Source | Why it is needed | Capture grain / cadence | Access and caveat |
 |---|---|---|---|
-| Ethereum logs or a dedicated [Uniswap V3/V4 subgraph](https://thegraph.com/docs/en/subgraphs/querying/introduction/) | swap, mint, burn, collect, tick/liquidity events for a fixed ETH/USDC universe | block/event; ingest hourly and finalize after a reorg buffer | Prefer canonical logs from an RPC/archive provider for production; a Graph subgraph is a fast query layer but has an indexing lag and requires an API key. |
+| Ethereum logs, [Uniswap V3 TickLens](https://developers.uniswap.org/docs/protocols/v3/deployments/v3-ethereum-deployments), or a dedicated [Uniswap V3/V4 subgraph](https://thegraph.com/docs/en/subgraphs/querying/introduction/) | swap/mint/burn events plus a block-pinned initialized-tick state map for a fixed ETH/USDC universe | block/event and full tick-bitmap state; ingest hourly and finalize after a reorg buffer | Prefer canonical logs and an archive-capable RPC for production. TickLens state is virtual liquidity, not USD executable depth; a Graph subgraph is a fast query layer but has indexing lag and requires an API key. |
 | CoW Protocol order/trade/auction data plus settlement logs | RFQ/solver comparator: orders, fills, solver outcomes, settlement prices, surplus and auction cadence | auction/trade; ingest every 5–15 minutes | The public `solver_competition/latest` endpoint now yields a bounded live competition snapshot (auction block range, candidate-solver ranks, and winner flag). It is not historical trade history or a fill feed. For Tier 1, index GPv2Settlement or use a properly scoped official/Dune feed; transaction sender alone is not a solver identity. |
 | [Akash public Network Data API and chain REST/RPC](https://akash.network/docs/api-documentation/getting-started/) | decentralized compute provider-level GPU availability, aggregate model USD/hour quotes, lease-contract lifecycle, and block-pinned open GPU bids from the current live-GPU-provider universe | hourly availability/quotes, newest lease contracts, and provider-filtered bid snapshots | Implemented without credentials. Provider GPU totals are not allocated across advertised models; lease state/native rate is not a workload-success. The bid panel is coverage-restricted, native per-block price only, and not an all-network demand/fill book. H47 only compares explicit exact GPU specifications to Vast offers. |
 | [Golem Stats API](https://docs.stats.golem.network/) | independent decentralized-compute provider availability, requestor activity, agreement outcomes, and provider hardware | hourly network/provider snapshots | Free public JSON API.  It is a distinct, lower-capability network, so analyze separately instead of blending its prices with GPU cloud rates. |
@@ -81,8 +81,11 @@ normalizes `Swap`, `Mint`, and `Burn` logs with an immutable
 transaction-hash/log-index identity. The public fallback is strictly a
 recent-finality monitor, never an archive/backfill source; configured endpoints
 are redacted from raw evidence. Swap logs identify finalized execution and
-liquidity-event incidence, not USD executable depth; depth still needs a
-position/tick construction at explicit notional buckets.
+liquidity-event incidence, not USD executable depth. The monitor scans every
+usable bitmap word through TickLens, batched by Multicall2, at the same
+finalized block. A pool is emitted only when all words complete at that block;
+the resulting virtual-liquidity state still needs a direction- and
+notional-specific traversal before it can support any depth measure.
 
 The default finalized log window is 1,024 blocks, deliberately overlapping the
 hourly workflow by roughly an hour or more at observed Ethereum cadence. H41
@@ -118,6 +121,14 @@ discrete lower bounds** on local price-impact capacity: they do not reconstruct
 the complete tick book, represent total or market-wide liquidity, or guarantee
 a subsequent fill. They are retained separately from both the fixed-notional
 curve and the finalized-depth gate.
+
+H56 separately records the exact initialized ticks, gross liquidity, and
+signed net liquidity returned by TickLens for every usable bitmap word of the
+two registered pools, using a finality-block-pinned Multicall2 aggregate. The
+collector fails closed at the pool level when a state call, word, or returned
+block fails validation. H56 reports source-ledger-verified snapshot integrity
+and tick-state coverage only; it does not turn virtual liquidity into USD
+depth, a swap traversal, a firm executable quote, or a market-wide book.
 
 The same archive-capable RPC path also queries the verified mainnet
 `GPv2Settlement` contract for `Trade` and `Settlement` events in a separate

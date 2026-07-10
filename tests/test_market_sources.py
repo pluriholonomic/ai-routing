@@ -6,14 +6,20 @@ import pytest
 from pyarrow.parquet import ParquetFile
 
 from orcap.capture_markets import (
+    _abi_int,
     _block_time,
     _capture_uniswap_rpc_logs,
     _configured_url,
     _cow_usdc_weth_execution_fields,
     _ethereum_rpc_config,
     _log_block_times,
+    _multicall2_aggregate_calldata,
+    _multicall2_aggregate_result,
+    _tick_lens_populated_ticks,
     _union_table,
     _uniswap_quoter_calldata,
+    _uniswap_tick_book_word_positions,
+    _uniswap_tick_lens_calldata,
     _write,
     akash_capacity_rows,
     akash_gpu_quote_rows,
@@ -39,6 +45,7 @@ from orcap.capture_markets import (
     uniswap_quoter_quote_rows,
     uniswap_rows,
     uniswap_rpc_log_rows,
+    uniswap_tick_book_rows,
 )
 from orcap.http import Fetcher
 
@@ -155,6 +162,78 @@ def test_uniswap_quoter_impact_capacity_is_a_discrete_lower_bound_not_depth():
     assert by_target[500]["impact_capacity_lower_bound_usdc"] == 1_000.0
     assert "lower bound" in by_target[100]["quality_tier"]
     assert "not total liquidity" in by_target[100]["metric_definition"]
+
+
+def test_tick_lens_and_multicall2_abi_helpers_preserve_signed_words_and_dynamic_offsets():
+    pool_id = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+    tick_call = _uniswap_tick_lens_calldata(pool_id, -1)
+    assert tick_call.startswith("0x351fb478")
+    assert tick_call[-64:] == "f" * 64
+    aggregate = _multicall2_aggregate_calldata(
+        [("0xbfd8137f7d1516d3ea5ca83523914859ec47f573", tick_call)]
+    )
+    assert aggregate.startswith("0x252dba42")
+    # (blockNumber, bytes[]) with two return elements: 0xa1b2c3 and 0x01.
+    aggregate_result = "0x" + "".join(
+        (
+            f"{123:064x}",
+            f"{64:064x}",
+            f"{2:064x}",
+            f"{64:064x}",
+            f"{128:064x}",
+            f"{3:064x}",
+            "a1b2c3".ljust(64, "0"),
+            f"{1:064x}",
+            "01".ljust(64, "0"),
+        )
+    )
+    assert _multicall2_aggregate_result(aggregate_result) == (123, ["0xa1b2c3", "0x01"])
+    assert _abi_int(-2, bits=16) == "f" * 63 + "e"
+
+
+def test_tick_lens_ticks_and_rows_keep_virtual_liquidity_separate_from_depth():
+    tick_lens_result = "0x" + "".join(
+        (
+            f"{32:064x}",
+            f"{2:064x}",
+            _abi_int(-2560, bits=24),
+            _abi_int(-50, bits=128),
+            f"{100:064x}",
+            _abi_int(-2550, bits=24),
+            _abi_int(75, bits=128),
+            f"{200:064x}",
+        )
+    )
+    decoded = _tick_lens_populated_ticks(tick_lens_result)
+    assert decoded == [
+        {"tick": -2560, "liquidity_net_raw": -50, "liquidity_gross_raw": 100},
+        {"tick": -2550, "liquidity_net_raw": 75, "liquidity_gross_raw": 200},
+    ]
+    assert _uniswap_tick_book_word_positions(10) == list(range(-347, 347))
+
+    pool_id = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
+    spec = uniswap_pool_specs()[pool_id]
+    rows = uniswap_tick_book_rows(
+        [
+            {
+                "pool_id": pool_id,
+                "spec": spec,
+                "block_number": 25500656,
+                "word_position": -1,
+                "tick_spacing": 10,
+                "sqrt_price_x96": 123,
+                "current_tick": -2557,
+                "active_liquidity_raw": 456,
+                **decoded[0],
+            }
+        ],
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+    assert rows[0]["tick"] == -2560
+    assert rows[0]["liquidity_net_raw"] == "-50"
+    assert rows[0]["liquidity_gross_raw"] == "100"
+    assert "not USD executable depth" in rows[0]["quality_tier"]
 
 
 def test_cow_amm_preblock_rows_keep_parent_block_counterfactual_distinct_from_fill():
