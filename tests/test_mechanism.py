@@ -94,6 +94,21 @@ def test_capacity_counterfactual_exposes_shortfall_and_unfilled_residual():
     assert (counterfactual["capacity_certified_unfilled_demand"] == 70).all()
 
 
+def test_capacity_certification_weakly_increases_deliverable_request_count():
+    offers = [
+        ProviderOffer("cheap", price=1, reliability=1, committed_capacity=10, marginal_cost=0.4),
+        ProviderOffer(
+            "expensive", price=2, reliability=1, committed_capacity=100, marginal_cost=0.4
+        ),
+    ]
+    counterfactual = allocation_counterfactual(offers, demand=100).set_index("provider")
+    assert counterfactual["uncapped_delivered_under_commitment"].sum() == 30
+    assert counterfactual["capacity_certified_allocated"].sum() == 100
+    assert counterfactual["capacity_certified_delivery_gain"].sum() == 70
+    assert (counterfactual["uncapped_unserved_demand"] == 70).all()
+    assert (counterfactual["capacity_certified_unfilled_demand"] == 0).all()
+
+
 def test_hard_capacity_overreport_is_worse_when_it_creates_shortfall():
     offers = [
         ProviderOffer("a", price=1, reliability=1, committed_capacity=30, marginal_cost=0.4),

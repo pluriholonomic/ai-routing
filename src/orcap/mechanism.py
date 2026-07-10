@@ -122,7 +122,16 @@ def allocation_counterfactual(
     result["uncapped_capacity_shortfall"] = (
         result["uncapped_allocated"] - result["committed_capacity"]
     ).clip(lower=0.0)
+    result["uncapped_delivered_under_commitment"] = result[
+        ["uncapped_allocated", "committed_capacity"]
+    ].min(axis=1)
     result["capacity_certified_allocated"] = capped.reindex(providers, fill_value=0.0)
+    result["capacity_certified_delivery_gain"] = (
+        result["capacity_certified_allocated"] - result["uncapped_delivered_under_commitment"]
+    )
+    result["uncapped_unserved_demand"] = max(
+        0.0, demand - float(result["uncapped_delivered_under_commitment"].sum())
+    )
     result["capacity_certified_unfilled_demand"] = max(
         0.0, demand - float(result["capacity_certified_allocated"].sum())
     )

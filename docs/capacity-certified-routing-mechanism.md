@@ -81,6 +81,15 @@ AMM welfare results.
    unfilled instead of attributed to a provider. The code-level
    `allocation_counterfactual` reports the mechanical shortfall that an
    uncapped inverse-price rule would have assigned beyond commitments.
+5. **Deliverable-count dominance over uncapped allocation.** With hard
+   commitments, equal value per request, and delivery whenever an allocation
+   is within commitment, an uncapped score rule delivers
+   `sum_i min(D s_i, k_i)`. Capacity-certified water-filling delivers
+   `min(D, sum_i k_i)`, which is weakly larger because no allocation is wasted
+   above a commitment. `allocation_counterfactual` reports the resulting
+   mechanical delivery gain. This is not a general welfare theorem: it does
+   not value latency, quality, heterogeneous requests, strategic prices, or
+   capacity-acquisition cost.
 
 The next theory step is to extend this one-period result to private capacity
 and a stochastic health process, then prove an individually rational
@@ -108,6 +117,13 @@ is `log(w_i)-log(x_i)-1`. KKT stationarity therefore gives
 commitment is lower, allocating each `k_i` leaves the residual explicitly
 unfilled. This proves feasibility conditional on verified commitments, not
 truthful commitment revelation or optimality under private information.
+
+For the deliverable-count result, an uncapped allocation has feasible delivery
+`min(Ds_i,k_i)` at each provider. Any allocation has at most both total demand
+`D` and total hard capacity `sum_i k_i`, while the water-fill rule attains that
+upper bound by assigning no unit above `k_i`. It therefore weakly maximizes
+delivered request count in this equal-value reduced form. The result stops at
+request count; a welfare comparison needs observed quality and cost terms.
 
 There is one narrower reporting result. Suppose a provider's physical capacity
 is a hard `K_i`, it reports `k_i`, price and reliability are held fixed, and a
