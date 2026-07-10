@@ -76,3 +76,22 @@ def test_quote_panel_keeps_quote_unit_with_aggregate_gpu_price():
     quote = panel.set_index("metric")
     assert quote.loc["median_quote_price_usd", "value"] == 2.4
     assert quote.loc["median_quote_price_usd", "quote_unit"] == "usd_per_gpu_hour"
+
+
+def test_geckoterminal_is_an_indexed_amm_control_not_unknown_market():
+    panel = metric_panel(
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(
+            [
+                {
+                    "dt": "2026-07-10",
+                    "source": "geckoterminal",
+                    "price_usd": 2000.0,
+                    "depth_usd": 1_000_000.0,
+                }
+            ]
+        ),
+        pd.DataFrame(),
+    )
+    assert set(panel["market"]) == {"defi_amm_indexed_control"}
