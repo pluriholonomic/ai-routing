@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import tomllib
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,14 @@ GECKOTERMINAL_POOLS = (
 )
 GRAPH_GATEWAY = "https://gateway.thegraph.com/api/{key}/subgraphs/id/{subgraph_id}"
 INSTRUMENTS_PATH = Path(__file__).resolve().parents[2] / "config" / "instruments.toml"
+UNISWAP_V3_SWAP_TOPIC = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
+UNISWAP_V3_MINT_TOPIC = "0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde"
+UNISWAP_V3_BURN_TOPIC = "0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c"
+DEFAULT_ETHEREUM_FINALITY_BLOCKS = 64
+DEFAULT_UNISWAP_LOG_WINDOW_BLOCKS = 128
+GPV2_SETTLEMENT_ADDRESS = "0x9008d19f58aabd9ed0d60971565aa8510560ab41"
+GPV2_TRADE_TOPIC = "0xa07a543ab8a018198e99ca0184c93fe9050a79400a0a723441f84de1d972cc17"
+GPV2_SETTLEMENT_TOPIC = "0x40338ce1a7c49204f0099533b1e9a7ee0a3d261f84974ab7af36105b8c4e9db4"
 
 
 def _json(value: Any) -> str:
@@ -49,6 +58,126 @@ def _json(value: Any) -> str:
 def _configured_url(name: str, default: str) -> str:
     """Use the public default when Actions injects an empty optional variable."""
     return os.environ.get(name) or default
+
+
+def _bounded_int_env(name: str, default: int, *, minimum: int, maximum: int) -> int:
+    """Read a bounded integer environment setting without accepting nonsense."""
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    return value
+
+
+def _hex_int(value: Any) -> int | None:
+    if isinstance(value, int):
+        return value
+    if not isinstance(value, str):
+        return None
+    try:
+        return int(value, 16) if value.startswith("0x") else int(value)
+    except ValueError:
+        return None
+
+
+def _hex_quantity(value: int) -> str:
+    return hex(value)
+
+
+def _word(data: Any, index: int) -> int | None:
+    """Decode a 32-byte ABI word from a hexadecimal event-data string."""
+    if not isinstance(data, str):
+        return None
+    value = data.removeprefix("0x")
+    start, end = index * 64, (index + 1) * 64
+    if len(value) < end:
+        return None
+    try:
+        return int(value[start:end], 16)
+    except ValueError:
+        return None
+
+
+def _signed_word(data: Any, index: int) -> int | None:
+    value = _word(data, index)
+    if value is None:
+        return None
+    return value - (1 << 256) if value >= (1 << 255) else value
+
+
+def _address_word(data: Any, index: int) -> str | None:
+    value = _word(data, index)
+    return f"0x{value:040x}" if value is not None else None
+
+
+def _dynamic_bytes(data: Any, offset_index: int) -> str | None:
+    """Decode a dynamic ABI bytes value while retaining its literal hex form."""
+    offset = _word(data, offset_index)
+    if offset is None or offset % 32:
+        return None
+    length = _word(data, offset // 32)
+    if length is None:
+        return None
+    value = str(data).removeprefix("0x")
+    start, end = (offset + 32) * 2, (offset + 32 + length) * 2
+    if len(value) < end:
+        return None
+    return "0x" + value[start:end]
+
+
+def _topic_address(topics: Any, index: int) -> str | None:
+    if not isinstance(topics, list) or len(topics) <= index or not isinstance(topics[index], str):
+        return None
+    value = topics[index].removeprefix("0x")
+    if len(value) != 64:
+        return None
+    return "0x" + value[-40:].lower()
+
+
+def _ethereum_block_time(body: Any) -> str | None:
+    """Read an EVM block timestamp without pretending a missing one is zero."""
+    if not isinstance(body, dict):
+        return None
+    timestamp = _hex_int(body.get("timestamp"))
+    if timestamp is None:
+        return None
+    return datetime.fromtimestamp(timestamp, UTC).isoformat().replace("+00:00", "Z")
+
+
+def uniswap_pool_specs() -> dict[str, dict[str, Any]]:
+    """Load the checked-in, exact-token metadata for registered V3 pools."""
+    with INSTRUMENTS_PATH.open("rb") as handle:
+        instruments = tomllib.load(handle)["instruments"]
+    result: dict[str, dict[str, Any]] = {}
+    required = ("source_id", "canonical_instrument", "quality_tier")
+    for map_id, raw in instruments.items():
+        if raw.get("source") != "uniswap":
+            continue
+        missing = [field for field in required if not raw.get(field)]
+        if missing:
+            raise ValueError(f"Uniswap instrument {map_id} missing: {', '.join(missing)}")
+        try:
+            decimals = (int(raw["token0_decimals"]), int(raw["token1_decimals"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"Uniswap instrument {map_id} needs token decimals") from exc
+        if any(value < 0 or value > 36 for value in decimals):
+            raise ValueError(f"Uniswap instrument {map_id} has invalid token decimals")
+        address = str(raw["source_id"]).lower()
+        result[address] = {
+            "map_id": map_id,
+            "canonical_instrument": str(raw["canonical_instrument"]),
+            "quality_tier": str(raw["quality_tier"]),
+            "token0_symbol": str(raw.get("token0_symbol") or "token0"),
+            "token0_decimals": decimals[0],
+            "token1_symbol": str(raw.get("token1_symbol") or "token1"),
+            "token1_decimals": decimals[1],
+        }
+    return result
 
 
 def _as_list(value: Any, *keys: str) -> list[dict[str, Any]]:
@@ -268,7 +397,8 @@ def uniswap_rows(
                 "price_usd": None,
                 "native_price": _float(pool.get("token1Price")),
                 "depth_usd": _float(pool.get("totalValueLockedUSD")),
-                "quality_tier": "onchain-finalized-pending",
+                "quality_tier": "subgraph-indexed-state; not finalized logs",
+                "finalized": False,
                 "record_json": _json(pool),
             }
         )
@@ -291,6 +421,7 @@ def uniswap_rows(
                 "fee_native": None,
                 "gas_native": None,
                 "success": True,
+                "finalized": False,
                 "participant_id": swap.get("origin"),
                 "record_json": _json(swap),
             }
@@ -305,10 +436,292 @@ def uniswap_rows(
                     "event_type": "swap",
                     "event_time": swap.get("timestamp"),
                     "instrument_id": (swap.get("pool") or {}).get("id"),
+                    "finalized": False,
                     "record_json": _json(swap),
                 }
             )
     return quotes, executions, events
+
+
+def uniswap_rpc_log_rows(
+    logs: Any,
+    block_times: dict[int, str | None],
+    run_ts: str,
+    dt: str,
+    *,
+    pool_specs: dict[str, dict[str, Any]] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Normalize finalized, registered-pool Uniswap V3 logs.
+
+    The routine deliberately measures swap execution and liquidity-event
+    incidence, not dollar executable depth.  V3's virtual liquidity and a
+    single swap price do not identify depth at a notional-size bucket, so that
+    higher bar remains visible in H41.
+    """
+    specs = pool_specs if pool_specs is not None else uniswap_pool_specs()
+    executions: list[dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
+    for log_row in logs if isinstance(logs, list) else []:
+        if not isinstance(log_row, dict):
+            continue
+        pool = str(log_row.get("address") or "").lower()
+        spec = specs.get(pool)
+        topics = log_row.get("topics")
+        topic0 = topics[0].lower() if isinstance(topics, list) and topics else None
+        tx_hash = str(log_row.get("transactionHash") or "").lower()
+        log_index = _hex_int(log_row.get("logIndex"))
+        block_number = _hex_int(log_row.get("blockNumber"))
+        if spec is None or not topic0 or not tx_hash or log_index is None or block_number is None:
+            continue
+        event_id = f"uniswap:{tx_hash}:{log_index}"
+        base = {
+            "run_ts": run_ts,
+            "dt": dt,
+            "source": "uniswap",
+            "event_id": event_id,
+            "event_time": block_times.get(block_number),
+            "instrument_id": spec["canonical_instrument"],
+            "pool_id": pool,
+            "pool_map_id": spec["map_id"],
+            "block_number": block_number,
+            "block_hash": log_row.get("blockHash"),
+            "transaction_hash": tx_hash,
+            "log_index": log_index,
+            "finalized": True,
+        }
+        if topic0 == UNISWAP_V3_SWAP_TOPIC:
+            amount0_raw, amount1_raw = _signed_word(log_row.get("data"), 0), _signed_word(
+                log_row.get("data"), 1
+            )
+            sqrt_price_x96 = _word(log_row.get("data"), 2)
+            liquidity_after = _word(log_row.get("data"), 3)
+            tick = _signed_word(log_row.get("data"), 4)
+            if amount0_raw is None or amount1_raw is None or not (
+                (amount0_raw > 0 and amount1_raw < 0) or (amount1_raw > 0 and amount0_raw < 0)
+            ):
+                continue
+            amount0 = amount0_raw / 10 ** spec["token0_decimals"]
+            amount1 = amount1_raw / 10 ** spec["token1_decimals"]
+            zero_for_one = amount0_raw > 0
+            input_amount = amount0 if zero_for_one else amount1
+            output_amount = -amount1 if zero_for_one else -amount0
+            side = "token0_to_token1" if zero_for_one else "token1_to_token0"
+            parsed = {
+                "event_kind": "swap",
+                "amount0_raw": str(amount0_raw),
+                "amount1_raw": str(amount1_raw),
+                "amount0": amount0,
+                "amount1": amount1,
+                "sqrt_price_x96": str(sqrt_price_x96) if sqrt_price_x96 is not None else None,
+                "liquidity_after": str(liquidity_after) if liquidity_after is not None else None,
+                "tick": tick,
+                "sender": _topic_address(topics, 1),
+                "recipient": _topic_address(topics, 2),
+                "token0_symbol": spec["token0_symbol"],
+                "token1_symbol": spec["token1_symbol"],
+            }
+            record_json = _json({"log": log_row, "parsed": parsed})
+            executions.append(
+                {
+                    "run_ts": run_ts,
+                    "dt": dt,
+                    "source": "uniswap",
+                    "venue": "uniswap-v3",
+                    "execution_id": event_id,
+                    "instrument_id": spec["canonical_instrument"],
+                    "executed_at": block_times.get(block_number),
+                    "event_block_number": block_number,
+                    "finalized": True,
+                    "side": side,
+                    "requested_size": input_amount,
+                    "filled_size": output_amount,
+                    "gross_price_usd": None,
+                    "native_price": output_amount / input_amount if input_amount else None,
+                    "fee_native": None,
+                    "gas_native": None,
+                    "success": True,
+                    "participant_id": parsed["sender"],
+                    "quality_tier": f"onchain-finalized-rpc;{spec['quality_tier']}",
+                    "metric_definition": (
+                        "Finalized Uniswap V3 Swap event. Requested and filled sizes are "
+                        "pool-balance deltas, normalized by configured token decimals; they "
+                        "are not USD notional, gas-inclusive price, or depth."
+                    ),
+                    "record_json": record_json,
+                }
+            )
+            events.append(base | {"event_type": "swap", "record_json": record_json})
+        elif topic0 in {UNISWAP_V3_MINT_TOPIC, UNISWAP_V3_BURN_TOPIC}:
+            liquidity_delta = _word(log_row.get("data"), 0)
+            amount0_raw, amount1_raw = _word(log_row.get("data"), 1), _word(log_row.get("data"), 2)
+            if liquidity_delta is None or amount0_raw is None or amount1_raw is None:
+                continue
+            kind = "liquidity_mint" if topic0 == UNISWAP_V3_MINT_TOPIC else "liquidity_burn"
+            parsed = {
+                "event_kind": kind,
+                "owner": _topic_address(topics, 1),
+                "liquidity_delta": str(liquidity_delta),
+                "amount0_raw": str(amount0_raw),
+                "amount1_raw": str(amount1_raw),
+                "amount0": amount0_raw / 10 ** spec["token0_decimals"],
+                "amount1": amount1_raw / 10 ** spec["token1_decimals"],
+                "token0_symbol": spec["token0_symbol"],
+                "token1_symbol": spec["token1_symbol"],
+            }
+            events.append(
+                base
+                | {
+                    "event_type": kind,
+                    "record_json": _json({"log": log_row, "parsed": parsed}),
+                }
+            )
+    return executions, events
+
+
+def cow_rpc_log_rows(
+    logs: Any, block_times: dict[int, str | None], run_ts: str, dt: str
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Normalize finalized GPv2 settlement events without a solver proxy.
+
+    ``Trade`` records the owner and raw token amounts, while ``Settlement``
+    records the authorized solver. They are joined only by immutable
+    transaction hash, so a missing Settlement event stays missing rather than
+    being filled from the transaction sender.
+    """
+    rows = [item for item in logs if isinstance(item, dict)] if isinstance(logs, list) else []
+    solvers = {
+        str(item.get("transactionHash") or "").lower(): _topic_address(item.get("topics"), 1)
+        for item in rows
+        if isinstance(item.get("topics"), list)
+        and item["topics"]
+        and str(item["topics"][0]).lower() == GPV2_SETTLEMENT_TOPIC
+    }
+    executions: list[dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
+    for log_row in rows:
+        topics = log_row.get("topics")
+        topic0 = topics[0].lower() if isinstance(topics, list) and topics else None
+        tx_hash = str(log_row.get("transactionHash") or "").lower()
+        log_index = _hex_int(log_row.get("logIndex"))
+        block_number = _hex_int(log_row.get("blockNumber"))
+        if not topic0 or not tx_hash or log_index is None or block_number is None:
+            continue
+        event_id = f"cow:{tx_hash}:{log_index}"
+        event_base = {
+            "run_ts": run_ts,
+            "dt": dt,
+            "source": "cow",
+            "event_id": event_id,
+            "event_time": block_times.get(block_number),
+            "instrument_id": "multi-asset-batch",
+            "block_number": block_number,
+            "block_hash": log_row.get("blockHash"),
+            "transaction_hash": tx_hash,
+            "log_index": log_index,
+            "finalized": True,
+        }
+        if topic0 == GPV2_SETTLEMENT_TOPIC:
+            solver = _topic_address(topics, 1)
+            events.append(
+                event_base
+                | {
+                    "event_type": "settlement",
+                    "solver_id": solver,
+                    "record_json": _json({"log": log_row, "solver": solver}),
+                }
+            )
+            continue
+        if topic0 != GPV2_TRADE_TOPIC:
+            continue
+        sell_token, buy_token = _address_word(log_row.get("data"), 0), _address_word(
+            log_row.get("data"), 1
+        )
+        sell_amount, buy_amount, fee_amount = (
+            _word(log_row.get("data"), 2),
+            _word(log_row.get("data"), 3),
+            _word(log_row.get("data"), 4),
+        )
+        order_uid = _dynamic_bytes(log_row.get("data"), 5)
+        owner = _topic_address(topics, 1)
+        if None in (sell_token, buy_token, sell_amount, buy_amount, fee_amount, order_uid, owner):
+            continue
+        solver = solvers.get(tx_hash)
+        parsed = {
+            "owner": owner,
+            "solver": solver,
+            "sell_token": sell_token,
+            "buy_token": buy_token,
+            "sell_amount_raw": str(sell_amount),
+            "buy_amount_raw": str(buy_amount),
+            "fee_amount_raw": str(fee_amount),
+            "order_uid": order_uid,
+        }
+        record_json = _json({"log": log_row, "parsed": parsed})
+        executions.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": "cow",
+                "venue": "cow-protocol",
+                "execution_id": event_id,
+                "instrument_id": f"ethereum:{sell_token}/{buy_token}",
+                "executed_at": block_times.get(block_number),
+                "event_block_number": block_number,
+                "finalized": True,
+                "side": "sell_token_to_buy_token",
+                # Token decimal metadata is not present in GPv2 Trade. Preserve
+                # exact raw values rather than manufacture normalized amounts.
+                "requested_size": None,
+                "filled_size": None,
+                "sell_amount_raw": str(sell_amount),
+                "buy_amount_raw": str(buy_amount),
+                "gross_price_usd": None,
+                "native_price": None,
+                "fee_native": None,
+                "fee_amount_raw": str(fee_amount),
+                "gas_native": None,
+                "success": True,
+                "participant_id": owner,
+                "solver_id": solver,
+                "quality_tier": (
+                    "onchain-finalized-rpc; GPv2Settlement Trade event; solver only when "
+                    "matched to same-transaction Settlement event"
+                ),
+                "metric_definition": (
+                    "One finalized GPv2 Trade event per executed order. Amounts are raw token "
+                    "units; no USD price, gas-inclusive execution cost, surplus, or solver is "
+                    "imputed."
+                ),
+                "record_json": record_json,
+            }
+        )
+        events.append(
+            event_base
+            | {"event_type": "trade", "solver_id": solver, "record_json": record_json}
+        )
+    return executions, events
+
+
+def cow_rpc_participant_rows(executions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Expose solver participation only where the Settlement event identifies it."""
+    return [
+        {
+            "run_ts": row["run_ts"],
+            "dt": row["dt"],
+            "source": "cow",
+            "venue": "cow-protocol",
+            "participant_id": row["solver_id"],
+            "participant_name": None,
+            "instrument_id": row["instrument_id"],
+            "metric": "solver_finalized_trade",
+            "value": None,
+            "execution_id": row["execution_id"],
+            "quality_tier": "solver from same-transaction finalized Settlement event",
+            "record_json": row["record_json"],
+        }
+        for row in executions
+        if row.get("solver_id")
+    ]
 
 
 def geckoterminal_quote_rows(
@@ -671,6 +1084,209 @@ def execution_events(rows: list[dict[str, Any]], event_type: str) -> list[dict[s
     ]
 
 
+async def _ethereum_rpc(
+    fetcher: Fetcher, url: str, method: str, params: list[Any]
+) -> tuple[Any | None, str | None]:
+    """Make one JSON-RPC call while retaining only a redacted endpoint label."""
+    body = await fetcher.post_json(
+        url,
+        {"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
+        record_url="configured:ORCAP_ETHEREUM_RPC_URL",
+    )
+    if not isinstance(body, dict):
+        return None, "no JSON-RPC response"
+    if isinstance(body.get("error"), dict):
+        return None, str(body["error"].get("message") or "JSON-RPC error")
+    if "result" not in body:
+        return None, "JSON-RPC response has no result"
+    return body["result"], None
+
+
+async def _ethereum_rpc_batch(
+    fetcher: Fetcher, url: str, calls: list[tuple[int, str, list[Any]]]
+) -> tuple[dict[int, Any], list[str]]:
+    """Fetch block headers in one standard JSON-RPC batch request."""
+    if not calls:
+        return {}, []
+    body = await fetcher.post_json(
+        url,
+        [
+            {"jsonrpc": "2.0", "id": call_id, "method": method, "params": params}
+            for call_id, method, params in calls
+        ],
+        record_url="configured:ORCAP_ETHEREUM_RPC_URL",
+    )
+    if not isinstance(body, list):
+        return {}, ["no JSON-RPC batch response"]
+    results, errors = {}, []
+    for item in body:
+        if not isinstance(item, dict):
+            continue
+        call_id = item.get("id")
+        if not isinstance(call_id, int):
+            continue
+        if isinstance(item.get("error"), dict):
+            errors.append(str(item["error"].get("message") or "JSON-RPC batch error"))
+            continue
+        if "result" in item:
+            results[call_id] = item["result"]
+    return results, errors
+
+
+async def _capture_uniswap_rpc_logs(
+    fetcher: Fetcher, url: str
+) -> tuple[list[dict[str, Any]], dict[int, str | None], dict[str, Any]]:
+    """Fetch a bounded, finalized log window for registered Uniswap V3 pools."""
+    latest_raw, latest_error = await _ethereum_rpc(fetcher, url, "eth_blockNumber", [])
+    latest_block = _hex_int(latest_raw)
+    if latest_block is None:
+        return [], {}, {"rpc_configured": True, "error": latest_error or "invalid latest block"}
+    finality_blocks = _bounded_int_env(
+        "ORCAP_ETHEREUM_FINALITY_BLOCKS",
+        DEFAULT_ETHEREUM_FINALITY_BLOCKS,
+        minimum=1,
+        maximum=10_000,
+    )
+    window_blocks = _bounded_int_env(
+        "ORCAP_UNISWAP_LOG_WINDOW_BLOCKS",
+        DEFAULT_UNISWAP_LOG_WINDOW_BLOCKS,
+        minimum=1,
+        maximum=10_000,
+    )
+    finalized_through = latest_block - finality_blocks
+    if finalized_through < 0:
+        return [], {}, {
+            "rpc_configured": True,
+            "latest_block": latest_block,
+            "finality_blocks": finality_blocks,
+            "error": "chain height is below requested finality depth",
+        }
+    from_block = max(0, finalized_through - window_blocks + 1)
+    result, logs_error = await _ethereum_rpc(
+        fetcher,
+        url,
+        "eth_getLogs",
+        [
+            {
+                "fromBlock": _hex_quantity(from_block),
+                "toBlock": _hex_quantity(finalized_through),
+                "address": sorted(uniswap_pool_specs()),
+                "topics": [[UNISWAP_V3_SWAP_TOPIC, UNISWAP_V3_MINT_TOPIC, UNISWAP_V3_BURN_TOPIC]],
+            }
+        ],
+    )
+    logs = [item for item in result if isinstance(item, dict)] if isinstance(result, list) else []
+    detail: dict[str, Any] = {
+        "rpc_configured": True,
+        "latest_block": latest_block,
+        "finality_blocks": finality_blocks,
+        "finalized_through_block": finalized_through,
+        "from_block": from_block,
+        "to_block": finalized_through,
+        "log_window_blocks": window_blocks,
+        "log_rows": len(logs),
+    }
+    if logs_error:
+        detail["error"] = logs_error
+        return [], {}, detail
+    block_numbers = sorted(
+        {block for item in logs if (block := _hex_int(item.get("blockNumber"))) is not None}
+    )
+    responses, errors = await _ethereum_rpc_batch(
+        fetcher,
+        url,
+        [
+            (index, "eth_getBlockByNumber", [_hex_quantity(block_number), False])
+            for index, block_number in enumerate(block_numbers, start=1)
+        ],
+    )
+    block_times = {
+        block_number: _ethereum_block_time(responses.get(index))
+        for index, block_number in enumerate(block_numbers, start=1)
+    }
+    detail["block_timestamp_rows"] = sum(value is not None for value in block_times.values())
+    if errors:
+        detail["block_timestamp_errors"] = len(errors)
+    return logs, block_times, detail
+
+
+async def _capture_cow_rpc_logs(
+    fetcher: Fetcher, url: str
+) -> tuple[list[dict[str, Any]], dict[int, str | None], dict[str, Any]]:
+    """Fetch a bounded, finalized GPv2Settlement event window."""
+    latest_raw, latest_error = await _ethereum_rpc(fetcher, url, "eth_blockNumber", [])
+    latest_block = _hex_int(latest_raw)
+    if latest_block is None:
+        return [], {}, {"rpc_configured": True, "error": latest_error or "invalid latest block"}
+    finality_blocks = _bounded_int_env(
+        "ORCAP_ETHEREUM_FINALITY_BLOCKS",
+        DEFAULT_ETHEREUM_FINALITY_BLOCKS,
+        minimum=1,
+        maximum=10_000,
+    )
+    window_blocks = _bounded_int_env(
+        "ORCAP_COW_LOG_WINDOW_BLOCKS",
+        DEFAULT_UNISWAP_LOG_WINDOW_BLOCKS,
+        minimum=1,
+        maximum=10_000,
+    )
+    finalized_through = latest_block - finality_blocks
+    if finalized_through < 0:
+        return [], {}, {
+            "rpc_configured": True,
+            "latest_block": latest_block,
+            "finality_blocks": finality_blocks,
+            "error": "chain height is below requested finality depth",
+        }
+    from_block = max(0, finalized_through - window_blocks + 1)
+    result, logs_error = await _ethereum_rpc(
+        fetcher,
+        url,
+        "eth_getLogs",
+        [
+            {
+                "fromBlock": _hex_quantity(from_block),
+                "toBlock": _hex_quantity(finalized_through),
+                "address": GPV2_SETTLEMENT_ADDRESS,
+                "topics": [[GPV2_TRADE_TOPIC, GPV2_SETTLEMENT_TOPIC]],
+            }
+        ],
+    )
+    logs = [item for item in result if isinstance(item, dict)] if isinstance(result, list) else []
+    detail: dict[str, Any] = {
+        "rpc_configured": True,
+        "latest_block": latest_block,
+        "finality_blocks": finality_blocks,
+        "finalized_through_block": finalized_through,
+        "from_block": from_block,
+        "to_block": finalized_through,
+        "log_window_blocks": window_blocks,
+        "log_rows": len(logs),
+    }
+    if logs_error:
+        detail["error"] = logs_error
+        return [], {}, detail
+    block_numbers = sorted(
+        {block for item in logs if (block := _hex_int(item.get("blockNumber"))) is not None}
+    )
+    responses, errors = await _ethereum_rpc_batch(
+        fetcher,
+        url,
+        [
+            (index, "eth_getBlockByNumber", [_hex_quantity(block_number), False])
+            for index, block_number in enumerate(block_numbers, start=1)
+        ],
+    )
+    block_times = {
+        block_number: _ethereum_block_time(responses.get(index))
+        for index, block_number in enumerate(block_numbers, start=1)
+    }
+    detail["block_timestamp_rows"] = sum(value is not None for value in block_times.values())
+    if errors:
+        detail["block_timestamp_errors"] = len(errors)
+    return logs, block_times, detail
+
+
 def _run_status(
     source: str,
     rows: int,
@@ -716,8 +1332,18 @@ async def capture_markets(
             )
         )
         cow = await fetcher.get_json(cow_url) if cow_url else None
+        cow_rpc_logs: list[dict[str, Any]] = []
+        cow_block_times: dict[int, str | None] = {}
+        cow_rpc_detail: dict[str, Any] = {
+            "rpc_configured": bool(os.environ.get("ORCAP_ETHEREUM_RPC_URL"))
+        }
 
         uniswap = None
+        uniswap_rpc_logs: list[dict[str, Any]] = []
+        uniswap_block_times: dict[int, str | None] = {}
+        uniswap_rpc_detail: dict[str, Any] = {
+            "rpc_configured": bool(os.environ.get("ORCAP_ETHEREUM_RPC_URL"))
+        }
         graph_key, subgraph_id = (
             os.environ.get("GRAPH_API_KEY"),
             os.environ.get("ORCAP_UNISWAP_SUBGRAPH_ID"),
@@ -744,7 +1370,20 @@ async def capture_markets(
                 "variables": {"poolIds": pool_ids},
             }
             uniswap = await fetcher.post_json(
-                GRAPH_GATEWAY.format(key=graph_key, subgraph_id=subgraph_id), query
+                GRAPH_GATEWAY.format(key=graph_key, subgraph_id=subgraph_id),
+                query,
+                record_url=(
+                    "https://gateway.thegraph.com/api/[redacted]/subgraphs/id/" + subgraph_id
+                ),
+            )
+        ethereum_rpc_url = os.environ.get("ORCAP_ETHEREUM_RPC_URL")
+        if with_uniswap and ethereum_rpc_url:
+            uniswap_rpc_logs, uniswap_block_times, uniswap_rpc_detail = (
+                await _capture_uniswap_rpc_logs(fetcher, ethereum_rpc_url)
+            )
+        if ethereum_rpc_url:
+            cow_rpc_logs, cow_block_times, cow_rpc_detail = await _capture_cow_rpc_logs(
+                fetcher, ethereum_rpc_url
             )
 
         akash = None
@@ -789,18 +1428,42 @@ async def capture_markets(
     geckoterminal_quotes = geckoterminal_quote_rows(
         dict(zip(GECKOTERMINAL_POOLS, geckoterminal_bodies, strict=True)), run_ts, dt
     )
-    cow_executions = cow_execution_rows(cow, run_ts, dt)
+    configured_cow_executions = cow_execution_rows(cow, run_ts, dt)
+    cow_rpc_executions, cow_rpc_events = cow_rpc_log_rows(
+        cow_rpc_logs, cow_block_times, run_ts, dt
+    )
+    cow_executions = (
+        cow_rpc_executions if cow_rpc_detail["rpc_configured"] else configured_cow_executions
+    )
+    cow_rpc_participants = cow_rpc_participant_rows(cow_rpc_executions)
     cow_participants, cow_competition_events = cow_competition_rows(
         cow_competition, run_ts, dt
     )
     golem_capacity = golem_capacity_rows(golem, run_ts, dt)
-    uni_quotes, uni_executions, uni_events = uniswap_rows(uniswap, run_ts, dt)
+    uni_quotes, graph_uni_executions, graph_uni_events = uniswap_rows(uniswap, run_ts, dt)
+    rpc_uni_executions, rpc_uni_events = uniswap_rpc_log_rows(
+        uniswap_rpc_logs, uniswap_block_times, run_ts, dt
+    )
+    # Graph swaps are useful indexed observations, but never substitutes for
+    # the configured finalized log path. Prefer the latter whenever it was
+    # explicitly enabled, including when its bounded window legitimately has
+    # no rows.
+    uni_executions = (
+        rpc_uni_executions if uniswap_rpc_detail["rpc_configured"] else graph_uni_executions
+    )
+    uni_events = rpc_uni_events if uniswap_rpc_detail["rpc_configured"] else graph_uni_events
     akash_capacity = akash_capacity_rows(akash, run_ts, dt)
     akash_coverage = akash_registry_summary(akash)
     akash_quotes = akash_gpu_quote_rows(akash_gpu_prices, run_ts, dt)
     akash_leases_rows = akash_lease_execution_rows(akash_leases, akash_block_times, run_ts, dt)
     instrument_map = instrument_map_rows(run_ts, dt)
-    _write(participants + cow_participants, "market_participants", run_ts, dt, curated_dir)
+    _write(
+        participants + cow_participants + cow_rpc_participants,
+        "market_participants",
+        run_ts,
+        dt,
+        curated_dir,
+    )
     _write(
         cow_executions + uni_executions + akash_leases_rows,
         "market_executions",
@@ -817,7 +1480,11 @@ async def capture_markets(
     )
     _write(golem_capacity + akash_capacity, "market_capacity", run_ts, dt, curated_dir)
     _write(
-        execution_events(cow_executions, "trade")
+        (
+            cow_rpc_events
+            if cow_rpc_detail["rpc_configured"]
+            else execution_events(cow_executions, "trade")
+        )
         + cow_competition_events
         + execution_events(akash_leases_rows, "lease_lifecycle")
         + uni_events,
@@ -848,7 +1515,10 @@ async def capture_markets(
             ),
             "competition_snapshot_rows": len(cow_participants) + len(cow_competition_events),
             "trade_feed_configured": bool(cow_url),
-            "trade_feed_rows": len(cow_executions),
+            "trade_feed_rows": len(configured_cow_executions),
+            "finalized_trade_rows": len(cow_rpc_executions),
+            "finalized_solver_identified_trade_rows": len(cow_rpc_participants),
+            **cow_rpc_detail,
         },
         curated_dir,
     )
@@ -874,7 +1544,19 @@ async def capture_markets(
             len(uni_quotes) + len(uni_executions),
             run_ts,
             dt,
-            {"configured": bool(graph_key and subgraph_id and pool_ids)},
+            {
+                "graph_configured": bool(graph_key and subgraph_id and pool_ids),
+                "graph_quote_rows": len(uni_quotes),
+                "graph_execution_rows_ignored_for_finalized_path": (
+                    len(graph_uni_executions) if uniswap_rpc_detail["rpc_configured"] else 0
+                ),
+                "finalized_execution_rows": len(rpc_uni_executions),
+                "finalized_liquidity_event_rows": sum(
+                    event["event_type"] in {"liquidity_mint", "liquidity_burn"}
+                    for event in rpc_uni_events
+                ),
+                **uniswap_rpc_detail,
+            },
             curated_dir,
         )
     else:
@@ -918,12 +1600,18 @@ async def capture_markets(
         "dt": dt,
         "defillama_participants": len(participants),
         "cow_executions": len(cow_executions),
+        "cow_finalized_executions": len(cow_rpc_executions),
+        "cow_finalized_solver_identified_executions": len(cow_rpc_participants),
         "cow_competition_participants": len(cow_participants),
         "cow_competition_events": len(cow_competition_events),
         "golem_capacity": len(golem_capacity),
         "geckoterminal_quotes": len(geckoterminal_quotes),
         "uniswap_quotes": len(uni_quotes),
         "uniswap_executions": len(uni_executions),
+        "uniswap_finalized_executions": len(rpc_uni_executions),
+        "uniswap_finalized_liquidity_events": sum(
+            event["event_type"] in {"liquidity_mint", "liquidity_burn"} for event in rpc_uni_events
+        ),
         "akash_capacity": len(akash_capacity),
         "akash_gpu_quotes": len(akash_quotes),
         "akash_coverage": akash_coverage,

@@ -88,6 +88,13 @@ Graph collectors should use environment-only `DUNE_API_KEY` and
 `GRAPH_API_KEY`; no credential belongs in code, raw payload, generated memo,
 or git history.
 
+The hourly market workflow can additionally use the `ORCAP_ETHEREUM_RPC_URL`
+repository secret for a bounded, finalized Uniswap V3 log window over the two
+registered USDC/WETH pools. This is optional but is the source required for
+finalized swap and liquidity-event data; Graph and GeckoTerminal observations
+remain indexed-state controls. The collector redacts the configured RPC URL
+from raw provenance, including providers that put an API key in the URL.
+
 ## Analysis conventions
 
 - `src/orcap/analysis/data.py` is the shared access boundary.  Add an access

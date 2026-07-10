@@ -4,6 +4,10 @@ source_id = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"
 canonical_instrument = "ethereum:USDC/WETH"
 venue = "uniswap-v3"
 quality_tier = "ethereum-5bps"
+token0_symbol = "USDC"
+token0_decimals = 6
+token1_symbol = "WETH"
+token1_decimals = 18
 
 [instruments.uniswap_usdc_weth_30]
 source = "uniswap"
@@ -11,6 +15,10 @@ source_id = "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8"
 canonical_instrument = "ethereum:USDC/WETH"
 venue = "uniswap-v3"
 quality_tier = "ethereum-30bps"
+token0_symbol = "USDC"
+token0_decimals = 6
+token1_symbol = "WETH"
+token1_decimals = 18
 
 [instruments.vast_h100_sxm]
 source = "vast"

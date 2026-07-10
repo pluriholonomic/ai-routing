@@ -38,7 +38,9 @@ MARKETS = {
 
 def _table(name: str, columns: str) -> pd.DataFrame:
     try:
-        return data.q(f"select {columns} from read_parquet('{data.table_glob(name)}')").df()
+        return data.q(
+            f"select {columns} from read_parquet('{data.table_glob(name)}', union_by_name = true)"
+        ).df()
     except Exception as exc:
         log.info("H41 table %s unavailable: %s", name, exc)
         return pd.DataFrame()
@@ -77,10 +79,22 @@ def metric_panel(
                 ["source", "execution_id"], keep="last"
             )
         for (dt, source), group in executed.groupby(["dt", "source"]):
+            finalized = (
+                group["finalized"].eq(True)
+                if "finalized" in group
+                else pd.Series(False, index=group.index)
+            )
             rows.extend(
                 [
                     _row(dt, source, "executions", len(group), len(group)),
                     _row(dt, source, "execution_success_rate", group["success"].mean(), len(group)),
+                    _row(
+                        dt,
+                        source,
+                        "finalized_executions",
+                        int(finalized.sum()),
+                        len(group),
+                    ),
                 ]
             )
     if not quotes.empty:
@@ -200,7 +214,7 @@ def _row(
 
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     participants = _table("market_participants", "dt, source, participant_id, value")
-    executions = _table("market_executions", "dt, run_ts, source, execution_id, success")
+    executions = _table("market_executions", "*")
     quotes = _table("market_quotes", "*")
     capacity = _table("market_capacity", "*")
     panel = metric_panel(participants, executions, quotes, capacity)
@@ -219,16 +233,47 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         (panel["metric"] == "reported_capacity").any()
         and panel.loc[panel["metric"] == "reported_capacity", "value"].notna().any()
     )
-    has_amm_depth = "uniswap" in sources and "median_depth_usd" in set(panel["metric"])
-    has_rfq_executions = "cow" in sources and "executions" in set(panel["metric"])
+    execution_sources = (
+        executions["source"] if "source" in executions else pd.Series("", index=executions.index)
+    )
+    uniswap_executions = executions[execution_sources == "uniswap"]
+    uniswap_finalized = (
+        uniswap_executions["finalized"]
+        if "finalized" in uniswap_executions
+        else pd.Series(False, index=uniswap_executions.index)
+    )
+    finalized_uniswap = (
+        uniswap_finalized.eq(True).any()
+    )
+    quote_sources = quotes["source"] if "source" in quotes else pd.Series("", index=quotes.index)
+    uniswap_quotes = quotes[quote_sources == "uniswap"]
+    uniswap_depth = (
+        pd.to_numeric(uniswap_quotes["depth_usd"], errors="coerce")
+        if "depth_usd" in uniswap_quotes
+        else pd.Series(float("nan"), index=uniswap_quotes.index)
+    )
+    uniswap_depth_finalized = (
+        uniswap_quotes["finalized"]
+        if "finalized" in uniswap_quotes
+        else pd.Series(False, index=uniswap_quotes.index)
+    )
+    finalized_uniswap_depth = (
+        uniswap_depth.notna() & uniswap_depth_finalized.eq(True)
+    ).any()
+    has_rfq_executions = bool((execution_sources == "cow").any())
     if not sources:
         comparison_status = "gated: no canonical market-source tables available"
     elif not has_compute_capacity:
         comparison_status = "gated: no non-null decentralized-compute capacity observation"
-    elif not (has_amm_depth and has_rfq_executions):
+    elif not finalized_uniswap:
         comparison_status = (
-            "gated: live decentralized-compute capacity is observed, but matched DeFi depth "
-            "and RFQ execution panels are incomplete"
+            "gated: live decentralized-compute capacity is observed, but no finalized Uniswap "
+            "swap execution panel is available"
+        )
+    elif not finalized_uniswap_depth or not has_rfq_executions:
+        comparison_status = (
+            "gated: finalized Uniswap swaps are observed, but finalized depth and/or market-wide "
+            "RFQ execution panels are incomplete"
         )
     else:
         comparison_status = (
@@ -240,6 +285,9 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "metrics_observed": sorted(panel["metric"].unique()) if not panel.empty else [],
         "source_coverage": source_coverage,
         "indexed_amm_controls": [source for source in sources if source == "geckoterminal"],
+        "finalized_uniswap_swap_observed": bool(finalized_uniswap),
+        "finalized_uniswap_depth_observed": bool(finalized_uniswap_depth),
+        "cow_execution_observed": has_rfq_executions,
         "comparison_status": comparison_status,
         "required_next": [
             "finalized Uniswap depth and swap events",

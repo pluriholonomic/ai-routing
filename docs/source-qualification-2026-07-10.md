@@ -117,3 +117,12 @@ coverage. The existing live solver-competition monitor remains a bounded
 snapshot only. The Tier-1 path is still an archive-capable GPv2Settlement log
 index or a properly scoped official/Dune execution feed with a documented
 watermark and coverage universe.
+
+An archive-capable `ORCAP_ETHEREUM_RPC_URL` now has a bounded implementation
+path for this blocker: it queries verified `GPv2Settlement` `Trade` and
+`Settlement` logs after a reorg buffer. The collector keeps only a solver
+emitted by the same transaction's `Settlement` event, never the transaction
+sender. It is code-ready but **not yet source-qualified in production**: no
+configured archive endpoint has accumulated rows, and raw token amounts still
+need an explicit decimal/price mapping before they can support USD execution
+comparisons.
