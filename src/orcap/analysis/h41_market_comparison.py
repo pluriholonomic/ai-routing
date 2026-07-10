@@ -30,6 +30,7 @@ MARKETS = {
     "defillama": "defi_aggregate",
     "cow": "defi_rfq",
     "uniswap": "defi_amm",
+    "geckoterminal": "defi_amm_indexed_control",
     "golem": "decentralized_compute",
     "akash": "decentralized_compute",
 }
@@ -230,6 +231,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "markets_observed": sorted(panel["market"].unique()) if not panel.empty else [],
         "metrics_observed": sorted(panel["metric"].unique()) if not panel.empty else [],
         "source_coverage": source_coverage,
+        "indexed_amm_controls": [source for source in sources if source == "geckoterminal"],
         "comparison_status": comparison_status,
         "required_next": [
             "finalized Uniswap depth and swap events",
