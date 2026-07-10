@@ -57,13 +57,18 @@ harness flow is preferenced order flow.
 - Feeds H7: which leg (spot or on-demand) do token prices cointegrate with?
 
 **H13 — Venue basis (daily panel; coverage still limited).**
-*`capture_direct.py` now captures DeepInfra's structured public model API and
-Together's public serverless catalog table.*
-- Both adapters preserve the exact provider API model ID and raw source.
+*`capture_direct.py` now captures DeepInfra's structured public model API,
+Together's public serverless catalog table, and two Fireworks exact-ID
+serverless model pages.*
+- All adapters preserve the exact provider API model ID and raw source.
   DeepInfra is labeled `structured_public_api`; Together is labeled
   `published_docs_table`, so it is a posted list quote—not an executable API
   quote or a fill. Their model IDs join to OpenRouter only by exact equality.
-- Groq, Novita, Fireworks, Cerebras, Lambda, Hyperbolic, Parasail, and others
+- Fireworks is labeled `published_model_page`. Its bounded GPT-OSS page list
+  requires the literal `accounts/fireworks/...` API ID found in OpenRouter's
+  endpoint record and the page's labeled three-price serverless block. It is
+  not a sitemap crawl and must remain bounded unless each added page is tested.
+- Groq, Novita, Cerebras, Lambda, Hyperbolic, Parasail, and others
   remain raw-archived until a stable, source-specific normalizer is validated.
   Do not use the raw pages as observations or fuzzy-map names into H13.
 - Test: basis = OpenRouter listed − direct listed, per provider×model×day.
@@ -96,8 +101,8 @@ Together's public serverless catalog table.*
 4. `analysis/h14_ordertypes.py` — variant shares (dispersion interaction needs
    a few weeks of variance; ship shares now).
 5. `capture_direct.py` is wired into `scrape.yml` daily.  It writes raw
-   evidence, typed `direct_prices_daily` rows, and distinct DeepInfra/Together
-   source-run health records.  Expand only with per-provider source-schema
+   evidence, typed `direct_prices_daily` rows, and distinct provider source-run
+   health records. Expand only with per-provider source-schema
    tests; H13 remains a narrow venue test until several more structured or
    explicitly labeled published-price sources accumulate.
 6. Synthetic-data tests per module (planted slopes/frontiers) in tests/.
@@ -113,6 +118,6 @@ Together's public serverless catalog table.*
 - `uv run orcap analyze --hypothesis h10` (…h11/h12/h14) produce parquet+JSON
   under analysis/, pushed to HF.
 - `capture_direct` dispatched once on CI; `direct_prices_daily` partitions in HF;
-  source-health confirms both `direct_deepinfra_api` and
-  `direct_together_docs`; spot-check an exact-ID quote from each source.
+  source-health confirms DeepInfra, Together, and Fireworks source records;
+  spot-check an exact-ID quote from each source.
 - Memo redeployed at the same artifact URL; every new number traceable.

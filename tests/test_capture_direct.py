@@ -7,8 +7,10 @@ import pandas as pd
 from orcap.analysis import h13_venue_basis
 from orcap.capture_direct import (
     DEEPINFRA_URL,
+    FIREWORKS_MODEL_PAGES,
     TOGETHER_SERVERLESS_MODELS_URL,
     deepinfra_rows,
+    fireworks_rows,
     together_rows,
 )
 
@@ -25,6 +27,14 @@ TOGETHER_CHAT_TABLE = """
     <td>202752</td><td>$0.30</td><td>$0.06</td><td>$1.20</td>
   </tr></tbody>
 </table>
+"""
+
+FIREWORKS_MODEL_PAGE = """
+<html><body>
+  <p>model path:accounts/fireworks/models/gpt-oss-20bWelcome to the model page.</p>
+  <section>Available ServerlessRun queries immediately, pay only for usage
+  $0.07 / $0.04 / $0.30Per 1M Tokens (input/cached input/output)</section>
+</body></html>
 """
 
 
@@ -66,6 +76,25 @@ def test_together_rows_rejects_changed_header_schema_instead_of_guessing():
     assert together_rows(changed, "20260710T000000Z", "2026-07-10") == []
 
 
+def test_fireworks_rows_require_literal_provider_id_and_labeled_price_block():
+    model_id = "accounts/fireworks/models/gpt-oss-20b"
+    rows = fireworks_rows({model_id: FIREWORKS_MODEL_PAGE}, "20260710T000000Z", "2026-07-10")
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["model_name"] == model_id
+    assert row["price_input_usd"] == 0.07 / 1_000_000
+    assert row["price_cached_input_usd"] == 0.04 / 1_000_000
+    assert row["price_output_usd"] == 0.30 / 1_000_000
+    assert row["source_type"] == "published_model_page"
+    assert row["source_url"] == FIREWORKS_MODEL_PAGES[model_id]
+
+
+def test_fireworks_rows_reject_pages_without_exact_provider_identity():
+    model_id = "accounts/fireworks/models/gpt-oss-20b"
+    changed = FIREWORKS_MODEL_PAGE.replace(model_id, "accounts/fireworks/models/not-gpt-oss")
+    assert fireworks_rows({model_id: changed}, "20260710T000000Z", "2026-07-10") == []
+
+
 def test_h13_accepts_rest_model_id_but_keeps_exact_model_identifier(monkeypatch):
     class Relation:
         def df(self):
@@ -95,3 +124,27 @@ def test_h13_accepts_rest_model_id_but_keeps_exact_model_identifier(monkeypatch)
             "routed_out": 0.0000002,
         }
     ]
+
+
+def test_h13_maps_fireworks_only_by_exact_provider_model_id(monkeypatch):
+    class Relation:
+        def df(self):
+            return pd.DataFrame(
+                [
+                    {
+                        "dt": "2026-07-10",
+                        "provider_display_name": "Fireworks",
+                        "record_json": json.dumps(
+                            {
+                                "provider_model_id": "accounts/fireworks/models/gpt-oss-20b",
+                                "pricing": {"prompt": "0.00000007", "completion": "0.0000003"},
+                            }
+                        ),
+                    }
+                ]
+            )
+
+    monkeypatch.setattr(h13_venue_basis.data, "q", lambda _sql: Relation())
+    routed = h13_venue_basis.load_routed()
+    assert routed.loc[0, "provider"] == "fireworks"
+    assert routed.loc[0, "model_name"] == "accounts/fireworks/models/gpt-oss-20b"
