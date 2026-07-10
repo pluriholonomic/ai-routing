@@ -46,6 +46,11 @@ def _json(value: Any) -> str:
     return json.dumps(value, separators=(",", ":"), sort_keys=True, default=str)
 
 
+def _configured_url(name: str, default: str) -> str:
+    """Use the public default when Actions injects an empty optional variable."""
+    return os.environ.get(name) or default
+
+
 def _as_list(value: Any, *keys: str) -> list[dict[str, Any]]:
     if isinstance(value, list):
         return [x for x in value if isinstance(x, dict)]
@@ -696,12 +701,12 @@ async def capture_markets(
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
         cow_url = os.environ.get("ORCAP_COW_TRADES_URL")
-        cow_competition_url = os.environ.get(
+        cow_competition_url = _configured_url(
             "ORCAP_COW_SOLVER_COMPETITION_URL", COW_SOLVER_COMPETITION_LATEST_URL
         )
         defillama, golem, cow_competition = await asyncio.gather(
             fetcher.get_json(DEFILLAMA_PROTOCOLS_URL),
-            fetcher.get_json(os.environ.get("ORCAP_GOLEM_STATS_URL", GOLEM_ONLINE_URL)),
+            fetcher.get_json(_configured_url("ORCAP_GOLEM_STATS_URL", GOLEM_ONLINE_URL)),
             fetcher.get_json(cow_competition_url),
         )
         geckoterminal_bodies = await asyncio.gather(
@@ -746,7 +751,7 @@ async def capture_markets(
         akash_gpu_prices = None
         akash_leases = None
         akash_block_times: dict[int, str | None] = {}
-        akash_url = os.environ.get("ORCAP_AKASH_NETWORK_URL", AKASH_CONSOLE_PROVIDERS_URL)
+        akash_url = _configured_url("ORCAP_AKASH_NETWORK_URL", AKASH_CONSOLE_PROVIDERS_URL)
         if with_akash:
             headers = (
                 {"x-api-key": os.environ["AKASH_API_KEY"]}
@@ -755,10 +760,10 @@ async def capture_markets(
             )
             akash = await fetcher.get_json(akash_url, headers=headers)
             akash_gpu_prices = await fetcher.get_json(
-                os.environ.get("ORCAP_AKASH_GPU_PRICES_URL", AKASH_GPU_PRICES_URL)
+                _configured_url("ORCAP_AKASH_GPU_PRICES_URL", AKASH_GPU_PRICES_URL)
             )
             akash_leases = await fetcher.get_json(
-                os.environ.get("ORCAP_AKASH_LEASES_URL", AKASH_LEASES_URL)
+                _configured_url("ORCAP_AKASH_LEASES_URL", AKASH_LEASES_URL)
             )
             lease_records = _as_list(akash_leases, "leases", "data")
             heights = sorted(
@@ -770,7 +775,7 @@ async def capture_markets(
                     if block is not None
                 }
             )
-            rpc_url = os.environ.get("ORCAP_AKASH_RPC_URL", AKASH_RPC_URL).rstrip("/")
+            rpc_url = _configured_url("ORCAP_AKASH_RPC_URL", AKASH_RPC_URL).rstrip("/")
             block_bodies = await asyncio.gather(
                 *(fetcher.get_json(f"{rpc_url}/header?height={height}") for height in heights)
             )
@@ -852,7 +857,7 @@ async def capture_markets(
         len(golem_capacity),
         run_ts,
         dt,
-        {"url": os.environ.get("ORCAP_GOLEM_STATS_URL", GOLEM_ONLINE_URL)},
+        {"url": _configured_url("ORCAP_GOLEM_STATS_URL", GOLEM_ONLINE_URL)},
         curated_dir,
     )
     _run_status(
