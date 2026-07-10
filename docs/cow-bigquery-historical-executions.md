@@ -98,9 +98,15 @@ improved over the UTC-hour baseline by 70.471 points (persistence 0.897).
 
 This clears H65's deliberately modest descriptive coverage gate, but it does
 not identify a continuous-time Hawkes process or a strategic mechanism. The
-remaining checks are a longer preregistered window, sensitivity to bin width
-and split point, richer seasonality/exogenous controls, and a direct router
-arrival panel with comparable event semantics. Until then, the defensible
-statement is only that this short finalized-settlement series is materially
-better predicted by the declared binned count-autoregressive model than these
-two fixed-rate Poisson baselines.
+within-panel 5-minute, 15-minute, 30-minute, and 1-hour grid across 60%, 70%,
+and 80% training splits favored INGARCH in 11 of 12 specifications. The
+exception was the 1-hour/80% training split (INGARCH-minus-diurnal held-out
+log likelihood −15.900); the range was −15.900 to 108.335. Thus it is not
+valid to call the ranking bin- and split-robust.
+
+The remaining checks are a longer preregistered window, richer
+seasonality/exogenous controls, and a direct router-arrival panel with
+comparable event semantics. Until then, the defensible statement is only that
+the preregistered 15-minute/70% split of this short finalized-settlement series
+is materially better predicted by the declared binned count-autoregressive
+model than the two fixed-rate Poisson baselines.

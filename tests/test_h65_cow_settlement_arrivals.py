@@ -1,6 +1,6 @@
 import pandas as pd
 
-from orcap.analysis.h65_cow_settlement_arrivals import settlement_bins, summarize
+from orcap.analysis.h65_cow_settlement_arrivals import sensitivity, settlement_bins, summarize
 
 
 def _events(days: int = 7) -> pd.DataFrame:
@@ -46,3 +46,12 @@ def test_h65_short_panel_remains_power_gated():
     result = summarize(settlement_bins(_events(days=1)))
     assert result["evidence_status"] == "power_gated"
     assert result["n_complete_utc_days"] == 1
+
+
+def test_h65_reports_within_panel_bin_and_split_sensitivity_without_calling_it_replication():
+    grid = sensitivity(_events())
+    result = summarize(settlement_bins(_events()), robustness=grid)
+    assert len(grid) == 12
+    assert set(grid["bin_frequency"]) == {"5min", "15min", "30min", "1h"}
+    assert result["within_panel_sensitivity"]["n_specifications"] == 12
+    assert "not an independent replication" in result["within_panel_sensitivity"]["boundary"]

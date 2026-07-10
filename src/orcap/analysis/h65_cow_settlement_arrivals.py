@@ -25,7 +25,7 @@ MIN_DAYS = 7
 MIN_SETTLEMENTS = 100
 
 
-def settlement_bins(events: pd.DataFrame) -> pd.DataFrame:
+def settlement_bins(events: pd.DataFrame, *, frequency: str = BIN_FREQUENCY) -> pd.DataFrame:
     """Create complete UTC-day bins from exact finalized settlement timestamps."""
     required = {"event_type", "transaction_hash", "event_time"}
     if not required.issubset(events):
@@ -38,8 +38,8 @@ def settlement_bins(events: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(columns=["bin_start", "settlement_count"])
     start = rows["event_time"].min().normalize()
     end = rows["event_time"].max().normalize() + pd.offsets.Day()
-    bins = pd.date_range(start, end, freq=BIN_FREQUENCY, inclusive="left", tz="UTC")
-    counts = rows.groupby(rows["event_time"].dt.floor(BIN_FREQUENCY)).size()
+    bins = pd.date_range(start, end, freq=frequency, inclusive="left", tz="UTC")
+    counts = rows.groupby(rows["event_time"].dt.floor(frequency)).size()
     return pd.DataFrame(
         {"bin_start": bins, "settlement_count": [int(counts.get(item, 0)) for item in bins]}
     )
@@ -87,7 +87,7 @@ def _ingarch_fit(train: np.ndarray) -> tuple[float, float, float] | None:
     return omega, alpha, beta
 
 
-def compare_count_models(bins: pd.DataFrame) -> dict:
+def compare_count_models(bins: pd.DataFrame, *, split_fraction: float = 0.7) -> dict:
     """Chronological held-out constant/diurnal Poisson vs count-INGARCH.
 
     The hour-of-day Poisson has a Gamma(0.5, 0.5) prior for each UTC hour.
@@ -96,7 +96,9 @@ def compare_count_models(bins: pd.DataFrame) -> dict:
     """
     y = bins["settlement_count"].to_numpy(dtype=float)
     hours = pd.to_datetime(bins["bin_start"], utc=True).dt.hour.to_numpy(dtype=int)
-    split = int(len(y) * 0.7)
+    if not 0.5 <= split_fraction <= 0.8:
+        raise ValueError("split_fraction must be between 0.5 and 0.8")
+    split = int(len(y) * split_fraction)
     if split < 20 or len(y) - split < 10 or y[:split].mean() <= 0:
         return {"model_status": "insufficient_nonzero_training_bins"}
     train, test = y[:split], y[split:]
@@ -113,7 +115,11 @@ def compare_count_models(bins: pd.DataFrame) -> dict:
     diurnal_ll = _loglik(test, diurnal_rates[test_hours])
     result = {
         "model_status": "ok",
-        "split": {"training_bins": int(len(train)), "test_bins": int(len(test))},
+        "split": {
+            "training_fraction": split_fraction,
+            "training_bins": int(len(train)),
+            "test_bins": int(len(test)),
+        },
         "constant_poisson_rate_per_15min": poisson_rate,
         "constant_poisson_test_log_likelihood": poisson_ll,
         "diurnal_poisson_prior": "Gamma(0.5, 0.5) independently by UTC hour",
@@ -147,7 +153,31 @@ def compare_count_models(bins: pd.DataFrame) -> dict:
     }
 
 
-def summarize(bins: pd.DataFrame) -> dict:
+def sensitivity(events: pd.DataFrame) -> pd.DataFrame:
+    """Within-panel robustness grid; it is not independent replication."""
+    rows = []
+    for frequency in ("5min", "15min", "30min", "1h"):
+        bins = settlement_bins(events, frequency=frequency)
+        for split_fraction in (0.6, 0.7, 0.8):
+            result = compare_count_models(bins, split_fraction=split_fraction)
+            rows.append(
+                {
+                    "bin_frequency": frequency,
+                    "split_fraction": split_fraction,
+                    "n_bins": int(len(bins)),
+                    "n_settlements": int(bins["settlement_count"].sum()) if not bins.empty else 0,
+                    "model_status": result.get("model_status"),
+                    "ingarch_status": result.get("ingarch_status"),
+                    "ingarch_minus_diurnal_poisson_test_log_likelihood": result.get(
+                        "ingarch_minus_diurnal_poisson_test_log_likelihood"
+                    ),
+                    "ingarch_persistence": result.get("ingarch_persistence"),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def summarize(bins: pd.DataFrame, *, robustness: pd.DataFrame | None = None) -> dict:
     if bins.empty:
         return {
             "evidence_status": "not_identified",
@@ -163,7 +193,7 @@ def summarize(bins: pd.DataFrame) -> dict:
         reasons.append(f"only {n_days}/{MIN_DAYS} complete UTC days")
     if n_settlements < MIN_SETTLEMENTS:
         reasons.append(f"only {n_settlements}/{MIN_SETTLEMENTS} finalized settlements")
-    return {
+    result = {
         "evidence_status": "descriptive_arrival_comparator" if not reasons else "power_gated",
         "n_settlements": n_settlements,
         "n_complete_utc_days": n_days,
@@ -176,6 +206,35 @@ def summarize(bins: pd.DataFrame) -> dict:
         "gate_reasons": reasons,
         "claim_boundary": _claim_boundary(),
     }
+    if robustness is not None and not robustness.empty:
+        usable = robustness.dropna(subset=["ingarch_minus_diurnal_poisson_test_log_likelihood"])
+        result["within_panel_sensitivity"] = {
+            "n_specifications": int(len(robustness)),
+            "n_usable_specifications": int(len(usable)),
+            "n_ingarch_beats_diurnal": int(
+                (usable["ingarch_minus_diurnal_poisson_test_log_likelihood"] > 0).sum()
+            ),
+            "min_ingarch_minus_diurnal_test_log_likelihood": _float_or_none(
+                usable["ingarch_minus_diurnal_poisson_test_log_likelihood"].min()
+                if not usable.empty
+                else None
+            ),
+            "max_ingarch_minus_diurnal_test_log_likelihood": _float_or_none(
+                usable["ingarch_minus_diurnal_poisson_test_log_likelihood"].max()
+                if not usable.empty
+                else None
+            ),
+            "boundary": (
+                "This varies bins and split points within the same seven-day panel; it is a "
+                "robustness diagnostic, not an independent replication or model-selection "
+                "procedure."
+            ),
+        }
+    return result
+
+
+def _float_or_none(value: object) -> float | None:
+    return float(value) if value is not None and pd.notna(value) else None
 
 
 def _claim_boundary() -> str:
@@ -192,7 +251,9 @@ def run(events_path: Path, out_dir: Path = DEFAULT_OUT) -> dict:
     events = pd.read_parquet(events_path)
     bins = settlement_bins(events)
     save(bins, out_dir, "h65_cow_settlement_15min")
-    result = summarize(bins)
+    robustness = sensitivity(events)
+    save(robustness, out_dir, "h65_cow_settlement_sensitivity")
+    result = summarize(bins, robustness=robustness)
     save_json(result, out_dir, "h65_summary")
     return result
 
