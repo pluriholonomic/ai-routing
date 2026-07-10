@@ -102,7 +102,14 @@ def load_direct() -> pd.DataFrame:
         if "canonical_model_id" in columns
         else "direct.model_name"
     )
-    return data.q(
+    # materialize the scan before filtering: planning comparisons directly over a
+    # union_by_name parquet scan can hit DuckDB's NumericValueUnionToValue internal
+    # error when merging file-level column statistics (duckdb/duckdb#18267)
+    con = data.connect()
+    con.execute(
+        f"create temp table _h13_direct as select * from read_parquet('{glob}', union_by_name=true)"
+    )
+    return con.sql(
         f"""
         with latest_per_day as (
             select cast(direct.dt as varchar) as dt, direct.run_ts, direct.provider,
@@ -114,7 +121,7 @@ def load_direct() -> pd.DataFrame:
                        partition by direct.dt, direct.provider, {model_name}
                        order by direct.run_ts desc
                    ) as recency_rank
-            from read_parquet('{glob}', union_by_name=true) as direct
+            from _h13_direct as direct
             where not direct.deprecated
               and direct.price_input_usd > 0
               and direct.price_output_usd > 0

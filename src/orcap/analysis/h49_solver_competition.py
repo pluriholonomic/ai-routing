@@ -62,7 +62,7 @@ def load_competitions() -> pd.DataFrame:
             f"describe select * from read_parquet('{glob}', union_by_name=true)"
         ).df()
         if not required.issubset(set(schema["column_name"])):
-            return pd.DataFrame(columns=required)
+            return pd.DataFrame(columns=sorted(required))
         return data.q(
             f"""
             select cast(run_ts as varchar) as run_ts,
@@ -79,7 +79,7 @@ def load_competitions() -> pd.DataFrame:
         ).df()
     except Exception as exc:
         log.info("H49 competition data unavailable: %s", exc)
-        return pd.DataFrame(columns=required)
+        return pd.DataFrame(columns=sorted(required))
 
 
 def _deduplicate(rows: pd.DataFrame) -> pd.DataFrame:
