@@ -1,7 +1,12 @@
 import pytest
 from pyarrow.parquet import ParquetFile
 
-from orcap.capacity_telemetry import validate_commitment, write_commitments
+from orcap.capacity_telemetry import (
+    validate_commitment,
+    validate_outcome,
+    write_commitments,
+    write_outcomes,
+)
 
 
 def _commitment():
@@ -17,6 +22,24 @@ def _commitment():
         "verification_method": "provider_signed_export",
         "marginal_cost_usd_per_request": 0.001,
         "metadata": {"capacity_class": "reserved"},
+    }
+
+
+def _outcome():
+    return {
+        "outcome_id": "outcome-2026-07-10-deepinfra-a",
+        "observed_at": "2026-07-10T01:00:00Z",
+        "study_id": "routing-calibration-v1",
+        "provider": "deepinfra",
+        "model_id": "meta-llama/llama-3.3-70b-instruct",
+        "epoch_start": "2026-07-10T00:00:00Z",
+        "epoch_end": "2026-07-10T01:00:00Z",
+        "allocated_requests": 120,
+        "served_requests": 114,
+        "verification_method": "router_epoch_ledger",
+        "realized_cost_usd": 0.12,
+        "realized_revenue_usd": 0.18,
+        "metadata": {"workload_class": "short_chat"},
     }
 
 
@@ -52,3 +75,28 @@ def test_capacity_commitment_write_uses_immutable_commitment_id(tmp_path):
 
     with pytest.raises(ValueError, match="duplicate"):
         write_commitments([_commitment(), _commitment()], curated_dir=tmp_path)
+
+
+def test_capacity_outcome_contract_records_aggregate_delivery_without_payload():
+    row = validate_outcome(_outcome())
+    assert row["allocated_requests"] == 120.0
+    assert row["served_requests"] == 114.0
+    assert row["shortfall_requests"] == 6.0
+    assert row["payload_retained"] is False
+
+
+def test_capacity_outcome_rejects_impossible_counts_and_payloads():
+    with pytest.raises(ValueError, match="cannot exceed"):
+        validate_outcome(_outcome() | {"served_requests": 121})
+    with pytest.raises(ValueError, match="forbidden"):
+        validate_outcome(_outcome() | {"metadata": {"messages": ["do not persist"]}})
+
+
+def test_capacity_outcome_write_uses_immutable_outcome_id(tmp_path):
+    path = write_outcomes([_outcome()], curated_dir=tmp_path)
+    assert path is not None
+    row = ParquetFile(path).read().to_pylist()[0]
+    assert row["outcome_id"] == "outcome-2026-07-10-deepinfra-a"
+    assert row["shortfall_requests"] == 6.0
+    with pytest.raises(ValueError, match="duplicate"):
+        write_outcomes([_outcome(), _outcome()], curated_dir=tmp_path)

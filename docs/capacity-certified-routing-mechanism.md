@@ -145,7 +145,7 @@ a Bayesian mechanism and empirical inputs.
 | `p_i` | public provider quote for a fixed workload | observed every 5 minutes on OpenRouter; public Akash/Vast GPU quote panels now added |
 | `s_i` | public inverse-square simulated share | observed proxy; H43/H45/H48 explicitly label it non-realized |
 | `q_i` | uptime, error, latency, throughput, router scorecard | public proxy only; private live eligibility remains unobserved |
-| `x_i, y_i` | allocated and served controlled-study requests | not identified until redacted `router_route_attempts` accumulate |
+| `x_i, y_i` | allocated and served controlled-study requests | public panels do not identify them; payload-free `router_capacity_epoch_outcomes` can record controlled provider/model/epoch aggregates, but has no published rows yet |
 | `k_i` | provider/model/time commitment | public inference capacity remains unobserved; `router_capacity_commitments` can record a redacted controlled-study declaration, but has no published rows yet; Akash/Vast capacity is an external supply comparator |
 | `c_i` | realized GPU-seconds times cost | not observed; no profit or optimal-bond claim is permitted |
 
@@ -160,6 +160,14 @@ all agree. A match is controlled-study coverage—not proof of capacity delivery
 market-wide demand, a causal routing effect, or an optimal bond. Without all
 four primitives, the paper may state a design proposal and reduced-form
 comparative statics, but not an empirically calibrated optimal mechanism.
+
+The companion `ingest-capacity-outcomes` contract records only an aggregate
+allocated count, served count, optional realized cost/revenue, and non-payload
+metadata for the same provider/model/study/epoch key. H48 requires a
+three-way match: selected route attempts, a capacity commitment, and an epoch
+outcome. It keeps attempt outcomes and epoch aggregates distinct, so the
+contract supports controlled-study calibration rather than a claim about a
+router's global allocation or a provider's total delivered capacity.
 
 ## EC paper path
 
