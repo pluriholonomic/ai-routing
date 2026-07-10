@@ -155,6 +155,14 @@ def main() -> None:
         help="optional canonical router name override for source-native formats",
     )
 
+    p_ingest_capacity = sub.add_parser(
+        "ingest-capacity-commitments",
+        help="validate and ingest redacted provider/model/epoch commitments from JSONL",
+    )
+    p_ingest_capacity.add_argument(
+        "--input", required=True, help="redacted JSONL commitment export"
+    )
+
     p_import_policy = sub.add_parser(
         "import-router-policy",
         help="validate and snapshot a redacted Cloudflare, Portkey, or LiteLLM policy JSON",
@@ -352,6 +360,14 @@ def main() -> None:
                 indent=2,
             )
         )
+    elif args.command == "ingest-capacity-commitments":
+        from pathlib import Path
+
+        from .capacity_telemetry import load_jsonl, write_commitments
+
+        records = load_jsonl(Path(args.input))
+        output = write_commitments(records)
+        print(json.dumps({"rows": len(records), "path": str(output) if output else None}, indent=2))
     elif args.command == "import-router-policy":
         from pathlib import Path
 

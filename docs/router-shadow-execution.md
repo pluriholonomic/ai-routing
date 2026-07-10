@@ -92,6 +92,26 @@ to determine an outcome; optional values are provider, retry index, cost,
 tokens, latency, and policy. If an export contains raw prompt/completion or
 credential fields, the adapter fails instead of persisting it.
 
+## Import redacted capacity commitments
+
+For a controlled capacity study, collect a provider/model/study/epoch
+commitment separately from request attempts. The importer accepts only request
+counts and non-payload metadata; it recursively rejects prompts, completions,
+raw requests/responses, credentials, and tokens.
+
+```bash
+uv run orcap ingest-capacity-commitments --input redacted-capacity-commitments.jsonl
+```
+
+Each JSONL object requires `commitment_id`, `observed_at`, `study_id`,
+`provider`, `model_id`, `epoch_start`, `epoch_end`, and
+`committed_requests`. `verification_method`,
+`marginal_cost_usd_per_request`, and a non-payload `metadata` object are
+optional. H48 joins a record to a route attempt only for the same study,
+provider, model, and half-open time interval `[epoch_start, epoch_end)`.
+This records controlled-study declarations; it does not send traffic, reserve
+capacity, contact a provider, or make a public capacity claim.
+
 ## What H45 can and cannot establish
 
 H45 can identify which public/configured policy is concentrated, which

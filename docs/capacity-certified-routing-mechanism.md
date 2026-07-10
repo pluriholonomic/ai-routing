@@ -91,13 +91,19 @@ cheapest routing and (b) a reliability-only rule.
 | `s_i` | public inverse-square simulated share | observed proxy; H43/H45/H48 explicitly label it non-realized |
 | `q_i` | uptime, error, latency, throughput, router scorecard | public proxy only; private live eligibility remains unobserved |
 | `x_i, y_i` | allocated and served controlled-study requests | not identified until redacted `router_route_attempts` accumulate |
-| `k_i` | provider/model/time commitment | not observed for inference; Akash/Vast capacity is an external supply comparator |
+| `k_i` | provider/model/time commitment | public inference capacity remains unobserved; `router_capacity_commitments` can record a redacted controlled-study declaration, but has no published rows yet; Akash/Vast capacity is an external supply comparator |
 | `c_i` | realized GPU-seconds times cost | not observed; no profit or optimal-bond claim is permitted |
 
 H48 is a calibration sheet rather than a fitted structural model. The bond
 calibration gate requires per-provider/model/time capacity, allocated/served
 counts, selected-provider telemetry, and serving cost or contribution margin.
-Without all four, the paper may state a design proposal and reduced-form
+The payload-free `ingest-capacity-commitments` contract records only an
+owner-supplied provider/model/study/epoch declaration, a request count, an
+optional verification label, and an optional marginal-cost proxy. H48 matches
+it to selected route attempts only when provider, model, study, and time epoch
+all agree. A match is controlled-study coverage—not proof of capacity delivery,
+market-wide demand, a causal routing effect, or an optimal bond. Without all
+four primitives, the paper may state a design proposal and reduced-form
 comparative statics, but not an empirically calibrated optimal mechanism.
 
 ## EC paper path
