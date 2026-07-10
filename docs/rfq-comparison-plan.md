@@ -58,7 +58,7 @@ harness flow is preferenced order flow.
 
 **H13 — Venue basis (daily panel; coverage still limited).**
 *`capture_direct.py` now captures DeepInfra's structured public model API,
-Together's public serverless catalog table, and two Fireworks exact-ID
+Groq and Together exact-ID public catalog tables, and two Fireworks exact-ID
 serverless model pages.*
 - All adapters preserve the exact provider API model ID and raw source.
   DeepInfra is labeled `structured_public_api`; Together is labeled
@@ -68,7 +68,7 @@ serverless model pages.*
   requires the literal `accounts/fireworks/...` API ID found in OpenRouter's
   endpoint record and the page's labeled three-price serverless block. It is
   not a sitemap crawl and must remain bounded unless each added page is tested.
-- Groq, Novita, Cerebras, Lambda, Hyperbolic, Parasail, and others
+- Novita, Cerebras, Lambda, Hyperbolic, Parasail, and others
   remain raw-archived until a stable, source-specific normalizer is validated.
   Do not use the raw pages as observations or fuzzy-map names into H13.
 - Test: basis = OpenRouter listed − direct listed, per provider×model×day.

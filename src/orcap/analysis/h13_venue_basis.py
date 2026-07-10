@@ -33,7 +33,12 @@ MIN_PAIRS_PER_PROVIDER = 10
 # OpenRouter display name -> capture_direct provider key.  The model identifier
 # is joined exactly: provider aliases or product-name similarities never count
 # as a venue-basis match.
-PROVIDER_MAP = {"DeepInfra": "deepinfra", "Together": "together", "Fireworks": "fireworks"}
+PROVIDER_MAP = {
+    "DeepInfra": "deepinfra",
+    "Together": "together",
+    "Fireworks": "fireworks",
+    "Groq": "groq",
+}
 
 
 def load_routed() -> pd.DataFrame:

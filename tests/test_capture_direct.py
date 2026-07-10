@@ -8,9 +8,11 @@ from orcap.analysis import h13_venue_basis
 from orcap.capture_direct import (
     DEEPINFRA_URL,
     FIREWORKS_MODEL_PAGES,
+    GROQ_MODELS_URL,
     TOGETHER_SERVERLESS_MODELS_URL,
     deepinfra_rows,
     fireworks_rows,
+    groq_rows,
     together_rows,
 )
 
@@ -35,6 +37,12 @@ FIREWORKS_MODEL_PAGE = """
   <section>Available ServerlessRun queries immediately, pay only for usage
   $0.07 / $0.04 / $0.30Per 1M Tokens (input/cached input/output)</section>
 </body></html>
+"""
+
+GROQ_MODELS_TABLE = """
+<table><thead><tr><th>Model ID</th><th>Price Per 1M Tokens</th></tr></thead>
+<tbody><tr><td>meta-llama/llama-4-scout-17b-16e-instruct</td>
+<td>$0.11 input $0.34 output</td></tr></tbody></table>
 """
 
 
@@ -74,6 +82,20 @@ def test_together_rows_require_explicit_api_id_and_token_price_headers():
 def test_together_rows_rejects_changed_header_schema_instead_of_guessing():
     changed = TOGETHER_CHAT_TABLE.replace("API model string", "Model identifier")
     assert together_rows(changed, "20260710T000000Z", "2026-07-10") == []
+
+
+def test_groq_rows_require_exact_id_and_labeled_two_sided_token_price():
+    rows = groq_rows(GROQ_MODELS_TABLE, "20260710T000000Z", "2026-07-10")
+    assert len(rows) == 1
+    assert rows[0]["model_name"] == "meta-llama/llama-4-scout-17b-16e-instruct"
+    assert rows[0]["price_input_usd"] == 0.11 / 1_000_000
+    assert rows[0]["price_output_usd"] == 0.34 / 1_000_000
+    assert rows[0]["source_url"] == GROQ_MODELS_URL
+
+
+def test_groq_rows_reject_malformed_price_cell():
+    changed = GROQ_MODELS_TABLE.replace("$0.11 input $0.34 output", "starting at $0.11")
+    assert groq_rows(changed, "20260710T000000Z", "2026-07-10") == []
 
 
 def test_fireworks_rows_require_literal_provider_id_and_labeled_price_block():
