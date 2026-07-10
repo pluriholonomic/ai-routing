@@ -388,6 +388,34 @@ therefore keeps the literal declared values separate from H41 capacity
 comparisons and does not convert them into GPU-hours, a clearing price, or
 availability.
 
+## Qualified source contract: Nosana public aggregate job activity
+
+Nosana's public Explore page uses the unauthenticated
+`https://dashboard.k8s.prd.nos.ci/api` aggregate endpoints for its job
+statistics. The retained endpoints are `/jobs/stats`, `/jobs/count`,
+`/jobs/running`, and the rolling `/jobs/stats/timestamps` and
+`/jobs/stats/timestamps-hours` series. The official Explore UI presents the
+last series as GPU Compute Hours, but the collector preserves the literal
+source-defined duration rather than inferring hardware allocation or delivery.
+
+The collector intentionally excludes `/jobs` and `/jobs/:address`: those
+responses can include public job definitions, result metadata, and participant
+addresses that are unnecessary for aggregate market monitoring. Each source
+run calls only five small aggregate responses. It fails closed unless all
+schemas parse, both rolling series have numeric buckets, and the `RUNNING`
+count from `/jobs/count` equals the sum of `/jobs/running` market totals.
+
+On a local validation on 2026-07-10, the aggregate source returned 25
+completed-job buckets, 25 duration buckets, and 34 public market-running
+totals; the running identity was 872 on both endpoints. H59 retained 93 rows
+and was correctly power-gated at two source-bucket days and 25 buckets per
+series. That checks the source contract only.
+
+H59 may report source-defined aggregate job state and revisions. It cannot
+identify LLM requests, token consumption, unique users, useful completion,
+model/GPU assignment, verified GPU-hours, available capacity, utilization,
+routing allocation, payment, revenue, profit, welfare, or causal demand.
+
 ## Not qualified: Runpod public Serverless GPU pricing
 
 Runpod's indexed documentation showed a detailed public GPU-family table, but

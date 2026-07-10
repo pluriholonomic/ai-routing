@@ -117,6 +117,7 @@ ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h55  # Akash block
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h56  # complete block-pinned Uniswap V3 tick-book audit
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h57  # validated virtual-liquidity USDC/WETH impact traversal
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h58  # source-verified Nosana declared-node registry panel
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h59  # public Nosana aggregate job-activity panel
 uv run orcap analyze --hypothesis h42 # routing-volume-capture event audit (MEV-like hypotheses)
 ORCAP_ANALYSIS_SOURCE=local uv run orcap route-sim-report --out analysis  # 24h public-quote route-surface test
 uv run orcap capture-hf-router --samples 4 --interval-seconds 900  # public HF router surface, no orders

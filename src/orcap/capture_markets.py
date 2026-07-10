@@ -40,6 +40,8 @@ AKASH_MARKET_API_URL = "https://api.akashnet.net/akash/market/v1beta5"
 AKASH_LATEST_BLOCK_URL = "https://api.akashnet.net/cosmos/base/tendermint/v1beta1/blocks/latest"
 NOSANA_SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"
 NOSANA_NODES_PROGRAM_ID = "nosNeZR64wiEhQc5j251bsP4WqDabT6hmz4PHyoHLGD"
+NOSANA_EXPLORE_API_URL = "https://dashboard.k8s.prd.nos.ci/api"
+NOSANA_JOB_ACTIVITY_PERIOD_SECONDS = 86_400
 # The documented Anchor discriminator for Nosana's NodeAccount. The base58
 # form is required by Solana's public ``getProgramAccounts`` memcmp filter.
 NOSANA_NODE_ACCOUNT_DISCRIMINATOR = bytes.fromhex("7da61292c37f56dc")
@@ -596,6 +598,256 @@ async def capture_nosana_node_registry(
         "metric_boundary": (
             "registered declared node hardware only; not online availability, GPU model, "
             "price, utilization, jobs, or delivered capacity"
+        ),
+    }
+
+
+def _nosana_activity_points(body: Any) -> list[dict[str, int | float]]:
+    """Retain only public aggregate time buckets with numeric coordinates."""
+    if not isinstance(body, dict) or _float(body.get("total")) is None:
+        return []
+    points = body.get("data")
+    if not isinstance(points, list):
+        return []
+    rows = []
+    for point in points:
+        if not isinstance(point, dict):
+            continue
+        bucket_ms, value = _integer(point.get("x")), _float(point.get("y"))
+        if bucket_ms is None or bucket_ms <= 0 or value is None or value < 0:
+            continue
+        rows.append({"x": bucket_ms, "y": value})
+    return rows
+
+
+def nosana_job_activity_rows(
+    body: Any,
+    run_ts: str,
+    dt: str,
+) -> list[dict[str, Any]]:
+    """Normalize Nosana's public aggregate job monitor without job metadata.
+
+    The Explore API's individual-job endpoint includes public job definitions
+    and participant addresses. This collector intentionally never calls that
+    endpoint. It retains only aggregate state counts, public market-level
+    running totals, and source-reported rolling aggregate buckets.
+    """
+    if not isinstance(body, dict):
+        return []
+    stats = body.get("stats") if isinstance(body.get("stats"), dict) else {}
+    counts = body.get("counts") if isinstance(body.get("counts"), dict) else {}
+    by_state = counts.get("byState") if isinstance(counts.get("byState"), dict) else {}
+    running = body.get("running") if isinstance(body.get("running"), dict) else {}
+    period = _integer(body.get("period_seconds"))
+    retrieved = _integer(stats.get("retrieved"))
+    rows = []
+    common = {
+        "run_ts": run_ts,
+        "dt": dt,
+        "source": "nosana_jobs_api",
+        "venue": "nosana-explore-aggregate-api",
+        "requested_period_seconds": period,
+        "retrieved_unix_seconds": retrieved,
+        "quality_tier": "public aggregate indexer; source-defined job activity",
+    }
+
+    def emit(
+        metric: str,
+        value: Any,
+        *,
+        observation_type: str,
+        market_id: str | None = None,
+        bucket_unix_ms: int | None = None,
+        source_total: float | None = None,
+        definition: str,
+        record: Any,
+    ) -> None:
+        number = _float(value)
+        if number is None or number < 0:
+            return
+        rows.append(
+            common
+            | {
+                "metric": metric,
+                "value": number,
+                "observation_type": observation_type,
+                "market_id": market_id,
+                "source_bucket_unix_ms": bucket_unix_ms,
+                "source_total": source_total,
+                "metric_definition": definition,
+                "record_json": _json(record),
+            }
+        )
+
+    for field, metric, definition in (
+        (
+            "completed",
+            "source_reported_indexer_completed_jobs",
+            "Nosana Explore aggregate indexer completed-job count; not LLM requests or tokens.",
+        ),
+        (
+            "duration",
+            "source_reported_indexer_job_duration_seconds",
+            "Nosana Explore aggregate indexer job duration in seconds; not independently "
+            "verified GPU-hours, delivered compute, or utilization.",
+        ),
+        (
+            "price",
+            "source_reported_indexer_price_value",
+            "Nosana Explore aggregate indexer price field in its source-defined units; not a "
+            "USD clearing price, realized revenue, or a comparable GPU-hour rate.",
+        ),
+        (
+            "usdReward",
+            "source_reported_indexer_usd_reward",
+            "Nosana Explore indexer-derived USD reward field; not independently verified "
+            "revenue, payment, profit, or a cross-market clearing price.",
+        ),
+    ):
+        emit(
+            metric,
+            stats.get(field),
+            observation_type="aggregate_snapshot",
+            definition=definition,
+            record={"endpoint": "/jobs/stats", "field": field, "value": stats.get(field)},
+        )
+    emit(
+        "source_reported_indexer_total_jobs",
+        counts.get("total"),
+        observation_type="aggregate_snapshot",
+        definition=(
+            "Nosana Explore aggregate indexer job-account count; not active demand or fills."
+        ),
+        record={"endpoint": "/jobs/count", "field": "total", "value": counts.get("total")},
+    )
+    for state in ("QUEUED", "RUNNING", "COMPLETED", "STOPPED"):
+        emit(
+            f"source_reported_indexer_{state.lower()}_jobs",
+            by_state.get(state),
+            observation_type="aggregate_snapshot",
+            definition=(
+                "Nosana Explore aggregate indexer count by its job state; a state count is not "
+                "LLM routing flow, completed useful work, tokens, or capacity utilization."
+            ),
+            record={"endpoint": "/jobs/count", "state": state, "value": by_state.get(state)},
+        )
+    for market_id, item in running.items():
+        value = item.get("running") if isinstance(item, dict) else None
+        emit(
+            "source_reported_running_jobs_by_market",
+            value,
+            observation_type="market_snapshot",
+            market_id=str(market_id),
+            definition=(
+                "Nosana Explore aggregate running-job count for a public market identifier; not "
+                "a GPU count, job completion, available capacity, price, or routing share."
+            ),
+            record={"endpoint": "/jobs/running", "market": market_id, "value": value},
+        )
+    for endpoint, metric, definition in (
+        (
+            "/jobs/stats/timestamps",
+            "source_reported_completed_job_count_bucket",
+            "Nosana Explore rolling source-reported completed-job count bucket; not LLM requests, "
+            "tokens, unique users, or a causal demand estimate.",
+        ),
+        (
+            "/jobs/stats/timestamps-hours",
+            "source_reported_job_duration_hours_bucket",
+            "Nosana Explore rolling source-reported job-duration-hours bucket (shown by its UI as "
+            "GPU Compute Hours); not independently verified GPU-hours, delivered compute, "
+            "utilization, or revenue.",
+        ),
+    ):
+        series = body.get(endpoint)
+        total = _float(series.get("total")) if isinstance(series, dict) else None
+        for point in _nosana_activity_points(series):
+            emit(
+                metric,
+                point["y"],
+                observation_type="rolling_bucket",
+                bucket_unix_ms=int(point["x"]),
+                source_total=total,
+                definition=definition,
+                record={"endpoint": endpoint, "point": point, "period_seconds": period},
+            )
+    return rows
+
+
+async def capture_nosana_job_activity(
+    fetcher: Fetcher,
+    *,
+    url: str | None = None,
+    period_seconds: int = NOSANA_JOB_ACTIVITY_PERIOD_SECONDS,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Fetch only public Nosana Explore aggregates, never individual job records."""
+    configured_url = _configured_url("ORCAP_NOSANA_EXPLORE_API_URL", url or NOSANA_EXPLORE_API_URL)
+    base_url = configured_url.rstrip("/")
+    if period_seconds <= 0:
+        raise ValueError("period_seconds must be positive")
+    paths = {
+        "stats": "/jobs/stats",
+        "counts": "/jobs/count",
+        "running": "/jobs/running",
+        "/jobs/stats/timestamps": f"/jobs/stats/timestamps?period={period_seconds}",
+        "/jobs/stats/timestamps-hours": f"/jobs/stats/timestamps-hours?period={period_seconds}",
+    }
+    values = await asyncio.gather(*(fetcher.get_json(base_url + path) for path in paths.values()))
+    body = dict(zip(paths, values, strict=True)) | {"period_seconds": period_seconds}
+    stats = body["stats"]
+    counts = body["counts"]
+    running = body["running"]
+    bucket_counts = _nosana_activity_points(body["/jobs/stats/timestamps"])
+    bucket_hours = _nosana_activity_points(body["/jobs/stats/timestamps-hours"])
+    stats_valid = isinstance(stats, dict) and all(
+        _float(stats.get(field)) is not None
+        for field in ("completed", "duration", "price", "usdReward", "retrieved")
+    )
+    counts_valid = (
+        isinstance(counts, dict)
+        and _integer(counts.get("total")) is not None
+        and isinstance(counts.get("byState"), dict)
+        and all(
+            _integer(counts["byState"].get(state)) is not None
+            for state in ("QUEUED", "RUNNING", "COMPLETED", "STOPPED")
+        )
+    )
+    running_values = (
+        [item.get("running") for item in running.values() if isinstance(item, dict)]
+        if isinstance(running, dict)
+        else []
+    )
+    running_valid = isinstance(running, dict) and all(
+        _integer(value) is not None for value in running_values
+    )
+    reported_running = _integer(counts.get("byState", {}).get("RUNNING")) if counts_valid else None
+    running_sum = sum(_integer(value) or 0 for value in running_values) if running_valid else None
+    running_count_consistent = (
+        reported_running is not None and running_sum is not None and reported_running == running_sum
+    )
+    query_succeeded = (
+        stats_valid
+        and counts_valid
+        and running_valid
+        and bool(bucket_counts)
+        and bool(bucket_hours)
+        and running_count_consistent
+    )
+    return body, {
+        "query_succeeded": query_succeeded,
+        "base_url": base_url,
+        "period_seconds": period_seconds,
+        "aggregate_endpoint_count": len(paths),
+        "completed_job_bucket_records": len(bucket_counts),
+        "job_duration_hour_bucket_records": len(bucket_hours),
+        "running_market_records": len(running_values),
+        "reported_running_jobs": reported_running,
+        "running_jobs_sum_across_markets": running_sum,
+        "running_count_consistent": running_count_consistent,
+        "metric_boundary": (
+            "public source-defined aggregate job counts and duration buckets only; no individual "
+            "job definitions, payer IDs, LLM requests, tokens, verified GPU-hours, delivered "
+            "compute, utilization, revenue, or routing allocation"
         ),
     }
 
@@ -2991,8 +3243,14 @@ async def capture_markets(
             }
         nosana_body = None
         nosana_detail: dict[str, Any] = {"query_succeeded": False, "reason": "flag_not_set"}
+        nosana_jobs_body: dict[str, Any] | None = None
+        nosana_jobs_detail: dict[str, Any] = {
+            "query_succeeded": False,
+            "reason": "flag_not_set",
+        }
         if with_nosana:
             nosana_body, nosana_detail = await capture_nosana_node_registry(fetcher)
+            nosana_jobs_body, nosana_jobs_detail = await capture_nosana_job_activity(fetcher)
         write_raw(fetcher.records, "market_sources", raw_dir, run_ts, dt)
 
     participants = defillama_participant_rows(defillama, run_ts, dt)
@@ -3040,6 +3298,7 @@ async def capture_markets(
         akash_open_bids, akash_market_detail, run_ts, dt
     )
     nosana_nodes = nosana_node_registry_rows(nosana_body, run_ts, dt)
+    nosana_job_activity = nosana_job_activity_rows(nosana_jobs_body, run_ts, dt)
     instrument_map = instrument_map_rows(run_ts, dt)
     _write(
         participants + cow_participants + cow_rpc_participants,
@@ -3093,6 +3352,13 @@ async def capture_markets(
     _write(
         nosana_nodes,
         "nosana_node_registry",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        nosana_job_activity,
+        "nosana_job_activity",
         run_ts,
         dt,
         curated_dir,
@@ -3315,9 +3581,33 @@ async def capture_markets(
             },
             curated_dir=curated_dir,
         )
+        jobs_complete = (
+            nosana_jobs_detail.get("query_succeeded") is True and len(nosana_job_activity) > 0
+        )
+        write_source_run(
+            "nosana_jobs_api",
+            status="success" if jobs_complete else "degraded",
+            rows=len(nosana_job_activity),
+            run_ts=run_ts,
+            dt=dt,
+            detail={
+                "rows_written": {"nosana_job_activity": len(nosana_job_activity)},
+                "aggregate_response_complete": jobs_complete,
+                **nosana_jobs_detail,
+            },
+            curated_dir=curated_dir,
+        )
     else:
         write_source_run(
             "nosana",
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail={"reason": "flag not set"},
+            curated_dir=curated_dir,
+        )
+        write_source_run(
+            "nosana_jobs_api",
             status="skipped",
             run_ts=run_ts,
             dt=dt,
@@ -3356,6 +3646,8 @@ async def capture_markets(
         "akash_market_book": akash_market_detail,
         "nosana_node_registry_rows": len(nosana_nodes),
         "nosana_node_registry": nosana_detail,
+        "nosana_job_activity_rows": len(nosana_job_activity),
+        "nosana_job_activity": nosana_jobs_detail,
     }
     log.info("market-source capture complete: %s", summary)
     return summary

@@ -144,6 +144,16 @@ time. The registry must not be treated as node liveness, free GPU supply, GPU
 model/count, queue, posted price, utilization, job execution, delivered
 compute, or a harmonized compute-capacity input.
 
+H59 separately records a small public Nosana Explore aggregate panel: indexer
+state counts, market-level running-job totals, and the source's rolling
+completed-job and job-duration buckets. It intentionally does not call the
+public individual-job endpoint because that response includes job definitions
+and participant metadata unnecessary for this study. The source's UI labels
+the duration series GPU compute hours, but this project treats it only as a
+source-defined aggregate duration until independent hardware and outcome
+verification exists. Neither H59 metric identifies LLM routing, tokens,
+capacity, utilization, payment, revenue, welfare, or causal demand.
+
 The same archive-capable RPC path also queries the verified mainnet
 `GPv2Settlement` contract for `Trade` and `Settlement` events in a separate
 bounded window (`ORCAP_COW_LOG_WINDOW_BLOCKS`, with the same finality buffer).
