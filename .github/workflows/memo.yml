@@ -28,6 +28,9 @@ jobs:
           python-version: "3.12"
       - run: uv sync --no-dev
       - name: hydrate dataset (one bulk download beats thousands of hf:// reads)
+        # fail fast if Hub rate limits stall the download, instead of eating
+        # the whole 75-minute job timeout with everything downstream skipped
+        timeout-minutes: 30
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |

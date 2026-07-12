@@ -43,7 +43,6 @@ TRACKED_PRICE_FIELDS = [
 
 DERIVED_DIR = DATA_DIR / "derived"
 PRICING_CURRENT = DERIVED_DIR / "pricing_current.parquet"
-REMOTE_COMPACT_TABLES = ("endpoints_snapshots",)
 
 
 def yesterday_utc() -> str:
@@ -272,27 +271,46 @@ def compact_hf(dt: str, repo_id: str = HF_DATASET_REPO, workdir: Path | None = N
 
     api = get_api()
     workdir = workdir or Path(tempfile.mkdtemp(prefix="orcap-compact-"))
+    # One completed day across ALL curated tables is a bounded download, unlike
+    # historical all-table hydration. Consolidating every table matters: per-run
+    # ledger/collector files otherwise accumulate hundreds of files per day and
+    # make the memo job's snapshot_download (one request per file) hang on rate
+    # limits. Days whose endpoints partition is already a lone part-0 skip the
+    # pricing fold entirely, so re-running old days cannot corrupt the SCD-2 state.
     snapshot_download(
         repo_id=repo_id,
         repo_type="dataset",
         local_dir=workdir,
         allow_patterns=[
-            *(f"curated/{table}/dt={dt}/*" for table in REMOTE_COMPACT_TABLES),
+            f"curated/*/dt={dt}/*",
             "derived/pricing_current.parquet",
             f"derived/pricing_changes/dt={dt}/*",
         ],
         token=api.token,
     )
-    before = {p.relative_to(workdir) for p in workdir.rglob("*.parquet")}
-    summary = compact_local(dt, data_dir=workdir)
-    after = {p.relative_to(workdir) for p in workdir.rglob("*.parquet")}
+    def _snapshot() -> dict[Path, tuple[int, float]]:
+        return {
+            p.relative_to(workdir): (p.stat().st_size, p.stat().st_mtime)
+            for p in workdir.rglob("*.parquet")
+        }
 
-    ops: list = [CommitOperationDelete(path_in_repo=str(p)) for p in sorted(before - after)]
-    changed_or_new = sorted(after)  # consolidated files + refreshed state are all rewritten
+    before = _snapshot()
+    summary = compact_local(dt, data_dir=workdir)
+    after = _snapshot()
+
+    ops: list = [
+        CommitOperationDelete(path_in_repo=str(p)) for p in sorted(set(before) - set(after))
+    ]
+    # push only files consolidation actually rewrote — an already-compacted day
+    # would otherwise re-upload every unchanged part-0 in the commit
+    changed_or_new = sorted(p for p, sig in after.items() if before.get(p) != sig)
     ops += [
         CommitOperationAdd(path_in_repo=str(p), path_or_fileobj=str(workdir / p))
         for p in changed_or_new
     ]
+    if not ops:
+        log.info("nothing to compact for %s", dt)
+        return summary
     api.create_commit(
         repo_id=repo_id,
         repo_type="dataset",
