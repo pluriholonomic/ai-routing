@@ -47,6 +47,18 @@ jobs:
         if: ${{ hashFiles('events_detected') != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
+        # Skip if a memo ran (or is running) within the last 3 hours: each memo
+        # hydrates the whole HF dataset, and hourly event dispatches queued
+        # back-to-back once exhausted the account rate limit for a full night
+        # (2026-07-12), starving every run into its 75-minute timeout. The
+        # nightly schedule still guarantees a daily reanalysis.
         run: |
           echo "price events on: $(cat events_detected)"
-          gh workflow run memo.yml --repo ${{ github.repository }}
+          recent=$(gh run list --repo ${{ github.repository }} --workflow memo.yml \
+            --limit 5 --json createdAt,status \
+            --jq "[.[] | select(.status != \"completed\" or (.createdAt > (now - 10800 | todate)))] | length")
+          if [ "$recent" -gt 0 ]; then
+            echo "memo ran or is running within 3h; skipping event dispatch"
+          else
+            gh workflow run memo.yml --repo ${{ github.repository }}
+          fi
