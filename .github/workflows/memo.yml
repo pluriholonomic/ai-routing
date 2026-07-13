@@ -33,16 +33,85 @@ jobs:
   memo:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 210
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
       - run: uv sync --no-dev
-      - name: hydrate source-run ledger through the robust Hub cache
-        # The immutable source ledger is the largest single object group. Give
-        # it an independent bound so it cannot starve the rest of the mirror.
+      - name: hydrate source-run ledger for 2026-07-10
+        # Legacy captures predate daily bundling and contain thousands of tiny
+        # immutable objects. Hydrate the known high-cardinality dates in
+        # separate bounded steps while sharing the same Hub cache.
+        timeout-minutes: 75
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=["curated/source_runs/dt=2026-07-10/*"],
+              max_workers=32,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate source-run ledger for 2026-07-11
+        timeout-minutes: 75
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=["curated/source_runs/dt=2026-07-11/*"],
+              max_workers=32,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate source-run ledger for 2026-07-12
+        timeout-minutes: 75
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=["curated/source_runs/dt=2026-07-12/*"],
+              max_workers=32,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate source-run ledger for 2026-07-13
+        timeout-minutes: 75
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=["curated/source_runs/dt=2026-07-13/*"],
+              max_workers=32,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate bundled and future source-run ledger
         timeout-minutes: 75
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -55,6 +124,12 @@ jobs:
               "t4run/openrouter-market-history", repo_type="dataset",
               cache_dir=".hf-cache",
               allow_patterns=["curated/source_runs/*"],
+              ignore_patterns=[
+                  "curated/source_runs/dt=2026-07-10/*",
+                  "curated/source_runs/dt=2026-07-11/*",
+                  "curated/source_runs/dt=2026-07-12/*",
+                  "curated/source_runs/dt=2026-07-13/*",
+              ],
               max_workers=32,
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
