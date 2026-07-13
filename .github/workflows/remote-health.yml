@@ -1,0 +1,40 @@
+name: remote-pipeline-health
+
+# Independent remote watchdog. A failed run generates the repository's normal
+# Actions failure notification and retains a machine-readable health artifact.
+on:
+  schedule:
+    - cron: "47 */6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: remote-pipeline-health
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: verify latest workflow runs and remote data sink
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run python scripts/check_remote_pipelines.py
+      - name: retain machine-readable health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-health-${{ github.run_id }}
+          path: remote-health.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -12,7 +12,7 @@ import asyncio
 import json
 import logging
 import os
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -27,7 +27,12 @@ from .observability import write_source_run
 log = logging.getLogger(__name__)
 
 RANKINGS_DAILY_URL = "https://openrouter.ai/api/v1/datasets/rankings-daily"
+APP_RANKINGS_URL = "https://openrouter.ai/api/v1/datasets/app-rankings"
 SOURCE = "openrouter_rankings_daily"
+APP_SOURCE = "openrouter_app_rankings_daily"
+APP_PAGE_LIMIT = 100
+APP_PAGE_OFFSETS = (0, 100)
+MAX_APP_BACKFILL_DAYS = 200
 
 
 def _date(value: Any) -> str | None:
@@ -47,6 +52,33 @@ def _tokens(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed >= 0 else None
+
+
+def _api_token() -> str | None:
+    """Use the dataset-specific name first, then the existing probe secret name."""
+    return os.environ.get("ORCAP_OPENROUTER_DATASET_API_KEY") or os.environ.get(
+        "OPENROUTER_API_KEY"
+    )
+
+
+def _resolved_daily_range(start_date: str | None, end_date: str | None) -> list[str]:
+    """Return inclusive closed UTC days, bounded to protect the account API quota."""
+    for name, value in (("start_date", start_date), ("end_date", end_date)):
+        if value is not None and _date(value) is None:
+            raise ValueError(f"{name} must be YYYY-MM-DD")
+    latest_closed = (datetime.now(UTC).date() - timedelta(days=1)).isoformat()
+    start_date = start_date or end_date or latest_closed
+    end_date = end_date or start_date
+    if start_date > end_date:
+        raise ValueError("start_date must not be after end_date")
+    start = date.fromisoformat(start_date)
+    end = date.fromisoformat(end_date)
+    days = (end - start).days + 1
+    if days > MAX_APP_BACKFILL_DAYS:
+        raise ValueError(
+            f"app rankings backfill is capped at {MAX_APP_BACKFILL_DAYS} days per run"
+        )
+    return [(start + timedelta(days=offset)).isoformat() for offset in range(days)]
 
 
 def rankings_daily_rows(
@@ -158,6 +190,249 @@ def _url(start_date: str | None, end_date: str | None) -> str:
     return RANKINGS_DAILY_URL if not query else f"{RANKINGS_DAILY_URL}?{urlencode(query)}"
 
 
+def _app_url(
+    source_date: str,
+    *,
+    sort: str,
+    category: str | None,
+    subcategory: str | None,
+    offset: int,
+) -> str:
+    query: dict[str, Any] = {
+        "start_date": source_date,
+        "end_date": source_date,
+        "sort": sort,
+        "limit": APP_PAGE_LIMIT,
+        "offset": offset,
+    }
+    if category:
+        query["category"] = category
+    if subcategory:
+        query["subcategory"] = subcategory
+    return f"{APP_RANKINGS_URL}?{urlencode(query)}"
+
+
+def app_rankings_page_rows(
+    body: Any,
+    run_ts: str,
+    dt: str,
+    *,
+    requested_date: str,
+    sort: str,
+    category: str | None,
+    subcategory: str | None,
+    offset: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Normalize one documented app-ranking page without treating censoring as zero."""
+    if not isinstance(body, dict) or not isinstance(body.get("data"), list):
+        return [], {"coverage_complete": False, "reason": "missing_data_list"}
+    meta = body.get("meta")
+    if not isinstance(meta, dict):
+        return [], {"coverage_complete": False, "reason": "missing_meta"}
+    api_start = _date(meta.get("start_date"))
+    api_end = _date(meta.get("end_date"))
+    as_of, version = meta.get("as_of"), meta.get("version")
+    if api_start != requested_date or api_end != requested_date:
+        return [], {"coverage_complete": False, "reason": "resolved_date_mismatch"}
+    if not isinstance(as_of, str) or not as_of:
+        return [], {"coverage_complete": False, "reason": "missing_meta_as_of"}
+    if not isinstance(version, str) or not version:
+        return [], {"coverage_complete": False, "reason": "missing_meta_version"}
+    if offset not in APP_PAGE_OFFSETS:
+        return [], {"coverage_complete": False, "reason": "unsupported_offset"}
+
+    rows: list[dict[str, Any]] = []
+    seen_apps: set[str] = set()
+    seen_ranks: set[int] = set()
+    for item in body["data"]:
+        if not isinstance(item, dict):
+            return [], {"coverage_complete": False, "reason": "non_object_data_row"}
+        app_id_raw = item.get("app_id")
+        app_id = str(app_id_raw) if isinstance(app_id_raw, (int, str)) else ""
+        app_name = item.get("app_name")
+        rank = _tokens(item.get("rank"))
+        total_requests = _tokens(item.get("total_requests"))
+        total_tokens = _tokens(item.get("total_tokens"))
+        if (
+            not app_id
+            or not isinstance(app_name, str)
+            or not app_name
+            or rank is None
+            or rank < 1
+            or total_requests is None
+            or total_tokens is None
+        ):
+            return [], {"coverage_complete": False, "reason": "invalid_data_row"}
+        if app_id in seen_apps or rank in seen_ranks:
+            return [], {"coverage_complete": False, "reason": "duplicate_app_or_rank"}
+        if rank <= offset or rank > offset + APP_PAGE_LIMIT:
+            return [], {"coverage_complete": False, "reason": "rank_outside_page"}
+        seen_apps.add(app_id)
+        seen_ranks.add(rank)
+        rows.append(
+            {
+                "run_ts": run_ts,
+                "dt": dt,
+                "source": APP_SOURCE,
+                "source_date": requested_date,
+                "app_id": app_id,
+                "app_name": app_name,
+                "rank": rank,
+                "total_requests": total_requests,
+                "total_tokens": total_tokens,
+                "ranking_sort": sort,
+                "category": category,
+                "subcategory": subcategory,
+                "page_offset": offset,
+                "page_limit": APP_PAGE_LIMIT,
+                "api_as_of": as_of,
+                "api_start_date": api_start,
+                "api_end_date": api_end,
+                "api_version": version,
+                "is_public_attributed_only": True,
+                "is_top_n_censored": True,
+                "metric_definition": (
+                    "OpenRouter documented public-app ranking for one UTC day; hidden and "
+                    "private apps are excluded, aliases are merged, and only the requested "
+                    "top-N rank window is observed. This is not an app-by-model or provider "
+                    "routing ledger."
+                ),
+                "record_json": json.dumps(item, separators=(",", ":"), sort_keys=True),
+            }
+        )
+    return rows, {
+        "coverage_complete": True,
+        "source_date": requested_date,
+        "page_offset": offset,
+        "page_rows": len(rows),
+        "api_as_of": as_of,
+        "api_version": version,
+    }
+
+
+async def capture_openrouter_app_rankings_daily(
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    sort: str = "popular",
+    category: str | None = None,
+    subcategory: str | None = None,
+    raw_dir: Path = RAW_DIR,
+    curated_dir: Path = CURATED_DIR,
+) -> dict[str, Any]:
+    """Capture per-day public-app rankings with an explicit top-200 censoring bound."""
+    if sort not in {"popular", "trending"}:
+        raise ValueError("sort must be popular or trending")
+    source_dates = _resolved_daily_range(start_date, end_date)
+    run_ts, dt = run_timestamp(), dt_partition()
+    token = _api_token()
+    if not token:
+        detail = {
+            "reason": (
+                "ORCAP_OPENROUTER_DATASET_API_KEY or OPENROUTER_API_KEY not configured"
+            ),
+            "url": APP_RANKINGS_URL,
+        }
+        write_source_run(
+            APP_SOURCE,
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail=detail,
+            curated_dir=curated_dir,
+        )
+        return {"run_ts": run_ts, "dt": dt, "rows": 0, "source_status": "skipped", **detail}
+
+    rows: list[dict[str, Any]] = []
+    page_details: list[dict[str, Any]] = []
+    failed_detail: dict[str, Any] | None = None
+    async with make_client() as client:
+        fetcher = Fetcher(client, rps=1.0)
+        for source_date in source_dates:
+            for offset in APP_PAGE_OFFSETS:
+                if offset and page_details[-1]["page_rows"] < APP_PAGE_LIMIT:
+                    break
+                body = await fetcher.get_json(
+                    _app_url(
+                        source_date,
+                        sort=sort,
+                        category=category,
+                        subcategory=subcategory,
+                        offset=offset,
+                    ),
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                page_rows, page_detail = app_rankings_page_rows(
+                    body,
+                    run_ts,
+                    dt,
+                    requested_date=source_date,
+                    sort=sort,
+                    category=category,
+                    subcategory=subcategory,
+                    offset=offset,
+                )
+                page_details.append(page_detail)
+                if page_detail.get("coverage_complete") is not True:
+                    failed_detail = page_detail
+                    break
+                rows.extend(page_rows)
+            if failed_detail:
+                break
+        write_raw(fetcher.records, "openrouter_datasets", raw_dir, run_ts, dt)
+
+    unique_keys = {
+        (
+            row["source_date"],
+            row["app_id"],
+            row["ranking_sort"],
+            row["category"],
+            row["subcategory"],
+        )
+        for row in rows
+    }
+    duplicate_rows = len(unique_keys) != len(rows)
+    complete_dates = len({detail["source_date"] for detail in page_details})
+    complete = failed_detail is None and not duplicate_rows and complete_dates == len(source_dates)
+    if rows and complete:
+        write_partition(pa.Table.from_pylist(rows), APP_SOURCE, run_ts, dt, curated_dir)
+    detail = {
+        "url": APP_RANKINGS_URL,
+        "requested_start_date": source_dates[0],
+        "requested_end_date": source_dates[-1],
+        "requested_source_days": len(source_dates),
+        "complete_source_days": complete_dates if complete else 0,
+        "page_requests": len(page_details),
+        "ranking_sort": sort,
+        "category": category,
+        "subcategory": subcategory,
+        "rank_cap": max(APP_PAGE_OFFSETS) + APP_PAGE_LIMIT,
+        "rank_window_censored": True,
+        "duplicate_rows": duplicate_rows,
+        "failed_detail": failed_detail,
+        "metric_boundary": (
+            "public attributed app rankings, top-200 maximum per requested daily scope; "
+            "not complete app traffic, app-by-model allocation, provider routing, or users"
+        ),
+    }
+    write_source_run(
+        APP_SOURCE,
+        status="success" if complete and rows else "degraded",
+        rows=len(rows),
+        run_ts=run_ts,
+        dt=dt,
+        detail=detail,
+        curated_dir=curated_dir,
+    )
+    return {
+        "run_ts": run_ts,
+        "dt": dt,
+        "rows": len(rows),
+        "source_status": "success" if complete and rows else "degraded",
+        **detail,
+    }
+
+
 async def capture_openrouter_rankings_daily(
     *,
     start_date: str | None = None,
@@ -173,10 +448,12 @@ async def capture_openrouter_rankings_daily(
     if start_date and end_date and start_date > end_date:
         raise ValueError("start_date must not be after end_date")
     run_ts, dt = run_timestamp(), dt_partition()
-    token = os.environ.get("ORCAP_OPENROUTER_DATASET_API_KEY")
+    token = _api_token()
     if not token:
         detail = {
-            "reason": "ORCAP_OPENROUTER_DATASET_API_KEY not configured",
+            "reason": (
+                "ORCAP_OPENROUTER_DATASET_API_KEY or OPENROUTER_API_KEY not configured"
+            ),
             "url": RANKINGS_DAILY_URL,
         }
         write_source_run(
@@ -234,6 +511,29 @@ def main(*, start_date: str | None = None, end_date: str | None = None) -> dict[
     logging.getLogger("httpx").setLevel(logging.WARNING)
     result = asyncio.run(
         capture_openrouter_rankings_daily(start_date=start_date, end_date=end_date)
+    )
+    print(json.dumps(result, indent=2, default=str))
+    return result
+
+
+def app_main(
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    sort: str = "popular",
+    category: str | None = None,
+    subcategory: str | None = None,
+) -> dict[str, Any]:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    result = asyncio.run(
+        capture_openrouter_app_rankings_daily(
+            start_date=start_date,
+            end_date=end_date,
+            sort=sort,
+            category=category,
+            subcategory=subcategory,
+        )
     )
     print(json.dumps(result, indent=2, default=str))
     return result

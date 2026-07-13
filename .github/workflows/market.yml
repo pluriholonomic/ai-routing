@@ -2,10 +2,11 @@ name: market-comparison
 
 # The comparison monitor keeps raw source evidence and status records even when
 # optional credentialed feeds are absent. DefiLlama, public Akash provider/lease
-# feeds, Chutes deployment-configuration snapshots, and a dRPC bounded-finality
-# log window run without credentials. The public Ethereum fallback is never an
-# archive source; USD executable depth, market-wide CoW coverage, and Golem
-# remain visibly incomplete.
+# feeds, Chutes deployment-configuration snapshots, public Nosana aggregates,
+# Aethir dashboard aggregates, and a dRPC bounded-finality log window run
+# without credentials. The public Ethereum fallback is never an archive source;
+# USD executable depth, market-wide CoW coverage, and Golem remain visibly
+# incomplete.
 on:
   schedule:
     - cron: "29 * * * *"
@@ -38,7 +39,12 @@ jobs:
           AKASH_API_KEY: ${{ secrets.AKASH_API_KEY }}
           ORCAP_COW_TRADES_URL: ${{ vars.ORCAP_COW_TRADES_URL }}
           ORCAP_GOLEM_STATS_URL: ${{ vars.ORCAP_GOLEM_STATS_URL }}
-        run: uv run orcap market-capture --with-uniswap --with-akash --with-nosana
+        run: |
+          args=(orcap market-capture --with-uniswap --with-akash --with-nosana --with-aethir)
+          if [ "$(date -u +%H)" = "03" ]; then
+            args+=(--with-akash-provider-aggregates)
+          fi
+          uv run "${args[@]}"
       - name: validate required source health
         run: uv run orcap quality --profile market
       - name: push comparison data and source-run ledger

@@ -11,6 +11,7 @@ import base64
 import json
 import logging
 import os
+import re
 import tomllib
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -49,12 +50,22 @@ NOSANA_SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"
 NOSANA_NODES_PROGRAM_ID = "nosNeZR64wiEhQc5j251bsP4WqDabT6hmz4PHyoHLGD"
 NOSANA_EXPLORE_API_URL = "https://dashboard.k8s.prd.nos.ci/api"
 NOSANA_JOB_ACTIVITY_PERIOD_SECONDS = 86_400
+AETHIR_SUPPLY_DASHBOARD_URL = "https://dashboard.aethir.com/protocol/supply-metric"
+AETHIR_DEMAND_DASHBOARD_URL = "https://dashboard.aethir.com/protocol/demand-metric"
 # The documented Anchor discriminator for Nosana's NodeAccount. The base58
 # form is required by Solana's public ``getProgramAccounts`` memcmp filter.
 NOSANA_NODE_ACCOUNT_DISCRIMINATOR = bytes.fromhex("7da61292c37f56dc")
 NOSANA_NODE_ACCOUNT_DISCRIMINATOR_BASE58 = "N1x6kpVdXxo"
 AKASH_MARKET_PAGE_SIZE = max(1, int(os.environ.get("ORCAP_AKASH_MARKET_PAGE_SIZE", "1000")))
 AKASH_MARKET_MAX_PAGES = max(1, int(os.environ.get("ORCAP_AKASH_MARKET_MAX_PAGES", "25")))
+AKASH_CHOICE_MAX_ORDERS = max(
+    1, int(os.environ.get("ORCAP_AKASH_CHOICE_MAX_ORDERS", "25"))
+)
+AKASH_BID_EVENT_LOOKBACK_BLOCKS = max(
+    100, int(os.environ.get("ORCAP_AKASH_BID_EVENT_LOOKBACK_BLOCKS", "1000"))
+)
+AKASH_BID_EVENT_PAGE_SIZE = 100
+AKASH_BID_EVENT_MAX_PAGES = 10
 GECKOTERMINAL_POOL_URL = "https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_id}"
 CHUTES_MODELS_URL = "https://llm.chutes.ai/v1/models"
 CHUTES_DETAIL_URL = "https://api.chutes.ai/chutes/{chute_id}"
@@ -220,8 +231,11 @@ def _dynamic_bytes(data: Any, offset_index: int) -> str | None:
 
 def _uniswap_tick_lens_calldata(pool_id: str, word_position: int) -> str:
     """Encode TickLens's one-word populated-tick view call."""
-    return "0x" + UNISWAP_V3_TICK_LENS_SELECTOR + _abi_address(pool_id) + _abi_int(
-        word_position, bits=16
+    return (
+        "0x"
+        + UNISWAP_V3_TICK_LENS_SELECTOR
+        + _abi_address(pool_id)
+        + _abi_int(word_position, bits=16)
     )
 
 
@@ -240,10 +254,7 @@ def _multicall2_aggregate_calldata(calls: list[tuple[str, str]]) -> str:
             raise ValueError("Multicall calldata must be hexadecimal") from exc
         padded = data.ljust(((len(data) + 63) // 64) * 64, "0")
         encoded_calls.append(
-            _abi_address(target)
-            + _abi_uint(64)
-            + _abi_uint(len(data) // 2)
-            + padded
+            _abi_address(target) + _abi_uint(64) + _abi_uint(len(data) // 2) + padded
         )
     offsets, position = [], 32 * len(encoded_calls)
     for encoded in encoded_calls:
@@ -350,8 +361,8 @@ def _log_block_times(logs: list[dict[str, Any]]) -> dict[int, str]:
         timestamp = _hex_int(log_row.get("blockTimestamp"))
         if block_number is None or timestamp is None:
             continue
-        result[block_number] = datetime.fromtimestamp(timestamp, UTC).isoformat().replace(
-            "+00:00", "Z"
+        result[block_number] = (
+            datetime.fromtimestamp(timestamp, UTC).isoformat().replace("+00:00", "Z")
         )
     return result
 
@@ -781,6 +792,378 @@ def nosana_job_activity_rows(
     return rows
 
 
+_AETHIR_NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+
+
+def _aethir_literal(body: Any) -> str:
+    """Normalize Next.js's JSON-escaped server stream without evaluating it."""
+    return body.replace('\\"', '"') if isinstance(body, str) else ""
+
+
+def _aethir_number(body: Any, name: str) -> float | None:
+    """Extract one numeric field from Aethir's server-rendered public page."""
+    match = re.search(rf'"{re.escape(name)}":({_AETHIR_NUMBER})', _aethir_literal(body))
+    return _float(match.group(1)) if match else None
+
+
+def _aethir_array(body: Any, name: str) -> list[dict[str, Any]]:
+    """Decode an embedded, public dashboard array without executing page code."""
+    body = _aethir_literal(body)
+    marker = f'"{name}":'
+    start = body.find(marker)
+    if start < 0:
+        return []
+    try:
+        value, _ = json.JSONDecoder().raw_decode(body[start + len(marker) :])
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+
+def _aethir_series_count(body: Any, *names: str) -> dict[str, int]:
+    return {name: len(_aethir_array(body, name)) for name in names}
+
+
+def aethir_dashboard_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
+    """Normalize only public Aethir dashboard aggregates and dated source series.
+
+    This source has no publicly documented machine-readable API.  The dashboard
+    server-renders its aggregate cards and arrays, so the collector stores the
+    raw public pages and parses literal fields only.  It deliberately excludes
+    individual cloud-host, workload, buyer, or routing data.
+    """
+    if not isinstance(body, dict):
+        return []
+    supply = body.get("supply")
+    demand = body.get("demand")
+    if not isinstance(supply, str) or not isinstance(demand, str):
+        return []
+    rows: list[dict[str, Any]] = []
+    common = {
+        "run_ts": run_ts,
+        "dt": dt,
+        "source": "aethir_dashboard",
+        "venue": "aethir-public-gpu-dashboard",
+        "quality_tier": "public dashboard aggregate; source-defined network metric",
+    }
+
+    def emit(
+        metric: str,
+        value: Any,
+        *,
+        definition: str,
+        unit: str,
+        observation_type: str = "aggregate_snapshot",
+        bucket_period: str | None = None,
+        bucket_label: str | None = None,
+        bucket_unix_ms: int | None = None,
+        record: Any,
+    ) -> None:
+        number = _float(value)
+        if number is None or number < 0:
+            return
+        rows.append(
+            common
+            | {
+                "metric": metric,
+                "value": number,
+                "source_reported_unit": unit,
+                "observation_type": observation_type,
+                "source_bucket_period": bucket_period,
+                "source_bucket_label": bucket_label,
+                "source_bucket_unix_ms": bucket_unix_ms,
+                "metric_definition": definition,
+                "record_json": _json(record),
+            }
+        )
+
+    for field, metric, unit, definition in (
+        (
+            "nodes",
+            "source_reported_total_gpu_containers",
+            "containers",
+            "Aethir dashboard Total GPUs (Containers); a source-defined container count, not "
+            "verified physical GPUs, free capacity, an offer book, or delivered compute.",
+        ),
+        (
+            "locations",
+            "source_reported_gpu_countries",
+            "countries",
+            "Aethir dashboard GPUs Countries count; not region-specific available capacity or "
+            "a geographic demand measure.",
+        ),
+        (
+            "totalComputePower",
+            "source_reported_total_compute_power_tflops",
+            "tflops",
+            "Aethir dashboard Total Compute Power (Total TFlops); a source aggregate, not "
+            "model-specific throughput, capacity allocation, or a delivered FLOP measure.",
+        ),
+        (
+            "totalMonthlyCapacity",
+            "source_reported_monthly_player_capacity",
+            "source_defined_player_capacity",
+            "Aethir dashboard Total Monthly Capacity of Players in the source's own units; not "
+            "an observed customer count, a fill count, or a route allocation.",
+        ),
+        (
+            "idcStaked",
+            "source_reported_cloud_host_locked_ath",
+            "ath",
+            "Aethir dashboard Total Locked ATH by Cloud Hosts; collateral/token state, not "
+            "physical capacity, delivered service, or provider profit.",
+        ),
+        (
+            "totalOnlineHours",
+            "source_reported_compute_hours",
+            "hours",
+            "Aethir dashboard Compute Hours aggregate; source-defined hours, not independently "
+            "verified GPU-hours, LLM demand, utilization, or a routing-flow measure.",
+        ),
+        (
+            "totalRewards",
+            "source_reported_cloud_host_total_rewards_ath",
+            "ath",
+            "Aethir dashboard Proof of Capacity plus Proof of Delivery rewards; source-reported "
+            "ATH rewards, not USD revenue, realized price, or profit.",
+        ),
+        (
+            "totalServiceFee",
+            "source_reported_cloud_host_total_service_fee_ath",
+            "ath",
+            "Aethir dashboard Total Service Fee in its cloud-host earnings display; source-"
+            "reported ATH, not independently verified revenue, price, or profit.",
+        ),
+        (
+            "totalLockedRewards",
+            "source_reported_cloud_host_total_locked_rewards_ath",
+            "ath",
+            "Aethir dashboard source-reported locked cloud-host reward amount; not free "
+            "capacity, delivered compute, or provider profit.",
+        ),
+    ):
+        emit(
+            metric,
+            _aethir_number(supply, field),
+            unit=unit,
+            definition=definition,
+            record={"page": "supply-metric", "field": field},
+        )
+    for field, metric, unit, definition in (
+        (
+            "arr",
+            "source_reported_annual_recurring_revenue_usd",
+            "usd",
+            "Aethir dashboard Annual Recurring Revenue (ARR); source-reported USD, not an "
+            "audited revenue series, realized routing price, or welfare measure.",
+        ),
+        (
+            "onChainComputePurchases",
+            "source_reported_onchain_compute_purchases_ath",
+            "ath",
+            "Aethir dashboard Onchain Compute Purchases; source-reported ATH aggregate, not "
+            "individual purchases, tokenized GPU-hours, or a route-flow census.",
+        ),
+        (
+            "totalNetworkRevenue",
+            "source_reported_total_network_revenue_usd",
+            "usd",
+            "Aethir dashboard Total Network Revenue Since June 2024; source-reported USD, not "
+            "audited cash revenue, provider profit, or a comparable clearing-price series.",
+        ),
+        (
+            "totalComputeHoursDelivered",
+            "source_reported_total_compute_hours_delivered",
+            "hours",
+            "Aethir dashboard Total Compute Hours Delivered; source-defined aggregate, not "
+            "independently verified GPU-hours, LLM requests, tokens, or routing allocation.",
+        ),
+        (
+            "totalComputeHoursDeliveredLastWeek",
+            "source_reported_compute_hours_delivered_last_week",
+            "hours",
+            "Aethir dashboard Total Compute Hours Delivered Last Week; source-defined aggregate, "
+            "not independently verified GPU-hours, LLM requests, tokens, or routing allocation.",
+        ),
+    ):
+        emit(
+            metric,
+            _aethir_number(demand, field),
+            unit=unit,
+            definition=definition,
+            record={"page": "demand-metric", "field": field},
+        )
+
+    for series_name, label_field, value_fields, period, page, definition in (
+        (
+            "weeklyData",
+            "week",
+            (
+                ("reward", "source_reported_weekly_cloud_host_rewards_ath", "ath"),
+                ("service", "source_reported_weekly_cloud_host_service_fee_ath", "ath"),
+            ),
+            "weekly",
+            "supply-metric",
+            "Aethir dashboard cloud-host earnings component in the source-defined weekly "
+            "series; no year is supplied in the label, so it is retained as a label rather "
+            "than inferred as a dated causal observation.",
+        ),
+        (
+            "dailyData",
+            "day",
+            (
+                ("reward", "source_reported_daily_cloud_host_rewards_ath", "ath"),
+                ("service", "source_reported_daily_cloud_host_service_fee_ath", "ath"),
+            ),
+            "daily",
+            "supply-metric",
+            "Aethir dashboard cloud-host earnings component in the source-defined daily "
+            "series; no year is supplied in the label, so it is retained as a label rather "
+            "than inferred as a dated causal observation.",
+        ),
+        (
+            "monthlyData",
+            "month",
+            (
+                ("reward", "source_reported_monthly_cloud_host_rewards_ath", "ath"),
+                ("service", "source_reported_monthly_cloud_host_service_fee_ath", "ath"),
+            ),
+            "monthly",
+            "supply-metric",
+            "Aethir dashboard cloud-host earnings component in its dated monthly source "
+            "series; source-reported ATH, not audited revenue, provider profit, or price.",
+        ),
+    ):
+        for point in _aethir_array(supply, series_name):
+            label = str(point.get(label_field) or "") or None
+            bucket_ms = _integer(point.get("unixTimestamp"))
+            for field, metric, unit in value_fields:
+                emit(
+                    metric,
+                    point.get(field),
+                    unit=unit,
+                    observation_type="source_reported_time_bucket",
+                    bucket_period=period,
+                    bucket_label=label,
+                    bucket_unix_ms=bucket_ms,
+                    definition=definition,
+                    record={"page": page, "series": series_name, "point": point},
+                )
+
+    for series_name, label_field, value_field, metric, unit, period, definition in (
+        (
+            "weeklyNetworkRevenue",
+            "startDate",
+            "amount",
+            "source_reported_weekly_network_revenue_usd",
+            "usd",
+            "weekly",
+            "Aethir dashboard Weekly Network Revenue; source-reported USD series whose labels "
+            "omit a year, retained as labels rather than inferred dates or causal observations.",
+        ),
+        (
+            "monthlyNetworkRevenue",
+            "month",
+            "earning",
+            "source_reported_monthly_network_revenue_usd",
+            "usd",
+            "monthly",
+            "Aethir dashboard dated Monthly Network Revenue; source-reported USD, not audited "
+            "revenue, comparable clearing price, or provider profit.",
+        ),
+        (
+            "weeklyComputeHoursDelivered",
+            "startDate",
+            "amount",
+            "source_reported_weekly_compute_hours_delivered",
+            "hours",
+            "weekly",
+            "Aethir dashboard Weekly Compute Hours Delivered via its tenant portal; source-"
+            "defined hours, not independently verified GPU-hours, LLM routing, or utilization.",
+        ),
+    ):
+        for point in _aethir_array(demand, series_name):
+            label = str(point.get(label_field) or "") or None
+            emit(
+                metric,
+                point.get(value_field),
+                unit=unit,
+                observation_type="source_reported_time_bucket",
+                bucket_period=period,
+                bucket_label=label,
+                bucket_unix_ms=_integer(point.get("unixTimestamp")),
+                definition=definition,
+                record={"page": "demand-metric", "series": series_name, "point": point},
+            )
+    return rows
+
+
+async def capture_aethir_dashboard(
+    fetcher: Fetcher,
+    *,
+    supply_url: str | None = None,
+    demand_url: str | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Capture Aethir's public, server-rendered aggregate dashboard pages only."""
+    supply_url = _configured_url(
+        "ORCAP_AETHIR_SUPPLY_DASHBOARD_URL", supply_url or AETHIR_SUPPLY_DASHBOARD_URL
+    )
+    demand_url = _configured_url(
+        "ORCAP_AETHIR_DEMAND_DASHBOARD_URL", demand_url or AETHIR_DEMAND_DASHBOARD_URL
+    )
+    supply, demand = await asyncio.gather(
+        fetcher.get_text(supply_url), fetcher.get_text(demand_url)
+    )
+    supply_scalars = {
+        field: _aethir_number(supply, field)
+        for field in (
+            "nodes",
+            "locations",
+            "totalComputePower",
+            "totalMonthlyCapacity",
+            "idcStaked",
+            "totalOnlineHours",
+            "totalRewards",
+            "totalServiceFee",
+            "totalLockedRewards",
+        )
+    }
+    demand_scalars = {
+        field: _aethir_number(demand, field)
+        for field in (
+            "arr",
+            "onChainComputePurchases",
+            "totalNetworkRevenue",
+            "totalComputeHoursDelivered",
+            "totalComputeHoursDeliveredLastWeek",
+        )
+    }
+    supply_series = _aethir_series_count(supply, "weeklyData", "dailyData", "monthlyData")
+    demand_series = _aethir_series_count(
+        demand, "weeklyNetworkRevenue", "monthlyNetworkRevenue", "weeklyComputeHoursDelivered"
+    )
+    query_succeeded = (
+        all(value is not None and value >= 0 for value in supply_scalars.values())
+        and all(value is not None and value >= 0 for value in demand_scalars.values())
+        and all(count > 0 for count in supply_series.values())
+        and all(count > 0 for count in demand_series.values())
+    )
+    return {"supply": supply, "demand": demand}, {
+        "query_succeeded": query_succeeded,
+        "supply_url": supply_url,
+        "demand_url": demand_url,
+        "supply_scalar_fields": len(supply_scalars),
+        "demand_scalar_fields": len(demand_scalars),
+        "supply_series_records": supply_series,
+        "demand_series_records": demand_series,
+        "metric_boundary": (
+            "public Aethir dashboard aggregates and source-reported time buckets only; no "
+            "cloud-host, buyer, workload, individual transaction, LLM request, token, route, "
+            "verified GPU-hour, independently measured utilization, or causal welfare data"
+        ),
+    }
+
+
 async def capture_nosana_job_activity(
     fetcher: Fetcher,
     *,
@@ -884,9 +1267,7 @@ def chutes_capacity_rows(
             continue
         model = model_by_chute_id.get(str(chute_id), {})
         selector = (
-            detail.get("node_selector")
-            if isinstance(detail.get("node_selector"), dict)
-            else {}
+            detail.get("node_selector") if isinstance(detail.get("node_selector"), dict) else {}
         )
         instances = detail.get("instances") if isinstance(detail.get("instances"), list) else []
         active_instances = sum(
@@ -1134,13 +1515,17 @@ def uniswap_rows(
 
 def _uniswap_quoter_calldata(spec: dict[str, Any], amount_in_raw: int) -> str:
     """Encode QuoterV2's one-tuple exact-input quote without a web3 dependency."""
-    return "0x" + UNISWAP_V3_QUOTE_EXACT_INPUT_SINGLE_SELECTOR + "".join(
-        (
-            _abi_address(spec["token0_address"]),
-            _abi_address(spec["token1_address"]),
-            _abi_uint(amount_in_raw),
-            _abi_uint(int(spec["fee"]), bits=24),
-            _abi_uint(0, bits=160),
+    return (
+        "0x"
+        + UNISWAP_V3_QUOTE_EXACT_INPUT_SINGLE_SELECTOR
+        + "".join(
+            (
+                _abi_address(spec["token0_address"]),
+                _abi_address(spec["token1_address"]),
+                _abi_uint(amount_in_raw),
+                _abi_uint(int(spec["fee"]), bits=24),
+                _abi_uint(0, bits=160),
+            )
         )
     )
 
@@ -1493,14 +1878,19 @@ def uniswap_rpc_log_rows(
             "finalized": True,
         }
         if topic0 == UNISWAP_V3_SWAP_TOPIC:
-            amount0_raw, amount1_raw = _signed_word(log_row.get("data"), 0), _signed_word(
-                log_row.get("data"), 1
+            amount0_raw, amount1_raw = (
+                _signed_word(log_row.get("data"), 0),
+                _signed_word(log_row.get("data"), 1),
             )
             sqrt_price_x96 = _word(log_row.get("data"), 2)
             liquidity_after = _word(log_row.get("data"), 3)
             tick = _signed_word(log_row.get("data"), 4)
-            if amount0_raw is None or amount1_raw is None or not (
-                (amount0_raw > 0 and amount1_raw < 0) or (amount1_raw > 0 and amount0_raw < 0)
+            if (
+                amount0_raw is None
+                or amount1_raw is None
+                or not (
+                    (amount0_raw > 0 and amount1_raw < 0) or (amount1_raw > 0 and amount0_raw < 0)
+                )
             ):
                 continue
             amount0 = amount0_raw / 10 ** spec["token0_decimals"]
@@ -1675,8 +2065,9 @@ def cow_rpc_log_rows(
             continue
         if topic0 != GPV2_TRADE_TOPIC:
             continue
-        sell_token, buy_token = _address_word(log_row.get("data"), 0), _address_word(
-            log_row.get("data"), 1
+        sell_token, buy_token = (
+            _address_word(log_row.get("data"), 0),
+            _address_word(log_row.get("data"), 1),
         )
         sell_amount, buy_amount, fee_amount = (
             _word(log_row.get("data"), 2),
@@ -1698,9 +2089,7 @@ def cow_rpc_log_rows(
             "fee_amount_raw": str(fee_amount),
             "order_uid": order_uid,
         }
-        normalized = _cow_usdc_weth_execution_fields(
-            sell_token, buy_token, sell_amount, buy_amount
-        )
+        normalized = _cow_usdc_weth_execution_fields(sell_token, buy_token, sell_amount, buy_amount)
         record_json = _json({"log": log_row, "parsed": parsed})
         executions.append(
             {
@@ -1753,8 +2142,7 @@ def cow_rpc_log_rows(
             }
         )
         events.append(
-            event_base
-            | {"event_type": "trade", "solver_id": solver, "record_json": record_json}
+            event_base | {"event_type": "trade", "solver_id": solver, "record_json": record_json}
         )
     return executions, events
 
@@ -1854,6 +2242,209 @@ def akash_market_list_url(
     if page_key:
         params["pagination.key"] = page_key
     return f"{AKASH_MARKET_API_URL}/{kind}/list?{urlencode(params)}"
+
+
+def akash_order_bid_list_url(identifier: dict[str, Any], page_key: str | None = None) -> str:
+    """Query all currently retained bid states for one immutable Akash order."""
+    required = ("owner", "dseq", "gseq", "oseq")
+    if any(identifier.get(field) is None for field in required):
+        raise ValueError("Akash order identifier is incomplete")
+    params = {
+        f"filters.{field}": str(identifier[field])
+        for field in required
+    } | {"pagination.limit": str(AKASH_MARKET_PAGE_SIZE)}
+    if page_key:
+        params["pagination.key"] = page_key
+    return f"{AKASH_MARKET_API_URL}/bids/list?{urlencode(params)}"
+
+
+async def capture_akash_lease_choice_sets(
+    fetcher: Fetcher,
+    lease_records: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Retrospectively query every retained bid for recent accepted leases.
+
+    This is stronger than an open-book snapshot because the selected bid is
+    public.  It is still a post-selection chain-state query: losing bids that
+    the chain has already pruned cannot be recovered and are never imputed.
+    """
+    latest = await fetcher.get_json(AKASH_LATEST_BLOCK_URL)
+    snapshot = akash_market_snapshot_metadata(latest)
+    if snapshot is None:
+        return [], {
+            "coverage_complete": False,
+            "reason": "latest_block_metadata_unavailable",
+            "snapshot_height": None,
+            "snapshot_time": None,
+        }
+    orders: dict[str, dict[str, Any]] = {}
+    selected_bid_ids: dict[str, set[str]] = {}
+    for item in lease_records:
+        lease = (
+            item.get("lease")
+            if isinstance(item, dict) and isinstance(item.get("lease"), dict)
+            else item
+        )
+        if not isinstance(lease, dict):
+            continue
+        identifier = lease.get("id")
+        order_id = _akash_order_id(identifier)
+        bid_id = _lease_id(lease)
+        if order_id is None or bid_id is None or not isinstance(identifier, dict):
+            continue
+        orders[order_id] = {
+            field: identifier.get(field) for field in ("owner", "dseq", "gseq", "oseq")
+        }
+        selected_bid_ids.setdefault(order_id, set()).add(bid_id)
+    selected_orders = sorted(orders)[:AKASH_CHOICE_MAX_ORDERS]
+    headers = {"x-cosmos-block-height": snapshot["height"]}
+
+    async def capture_order(order_id: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        page_key: str | None = None
+        for page in range(1, AKASH_MARKET_MAX_PAGES + 1):
+            body = await fetcher.get_json(
+                akash_order_bid_list_url(orders[order_id], page_key=page_key),
+                headers=headers,
+            )
+            records = body.get("bids") if isinstance(body, dict) else None
+            if not isinstance(records, list) or not all(
+                isinstance(record, dict) for record in records
+            ):
+                return [], {
+                    "order_id": order_id,
+                    "complete": False,
+                    "reason": "invalid_page_response",
+                    "pages_fetched": page,
+                    "records_fetched": len(rows),
+                }
+            rows.extend(records)
+            pagination = body.get("pagination") or {}
+            next_key = pagination.get("next_key") if isinstance(pagination, dict) else None
+            if not next_key:
+                return rows, {
+                    "order_id": order_id,
+                    "complete": True,
+                    "reason": None,
+                    "pages_fetched": page,
+                    "records_fetched": len(rows),
+                    "selected_bid_ids": sorted(selected_bid_ids[order_id]),
+                }
+            page_key = str(next_key)
+        return [], {
+            "order_id": order_id,
+            "complete": False,
+            "reason": "pagination_cap_exceeded",
+            "pages_fetched": AKASH_MARKET_MAX_PAGES,
+            "records_fetched": len(rows),
+        }
+
+    if not selected_orders:
+        return [], {
+            "coverage_complete": False,
+            "reason": "no_recent_leases_with_complete_ids",
+            "snapshot_height": snapshot["height"],
+            "snapshot_time": snapshot["time"],
+        }
+    results = await asyncio.gather(*(capture_order(order_id) for order_id in selected_orders))
+    complete_results = [result for result in results if result[1]["complete"]]
+    incomplete = [detail for _, detail in results if not detail["complete"]]
+    payloads = [
+        {
+            "order_id": detail["order_id"],
+            "selected_bid_ids": detail["selected_bid_ids"],
+            "records": records,
+        }
+        for records, detail in complete_results
+    ]
+    return payloads, {
+        "coverage_complete": not incomplete and len(complete_results) == len(selected_orders),
+        "reason": "order_bid_query_incomplete" if incomplete else None,
+        "snapshot_height": snapshot["height"],
+        "snapshot_time": snapshot["time"],
+        "lease_orders_available": len(orders),
+        "orders_requested": len(selected_orders),
+        "orders_complete": len(complete_results),
+        "orders_capped": len(orders) > AKASH_CHOICE_MAX_ORDERS,
+        "max_orders_per_run": AKASH_CHOICE_MAX_ORDERS,
+        "bid_records_fetched": sum(detail["records_fetched"] for _, detail in complete_results),
+        "incomplete_order_details": incomplete,
+        "post_selection_query": True,
+        "retention_boundary": (
+            "complete pagination of bid records retained by current chain state for each "
+            "queried recent lease order; bids already pruned before capture are not observable"
+        ),
+    }
+
+
+def akash_bid_event_search_url(start_height: int, end_height: int, page: int) -> str:
+    if start_height < 0 or end_height < start_height or page < 1:
+        raise ValueError("invalid Akash bid-event search window")
+    query = (
+        "message.action='/akash.market.v1beta5.MsgCreateBid' "
+        f"AND tx.height>{start_height} AND tx.height<={end_height}"
+    )
+    params = {
+        "query": json.dumps(query),
+        "page": json.dumps(str(page)),
+        "per_page": json.dumps(str(AKASH_BID_EVENT_PAGE_SIZE)),
+        "order_by": json.dumps("asc"),
+    }
+    return f"{AKASH_RPC_URL}/tx_search?{urlencode(params)}"
+
+
+async def capture_akash_bid_events(
+    fetcher: Fetcher, end_height: int
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Capture a complete bounded window of indexed public bid-create events."""
+    start_height = max(0, end_height - AKASH_BID_EVENT_LOOKBACK_BLOCKS)
+    pages: list[dict[str, Any]] = []
+    total_count: int | None = None
+    for page in range(1, AKASH_BID_EVENT_MAX_PAGES + 1):
+        body = await fetcher.get_json(akash_bid_event_search_url(start_height, end_height, page))
+        result = body.get("result") if isinstance(body, dict) else None
+        txs = result.get("txs") if isinstance(result, dict) else None
+        try:
+            source_total = int(result.get("total_count")) if isinstance(result, dict) else None
+        except (TypeError, ValueError):
+            source_total = None
+        if not isinstance(txs, list) or source_total is None or source_total < 0:
+            return [], {
+                "coverage_complete": False,
+                "reason": "invalid_tx_search_page",
+                "start_height_exclusive": start_height,
+                "end_height_inclusive": end_height,
+                "failed_page": page,
+            }
+        if total_count is None:
+            total_count = source_total
+        elif source_total != total_count:
+            return [], {
+                "coverage_complete": False,
+                "reason": "tx_search_total_changed_during_pagination",
+                "start_height_exclusive": start_height,
+                "end_height_inclusive": end_height,
+                "failed_page": page,
+            }
+        pages.append(body)
+        if len(txs) < AKASH_BID_EVENT_PAGE_SIZE or page * AKASH_BID_EVENT_PAGE_SIZE >= total_count:
+            return pages, {
+                "coverage_complete": True,
+                "reason": None,
+                "start_height_exclusive": start_height,
+                "end_height_inclusive": end_height,
+                "pages_fetched": page,
+                "transactions_fetched": sum(len(p["result"]["txs"]) for p in pages),
+                "source_total_count": total_count,
+            }
+    return [], {
+        "coverage_complete": False,
+        "reason": "tx_search_pagination_cap_exceeded",
+        "start_height_exclusive": start_height,
+        "end_height_inclusive": end_height,
+        "pages_fetched": AKASH_BID_EVENT_MAX_PAGES,
+        "source_total_count": total_count,
+    }
 
 
 async def capture_akash_open_market(
@@ -2313,6 +2904,164 @@ def akash_open_bid_rows(
     return rows
 
 
+def akash_lease_choice_bid_rows(
+    payloads: list[dict[str, Any]], snapshot: dict[str, Any], run_ts: str, dt: str
+) -> list[dict[str, Any]]:
+    """Normalize post-selection bid sets and mark the publicly accepted contract."""
+    rows = []
+    for payload in payloads:
+        order_id = payload.get("order_id") if isinstance(payload, dict) else None
+        records = payload.get("records") if isinstance(payload, dict) else None
+        selected = (
+            set(payload.get("selected_bid_ids") or []) if isinstance(payload, dict) else set()
+        )
+        if not isinstance(order_id, str) or not isinstance(records, list) or not selected:
+            continue
+        for record in records:
+            bid = (
+                record.get("bid")
+                if isinstance(record, dict) and isinstance(record.get("bid"), dict)
+                else record
+            )
+            if not isinstance(bid, dict):
+                continue
+            identifier = bid.get("id")
+            bid_id = _akash_bid_id(identifier)
+            if bid_id is None or _akash_order_id(identifier) != order_id:
+                continue
+            for index, offer in enumerate(bid.get("resources_offer") or []):
+                if not isinstance(offer, dict):
+                    continue
+                row = _akash_market_row(
+                    run_ts=run_ts,
+                    dt=dt,
+                    snapshot=snapshot,
+                    order_id=order_id,
+                    bid_id=bid_id,
+                    owner=(identifier or {}).get("owner"),
+                    provider=(identifier or {}).get("provider"),
+                    state=bid.get("state"),
+                    resource_index=index,
+                    resource=offer.get("resources"),
+                    count=offer.get("count"),
+                    price=bid.get("price"),
+                    record=record,
+                    book_side="retained_post_selection_bid",
+                )
+                if row is None:
+                    continue
+                row.update(
+                    {
+                        "choice_set_id": f"{order_id}@{snapshot.get('snapshot_height')}",
+                        "selected_contract": bid_id in selected,
+                        "selected_bid_ids_json": _json(sorted(selected)),
+                        "choice_set_pagination_complete": True,
+                        "post_selection_query": True,
+                        "metric_definition": (
+                            "Complete paginated bid records still retained by public Akash "
+                            "chain state for a recent lease order, with the accepted contract "
+                            "marked from the public lease ID. This is post-selection state: "
+                            "already-pruned losing bids, workload delivery, and user routing "
+                            "are not observed."
+                        ),
+                    }
+                )
+                rows.append(row)
+    return rows
+
+
+def akash_bid_event_rows(
+    pages: list[dict[str, Any]],
+    detail: dict[str, Any],
+    selected_bid_ids: set[str],
+    gpu_order_ids: set[str],
+    run_ts: str,
+    dt: str,
+) -> list[dict[str, Any]]:
+    """Normalize indexed bid-create events for recent selected GPU orders."""
+    if detail.get("coverage_complete") is not True:
+        return []
+    rows = []
+    seen: set[tuple[str, str]] = set()
+    for page in pages:
+        result = page.get("result") if isinstance(page, dict) else None
+        for tx in result.get("txs", []) if isinstance(result, dict) else []:
+            tx_result = tx.get("tx_result") if isinstance(tx, dict) else None
+            if not isinstance(tx_result, dict) or int(tx_result.get("code") or 0) != 0:
+                continue
+            for event in tx_result.get("events") or []:
+                if (
+                    not isinstance(event, dict)
+                    or event.get("type") != "akash.market.v1.EventBidCreated"
+                ):
+                    continue
+                attributes = {
+                    item.get("key"): item.get("value")
+                    for item in event.get("attributes") or []
+                    if isinstance(item, dict)
+                }
+                try:
+                    identifier = json.loads(attributes.get("id"))
+                    price = json.loads(attributes.get("price"))
+                except (TypeError, json.JSONDecodeError):
+                    continue
+                order_id = _akash_order_id(identifier)
+                bid_id = _akash_bid_id(identifier)
+                amount = _float(price.get("amount")) if isinstance(price, dict) else None
+                denom = price.get("denom") if isinstance(price, dict) else None
+                if (
+                    order_id not in gpu_order_ids
+                    or bid_id is None
+                    or amount is None
+                    or amount < 0
+                    or not isinstance(denom, str)
+                    or not denom
+                ):
+                    continue
+                identity = (str(tx.get("hash")), bid_id)
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                rows.append(
+                    {
+                        "run_ts": run_ts,
+                        "dt": dt,
+                        "source": "akash",
+                        "venue": "akash-network",
+                        "choice_set_source": "indexed_bid_create_events",
+                        "choice_set_id": (
+                            f"{order_id}@events:{detail.get('start_height_exclusive')}:"
+                            f"{detail.get('end_height_inclusive')}"
+                        ),
+                        "order_id": order_id,
+                        "bid_id": bid_id,
+                        "provider": identifier.get("provider"),
+                        "bid_created_block": int(tx.get("height")),
+                        "transaction_hash": tx.get("hash"),
+                        "transaction_index": _integer(tx.get("index")),
+                        "native_price_amount": amount,
+                        "native_price_denom": denom,
+                        "native_price_unit": "native_per_block",
+                        "selected_contract": bid_id in selected_bid_ids,
+                        "event_window_start_height_exclusive": detail.get(
+                            "start_height_exclusive"
+                        ),
+                        "event_window_end_height_inclusive": detail.get(
+                            "end_height_inclusive"
+                        ),
+                        "event_window_complete": True,
+                        "metric_definition": (
+                            "Public indexed Akash bid-create transaction for a recent GPU lease "
+                            "order; the complete bounded event window restores bids that may no "
+                            "longer appear in current state. It does not observe workload "
+                            "delivery, utilization, user routing, cost, profit, or welfare."
+                        ),
+                        "record_json": _json(event),
+                    }
+                )
+    return rows
+
+
 def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
     """Return live, version-valid *GPU* capacity observations from Akash.
 
@@ -2338,9 +3087,7 @@ def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]
         stats = item.get("stats") or {}
         gpu = stats.get("gpu") or {}
         total = _first_number(gpu.get("total"), item.get("total"), item.get("capacity"))
-        available = _first_number(
-            gpu.get("available"), item.get("available"), item.get("capacity")
-        )
+        available = _first_number(gpu.get("available"), item.get("available"), item.get("capacity"))
         used = _first_number(gpu.get("active"), item.get("used"))
         # Missing boolean flags occur in lightweight test fixtures and older
         # responses.  Explicit false is a meaningful exclusion; missing is
@@ -2856,11 +3603,15 @@ async def _capture_uniswap_rpc_logs(
     )
     latest_block = _hex_int(latest_raw)
     if latest_block is None:
-        return [], {}, {
-            "rpc_configured": True,
-            "rpc_mode": rpc_mode,
-            "error": latest_error or "invalid latest block",
-        }
+        return (
+            [],
+            {},
+            {
+                "rpc_configured": True,
+                "rpc_mode": rpc_mode,
+                "error": latest_error or "invalid latest block",
+            },
+        )
     finality_blocks = _bounded_int_env(
         "ORCAP_ETHEREUM_FINALITY_BLOCKS",
         DEFAULT_ETHEREUM_FINALITY_BLOCKS,
@@ -2875,13 +3626,17 @@ async def _capture_uniswap_rpc_logs(
     )
     finalized_through = latest_block - finality_blocks
     if finalized_through < 0:
-        return [], {}, {
-            "rpc_configured": True,
-            "rpc_mode": rpc_mode,
-            "latest_block": latest_block,
-            "finality_blocks": finality_blocks,
-            "error": "chain height is below requested finality depth",
-        }
+        return (
+            [],
+            {},
+            {
+                "rpc_configured": True,
+                "rpc_mode": rpc_mode,
+                "latest_block": latest_block,
+                "finality_blocks": finality_blocks,
+                "error": "chain height is below requested finality depth",
+            },
+        )
     from_block = max(0, finalized_through - window_blocks + 1)
     result, logs_error = await _ethereum_rpc(
         fetcher,
@@ -2940,9 +3695,7 @@ async def _capture_uniswap_rpc_logs(
     }
     detail["block_timestamp_rows"] = sum(value is not None for value in block_times.values())
     detail["log_metadata_timestamp_rows"] = sum(
-        block_number not in {
-            key for key, value in header_block_times.items() if value is not None
-        }
+        block_number not in {key for key, value in header_block_times.items() if value is not None}
         and value is not None
         for block_number, value in block_times.items()
     )
@@ -3087,9 +3840,7 @@ async def _capture_uniswap_tick_book(
         sqrt_price_x96, current_tick = _word(slot0_data, 0), _signed_word(slot0_data, 1)
         active_liquidity_raw = _word(liquidity_data, 0)
         state_errors = [
-            error
-            for error in (spacing_error, slot0_error, liquidity_error)
-            if error is not None
+            error for error in (spacing_error, slot0_error, liquidity_error) if error is not None
         ]
         if (
             state_errors
@@ -3163,8 +3914,7 @@ async def _capture_uniswap_tick_book(
                         or (tick // tick_spacing) // 256 != word_position
                     ):
                         error = (
-                            "invalid or duplicate initialized tick in bitmap word "
-                            f"{word_position}"
+                            f"invalid or duplicate initialized tick in bitmap word {word_position}"
                         )
                         break
                     seen_ticks.add(tick)
@@ -3216,9 +3966,7 @@ async def _capture_uniswap_tick_book(
         "batch_words": batch_words,
         "max_rows_per_pool": max_rows_per_pool,
         "pool_details": pool_details,
-        "completed_pool_count": sum(
-            detail["complete"] for detail in pool_details.values()
-        ),
+        "completed_pool_count": sum(detail["complete"] for detail in pool_details.values()),
         "initialized_tick_rows": len(all_records),
     }
 
@@ -3313,11 +4061,15 @@ async def _capture_cow_rpc_logs(
     )
     latest_block = _hex_int(latest_raw)
     if latest_block is None:
-        return [], {}, {
-            "rpc_configured": True,
-            "rpc_mode": rpc_mode,
-            "error": latest_error or "invalid latest block",
-        }
+        return (
+            [],
+            {},
+            {
+                "rpc_configured": True,
+                "rpc_mode": rpc_mode,
+                "error": latest_error or "invalid latest block",
+            },
+        )
     finality_blocks = _bounded_int_env(
         "ORCAP_ETHEREUM_FINALITY_BLOCKS",
         DEFAULT_ETHEREUM_FINALITY_BLOCKS,
@@ -3332,13 +4084,17 @@ async def _capture_cow_rpc_logs(
     )
     finalized_through = latest_block - finality_blocks
     if finalized_through < 0:
-        return [], {}, {
-            "rpc_configured": True,
-            "rpc_mode": rpc_mode,
-            "latest_block": latest_block,
-            "finality_blocks": finality_blocks,
-            "error": "chain height is below requested finality depth",
-        }
+        return (
+            [],
+            {},
+            {
+                "rpc_configured": True,
+                "rpc_mode": rpc_mode,
+                "latest_block": latest_block,
+                "finality_blocks": finality_blocks,
+                "error": "chain height is below requested finality depth",
+            },
+        )
     from_block = max(0, finalized_through - window_blocks + 1)
     result, logs_error = await _ethereum_rpc(
         fetcher,
@@ -3394,9 +4150,7 @@ async def _capture_cow_rpc_logs(
     }
     detail["block_timestamp_rows"] = sum(value is not None for value in block_times.values())
     detail["log_metadata_timestamp_rows"] = sum(
-        block_number not in {
-            key for key, value in header_block_times.items() if value is not None
-        }
+        block_number not in {key for key, value in header_block_times.items() if value is not None}
         and value is not None
         for block_number, value in block_times.items()
     )
@@ -3428,14 +4182,18 @@ async def capture_markets(
     *,
     with_uniswap: bool = False,
     with_akash: bool = False,
+    with_akash_open_book: bool = False,
     with_akash_provider_aggregates: bool = False,
     with_nosana: bool = False,
+    with_aethir: bool = False,
     raw_dir: Path = RAW_DIR,
     curated_dir: Path = CURATED_DIR,
 ) -> dict[str, Any]:
     run_ts, dt = run_timestamp(), dt_partition()
     if with_akash_provider_aggregates and not with_akash:
         raise ValueError("with_akash_provider_aggregates requires with_akash")
+    if with_akash_open_book and not with_akash:
+        raise ValueError("with_akash_open_book requires with_akash")
     async with make_client() as client:
         fetcher = Fetcher(client, rps=1.0)
         ethereum_rpc_url, ethereum_rpc_record_url, ethereum_rpc_mode = _ethereum_rpc_config()
@@ -3527,13 +4285,15 @@ async def capture_markets(
                 ),
             )
         if with_uniswap:
-            uniswap_rpc_logs, uniswap_block_times, uniswap_rpc_detail = (
-                await _capture_uniswap_rpc_logs(
-                    fetcher,
-                    ethereum_rpc_url,
-                    record_url=ethereum_rpc_record_url,
-                    rpc_mode=ethereum_rpc_mode,
-                )
+            (
+                uniswap_rpc_logs,
+                uniswap_block_times,
+                uniswap_rpc_detail,
+            ) = await _capture_uniswap_rpc_logs(
+                fetcher,
+                ethereum_rpc_url,
+                record_url=ethereum_rpc_record_url,
+                rpc_mode=ethereum_rpc_mode,
             )
             uniswap_quoter_records, uniswap_quoter_detail = await _capture_uniswap_quoter_quotes(
                 fetcher,
@@ -3559,14 +4319,15 @@ async def capture_markets(
             cow_rpc_logs, cow_block_times, run_ts, dt
         )
         if with_uniswap and cow_rpc_detail.get("log_query_succeeded") is True:
-            cow_amm_counterfactual_records, cow_amm_counterfactual_detail = (
-                await _capture_cow_amm_preblock_quotes(
-                    fetcher,
-                    ethereum_rpc_url,
-                    cow_rpc_executions,
-                    record_url=ethereum_rpc_record_url,
-                    rpc_mode=ethereum_rpc_mode,
-                )
+            (
+                cow_amm_counterfactual_records,
+                cow_amm_counterfactual_detail,
+            ) = await _capture_cow_amm_preblock_quotes(
+                fetcher,
+                ethereum_rpc_url,
+                cow_rpc_executions,
+                record_url=ethereum_rpc_record_url,
+                rpc_mode=ethereum_rpc_mode,
             )
 
         akash = None
@@ -3580,11 +4341,23 @@ async def capture_markets(
             "reason": "flag_not_set",
         }
         akash_open_bids: list[dict[str, Any]] = []
+        akash_choice_payloads: list[dict[str, Any]] = []
+        akash_bid_event_pages: list[dict[str, Any]] = []
         akash_market_detail: dict[str, Any] = {
             "coverage_complete": False,
             "reason": "flag_not_set",
             "snapshot_height": None,
             "snapshot_time": None,
+        }
+        akash_choice_detail: dict[str, Any] = {
+            "coverage_complete": False,
+            "reason": "flag_not_set",
+            "snapshot_height": None,
+            "snapshot_time": None,
+        }
+        akash_bid_event_detail: dict[str, Any] = {
+            "coverage_complete": False,
+            "reason": "flag_not_set",
         }
         akash_block_times: dict[int, str | None] = {}
         akash_url = _configured_url("ORCAP_AKASH_NETWORK_URL", AKASH_CONSOLE_PROVIDERS_URL)
@@ -3608,9 +4381,18 @@ async def capture_markets(
                 ),
             )
             live_gpu_providers = akash_live_gpu_provider_ids(akash)
-            akash_open_bids, akash_market_detail = await capture_akash_open_market(
-                fetcher, live_gpu_providers
-            )
+            if with_akash_open_book:
+                akash_open_bids, akash_market_detail = await capture_akash_open_market(
+                    fetcher, live_gpu_providers
+                )
+            else:
+                akash_market_detail = {
+                    "coverage_complete": False,
+                    "reason": "provider_wide_diagnostic_not_requested",
+                    "snapshot_height": None,
+                    "snapshot_time": None,
+                    "provider_count": len(live_gpu_providers),
+                }
             if with_akash_provider_aggregates:
                 history_days = _bounded_int_env(
                     "ORCAP_AKASH_PROVIDER_HISTORY_DAYS",
@@ -3624,6 +4406,14 @@ async def capture_markets(
                 ) = await capture_akash_provider_aggregates(fetcher, live_gpu_providers)
                 akash_provider_aggregate_detail["history_days"] = history_days
             lease_records = _as_list(akash_leases, "leases", "data")
+            akash_choice_payloads, akash_choice_detail = await capture_akash_lease_choice_sets(
+                fetcher, lease_records
+            )
+            choice_snapshot_height = _integer(akash_choice_detail.get("snapshot_height"))
+            if choice_snapshot_height is not None:
+                akash_bid_event_pages, akash_bid_event_detail = await capture_akash_bid_events(
+                    fetcher, choice_snapshot_height
+                )
             heights = sorted(
                 {
                     block
@@ -3651,6 +4441,10 @@ async def capture_markets(
         if with_nosana:
             nosana_body, nosana_detail = await capture_nosana_node_registry(fetcher)
             nosana_jobs_body, nosana_jobs_detail = await capture_nosana_job_activity(fetcher)
+        aethir_body: dict[str, Any] | None = None
+        aethir_detail: dict[str, Any] = {"query_succeeded": False, "reason": "flag_not_set"}
+        if with_aethir:
+            aethir_body, aethir_detail = await capture_aethir_dashboard(fetcher)
         write_raw(fetcher.records, "market_sources", raw_dir, run_ts, dt)
 
     participants = defillama_participant_rows(defillama, run_ts, dt)
@@ -3662,14 +4456,10 @@ async def capture_markets(
         cow_rpc_executions if cow_rpc_detail["rpc_configured"] else configured_cow_executions
     )
     cow_rpc_participants = cow_rpc_participant_rows(cow_rpc_executions)
-    cow_participants, cow_competition_events = cow_competition_rows(
-        cow_competition, run_ts, dt
-    )
+    cow_participants, cow_competition_events = cow_competition_rows(cow_competition, run_ts, dt)
     golem_capacity = golem_capacity_rows(golem, run_ts, dt)
     chutes_capacity = chutes_capacity_rows(chutes_models, chutes_details, run_ts, dt)
-    graph_uni_quotes, graph_uni_executions, graph_uni_events = uniswap_rows(
-        uniswap, run_ts, dt
-    )
+    graph_uni_quotes, graph_uni_executions, graph_uni_events = uniswap_rows(uniswap, run_ts, dt)
     quoter_uni_quotes = uniswap_quoter_quote_rows(uniswap_quoter_records, run_ts, dt)
     quoter_uni_impact_capacity = uniswap_quoter_impact_capacity_rows(
         uniswap_quoter_records, run_ts, dt
@@ -3705,11 +4495,34 @@ async def capture_markets(
             akash_provider_aggregate_detail.get("history_days", DEFAULT_AKASH_PROVIDER_HISTORY_DAYS)
         ),
     )
-    akash_open_bid_book = akash_open_bid_rows(
-        akash_open_bids, akash_market_detail, run_ts, dt
+    akash_open_bid_book = akash_open_bid_rows(akash_open_bids, akash_market_detail, run_ts, dt)
+    akash_choice_bids = akash_lease_choice_bid_rows(
+        akash_choice_payloads, akash_choice_detail, run_ts, dt
+    )
+    selected_lease_bid_ids = {
+        lease_id
+        for item in _as_list(akash_leases, "leases", "data")
+        if isinstance(item, dict)
+        for lease in [item.get("lease") if isinstance(item.get("lease"), dict) else item]
+        for lease_id in [_lease_id(lease)]
+        if lease_id is not None
+    }
+    gpu_choice_order_ids = {row["order_id"] for row in akash_choice_bids}
+    akash_bid_events = akash_bid_event_rows(
+        akash_bid_event_pages,
+        akash_bid_event_detail,
+        selected_lease_bid_ids,
+        gpu_choice_order_ids,
+        run_ts,
+        dt,
     )
     nosana_nodes = nosana_node_registry_rows(nosana_body, run_ts, dt)
     nosana_job_activity = nosana_job_activity_rows(nosana_jobs_body, run_ts, dt)
+    aethir_dashboard = (
+        aethir_dashboard_rows(aethir_body, run_ts, dt)
+        if aethir_detail.get("query_succeeded") is True
+        else []
+    )
     instrument_map = instrument_map_rows(run_ts, dt)
     _write(
         participants + cow_participants + cow_rpc_participants,
@@ -3775,6 +4588,20 @@ async def capture_markets(
         curated_dir,
     )
     _write(
+        akash_choice_bids,
+        "akash_market_choice_bids",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        akash_bid_events,
+        "akash_market_bid_events",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
         nosana_nodes,
         "nosana_node_registry",
         run_ts,
@@ -3784,6 +4611,13 @@ async def capture_markets(
     _write(
         nosana_job_activity,
         "nosana_job_activity",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        aethir_dashboard,
+        "aethir_dashboard",
         run_ts,
         dt,
         curated_dir,
@@ -4001,7 +4835,13 @@ async def capture_markets(
         market_rows = int(akash_market_detail.get("bid_records_fetched") or 0)
         write_source_run(
             "akash_market_book",
-            status="success" if akash_market_detail.get("coverage_complete") else "degraded",
+            status=(
+                "success"
+                if akash_market_detail.get("coverage_complete")
+                else "degraded"
+                if with_akash_open_book
+                else "skipped"
+            ),
             rows=market_rows,
             run_ts=run_ts,
             dt=dt,
@@ -4013,6 +4853,60 @@ async def capture_markets(
                     "open_gpu_bids": len(akash_open_bid_book),
                 },
                 **akash_market_detail,
+            },
+            curated_dir=curated_dir,
+        )
+        write_source_run(
+            "akash_choice_sets",
+            status=(
+                "success"
+                if akash_choice_detail.get("coverage_complete") and len(akash_choice_bids) > 0
+                else "degraded"
+            ),
+            rows=len(akash_choice_bids),
+            watermark=str(akash_choice_detail.get("snapshot_height") or run_ts),
+            run_ts=run_ts,
+            dt=dt,
+            detail={
+                "url": AKASH_MARKET_API_URL,
+                "query_scope": "all bid states retained for recent public lease orders",
+                "gpu_choice_bid_rows": len(akash_choice_bids),
+                "selected_gpu_bid_rows": sum(
+                    bool(row["selected_contract"]) for row in akash_choice_bids
+                ),
+                "metric_boundary": (
+                    "post-selection public chain state for recent lease orders; already-pruned "
+                    "bids, workload delivery, LLM routing, cost, and welfare are not observed"
+                ),
+                **akash_choice_detail,
+            },
+            curated_dir=curated_dir,
+        )
+        write_source_run(
+            "akash_bid_events",
+            status=(
+                "success"
+                if akash_bid_event_detail.get("coverage_complete")
+                and len(akash_bid_events) > 0
+                else "degraded"
+            ),
+            rows=len(akash_bid_events),
+            watermark=str(akash_bid_event_detail.get("end_height_inclusive") or run_ts),
+            run_ts=run_ts,
+            dt=dt,
+            detail={
+                "url": f"{AKASH_RPC_URL}/tx_search",
+                "gpu_order_count": len(gpu_choice_order_ids),
+                "bid_event_rows": len(akash_bid_events),
+                "selected_bid_event_rows": sum(
+                    bool(row["selected_contract"]) for row in akash_bid_events
+                ),
+                "metric_boundary": (
+                    "complete bounded indexed bid-create event window for recent public GPU "
+                    "lease orders; not workload delivery, utilization, user routing, cost, "
+                    "profit, or welfare"
+                ),
+                **akash_bid_event_detail,
             },
             curated_dir=curated_dir,
         )
@@ -4028,6 +4922,22 @@ async def capture_markets(
         )
         write_source_run(
             "akash_market_book",
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail={"reason": "flag not set"},
+            curated_dir=curated_dir,
+        )
+        write_source_run(
+            "akash_choice_sets",
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail={"reason": "flag not set"},
+            curated_dir=curated_dir,
+        )
+        write_source_run(
+            "akash_bid_events",
             status="skipped",
             run_ts=run_ts,
             dt=dt,
@@ -4098,6 +5008,33 @@ async def capture_markets(
             curated_dir=curated_dir,
         )
 
+    if with_aethir:
+        dashboard_complete = (
+            aethir_detail.get("query_succeeded") is True and len(aethir_dashboard) > 0
+        )
+        write_source_run(
+            "aethir_dashboard",
+            status="success" if dashboard_complete else "degraded",
+            rows=len(aethir_dashboard),
+            run_ts=run_ts,
+            dt=dt,
+            detail={
+                "rows_written": {"aethir_dashboard": len(aethir_dashboard)},
+                "aggregate_response_complete": dashboard_complete,
+                **aethir_detail,
+            },
+            curated_dir=curated_dir,
+        )
+    else:
+        write_source_run(
+            "aethir_dashboard",
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail={"reason": "flag not set"},
+            curated_dir=curated_dir,
+        )
+
     summary = {
         "run_ts": run_ts,
         "dt": dt,
@@ -4130,10 +5067,16 @@ async def capture_markets(
         "akash_provider_aggregates": akash_provider_aggregate_detail,
         "akash_open_gpu_bid_rows": len(akash_open_bid_book),
         "akash_market_book": akash_market_detail,
+        "akash_choice_bid_rows": len(akash_choice_bids),
+        "akash_choice_sets": akash_choice_detail,
+        "akash_bid_event_rows": len(akash_bid_events),
+        "akash_bid_events": akash_bid_event_detail,
         "nosana_node_registry_rows": len(nosana_nodes),
         "nosana_node_registry": nosana_detail,
         "nosana_job_activity_rows": len(nosana_job_activity),
         "nosana_job_activity": nosana_jobs_detail,
+        "aethir_dashboard_rows": len(aethir_dashboard),
+        "aethir_dashboard": aethir_detail,
     }
     log.info("market-source capture complete: %s", summary)
     return summary
@@ -4142,8 +5085,10 @@ async def capture_markets(
 def main(
     with_uniswap: bool = False,
     with_akash: bool = False,
+    with_akash_open_book: bool = False,
     with_akash_provider_aggregates: bool = False,
     with_nosana: bool = False,
+    with_aethir: bool = False,
 ) -> dict[str, Any]:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -4151,8 +5096,10 @@ def main(
         capture_markets(
             with_uniswap=with_uniswap,
             with_akash=with_akash,
+            with_akash_open_book=with_akash_open_book,
             with_akash_provider_aggregates=with_akash_provider_aggregates,
             with_nosana=with_nosana,
+            with_aethir=with_aethir,
         )
     )
     print(json.dumps(result, indent=2))

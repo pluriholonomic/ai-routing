@@ -130,6 +130,30 @@ def main() -> None:
     p_openrouter_usage.add_argument("--start-date", default=None, help="YYYY-MM-DD")
     p_openrouter_usage.add_argument("--end-date", default=None, help="YYYY-MM-DD")
 
+    p_openrouter_apps = sub.add_parser(
+        "capture-openrouter-apps",
+        help="capture top public OpenRouter apps for each requested UTC day",
+    )
+    p_openrouter_apps.add_argument("--start-date", default=None, help="YYYY-MM-DD")
+    p_openrouter_apps.add_argument("--end-date", default=None, help="YYYY-MM-DD")
+    p_openrouter_apps.add_argument(
+        "--sort", choices=["popular", "trending"], default="popular"
+    )
+    p_openrouter_apps.add_argument(
+        "--category",
+        choices=["coding", "creative", "productivity", "entertainment"],
+        default=None,
+    )
+    p_openrouter_apps.add_argument("--subcategory", default=None)
+
+    p_bittensor = sub.add_parser(
+        "capture-bittensor",
+        help="capture block-pinned public Bittensor subnet scoring and reward state",
+    )
+    p_bittensor.add_argument("--netuid", type=int, default=64)
+    p_bittensor.add_argument("--mechid", type=int, default=0)
+    p_bittensor.add_argument("--network", default="finney")
+
     sub.add_parser("capture-devrel", help="snapshot npm/pypi/github/HN developer-adoption stats")
 
     p_market = sub.add_parser(
@@ -144,6 +168,11 @@ def main() -> None:
         "--with-akash", action="store_true", help="query configured Akash network endpoint"
     )
     p_market.add_argument(
+        "--with-akash-open-book",
+        action="store_true",
+        help="run the expensive provider-wide open-bid diagnostic (not for hourly CI)",
+    )
+    p_market.add_argument(
         "--with-akash-provider-aggregates",
         action="store_true",
         help="capture public Akash aggregate provider lease-history and dashboard metrics",
@@ -152,6 +181,11 @@ def main() -> None:
         "--with-nosana",
         action="store_true",
         help="query public on-chain Nosana registered-node state",
+    )
+    p_market.add_argument(
+        "--with-aethir",
+        action="store_true",
+        help="capture public Aethir aggregate dashboard metrics",
     )
 
     p_quality = sub.add_parser("quality", help="check source freshness and run-health ledger")
@@ -376,6 +410,20 @@ def main() -> None:
         from .capture_openrouter_datasets import main as openrouter_usage_main
 
         openrouter_usage_main(start_date=args.start_date, end_date=args.end_date)
+    elif args.command == "capture-openrouter-apps":
+        from .capture_openrouter_datasets import app_main as openrouter_apps_main
+
+        openrouter_apps_main(
+            start_date=args.start_date,
+            end_date=args.end_date,
+            sort=args.sort,
+            category=args.category,
+            subcategory=args.subcategory,
+        )
+    elif args.command == "capture-bittensor":
+        from .capture_bittensor import main as bittensor_main
+
+        bittensor_main(netuid=args.netuid, mechid=args.mechid, network=args.network)
     elif args.command == "capture-devrel":
         from .capture_devrel import main as devrel_main
 
@@ -386,8 +434,10 @@ def main() -> None:
         market_main(
             with_uniswap=args.with_uniswap,
             with_akash=args.with_akash,
+            with_akash_open_book=args.with_akash_open_book,
             with_akash_provider_aggregates=args.with_akash_provider_aggregates,
             with_nosana=args.with_nosana,
+            with_aethir=args.with_aethir,
         )
     elif args.command == "register-routing-study":
         from .study_registry import register_main
@@ -490,6 +540,10 @@ def main() -> None:
             "h68": "h68_router_enforcement",
             "h69": "h69_experiment_readiness",
             "h70": "h70_preselection_information",
+            "h71": "h71_model_competition",
+            "h72": "h72_openrouter_apps",
+            "h75": "h75_bittensor_allocation",
+            "h76": "h76_akash_lease_choice",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

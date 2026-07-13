@@ -1,0 +1,48 @@
+name: bittensor-allocation
+
+# Public Chutes subnet scoring/reward state.  This is a read-only chain query,
+# not an inference request or wallet operation.
+on:
+  schedule:
+    - cron: "12 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      netuid:
+        description: "Bittensor subnet UID"
+        default: "64"
+      mechid:
+        description: "incentive mechanism ID"
+        default: "0"
+
+concurrency:
+  group: bittensor-allocation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev --extra bittensor
+      - name: capture full public metagraph
+        run: >-
+          uv run --extra bittensor orcap capture-bittensor
+          --netuid "${{ github.event.inputs.netuid || '64' }}"
+          --mechid "${{ github.event.inputs.mechid || '0' }}"
+          --network finney
+      - name: validate Bittensor source health
+        run: uv run --extra bittensor orcap quality --profile bittensor --fail-on-degraded
+      - name: push block-pinned scoring state
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run --extra bittensor orcap push
+          --message "Bittensor Chutes metagraph ${{ github.run_id }}"
+          --delete-local

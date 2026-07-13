@@ -1,0 +1,68 @@
+name: marketplace-history
+
+# Read-only aggregate history.  This workflow sends no inference requests.
+# Scheduled runs capture the latest closed UTC day.  Manual runs may backfill
+# at most 200 app-ranking days so the OpenRouter account's documented daily
+# request limit cannot be exceeded by one job.
+on:
+  schedule:
+    - cron: "19 6 * * *"
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "first UTC source day (YYYY-MM-DD; empty = yesterday)"
+        default: ""
+      end_date:
+        description: "last UTC source day, inclusive (max 200 days)"
+        default: ""
+
+concurrency:
+  group: marketplace-history
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: resolve requested source dates
+        id: dates
+        shell: bash
+        run: |
+          start="${{ github.event.inputs.start_date }}"
+          end="${{ github.event.inputs.end_date }}"
+          if [ -z "$start" ]; then
+            start=$(date -u -d yesterday +%F)
+          fi
+          if [ -z "$end" ]; then
+            end="$start"
+          fi
+          echo "start=$start" >> "$GITHUB_OUTPUT"
+          echo "end=$end" >> "$GITHUB_OUTPUT"
+      - name: capture documented model and public-app aggregates
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          uv run orcap capture-openrouter-usage \
+            --start-date "${{ steps.dates.outputs.start }}" \
+            --end-date "${{ steps.dates.outputs.end }}"
+          uv run orcap capture-openrouter-apps \
+            --start-date "${{ steps.dates.outputs.start }}" \
+            --end-date "${{ steps.dates.outputs.end }}"
+      - name: validate aggregate-history source health
+        run: uv run orcap quality --profile marketplace_history --fail-on-degraded
+      - name: push immutable raw and curated history
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run orcap push
+          --message "marketplace history ${{ steps.dates.outputs.start }} to ${{ steps.dates.outputs.end }} run ${{ github.run_id }}"
+          --delete-local

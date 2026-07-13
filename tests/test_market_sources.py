@@ -23,20 +23,26 @@ from orcap.capture_markets import (
     _uniswap_tick_book_word_positions,
     _uniswap_tick_lens_calldata,
     _write,
+    aethir_dashboard_rows,
+    akash_bid_event_rows,
+    akash_bid_event_search_url,
     akash_capacity_rows,
     akash_dashboard_rows,
     akash_gpu_quote_rows,
+    akash_lease_choice_bid_rows,
     akash_lease_execution_rows,
     akash_live_gpu_provider_ids,
     akash_market_list_url,
     akash_market_snapshot_metadata,
     akash_open_bid_rows,
-    akash_registry_summary,
+    akash_order_bid_list_url,
     akash_provider_aggregate_rows,
+    akash_registry_summary,
+    capture_aethir_dashboard,
     capture_akash_open_market,
+    capture_akash_provider_aggregates,
     capture_nosana_job_activity,
     capture_nosana_node_registry,
-    capture_akash_provider_aggregates,
     chutes_capacity_rows,
     cow_amm_preblock_quote_rows,
     cow_competition_rows,
@@ -49,13 +55,15 @@ from orcap.capture_markets import (
     instrument_map_rows,
     nosana_job_activity_rows,
     nosana_node_registry_rows,
-    main as market_main,
     uniswap_pool_specs,
     uniswap_quoter_impact_capacity_rows,
     uniswap_quoter_quote_rows,
     uniswap_rows,
     uniswap_rpc_log_rows,
     uniswap_tick_book_rows,
+)
+from orcap.capture_markets import (
+    main as market_main,
 )
 from orcap.http import Fetcher
 
@@ -77,6 +85,128 @@ def test_blank_actions_url_override_uses_public_default(monkeypatch):
     )
 
 
+def _aethir_dashboard_body():
+    supply = {
+        "nodes": 435_114,
+        "locations": 94,
+        "totalComputePower": 38_508_977.44,
+        "totalMonthlyCapacity": 638_256_960,
+        "idcStaked": 870_612_680.58,
+        "totalOnlineHours": 3_112_174_797,
+        "totalRewards": 2_832_898_028.05,
+        "totalServiceFee": 7_165_188_114.83,
+        "totalLockedRewards": 1_879_300_142.73,
+        "weeklyData": [{"week": "05/07", "reward": 2, "service": 3}],
+        "dailyData": [{"day": "08/07", "reward": 4, "service": 5}],
+        "monthlyData": [
+            {
+                "month": "June, 2026",
+                "reward": 6,
+                "service": 7,
+                "unixTimestamp": 1_780_272_000_000,
+            }
+        ],
+    }
+    demand = {
+        "arr": 47_005_536.33,
+        "onChainComputePurchases": 8_966_385_012.22,
+        "totalNetworkRevenue": 180_896_834.7,
+        "totalComputeHoursDelivered": 2_170_227_315.24,
+        "totalComputeHoursDeliveredLastWeek": 22_428_281.45,
+        "weeklyNetworkRevenue": [{"startDate": "29/06", "amount": 850_680.61}],
+        "monthlyNetworkRevenue": [{"month": "June, 2026", "earning": 3_917_128.03}],
+        "weeklyComputeHoursDelivered": [{"startDate": "29/06", "amount": 22_428_281}],
+    }
+    return {
+        "supply": "<html>" + json.dumps(supply, separators=(",", ":")) + "</html>",
+        "demand": "<html>" + json.dumps(demand, separators=(",", ":")) + "</html>",
+    }
+
+
+def test_aethir_dashboard_parser_keeps_source_aggregate_supply_demand_and_bucket_labels():
+    rows = aethir_dashboard_rows(_aethir_dashboard_body(), "20260710T000000Z", "2026-07-10")
+    assert len(rows) == 23
+    metrics = {row["metric"] for row in rows}
+    assert "source_reported_total_gpu_containers" in metrics
+    assert "source_reported_total_compute_hours_delivered" in metrics
+    assert "source_reported_monthly_network_revenue_usd" in metrics
+    assert "source_reported_weekly_compute_hours_delivered" in metrics
+    monthly = next(
+        row for row in rows if row["metric"] == "source_reported_monthly_cloud_host_rewards_ath"
+    )
+    assert monthly["source_bucket_label"] == "June, 2026"
+    assert monthly["source_bucket_unix_ms"] == 1_780_272_000_000
+    assert (
+        "not audited revenue"
+        in next(
+            row for row in rows if row["metric"] == "source_reported_monthly_network_revenue_usd"
+        )["metric_definition"]
+    )
+    assert all("cloud_host_id" not in row["record_json"] for row in rows)
+
+
+def test_aethir_dashboard_parser_accepts_json_escaped_nextjs_public_series():
+    body = _aethir_dashboard_body()
+    escaped = {key: value.replace('"', '\\"') for key, value in body.items()}
+
+    rows = aethir_dashboard_rows(escaped, "20260710T000000Z", "2026-07-10")
+
+    assert len(rows) == 23
+    assert any(row["metric"] == "source_reported_weekly_network_revenue_usd" for row in rows)
+
+
+def test_aethir_dashboard_capture_uses_only_public_aggregate_pages_without_auth():
+    async def run():
+        body = _aethir_dashboard_body()
+
+        def handler(request):
+            assert request.method == "GET"
+            assert "authorization" not in request.headers
+            assert request.url.path in {"/supply", "/demand"}
+            text = body["supply"] if request.url.path == "/supply" else body["demand"]
+            return httpx.Response(200, text=text)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await capture_aethir_dashboard(
+                Fetcher(client),
+                supply_url="https://aethir.example/supply",
+                demand_url="https://aethir.example/demand",
+            )
+
+    body, detail = asyncio.run(run())
+    assert set(body) == {"supply", "demand"}
+    assert detail["query_succeeded"] is True
+    assert detail["supply_series_records"] == {
+        "weeklyData": 1,
+        "dailyData": 1,
+        "monthlyData": 1,
+    }
+    assert detail["demand_series_records"] == {
+        "weeklyNetworkRevenue": 1,
+        "monthlyNetworkRevenue": 1,
+        "weeklyComputeHoursDelivered": 1,
+    }
+    assert "no cloud-host" in detail["metric_boundary"]
+
+
+def test_aethir_dashboard_capture_fails_closed_when_a_required_public_field_is_missing():
+    class Fetcher:
+        async def get_text(self, url):
+            body = _aethir_dashboard_body()
+            if url.endswith("supply"):
+                return body["supply"].replace('"nodes":435114', '"nodes":"unknown"')
+            return body["demand"]
+
+    _, detail = asyncio.run(
+        capture_aethir_dashboard(
+            Fetcher(),
+            supply_url="https://aethir.example/supply",
+            demand_url="https://aethir.example/demand",
+        )
+    )
+    assert detail["query_succeeded"] is False
+
+
 def test_nosana_node_registry_parser_keeps_declared_profiles_distinct_from_capacity():
     header = (
         bytes.fromhex("7da61292c37f56dc")
@@ -96,9 +226,7 @@ def test_nosana_node_registry_parser_keeps_declared_profiles_distinct_from_capac
             "result": [
                 {
                     "pubkey": "node-account",
-                    "account": {
-                        "data": [base64.b64encode(header).decode("ascii"), "base64"]
-                    },
+                    "account": {"data": [base64.b64encode(header).decode("ascii"), "base64"]},
                 }
             ],
         },
@@ -128,9 +256,7 @@ def test_nosana_node_registry_capture_uses_public_header_only_json_rpc_request()
             config = body["params"][1]
             assert config["withContext"] is True
             assert config["dataSlice"] == {"offset": 0, "length": 54}
-            assert config["filters"] == [
-                {"memcmp": {"offset": 0, "bytes": "N1x6kpVdXxo"}}
-            ]
+            assert config["filters"] == [{"memcmp": {"offset": 0, "bytes": "N1x6kpVdXxo"}}]
             return httpx.Response(
                 200,
                 json={
@@ -141,7 +267,9 @@ def test_nosana_node_registry_capture_uses_public_header_only_json_rpc_request()
             )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            body, detail = await capture_nosana_node_registry(Fetcher(client), url="https://solana.example/")
+            body, detail = await capture_nosana_node_registry(
+                Fetcher(client), url="https://solana.example/"
+            )
         return body, detail
 
     body, detail = asyncio.run(run())
@@ -178,9 +306,7 @@ def _nosana_job_activity_body():
 
 
 def test_nosana_job_activity_parser_keeps_only_aggregate_activity_and_market_counts():
-    rows = nosana_job_activity_rows(
-        _nosana_job_activity_body(), "20260710T000000Z", "2026-07-10"
-    )
+    rows = nosana_job_activity_rows(_nosana_job_activity_body(), "20260710T000000Z", "2026-07-10")
     assert len(rows) == 15
     metrics = {row["metric"] for row in rows}
     assert "source_reported_indexer_completed_jobs" in metrics
@@ -189,9 +315,7 @@ def test_nosana_job_activity_parser_keeps_only_aggregate_activity_and_market_cou
     assert "source_reported_job_duration_hours_bucket" in metrics
     market_rows = [row for row in rows if row["market_id"] == "market-a"]
     assert market_rows[0]["value"] == 2
-    duration = [
-        row for row in rows if row["metric"] == "source_reported_job_duration_hours_bucket"
-    ]
+    duration = [row for row in rows if row["metric"] == "source_reported_job_duration_hours_bucket"]
     assert duration[0]["source_bucket_unix_ms"] == 1_783_678_200_000
     assert "not independently verified GPU-hours" in duration[0]["metric_definition"]
     assert all("jobDefinition" not in row["record_json"] for row in rows)
@@ -205,17 +329,13 @@ def test_nosana_job_activity_capture_uses_only_public_aggregate_endpoints():
             "/api/jobs/count": body["counts"],
             "/api/jobs/running": body["running"],
             "/api/jobs/stats/timestamps?period=86400": body["/jobs/stats/timestamps"],
-            "/api/jobs/stats/timestamps-hours?period=86400": body[
-                "/jobs/stats/timestamps-hours"
-            ],
+            "/api/jobs/stats/timestamps-hours?period=86400": body["/jobs/stats/timestamps-hours"],
         }
 
         def handler(request):
             assert request.method == "GET"
             assert "authorization" not in request.headers
-            key = request.url.path + (
-                f"?{request.url.query.decode()}" if request.url.query else ""
-            )
+            key = request.url.path + (f"?{request.url.query.decode()}" if request.url.query else "")
             assert key in expected
             return httpx.Response(200, json=expected[key])
 
@@ -245,12 +365,12 @@ def test_nosana_job_activity_accepts_a_coherent_zero_running_market_response():
                 "/jobs/count": body["counts"],
                 "/jobs/running": body["running"],
                 "/jobs/stats/timestamps?period=86400": body["/jobs/stats/timestamps"],
-                "/jobs/stats/timestamps-hours?period=86400": body[
-                    "/jobs/stats/timestamps-hours"
-                ],
+                "/jobs/stats/timestamps-hours?period=86400": body["/jobs/stats/timestamps-hours"],
             }[endpoint]
 
-    _, detail = asyncio.run(capture_nosana_job_activity(Fetcher(), url="https://nosana.example/api"))
+    _, detail = asyncio.run(
+        capture_nosana_job_activity(Fetcher(), url="https://nosana.example/api")
+    )
     assert detail["query_succeeded"] is True
     assert detail["running_market_records"] == 0
     assert detail["running_jobs_sum_across_markets"] == 0
@@ -571,9 +691,11 @@ def test_market_union_table_keeps_later_source_specific_columns(tmp_path):
         "value",
     ]
     _write(table.to_pylist(), "market_participants", "20260710T000000Z", "2026-07-10", tmp_path)
-    row = ParquetFile(
-        tmp_path / "market_participants" / "dt=2026-07-10" / "20260710T000000Z.parquet"
-    ).read().to_pylist()[1]
+    row = (
+        ParquetFile(tmp_path / "market_participants" / "dt=2026-07-10" / "20260710T000000Z.parquet")
+        .read()
+        .to_pylist()[1]
+    )
     assert row["competition_score"] == 2.0
     assert row["is_winner"] is True
 
@@ -998,6 +1120,7 @@ def test_market_main_forwards_akash_provider_aggregate_flag(monkeypatch, capsys)
     result = market_main(with_akash=True, with_akash_provider_aggregates=True)
 
     assert result["with_akash"] is True
+    assert result["with_akash_open_book"] is False
     assert result["with_akash_provider_aggregates"] is True
     assert "with_akash_provider_aggregates" in capsys.readouterr().out
 
@@ -1020,9 +1143,7 @@ def test_akash_lease_lifecycle_preserves_native_rate_without_claiming_workload_s
                         "closed_on": "99",
                         "price": {"denom": "uakt", "amount": "12.5"},
                     },
-                    "escrow_payment": {
-                        "state": {"withdrawn": {"denom": "uakt", "amount": "20"}}
-                    },
+                    "escrow_payment": {"state": {"withdrawn": {"denom": "uakt", "amount": "20"}}},
                 }
             ]
         },
@@ -1122,6 +1243,138 @@ def test_akash_open_market_url_requires_known_book_side_and_encodes_page_cursor(
         akash_market_list_url("leases", filters={"filters.state": "open"})
     with pytest.raises(ValueError, match="restrict state"):
         akash_market_list_url("bids", filters={"filters.state": "closed"})
+
+
+def test_akash_choice_set_url_queries_all_retained_bid_states_for_exact_order():
+    url = akash_order_bid_list_url(
+        {"owner": "tenant", "dseq": "1", "gseq": 2, "oseq": 3}, page_key="a+/="
+    )
+    assert "filters.owner=tenant" in url
+    assert "filters.dseq=1" in url
+    assert "filters.gseq=2" in url
+    assert "filters.oseq=3" in url
+    assert "filters.state" not in url
+    assert "pagination.key=a%2B%2F%3D" in url
+
+
+def test_akash_bid_event_search_is_bounded_and_json_encodes_comet_query():
+    url = akash_bid_event_search_url(100, 200, 1)
+    assert "tx_search" in url
+    assert "MsgCreateBid" in url
+    assert "tx.height%3E100" in url
+    assert "tx.height%3C%3D200" in url
+
+
+def test_akash_bid_events_recover_losing_price_for_selected_gpu_order():
+    selected = "tenant/1/2/3/winner/7"
+    events = []
+    for provider, amount in [("loser", "4.0"), ("winner", "5.0")]:
+        events.append(
+            {
+                "type": "akash.market.v1.EventBidCreated",
+                "attributes": [
+                    {
+                        "key": "id",
+                        "value": json.dumps(
+                            {
+                                "owner": "tenant",
+                                "dseq": "1",
+                                "gseq": 2,
+                                "oseq": 3,
+                                "provider": provider,
+                                "bseq": 7,
+                            }
+                        ),
+                    },
+                    {"key": "price", "value": json.dumps({"denom": "uact", "amount": amount})},
+                ],
+            }
+        )
+    pages = [
+        {
+            "result": {
+                "txs": [
+                    {
+                        "hash": "tx",
+                        "height": "150",
+                        "index": 0,
+                        "tx_result": {"code": 0, "events": events},
+                    }
+                ],
+                "total_count": "1",
+            }
+        }
+    ]
+    rows = akash_bid_event_rows(
+        pages,
+        {
+            "coverage_complete": True,
+            "start_height_exclusive": 100,
+            "end_height_inclusive": 200,
+        },
+        {selected},
+        {"tenant/1/2/3"},
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+
+    assert len(rows) == 2
+    assert sum(row["selected_contract"] for row in rows) == 1
+    loser = next(row for row in rows if row["provider"] == "loser")
+    assert loser["native_price_amount"] == 4.0
+    assert loser["event_window_complete"] is True
+    assert "restores bids" in loser["metric_definition"]
+
+
+def test_akash_choice_rows_mark_selected_public_lease_without_claiming_workload_delivery():
+    order_id = "tenant/1/2/3"
+    bid_records = []
+    for provider, amount, state in [("selected", "4.5", "active"), ("other", "4.0", "closed")]:
+        bid_records.append(
+            {
+                "bid": {
+                    "id": {
+                        "owner": "tenant",
+                        "dseq": "1",
+                        "gseq": 2,
+                        "oseq": 3,
+                        "provider": provider,
+                        "bseq": 7,
+                    },
+                    "state": state,
+                    "price": {"denom": "uact", "amount": amount},
+                    "resources_offer": [
+                        {
+                            "count": 1,
+                            "resources": {
+                                "gpu": {"units": {"val": "1"}, "attributes": []},
+                                "cpu": {"units": {"val": "1000"}},
+                                "memory": {"quantity": {"val": "1000"}},
+                            },
+                        }
+                    ],
+                }
+            }
+        )
+    rows = akash_lease_choice_bid_rows(
+        [
+            {
+                "order_id": order_id,
+                "selected_bid_ids": [f"{order_id}/selected/7"],
+                "records": bid_records,
+            }
+        ],
+        {"snapshot_height": "42", "snapshot_time": "2026-07-10T00:00:00Z"},
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+
+    assert len(rows) == 2
+    selected = next(row for row in rows if row["selected_contract"])
+    assert selected["provider"] == "selected"
+    assert selected["choice_set_pagination_complete"] is True
+    assert selected["post_selection_query"] is True
+    assert "already-pruned losing bids" in selected["metric_definition"]
 
 
 def test_akash_live_gpu_provider_ids_follow_the_existing_live_capacity_filter():
