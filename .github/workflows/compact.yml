@@ -57,7 +57,10 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 4
+      # Hugging Face commits advance one branch. Serialize small shards so a
+      # downloader never resolves files against a revision another shard is
+      # concurrently replacing; each shard is independently bounded to 60m.
+      max-parallel: 1
       matrix:
         shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
