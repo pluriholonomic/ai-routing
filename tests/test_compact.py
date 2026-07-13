@@ -1,7 +1,12 @@
 import pyarrow as pa
 import pytest
 
-from orcap.compact import TRACKED_PRICE_FIELDS, _shard_tables, fold_pricing_changes
+from orcap.compact import (
+    TRACKED_PRICE_FIELDS,
+    _shard_tables,
+    bundle_curated_partitions,
+    fold_pricing_changes,
+)
 
 
 def _row(run_ts, model="m/x", provider="P", tag="p/fp8", prompt=1e-7, completion=4e-7, fp="abc123"):
@@ -102,3 +107,36 @@ def test_table_shards_validate_paired_bounds():
         _shard_tables(["a"], shard_index=0, shard_count=None)
     with pytest.raises(ValueError):
         _shard_tables(["a"], shard_index=2, shard_count=2)
+
+
+def test_bundle_curated_partitions_uses_stable_name_and_migration_guard(tmp_path):
+    import pyarrow.parquet as pq
+
+    old = tmp_path / "curated" / "source_runs" / "dt=2026-07-13"
+    new = tmp_path / "curated" / "source_runs" / "dt=2026-07-14"
+    old.mkdir(parents=True)
+    new.mkdir(parents=True)
+    pq.write_table(pa.table({"run_ts": ["old-a"]}), old / "a.parquet")
+    pq.write_table(pa.table({"run_ts": ["old-b"]}), old / "b.parquet")
+    pq.write_table(pa.table({"run_ts": ["new-a"]}), new / "a.parquet")
+    pq.write_table(pa.table({"run_ts": ["new-b"]}), new / "b.parquet")
+
+    result = bundle_curated_partitions(tmp_path, min_dt="2026-07-14")
+
+    assert sorted(path.name for path in old.glob("*.parquet")) == ["a.parquet", "b.parquet"]
+    assert [path.name for path in new.glob("*.parquet")] == ["buffered-part.parquet"]
+    assert pq.read_table(new / "buffered-part.parquet").num_rows == 2
+    assert result["source_files_removed"] == 2
+
+    # A later assembly replaces the same future remote object and incorporates
+    # its existing rows instead of creating a second bundle path.
+    pq.write_table(pa.table({"run_ts": ["new-c"]}), new / "c.parquet")
+    rerun = bundle_curated_partitions(tmp_path, min_dt="2026-07-14")
+    assert [path.name for path in new.glob("*.parquet")] == ["buffered-part.parquet"]
+    assert pq.read_table(new / "buffered-part.parquet").num_rows == 3
+    assert rerun["source_files_removed"] == 1
+
+
+def test_bundle_curated_partitions_rejects_non_filename_bundle_name(tmp_path):
+    with pytest.raises(ValueError):
+        bundle_curated_partitions(tmp_path, bundle_name="nested/part.parquet")

@@ -49,6 +49,11 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           ./scripts/assemble_artifacts.sh 26 data
+          # Per-run files already uploaded before this migration boundary must
+          # remain unbundled to avoid duplicating them. New UTC partitions use
+          # one stable object per table/day before their first remote upload.
+          uv run python scripts/bundle_curated_artifacts.py \
+            --data-dir data --min-dt 2026-07-14
           uv run orcap push --message "daily consolidated push ${{ github.run_id }}" --delete-local
 
   compact:
@@ -81,3 +86,4 @@ jobs:
           --dt "${{ github.event.inputs.dt }}"
           --shard-index "${{ matrix.shard }}"
           --shard-count 8
+          --exclude-table source_runs

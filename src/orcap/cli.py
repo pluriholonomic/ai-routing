@@ -201,6 +201,12 @@ def main() -> None:
     p_compact.add_argument("--dt", default=None, help="UTC day (default: yesterday)")
     p_compact.add_argument("--shard-index", type=int, default=None)
     p_compact.add_argument("--shard-count", type=int, default=None)
+    p_compact.add_argument(
+        "--exclude-table",
+        action="append",
+        default=[],
+        help="curated table to leave intact (repeatable)",
+    )
 
     p_defi = sub.add_parser("defi", help="pull DeFi comparator series (BigQuery + Coinbase)")
     p_defi.add_argument("--force", action="store_true", help="refresh caches")
@@ -470,6 +476,7 @@ def main() -> None:
             dt=args.dt,
             shard_index=args.shard_index,
             shard_count=args.shard_count,
+            exclude_tables=set(args.exclude_table),
         )
     elif args.command == "backfill":
         from .backfill import main as backfill_main

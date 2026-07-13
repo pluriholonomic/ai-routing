@@ -72,6 +72,57 @@ def consolidate_table_day(table_dir: Path) -> tuple[Path | None, list[Path]]:
     return out, per_run
 
 
+def bundle_curated_partitions(
+    data_dir: Path,
+    *,
+    min_dt: str | None = None,
+    bundle_name: str = "buffered-part.parquet",
+) -> dict[str, Any]:
+    """Bundle artifact-backed curated partitions before their first Hub upload.
+
+    ``bundle_name`` is stable across prepare-job reruns, so a later, more
+    complete 26-hour artifact assembly overwrites the same remote object rather
+    than adding a duplicate copy of the earlier rows. ``min_dt`` is a migration
+    guard: partitions already uploaded as per-run files must be left alone and
+    compacted remotely once.
+    """
+    if Path(bundle_name).name != bundle_name or not bundle_name.endswith(".parquet"):
+        raise ValueError("bundle_name must be a parquet filename without directories")
+    if min_dt is not None:
+        datetime.strptime(min_dt, "%Y-%m-%d")
+
+    curated = data_dir / "curated"
+    row_counts: dict[str, int] = {}
+    files_removed = 0
+    for table_dir in sorted(curated.glob("*/dt=*")):
+        dt = table_dir.name.removeprefix("dt=")
+        if min_dt is not None and dt < min_dt:
+            continue
+        files = sorted(table_dir.glob("*.parquet"))
+        if not files:
+            continue
+        tables = [pq.ParquetFile(path).read() for path in files]
+        merged = pa.concat_tables(tables, promote_options="permissive")
+        target = table_dir / bundle_name
+        temporary = table_dir / f".{bundle_name}.tmp"
+        pq.write_table(merged, temporary, compression="zstd")
+        temporary.replace(target)
+        for path in files:
+            if path != target and path.exists():
+                path.unlink()
+                files_removed += 1
+        row_counts[f"{table_dir.parent.name}/{table_dir.name}"] = merged.num_rows
+
+    summary = {
+        "min_dt": min_dt,
+        "bundle_name": bundle_name,
+        "partitions": row_counts,
+        "source_files_removed": files_removed,
+    }
+    log.info("artifact bundle summary: %s", summary)
+    return summary
+
+
 # ------------------------------------------------------- pricing change fold
 
 
@@ -286,6 +337,7 @@ def compact_hf(
     *,
     shard_index: int | None = None,
     shard_count: int | None = None,
+    exclude_tables: set[str] | None = None,
 ) -> dict:
     """Pull day partitions + state from HF, compact, and push adds/deletes."""
     import tempfile
@@ -303,14 +355,20 @@ def compact_hf(
         for path in api.list_repo_files(repo_id=repo_id, repo_type="dataset")
         if path.startswith(prefix) and marker in path and path.endswith(".parquet")
     ]
-    selected_tables = _shard_tables(
-        table_names, shard_index=shard_index, shard_count=shard_count
-    )
+    excluded_tables = set(exclude_tables or ())
+    selected_tables = [
+        table
+        for table in _shard_tables(
+            table_names, shard_index=shard_index, shard_count=shard_count
+        )
+        if table not in excluded_tables
+    ]
     if not selected_tables:
         return {
             "dt": dt,
             "tables": {},
             "selected_tables": [],
+            "excluded_tables": sorted(excluded_tables),
             "shard_index": shard_index,
             "shard_count": shard_count,
             "consolidated_files_removed": 0,
@@ -353,6 +411,7 @@ def compact_hf(
     before = _snapshot()
     summary = compact_local(dt, data_dir=workdir, tables=set(selected_tables))
     summary["selected_tables"] = selected_tables
+    summary["excluded_tables"] = sorted(excluded_tables)
     summary["shard_index"] = shard_index
     summary["shard_count"] = shard_count
     after = _snapshot()
@@ -389,6 +448,7 @@ def main(
     *,
     shard_index: int | None = None,
     shard_count: int | None = None,
+    exclude_tables: set[str] | None = None,
 ) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     dt = dt or yesterday_utc()
@@ -397,6 +457,7 @@ def main(
         repo_id=repo or HF_DATASET_REPO,
         shard_index=shard_index,
         shard_count=shard_count,
+        exclude_tables=exclude_tables,
     )
     print(json.dumps(summary, indent=2))
 
