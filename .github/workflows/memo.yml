@@ -14,7 +14,9 @@ on:
 
 concurrency:
   group: memo
-  cancel-in-progress: false
+  # A successful compact may arrive after the scheduled fallback. Keep the
+  # newer analysis run instead of hydrating the same dataset twice in series.
+  cancel-in-progress: true
 
 permissions:
   actions: read

@@ -1,17 +1,17 @@
 """Nightly compaction over the HF dataset repo.
 
 For a target day:
-  1. Pull that day's endpoint partitions plus the derived state from HF.
-  2. Repartition endpoint snapshots into one zstd file per day.
+  1. Pull that day's curated partitions plus the derived pricing state from HF.
+  2. Repartition every curated table into one zstd file per day.
   3. Fold endpoints_snapshots through the pricing state to derive SCD-2
      price-change events (derived/pricing_changes) and refresh the
      latest-known-price table (derived/pricing_current).
   4. Commit the pricing-critical consolidated file + state, deleting its
      small per-run inputs.
 
-Only endpoint snapshots are hydrated remotely. Historical all-table hydration
-can require thousands of Hub file API calls and exhaust the account quota before
-the price ledger is written; other curated tables remain queryable as-is.
+Only one completed day is hydrated remotely. Historical all-table hydration can
+require thousands of Hub file requests, while day-bounded consolidation keeps
+future analysis downloads tractable.
 
 Endpoint identity for change detection is (model_id, provider_name, tag,
 endpoint_fingerprint) — the fingerprint hashes capability fields because a
@@ -287,6 +287,10 @@ def compact_hf(dt: str, repo_id: str = HF_DATASET_REPO, workdir: Path | None = N
             f"derived/pricing_changes/dt={dt}/*",
         ],
         token=api.token,
+        # A busy day currently contains roughly 1,600 immutable small parquet
+        # objects. Eight workers exceeded an hour on GitHub-hosted runners;
+        # bounded higher concurrency removes request-latency serialization.
+        max_workers=32,
     )
     def _snapshot() -> dict[Path, tuple[int, float]]:
         return {
