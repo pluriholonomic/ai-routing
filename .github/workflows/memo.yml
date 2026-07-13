@@ -33,7 +33,7 @@ jobs:
   memo:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 420
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -77,8 +77,11 @@ jobs:
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
-      - name: hydrate source-run ledger for 2026-07-12
-        timeout-minutes: 75
+      - name: hydrate source-run ledger for 2026-07-12 hours 00-05
+        # This legacy date is also the partition that exceeded the compaction
+        # guard. Its timestamped filenames let us bound each migration window
+        # without dropping or sampling any ledger rows.
+        timeout-minutes: 30
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_XET_HIGH_PERFORMANCE: "1"
@@ -89,7 +92,68 @@ jobs:
           snapshot = snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset",
               cache_dir=".hf-cache",
-              allow_patterns=["curated/source_runs/dt=2026-07-12/*"],
+              allow_patterns=[
+                  "curated/source_runs/dt=2026-07-12/20260712T0[0-5]*",
+              ],
+              max_workers=32,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate source-run ledger for 2026-07-12 hours 06-11
+        timeout-minutes: 30
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=[
+                  "curated/source_runs/dt=2026-07-12/20260712T0[6-9]*",
+                  "curated/source_runs/dt=2026-07-12/20260712T1[01]*",
+              ],
+              max_workers=32,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate source-run ledger for 2026-07-12 hours 12-17
+        timeout-minutes: 30
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=[
+                  "curated/source_runs/dt=2026-07-12/20260712T1[2-7]*",
+              ],
+              max_workers=32,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate source-run ledger for 2026-07-12 hours 18-23
+        timeout-minutes: 30
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=[
+                  "curated/source_runs/dt=2026-07-12/20260712T1[89]*",
+                  "curated/source_runs/dt=2026-07-12/20260712T2[0-3]*",
+              ],
               max_workers=32,
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
