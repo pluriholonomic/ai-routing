@@ -337,9 +337,12 @@ def compact_hf(
             else []
         ),
         token=api.token,
-        # Each remote job owns only one deterministic table shard. Four matrix
-        # jobs times eight workers bounds aggregate Hub concurrency at 32.
-        max_workers=8,
+        # Matrix jobs are serialized because each commit advances one branch.
+        # The source ledger is small in bytes but has hundreds of immutable
+        # objects per day, so modestly increase request concurrency only for
+        # the shard that owns it. Other shards retain the Hub client's default
+        # sized pool and avoid unnecessary burst pressure.
+        max_workers=16 if "source_runs" in selected_tables else 8,
     )
     def _snapshot() -> dict[Path, tuple[int, float]]:
         return {
