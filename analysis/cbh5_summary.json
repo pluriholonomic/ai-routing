@@ -1,0 +1,17 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_obs": 3210,
+  "n_models": 103,
+  "n_fast_providers": 19,
+  "beta_fast_on_logprice_within_model_day": -0.129,
+  "beta_ci95": [
+    -0.1921,
+    -0.0696
+  ],
+  "slow_over_fast_premium_pct": 13.77,
+  "benchmark_brown_mackay_pct": [
+    10,
+    30
+  ],
+  "claim_boundary": "Cadence classified from a ~6-day live window: 'fast' means repriced at least once recently, a coarse proxy for update technology. Not quality-adjusted; slow providers may differ in latency/quantization. Follower-rule estimation gates on a multi-week panel."
+}

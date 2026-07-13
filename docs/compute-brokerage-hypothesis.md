@@ -139,8 +139,11 @@ posted prices repricing on strategic (rival/lifecycle) events, not load.
 
 ## Testing plan
 
-Numbering note: modules H70+ to avoid collision with the parallel session's
-H-series (≤H67 as of registration; H68 competition ranking taken).
+Numbering note (revised 2026-07-12, same day): the H70+ block collided with
+concurrently-created modules; this hypothesis's modules now live in their own
+`cbh*` namespace (CBH-1..9 = the rows below, in order), with summaries
+`analysis/cbh<N>_summary.json` and the scorecard in
+`analysis/hypothesis_scorecard.json` (built by `orcap.analysis.scorecard`).
 
 ### Phase 1 — now, existing capture (target: 2 weeks)
 

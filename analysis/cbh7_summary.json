@@ -1,0 +1,19 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "routing_elasticity": -1.1915523066887546,
+  "routing_se": 0.16769162646390778,
+  "end_user_elasticity_range": [
+    -0.05,
+    -0.07
+  ],
+  "end_user_source": "arXiv:2601.10088 (OpenRouter 100T-token study)",
+  "wedge_point": 19.9,
+  "wedge_range": [
+    17.3,
+    21.7
+  ],
+  "kill_threshold": 3.0,
+  "invariant_i_status": "consistent",
+  "read": "wedge >> 1: the router reallocates across providers far more readily than end demand responds to price \u2014 the defining broker-market signature",
+  "claim_boundary": "Routing elasticity is a within-(day, model, variant) share-price association, not causal; end-user benchmark is an external estimate on overlapping data. The wedge compares margins of adjustment, not welfare."
+}

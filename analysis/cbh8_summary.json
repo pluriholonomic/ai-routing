@@ -1,0 +1,28 @@
+{
+  "evidence_status": "power_gated",
+  "gate": "asymmetric ECM needs 90 overlapping daily obs; have 6",
+  "overlap_days": 6,
+  "coarse_period_correlations_h7": {
+    "hyperscaler": {
+      "corr_dlog": -0.761,
+      "n_periods": 6
+    },
+    "marketplace": {
+      "corr_dlog": 0.111,
+      "n_periods": 4
+    },
+    "neocloud": {
+      "corr_dlog": -0.998,
+      "n_periods": 4
+    }
+  },
+  "pre_registered_tests": {
+    "ecm": "\u0394p_token on lags of \u0394c_gpu\u207a and \u0394c_gpu\u207b + ECM term, daily and weekly",
+    "hypotheses": {
+      "rockets_and_feathers": "\u03a3\u03b2\u207a > \u03a3\u03b2\u207b at 2-8wk horizons",
+      "retail_electricity": "\u03b2 \u2248 0.4-0.5 with volatility-loaded markup",
+      "administered": "\u03b2 \u2248 0 both directions; changes cluster on model/competitor events",
+      "quality_ladder": "pass-through via new-model introduction, not incumbent repricing"
+    }
+  }
+}

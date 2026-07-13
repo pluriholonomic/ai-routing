@@ -1,0 +1,33 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_endpoints": 297,
+  "n_days": 6,
+  "share_endpoints_price_ever_moved": 0.07407407407407407,
+  "share_endpoints_rate_limit_ever_moved": 0.8047138047138047,
+  "share_endpoints_latency_ever_moved": 1.0,
+  "shock_r2_median_by_horizon": {
+    "30min": {
+      "price": 0.00030343203589495434,
+      "rate_limited": 0.0031936724339823902,
+      "p90_latency": 0.00917071118724246
+    },
+    "3h": {
+      "price": 0.019117679245553697,
+      "rate_limited": 0.01881612028642182,
+      "p90_latency": 0.018439840245513105
+    },
+    "1d": {
+      "price": 0.04610114655877932,
+      "rate_limited": 0.034489129334281846,
+      "p90_latency": 0.037704996799428805
+    }
+  },
+  "diurnal_variance_share_median": {
+    "price": 0.06900984336967708,
+    "rate_limited": 0.0588144965805773,
+    "p90_latency": 0.09676314289211002
+  },
+  "queue_over_price_loading_1d": 0.7481186892024028,
+  "prediction": "invariant (ii): price R2 ~ 0 at <=1d while rate-limit/latency carry the shock; P2 baseline: diurnal share ~0 for price, positive for congestion",
+  "claim_boundary": "Hot-model panel only; request_count_30m is a rolling window (attenuates high-frequency loadings toward zero for ALL outcomes, so the ratio, not the level, is the statistic). Demand innovations are not exogenous shocks. Loadings/diurnal shares for price are conditional on the small subset of endpoints whose price moved at all \u2014 read them jointly with the ever-moved shares."
+}

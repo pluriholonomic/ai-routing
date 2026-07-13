@@ -1,0 +1,29 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_change_events": 508,
+  "f1_round_number_clustering": {
+    "share_integer": 0.24632352941176472,
+    "share_half": 0.32598039215686275,
+    "share_tenth": 0.633578431372549,
+    "share_hundredth": 0.9264705882352942,
+    "n_quotes": 816,
+    "read": "administered prices cluster on round $/Mtok gridpoints"
+  },
+  "f2_provider_day_batching": {
+    "median_models_per_repricing_day": 1.0,
+    "p90_models_per_repricing_day": 3.0,
+    "share_batch_days_ge_5_models": 0.017241379310344827,
+    "read": "mass >> 1 = catalog-wide administered updates"
+  },
+  "f3_hour_concentration": {
+    "normalized_entropy": 0.878,
+    "top_hour_share": 0.144,
+    "read": "entropy << 1 with a dominant hour = scheduled batch repricing"
+  },
+  "f4_same_model_same_day_synchrony": {
+    "share_model_days_multi_provider_moves": 0.3695652173913043,
+    "n_model_days_with_changes": 46,
+    "read": "high share = follow-the-leader within a day"
+  },
+  "claim_boundary": "Signatures indicate administered (menu/batch) price setting vs continuous market clearing; they cannot distinguish cost-based batch updates from strategic ones. Hour concentration partially reflects our capture cadence for sub-hourly timing."
+}

@@ -1,0 +1,26 @@
+{
+  "evidence_status": "power_gated",
+  "gate": "conditional moments need 60 daily spot obs; have 6",
+  "spot_days": 6,
+  "descriptive": {
+    "spot_latest": 2.0,
+    "dlog_std": 0.054,
+    "dlog_skew_preliminary": 0.512
+  },
+  "pre_registered_tests": {
+    "premium_regression": "forward premium on rolling Var and Skew of spot (a<0, b>0)",
+    "storability_proxy": "aggregate ED-buffer share compresses premium (Douglas-Popova)",
+    "flip_dating": "backwardation\u2192contango flip coincides with skewness sign change",
+    "maturation": "premium magnitude decays as CME/ICE listings mature (Haugom-Ullrich)"
+  },
+  "anchors": {
+    "2025-10-15": {
+      "fwd_1y": 1.7,
+      "spot": 1.95
+    },
+    "2026-03-15": {
+      "fwd_1y": 2.35,
+      "spot": 2.18
+    }
+  }
+}

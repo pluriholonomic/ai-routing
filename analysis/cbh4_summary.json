@@ -1,0 +1,19 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_typed_events": 18,
+  "type_shares": {
+    "punish_and_revert": 0.722,
+    "no_response": 0.222,
+    "match_and_stick": 0.056
+  },
+  "conditional_on_response": {
+    "punish_and_revert": 0.929,
+    "match_and_stick": 0.071
+  },
+  "signatures": {
+    "match_and_stick": "competitive adjustment",
+    "punish_and_revert": "Calvano Q-learning collusion signature",
+    "no_response": "segmented/loyal or thin market"
+  },
+  "claim_boundary": "Typing uses change events only (not full quote paths); revert detection requires an explicit later raise, so slow drift-back beyond 96h escapes it. Edgeworth-cycle detection gates on a multi-week panel."
+}

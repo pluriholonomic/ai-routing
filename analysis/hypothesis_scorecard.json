@@ -1,0 +1,106 @@
+{
+  "predictions": [
+    {
+      "prediction": "invariant-i elasticity wedge",
+      "status": "consistent",
+      "evidence": "wedge 19.9x (range [17.3, 21.7])",
+      "source": "cbh7"
+    },
+    {
+      "prediction": "invariant-ii quantity clears / price administers",
+      "status": "consistent",
+      "evidence": "price ever-moved 7% vs rate-limit 80% over 6d",
+      "source": "cbh3"
+    },
+    {
+      "prediction": "Q1 slow-over-fast price premium 10-30%",
+      "status": "consistent",
+      "evidence": "premium 13.8% (Brown-MacKay band 10-30)",
+      "source": "cbh5"
+    },
+    {
+      "prediction": "Q2 algorithmic saturation vs margins (Assad)",
+      "status": "accumulating",
+      "evidence": "13/68 active repricers; rank beta -0.7125 (v0 census, no all-algo markets yet)",
+      "source": "cbh1"
+    },
+    {
+      "prediction": "Q3 dispersion floor >=3% at high N",
+      "status": "consistent",
+      "evidence": "median gap at N>=10: 8.3%; exact-tie share 48%",
+      "source": "cbh2"
+    },
+    {
+      "prediction": "Q reaction dynamics (collusion-signature watch)",
+      "status": "accumulating",
+      "evidence": "punish-and-revert 72% of 18 typed cuts (confounded with launch experimentation at current n)",
+      "source": "cbh4"
+    },
+    {
+      "prediction": "R2 hidden router spread == 0",
+      "status": "consistent",
+      "evidence": "exact-zero basis share 0.9657794676806084",
+      "source": "h13"
+    },
+    {
+      "prediction": "O1 harness markup >=15% through 2027",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "O2 explicit PFOF within 18mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "R1 router take <3% or >=15pt share migration by end-2027",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "R3 auction mechanism within 24mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "R4 2-4 routers >=85% within 24mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "P1 provisioned-capacity share rises (PJM path)",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "P2 time-varying pricing within 24mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "P3 futures basis <5% + two-sided OI",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "I1 divergence rises with discount",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "X2 >=3 cross-layer acquisitions within 24mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    }
+  ]
+}
