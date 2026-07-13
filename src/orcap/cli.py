@@ -198,6 +198,9 @@ def main() -> None:
 
     p_compact = sub.add_parser("compact", help="nightly compaction + pricing_changes derivation")
     p_compact.add_argument("--repo", default=None, help="HF repo id (default from config)")
+    p_compact.add_argument("--dt", default=None, help="UTC day (default: yesterday)")
+    p_compact.add_argument("--shard-index", type=int, default=None)
+    p_compact.add_argument("--shard-count", type=int, default=None)
 
     p_defi = sub.add_parser("defi", help="pull DeFi comparator series (BigQuery + Coinbase)")
     p_defi.add_argument("--force", action="store_true", help="refresh caches")
@@ -462,7 +465,12 @@ def main() -> None:
     elif args.command == "compact":
         from .compact import main as compact_main
 
-        compact_main(repo=args.repo)
+        compact_main(
+            repo=args.repo,
+            dt=args.dt,
+            shard_index=args.shard_index,
+            shard_count=args.shard_count,
+        )
     elif args.command == "backfill":
         from .backfill import main as backfill_main
 

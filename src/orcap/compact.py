@@ -206,7 +206,9 @@ CHANGES_SCHEMA = pa.schema(
 # --------------------------------------------------------------- local driver
 
 
-def compact_local(dt: str, data_dir: Path = DATA_DIR) -> dict[str, Any]:
+def compact_local(
+    dt: str, data_dir: Path = DATA_DIR, tables: set[str] | None = None
+) -> dict[str, Any]:
     """Compact one day in a local data dir. Returns summary incl. deleted files."""
     curated = data_dir / "curated" if data_dir != DATA_DIR else CURATED_DIR
     deleted: list[Path] = []
@@ -214,6 +216,8 @@ def compact_local(dt: str, data_dir: Path = DATA_DIR) -> dict[str, Any]:
 
     endpoints_day: pa.Table | None = None
     for table_dir in sorted(curated.glob(f"*/dt={dt}")):
+        if tables is not None and table_dir.parent.name not in tables:
+            continue
         out, olds = consolidate_table_day(table_dir)
         if out is None:
             continue
@@ -261,7 +265,28 @@ def compact_local(dt: str, data_dir: Path = DATA_DIR) -> dict[str, Any]:
 # ------------------------------------------------------------------ HF driver
 
 
-def compact_hf(dt: str, repo_id: str = HF_DATASET_REPO, workdir: Path | None = None) -> dict:
+def _shard_tables(
+    table_names: list[str], *, shard_index: int | None, shard_count: int | None
+) -> list[str]:
+    """Assign sorted table names deterministically across remote compaction shards."""
+    names = sorted(set(table_names))
+    if shard_index is None and shard_count is None:
+        return names
+    if shard_index is None or shard_count is None:
+        raise ValueError("shard_index and shard_count must be provided together")
+    if shard_count < 1 or shard_index < 0 or shard_index >= shard_count:
+        raise ValueError("require shard_count >= 1 and 0 <= shard_index < shard_count")
+    return [name for position, name in enumerate(names) if position % shard_count == shard_index]
+
+
+def compact_hf(
+    dt: str,
+    repo_id: str = HF_DATASET_REPO,
+    workdir: Path | None = None,
+    *,
+    shard_index: int | None = None,
+    shard_count: int | None = None,
+) -> dict:
     """Pull day partitions + state from HF, compact, and push adds/deletes."""
     import tempfile
 
@@ -271,6 +296,27 @@ def compact_hf(dt: str, repo_id: str = HF_DATASET_REPO, workdir: Path | None = N
 
     api = get_api()
     workdir = workdir or Path(tempfile.mkdtemp(prefix="orcap-compact-"))
+    prefix = "curated/"
+    marker = f"/dt={dt}/"
+    table_names = [
+        path[len(prefix) :].split("/", 1)[0]
+        for path in api.list_repo_files(repo_id=repo_id, repo_type="dataset")
+        if path.startswith(prefix) and marker in path and path.endswith(".parquet")
+    ]
+    selected_tables = _shard_tables(
+        table_names, shard_index=shard_index, shard_count=shard_count
+    )
+    if not selected_tables:
+        return {
+            "dt": dt,
+            "tables": {},
+            "selected_tables": [],
+            "shard_index": shard_index,
+            "shard_count": shard_count,
+            "consolidated_files_removed": 0,
+            "pricing_change_events": 0,
+            "price_field_changes": 0,
+        }
     # One completed day across ALL curated tables is a bounded download, unlike
     # historical all-table hydration. Consolidating every table matters: per-run
     # ledger/collector files otherwise accumulate hundreds of files per day and
@@ -281,16 +327,19 @@ def compact_hf(dt: str, repo_id: str = HF_DATASET_REPO, workdir: Path | None = N
         repo_id=repo_id,
         repo_type="dataset",
         local_dir=workdir,
-        allow_patterns=[
-            f"curated/*/dt={dt}/*",
-            "derived/pricing_current.parquet",
-            f"derived/pricing_changes/dt={dt}/*",
-        ],
+        allow_patterns=[f"curated/{table}/dt={dt}/*" for table in selected_tables]
+        + (
+            [
+                "derived/pricing_current.parquet",
+                f"derived/pricing_changes/dt={dt}/*",
+            ]
+            if "endpoints_snapshots" in selected_tables
+            else []
+        ),
         token=api.token,
-        # A busy day currently contains roughly 1,600 immutable small parquet
-        # objects. Eight workers exceeded an hour on GitHub-hosted runners;
-        # bounded higher concurrency removes request-latency serialization.
-        max_workers=32,
+        # Each remote job owns only one deterministic table shard. Four matrix
+        # jobs times eight workers bounds aggregate Hub concurrency at 32.
+        max_workers=8,
     )
     def _snapshot() -> dict[Path, tuple[int, float]]:
         return {
@@ -299,7 +348,10 @@ def compact_hf(dt: str, repo_id: str = HF_DATASET_REPO, workdir: Path | None = N
         }
 
     before = _snapshot()
-    summary = compact_local(dt, data_dir=workdir)
+    summary = compact_local(dt, data_dir=workdir, tables=set(selected_tables))
+    summary["selected_tables"] = selected_tables
+    summary["shard_index"] = shard_index
+    summary["shard_count"] = shard_count
     after = _snapshot()
 
     ops: list = [
@@ -319,16 +371,30 @@ def compact_hf(dt: str, repo_id: str = HF_DATASET_REPO, workdir: Path | None = N
         repo_id=repo_id,
         repo_type="dataset",
         operations=ops,
-        commit_message=f"compact dt={dt}: {summary['pricing_change_events']} pricing events",
+        commit_message=(
+            f"compact dt={dt} shard={shard_index if shard_index is not None else 'all'}: "
+            f"{summary['pricing_change_events']} pricing events"
+        ),
     )
     log.info("pushed compaction commit for %s (%d ops)", dt, len(ops))
     return summary
 
 
-def main(repo: str | None = None, dt: str | None = None) -> None:
+def main(
+    repo: str | None = None,
+    dt: str | None = None,
+    *,
+    shard_index: int | None = None,
+    shard_count: int | None = None,
+) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     dt = dt or yesterday_utc()
-    summary = compact_hf(dt, repo_id=repo or HF_DATASET_REPO)
+    summary = compact_hf(
+        dt,
+        repo_id=repo or HF_DATASET_REPO,
+        shard_index=shard_index,
+        shard_count=shard_count,
+    )
     print(json.dumps(summary, indent=2))
 
 

@@ -1,6 +1,7 @@
 import pyarrow as pa
+import pytest
 
-from orcap.compact import TRACKED_PRICE_FIELDS, fold_pricing_changes
+from orcap.compact import TRACKED_PRICE_FIELDS, _shard_tables, fold_pricing_changes
 
 
 def _row(run_ts, model="m/x", provider="P", tag="p/fp8", prompt=1e-7, completion=4e-7, fp="abc123"):
@@ -84,3 +85,20 @@ def test_consolidate_merges_int64_double_schema_flap(tmp_path):
     merged = pq.ParquetFile(day / "s2.parquet").read()
     assert merged.num_rows == 2
     assert merged.schema.field("p50_throughput").type == pa.float64()
+
+
+def test_table_shards_are_deterministic_disjoint_and_complete():
+    names = ["source_runs", "endpoints_snapshots", "market_quotes", "source_runs"]
+    shard0 = _shard_tables(names, shard_index=0, shard_count=2)
+    shard1 = _shard_tables(names, shard_index=1, shard_count=2)
+
+    assert set(shard0).isdisjoint(shard1)
+    assert sorted(shard0 + shard1) == sorted(set(names))
+    assert shard0 == _shard_tables(list(reversed(names)), shard_index=0, shard_count=2)
+
+
+def test_table_shards_validate_paired_bounds():
+    with pytest.raises(ValueError):
+        _shard_tables(["a"], shard_index=0, shard_count=None)
+    with pytest.raises(ValueError):
+        _shard_tables(["a"], shard_index=2, shard_count=2)
