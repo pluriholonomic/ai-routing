@@ -2,6 +2,9 @@
 data/
 discovered_endpoints.json
 
+# local credentials; never commit or publish
+.secrets/
+
 # python
 .venv/
 __pycache__/

@@ -41,15 +41,50 @@ def _empty_changes() -> pd.DataFrame:
             "top_provider_before",
             "top_provider_after",
             "top_provider_changed",
+            "top_tier_before",
+            "top_tier_after",
+            "n_top_tier_before",
+            "n_top_tier_after",
+            "top_tier_changed",
+            "unique_leader_before",
+            "unique_leader_after",
+            "unique_leader_changed",
+            "tie_created",
+            "tie_resolved",
         ]
     )
+
+
+def _top_tier_state(shares: pd.Series) -> dict[str, object]:
+    """Return a tie-aware top-share state for one simulated provider vector.
+
+    ``top_provider_*`` is retained as a deterministic representative for
+    backward compatibility with earlier H43 output.  It must never be read as
+    a unique winner: exact (or floating-point-near) ties are common when two
+    providers post the same public quote.  The dedicated tier and unique-leader
+    fields carry the economic interpretation.
+    """
+    maximum = float(shares.max())
+    tier = tuple(
+        sorted(
+            str(provider)
+            for provider, share in shares.items()
+            if np.isclose(float(share), maximum, rtol=0.0, atol=CHANGE_TOLERANCE)
+        )
+    )
+    return {
+        "top_tier": "|".join(tier),
+        "n_top_tier": len(tier),
+        "representative": tier[0],
+        "unique_leader": tier[0] if len(tier) == 1 else None,
+    }
 
 
 def load_simulations() -> pd.DataFrame:
     try:
         rows = data.q(
             f"""
-            select run_ts, dt, panel_id, model_id, scenario, provider_name,
+            select distinct run_ts, dt, panel_id, model_id, scenario, provider_name,
                    expected_quote_usd, simulated_route_share
             from read_parquet('{data.table_glob("routing_simulation")}')
             """
@@ -60,9 +95,7 @@ def load_simulations() -> pd.DataFrame:
         return rows
     rows["ts"] = pd.to_datetime(rows["run_ts"], format="%Y%m%dT%H%M%SZ", utc=True)
     rows["expected_quote_usd"] = pd.to_numeric(rows["expected_quote_usd"], errors="coerce")
-    rows["simulated_route_share"] = pd.to_numeric(
-        rows["simulated_route_share"], errors="coerce"
-    )
+    rows["simulated_route_share"] = pd.to_numeric(rows["simulated_route_share"], errors="coerce")
     return rows.dropna(subset=["ts", "provider_name", "simulated_route_share"]).copy()
 
 
@@ -93,8 +126,8 @@ def transition_panel(rows: pd.DataFrame, max_gap_minutes: int = 30) -> pd.DataFr
             quotes_changed = provider_set_changed or bool(
                 (np.abs(after_quote - before_quote) > CHANGE_TOLERANCE).fillna(True).any()
             )
-            top_before = before_share.sort_values(ascending=False).index[0]
-            top_after = after_share.sort_values(ascending=False).index[0]
+            before_top = _top_tier_state(before_share)
+            after_top = _top_tier_state(after_share)
             panel_id, model_id, scenario = group
             records.append(
                 {
@@ -110,9 +143,25 @@ def transition_panel(rows: pd.DataFrame, max_gap_minutes: int = 30) -> pd.DataFr
                     "quote_changed": quotes_changed,
                     "total_variation_distance": tvd,
                     "simulated_share_changed": tvd > CHANGE_TOLERANCE,
-                    "top_provider_before": top_before,
-                    "top_provider_after": top_after,
-                    "top_provider_changed": top_before != top_after,
+                    "top_provider_before": before_top["representative"],
+                    "top_provider_after": after_top["representative"],
+                    "top_provider_changed": (
+                        before_top["representative"] != after_top["representative"]
+                    ),
+                    "top_tier_before": before_top["top_tier"],
+                    "top_tier_after": after_top["top_tier"],
+                    "n_top_tier_before": before_top["n_top_tier"],
+                    "n_top_tier_after": after_top["n_top_tier"],
+                    "top_tier_changed": before_top["top_tier"] != after_top["top_tier"],
+                    "unique_leader_before": before_top["unique_leader"],
+                    "unique_leader_after": after_top["unique_leader"],
+                    "unique_leader_changed": (
+                        before_top["unique_leader"] is not None
+                        and after_top["unique_leader"] is not None
+                        and before_top["unique_leader"] != after_top["unique_leader"]
+                    ),
+                    "tie_created": (before_top["n_top_tier"] == 1 and after_top["n_top_tier"] > 1),
+                    "tie_resolved": (before_top["n_top_tier"] > 1 and after_top["n_top_tier"] == 1),
                 }
             )
     return pd.DataFrame(records) if records else _empty_changes()
@@ -124,6 +173,12 @@ def summarize(rows: pd.DataFrame, changes: pd.DataFrame) -> dict:
     n_transitions = int(len(changes))
     n_changed = int(changes["simulated_share_changed"].sum()) if not changes.empty else 0
     n_top_changed = int(changes["top_provider_changed"].sum()) if not changes.empty else 0
+    n_top_tier_changed = int(changes["top_tier_changed"].sum()) if not changes.empty else 0
+    n_unique_leader_changed = (
+        int(changes["unique_leader_changed"].sum()) if not changes.empty else 0
+    )
+    n_tie_created = int(changes["tie_created"].sum()) if not changes.empty else 0
+    n_tie_resolved = int(changes["tie_resolved"].sum()) if not changes.empty else 0
     span_hours = (
         (rows["ts"].max() - rows["ts"].min()).total_seconds() / 3600 if n_snapshots >= 2 else 0.0
     )
@@ -158,6 +213,15 @@ def summarize(rows: pd.DataFrame, changes: pd.DataFrame) -> dict:
         "n_simulated_share_changes": n_changed,
         "share_of_transitions_changed": n_changed / n_transitions if n_transitions else None,
         "n_top_provider_changes": n_top_changed,
+        "n_top_tier_changes": n_top_tier_changed,
+        "n_unique_leader_changes": n_unique_leader_changed,
+        "n_tie_created": n_tie_created,
+        "n_tie_resolved": n_tie_resolved,
+        "legacy_top_provider_change_note": (
+            "n_top_provider_changes compares a deterministic representative of a tied "
+            "top-share set and is retained for backward compatibility only. Use "
+            "n_unique_leader_changes for unique-winner transitions."
+        ),
         "median_total_variation_distance": (
             float(changes["total_variation_distance"].median()) if n_transitions else None
         ),

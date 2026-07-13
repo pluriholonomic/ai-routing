@@ -210,6 +210,22 @@ def main() -> None:
         help="optional canonical router name override for source-native formats",
     )
 
+    p_ingest_decisions = sub.add_parser(
+        "ingest-router-decisions",
+        help="validate and ingest payload-free timestamped router decision telemetry",
+    )
+    p_ingest_decisions.add_argument(
+        "--input", required=True, help="redacted router-decision JSONL export"
+    )
+
+    p_ingest_flow = sub.add_parser(
+        "ingest-router-flow-aggregates",
+        help="validate and ingest payload-free fixed-interval router flow aggregates",
+    )
+    p_ingest_flow.add_argument(
+        "--input", required=True, help="redacted fixed-interval flow aggregate JSONL export"
+    )
+
     p_ingest_capacity = sub.add_parser(
         "ingest-capacity-commitments",
         help="validate and ingest redacted provider/model/epoch commitments from JSONL",
@@ -469,6 +485,11 @@ def main() -> None:
             "h61": "h61_akash_dashboard",
             "h62": "h62_akash_provider_activity",
             "h64": "h64_openrouter_usage",
+            "h66": "h66_simulated_provider_pricing",
+            "h67": "h67_quote_pulse",
+            "h68": "h68_router_enforcement",
+            "h69": "h69_experiment_readiness",
+            "h70": "h70_preselection_information",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
@@ -514,6 +535,14 @@ def main() -> None:
                 indent=2,
             )
         )
+    elif args.command == "ingest-router-decisions":
+        from .router_decision_telemetry import decisions_main
+
+        decisions_main(args.input)
+    elif args.command == "ingest-router-flow-aggregates":
+        from .router_decision_telemetry import flow_aggregates_main
+
+        flow_aggregates_main(args.input)
     elif args.command == "ingest-capacity-commitments":
         from pathlib import Path
 

@@ -19,7 +19,14 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 - [`docs/defi-open-compute-completion-plan.md`](docs/defi-open-compute-completion-plan.md) — the source, schema, method, monitoring, and prioritized fix plan for a complete DeFi-versus-open-compute comparison.
 - [`docs/routing-mev-research-plan.md`](docs/routing-mev-research-plan.md) — falsifiable routing-volume-capture hypotheses, event-study designs, data gates, and the boundary between quote competition and MEV-like claims.
 - [`docs/routing-simulation-monitor.md`](docs/routing-simulation-monitor.md) — zero-spend 15-minute public-quote route-surface assay, its 24-hour decision rule, and the boundary from realized routing.
+- [`docs/quote-pulse-monitor.md`](docs/quote-pulse-monitor.md) — tie-aware five-minute quote-cut, top-tier, and fade screen; public evidence only.
+- [`docs/router-enforcement-monitor.md`](docs/router-enforcement-monitor.md) — public rate-limit and derank-state incidence, with explicit non-identification of request ordering.
 - [`docs/cross-router-data.md`](docs/cross-router-data.md) — Hugging Face public-router comparator, cross-router policy analysis, and the redacted contract for controlled route telemetry.
+- [`docs/owned-routing-probe-activation.md`](docs/owned-routing-probe-activation.md) — pre-registered controlled-account probe design; no requests are sent by this repository.
+- [`docs/router-decision-export-request.md`](docs/router-decision-export-request.md) — seven-field, payload-free partner export contract for realized-routing research.
+- [`docs/observable-routing-controls.md`](docs/observable-routing-controls.md) — valid use of decentralized routing and execution controls without cross-venue overclaiming.
+- [`docs/routing-experiment-program.md`](docs/routing-experiment-program.md) — activated public panels, fixed readiness gates, and the sequence for realized-routing and private-ordering experiments.
+- [`docs/router-decision-telemetry.md`](docs/router-decision-telemetry.md) — payload-free contract for aggregate realized-flow and timestamped pre-selection router exports.
 - [`docs/router-shadow-execution.md`](docs/router-shadow-execution.md) — one shadow-execution interface for OpenRouter, Hugging Face, Cloudflare AI Gateway, Portkey, and LiteLLM.
 - [`docs/capacity-certified-routing-mechanism.md`](docs/capacity-certified-routing-mechanism.md) — pre-registered RFQ-style routing mechanism, propositions, and empirical calibration gates.
 - [`docs/controlled-routing-study.md`](docs/controlled-routing-study.md) — payload-free model-epoch randomized study protocol and H50 causal estimator for the proposed mechanism.
@@ -68,6 +75,7 @@ source record, so OpenRouter schema drift never loses data):
 | `hf_router_policy_simulation` | run × HF model × workload shape × provider × policy | simulated cheapest and reported-fastest selection surfaces; never actual route fills |
 | `router_policy_snapshots` | owned config × model × provider | redacted Cloudflare AI Gateway, Portkey, or LiteLLM routing configuration; not a traffic log |
 | `router_route_attempts` | owned request attempt | redacted controlled-study provider outcomes/retries; private telemetry, not public market flow |
+| `router_decision_events` / `router_flow_aggregates` | private router decision / provider-model interval | opt-in redacted partner telemetry for ordering and aggregate-flow tests; never prompts, completions, users, IPs, or credentials |
 | `router_reliability_audit_manifests` / `router_reliability_audit_assignments` | audit / provider × model × epoch | immutable direct-provider reliability-audit design and schedule; no prompts, completions, or traffic sent by registration |
 | `akash_market_open_bids` | pinned block × current live GPU provider × bid resource | coverage-restricted open GPU provider bids; native per-block price field, not fills, whole-market demand, or capacity |
 | `open_model_usage_daily` | day × source × open model | public HF rolling downloads and Ollama cumulative pulls; adoption proxies, never inference tokens |
@@ -108,6 +116,10 @@ uv run orcap market-capture --with-uniswap --with-akash --with-nosana  # dRPC re
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h31  # GPU rent/utilization screen
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h47  # exact-spec GPU quote basis
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h48  # routing-mechanism calibration sheet
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h67  # public quote-pulse/fade screen
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h68  # public router-enforcement incidence screen
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h69  # experiment readiness ledger and power gates
+ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h70  # private pre-selection timing audit (gated until a partner export exists)
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h49  # sampled CoW solver competition
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h50  # randomized owned-study estimator
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h52  # parent-block CoW-versus-AMM gross basis, power-gated
@@ -127,6 +139,8 @@ ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h45  # cross-route
 ORCAP_ANALYSIS_SOURCE=local uv run orcap analyze --hypothesis h46  # rolling daily routing share-price elasticity
 uv run orcap import-router-policy --input redacted-router-policy.json
 uv run orcap ingest-route-attempts --input redacted-gateway-events.jsonl --format portkey --study-id routing-v1
+uv run orcap ingest-router-decisions --input redacted-router-decisions.jsonl  # private, payload-free partner export
+uv run orcap ingest-router-flow-aggregates --input redacted-router-flow.jsonl  # private fixed-interval aggregate export
 uv run orcap register-routing-study --input redacted-study-manifest.json  # pre-outcome, no traffic sent
 uv run orcap ingest-routing-assignments --input redacted-study-assignments.jsonl
 uv run orcap register-reliability-audit --input redacted-reliability-audit.json  # pre-outcome, no traffic sent

@@ -1,0 +1,26 @@
+# Pre-registered coverage gates for the routing-mechanism experiment program.
+# These gates are deliberately conservative: a row being "ready" permits an
+# analysis to start; it does not itself establish the associated hypothesis.
+
+[quote_pulse]
+min_continuous_span_hours = 168
+min_independent_cut_episodes = 80
+
+[router_enforcement]
+min_derank_onsets = 50
+
+[realized_routing]
+min_selected_attempts = 2000
+min_quote_linked_attempts = 1000
+min_stale_quote_episodes = 100
+
+[residual_flow]
+min_complete_days = 28
+min_repricing_episodes = 100
+
+[preselection_access]
+min_events_per_randomized_arm = 200
+
+[comparators]
+min_complete_days_per_venue = 30
+min_allocation_events_per_venue = 50

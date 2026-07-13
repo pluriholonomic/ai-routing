@@ -1,0 +1,12 @@
+# Pre-committed public quote-pulse screen.  These thresholds classify public
+# quote dynamics; they do not identify realized routing, provider intent, or
+# MEV-like extraction without the separate owned-telemetry study.
+
+[quote_pulse]
+primary_scenario = "short_chat"
+cut_threshold_pct = -0.05
+reversion_tolerance_pct = 0.02
+max_contiguous_gap_minutes = 10
+fade_horizons_minutes = [30, 60, 120, 240, 360, 1440]
+min_span_days = 7
+min_independent_cut_episodes = 80

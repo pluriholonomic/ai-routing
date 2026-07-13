@@ -31,10 +31,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/assemble_artifacts.sh 26 data
-      - name: evaluate simulated routing changes
+      - name: evaluate simulated routing changes and quote pricing position
         env:
           ORCAP_ANALYSIS_SOURCE: local
-        run: uv run orcap route-sim-report --out analysis
+        run: |
+          uv run orcap route-sim-report --out analysis
+          uv run orcap analyze --hypothesis h66 --out analysis
+          uv run orcap analyze --hypothesis h67 --out analysis
       - name: inspect the coverage gate
         id: gate
         run: |
@@ -44,7 +47,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: route-simulation-${{ github.run_id }}
-          path: analysis/h43_routing_simulation_*
+          path: |
+            analysis/h43_routing_simulation_*
+            analysis/h66_simulated_pricing_*
+            analysis/h66_summary.json
+            analysis/h67_quote_pulse_*
+            analysis/h67_summary.json
           retention-days: 14
           compression-level: 0
       - name: publish the first complete 24-hour decision
@@ -55,4 +63,6 @@ jobs:
         run: |
           mkdir -p pushdata/analysis
           cp analysis/h43_routing_simulation_*.parquet analysis/h43_routing_simulation_summary.json pushdata/analysis/
+          cp analysis/h66_simulated_pricing_*.parquet analysis/h66_summary.json pushdata/analysis/
+          cp analysis/h67_quote_pulse_*.parquet analysis/h67_quote_pulse_dashboard.html analysis/h67_summary.json pushdata/analysis/
           uv run orcap push --message "route simulation monitor ${{ github.run_id }}" --delete-local
