@@ -34,7 +34,18 @@ authorization headers or tokens in raw evidence.
 
 The app endpoint is limited to 500 account requests/day.  Each full top-200
 app-day normally consumes two requests, so one workflow run is capped at 200
-days.  Backfill with non-overlapping dispatches on separate quota days:
+days. The scheduled workflow performs the following non-overlapping chunks on
+GitHub-hosted runners, alongside the latest closed day, and then automatically
+stops backfilling:
+
+| Scheduled UTC day | Historical interval | Maximum app requests |
+|---|---|---:|
+| 2026-07-13 | 2025-01-01 through 2025-07-19 | 400 |
+| 2026-07-14 | 2025-07-20 through 2026-02-04 | 400 |
+| 2026-07-15 | 2026-02-05 through 2026-07-12 | 316 |
+
+Each run uses another two requests for the latest closed day, remaining below
+the documented 500-request account limit. Manual recovery remains available:
 
 ```bash
 gh workflow run marketplace-history.yml \
@@ -50,6 +61,14 @@ gh workflow run marketplace-history.yml \
 The model-ranking request covers each whole interval in one API call.  The app
 collector requests one UTC day at a time, preserves each raw page, rejects
 date/rank/schema mismatches, and never turns an absent rank into zero usage.
+
+## Remote recovery jobs
+
+The nightly compactor runs at 04:13 UTC with a 120-minute limit. The memo and
+analysis publication runs at 05:13 UTC, hydrates the private dataset with eight
+bounded workers, and has a 120-minute job limit. Both publish remotely; a local
+HTML copy is optional and is not part of data capture, analysis durability, or
+dashboard publication.
 
 ## Akash procurement capture
 

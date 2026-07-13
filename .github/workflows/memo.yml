@@ -1,8 +1,8 @@
 name: memo
 # Nightly: rerun the full empirical screen (H1-H19) against the accumulated
 # panel and render the memo. Results land in the private HF dataset under
-# analysis/ and reports/memo.html; a local scheduled job redeploys the HTML
-# to the claude.ai artifact (artifact publishing requires a user session).
+# analysis/ and reports/memo.html and are published to the private HF Space.
+# Any separate local artifact copy is optional and not part of data durability.
 
 on:
   schedule:

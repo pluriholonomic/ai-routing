@@ -47,6 +47,26 @@ jobs:
           fi
           echo "start=$start" >> "$GITHUB_OUTPUT"
           echo "end=$end" >> "$GITHUB_OUTPUT"
+          backfill_start=""
+          backfill_end=""
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            case "$(date -u +%F)" in
+              2026-07-13)
+                backfill_start="2025-01-01"
+                backfill_end="2025-07-19"
+                ;;
+              2026-07-14)
+                backfill_start="2025-07-20"
+                backfill_end="2026-02-04"
+                ;;
+              2026-07-15)
+                backfill_start="2026-02-05"
+                backfill_end="2026-07-12"
+                ;;
+            esac
+          fi
+          echo "backfill_start=$backfill_start" >> "$GITHUB_OUTPUT"
+          echo "backfill_end=$backfill_end" >> "$GITHUB_OUTPUT"
       - name: capture documented model and public-app aggregates
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -57,6 +77,17 @@ jobs:
           uv run orcap capture-openrouter-apps \
             --start-date "${{ steps.dates.outputs.start }}" \
             --end-date "${{ steps.dates.outputs.end }}"
+      - name: capture scheduled historical chunk
+        if: ${{ steps.dates.outputs.backfill_start != '' }}
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          uv run orcap capture-openrouter-usage \
+            --start-date "${{ steps.dates.outputs.backfill_start }}" \
+            --end-date "${{ steps.dates.outputs.backfill_end }}"
+          uv run orcap capture-openrouter-apps \
+            --start-date "${{ steps.dates.outputs.backfill_start }}" \
+            --end-date "${{ steps.dates.outputs.backfill_end }}"
       - name: validate aggregate-history source health
         run: uv run orcap quality --profile marketplace_history --fail-on-degraded
       - name: push immutable raw and curated history
