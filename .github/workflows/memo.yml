@@ -13,7 +13,10 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: memo
+  # Failed/cancelled compact completions create intentionally skipped workflow
+  # runs. Give those unique groups so they cannot cancel a useful scheduled or
+  # successful chained memo before the job-level condition is evaluated.
+  group: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && format('memo-skipped-{0}', github.run_id) || 'memo' }}
   # A successful compact may arrive after the scheduled fallback. Keep the
   # newer analysis run instead of hydrating the same dataset twice in series.
   cancel-in-progress: true
