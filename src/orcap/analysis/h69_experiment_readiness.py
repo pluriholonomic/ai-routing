@@ -120,7 +120,9 @@ def _load_table(table: str) -> pd.DataFrame:
 def _nonempty_count(frame: pd.DataFrame, column: str) -> int:
     if column not in frame:
         return 0
-    return int(frame[column].fillna("").astype(str).str.len().gt(0).sum())
+    # DuckDB/Pandas can infer an all-null identifier field as nullable Int32.
+    # Cast before filling so the empty sentinel is valid for every source dtype.
+    return int(frame[column].astype("string").fillna("").str.len().gt(0).sum())
 
 
 def comparator_days() -> int:

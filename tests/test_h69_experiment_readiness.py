@@ -1,6 +1,10 @@
 import pandas as pd
 
-from orcap.analysis.h69_experiment_readiness import quote_metrics, readiness_rows
+from orcap.analysis.h69_experiment_readiness import (
+    _nonempty_count,
+    quote_metrics,
+    readiness_rows,
+)
 
 
 def _gates():
@@ -101,3 +105,9 @@ def test_h69_counts_contiguous_quote_cuts_and_reports_each_gate():
         gates=gates,
     )
     assert set(ledger["status"]) == {"ready"}
+
+
+def test_h69_nonempty_count_normalizes_nullable_integer_identifiers():
+    rows = pd.DataFrame({"quote_snapshot_id": pd.Series([1, None, 2], dtype="Int32")})
+
+    assert _nonempty_count(rows, "quote_snapshot_id") == 2
