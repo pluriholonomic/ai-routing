@@ -265,11 +265,11 @@ jobs:
           uv run python scripts/materialize_source_runs_baseline.py \
             --date 2026-07-13 \
             --path-in-repo curated/source_runs/dt=legacy-2026-07-13/baseline.parquet
-      - name: hydrate remaining analysis mirror through the robust Hub cache
+      - name: hydrate remaining curated mirror through the robust Hub cache
         timeout-minutes: 75
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_XET_HIGH_PERFORMANCE: "1"
+          HF_HUB_DISABLE_XET: "1"
         run: |
           uv run python - <<'PY'
           import shutil
@@ -277,9 +277,43 @@ jobs:
           snapshot = snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset",
               cache_dir=".hf-cache",
-              allow_patterns=["curated/*", "derived/*", "external/*", "backfill/*"],
+              allow_patterns=["curated/*"],
               ignore_patterns=["curated/source_runs/*"],
-              max_workers=32,
+              max_workers=16,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate derived mirror through the robust Hub cache
+        timeout-minutes: 75
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_HUB_DISABLE_XET: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=["derived/*"],
+              max_workers=16,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate external and backfill mirror through the robust Hub cache
+        timeout-minutes: 75
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_HUB_DISABLE_XET: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=["external/*", "backfill/*"],
+              max_workers=16,
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
