@@ -53,7 +53,10 @@ stops backfilling:
 | 2026-07-15 | 2026-02-05 through 2026-07-12 | 316 |
 
 Each run uses another two requests for the latest closed day, remaining below
-the documented 500-request account limit. Manual recovery remains available:
+the documented 500-request account limit. A deployment commit containing the
+literal marker `[history-backfill]` also executes the current UTC day's chunk;
+ordinary pushes only smoke-test the latest closed day. Manual recovery remains
+available:
 
 ```bash
 gh workflow run marketplace-history.yml \

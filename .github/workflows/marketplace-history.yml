@@ -42,6 +42,8 @@ jobs:
       - name: resolve requested source dates
         id: dates
         shell: bash
+        env:
+          DEPLOY_BACKFILL: ${{ contains(github.event.head_commit.message, '[history-backfill]') }}
         run: |
           start="${{ github.event.inputs.start_date }}"
           end="${{ github.event.inputs.end_date }}"
@@ -55,7 +57,7 @@ jobs:
           echo "end=$end" >> "$GITHUB_OUTPUT"
           backfill_start=""
           backfill_end=""
-          if [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "$DEPLOY_BACKFILL" = "true" ]; then
             case "$(date -u +%F)" in
               2026-07-13)
                 backfill_start="2025-01-01"
