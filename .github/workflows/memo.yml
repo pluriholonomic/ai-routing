@@ -128,15 +128,17 @@ jobs:
           uv run python - <<'PY'
           import shutil
           from huggingface_hub import snapshot_download
-          snapshot = snapshot_download(
-              "t4run/openrouter-market-history", repo_type="dataset",
-              cache_dir=".hf-cache",
-              allow_patterns=[
-                  "curated/source_runs/dt=2026-07-12/20260712T1[2-7]*",
-              ],
-              max_workers=32,
-          )
-          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          for hour in range(12, 18):
+              print(f"hydrating legacy source ledger hour {hour:02d}", flush=True)
+              snapshot = snapshot_download(
+                  "t4run/openrouter-market-history", repo_type="dataset",
+                  cache_dir=".hf-cache",
+                  allow_patterns=[
+                      f"curated/source_runs/dt=2026-07-12/20260712T{hour:02d}*",
+                  ],
+                  max_workers=32,
+              )
+              shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
       - name: hydrate source-run ledger for 2026-07-12 hours 18-23
         timeout-minutes: 30
@@ -147,16 +149,17 @@ jobs:
           uv run python - <<'PY'
           import shutil
           from huggingface_hub import snapshot_download
-          snapshot = snapshot_download(
-              "t4run/openrouter-market-history", repo_type="dataset",
-              cache_dir=".hf-cache",
-              allow_patterns=[
-                  "curated/source_runs/dt=2026-07-12/20260712T1[89]*",
-                  "curated/source_runs/dt=2026-07-12/20260712T2[0-3]*",
-              ],
-              max_workers=32,
-          )
-          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          for hour in range(18, 24):
+              print(f"hydrating legacy source ledger hour {hour:02d}", flush=True)
+              snapshot = snapshot_download(
+                  "t4run/openrouter-market-history", repo_type="dataset",
+                  cache_dir=".hf-cache",
+                  allow_patterns=[
+                      f"curated/source_runs/dt=2026-07-12/20260712T{hour:02d}*",
+                  ],
+                  max_workers=32,
+              )
+              shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
       - name: hydrate source-run ledger for 2026-07-13
         timeout-minutes: 75
