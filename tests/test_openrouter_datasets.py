@@ -185,7 +185,7 @@ def test_app_rankings_capture_retains_completed_days_before_degraded_page(
         def __init__(self, client, rps):
             assert rps == datasets.APP_REQUESTS_PER_SECOND
             self.records = []
-            self.responses = [_app_body(source_date="2026-07-01"), None]
+            self.responses = [_app_body(source_date="2026-07-01"), None, None, None]
 
         async def get_json(self, url, headers=None):
             return self.responses.pop(0)
@@ -209,3 +209,72 @@ def test_app_rankings_capture_retains_completed_days_before_degraded_page(
     assert list(
         (tmp_path / "curated" / "openrouter_app_rankings_daily").rglob("*.parquet")
     )
+
+
+def test_app_rankings_capture_retries_transient_invalid_page(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-token")
+
+    @asynccontextmanager
+    async def fake_client():
+        yield object()
+
+    class FakeFetcher:
+        def __init__(self, client, rps):
+            assert rps == datasets.APP_REQUESTS_PER_SECOND
+            self.records = []
+            self.responses = [None, _app_body()]
+
+        async def get_json(self, url, headers=None):
+            return self.responses.pop(0)
+
+    monkeypatch.setattr(datasets, "make_client", fake_client)
+    monkeypatch.setattr(datasets, "Fetcher", FakeFetcher)
+
+    result = asyncio.run(
+        capture_openrouter_app_rankings_daily(
+            start_date="2026-07-01",
+            end_date="2026-07-01",
+            raw_dir=tmp_path / "raw",
+            curated_dir=tmp_path / "curated",
+        )
+    )
+
+    assert result["source_status"] == "success"
+    assert result["rows"] == 2
+    assert result["complete_source_days"] == 1
+    assert result["page_requests"] == 2
+
+
+def test_app_rankings_capture_does_not_count_partial_two_page_day(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-token")
+
+    @asynccontextmanager
+    async def fake_client():
+        yield object()
+
+    class FakeFetcher:
+        def __init__(self, client, rps):
+            assert rps == datasets.APP_REQUESTS_PER_SECOND
+            self.records = []
+            self.responses = [_app_body(rows=100), None, None, None]
+
+        async def get_json(self, url, headers=None):
+            return self.responses.pop(0)
+
+    monkeypatch.setattr(datasets, "make_client", fake_client)
+    monkeypatch.setattr(datasets, "Fetcher", FakeFetcher)
+
+    result = asyncio.run(
+        capture_openrouter_app_rankings_daily(
+            start_date="2026-07-01",
+            end_date="2026-07-01",
+            raw_dir=tmp_path / "raw",
+            curated_dir=tmp_path / "curated",
+        )
+    )
+
+    assert result["source_status"] == "degraded"
+    assert result["rows"] == 100
+    assert result["complete_source_days"] == 0
+    assert result["failed_detail"]["page_offset"] == 100
+    assert result["failed_detail"]["attempts"] == datasets.APP_PAGE_ATTEMPTS

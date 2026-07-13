@@ -63,7 +63,10 @@ jobs:
                 backfill_end="2025-05-28"
                 ;;
               2026-07-14)
-                backfill_start="2025-05-29"
+                # The July 13 run received only the first page for May 28
+                # before the source returned a malformed throttle response.
+                # Re-request the whole day so top-200 coverage is complete.
+                backfill_start="2025-05-28"
                 backfill_end="2026-01-13"
                 ;;
               2026-07-15)

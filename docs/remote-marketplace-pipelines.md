@@ -51,7 +51,7 @@ stops backfilling:
 | Scheduled UTC day | Historical interval | Maximum app requests |
 |---|---|---:|
 | 2026-07-13 | 2025-01-01 through 2025-05-28 | 296 |
-| 2026-07-14 | 2025-05-29 through 2026-01-13 | 460 |
+| 2026-07-14 | 2025-05-28 through 2026-01-13 | 462 |
 | 2026-07-15 | 2026-01-14 through 2026-07-12 | 360 |
 
 Each run uses another two requests for the latest closed day, remaining below
@@ -59,6 +59,12 @@ the documented 500-request account limit. A deployment commit containing the
 literal marker `[history-backfill]` also executes the current UTC day's chunk;
 ordinary pushes only smoke-test the latest closed day. Manual recovery remains
 available:
+
+The July 13 run stopped on the second page of May 28 after preserving its
+earlier complete days and first-page evidence. The July 14 interval therefore
+replays May 28 in full. The collector retries a malformed page up to three
+times, and a source day counts as complete only after every required page has
+validated.
 
 ```bash
 gh workflow run marketplace-history.yml \

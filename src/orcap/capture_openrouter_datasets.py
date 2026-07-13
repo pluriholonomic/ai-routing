@@ -32,6 +32,7 @@ SOURCE = "openrouter_rankings_daily"
 APP_SOURCE = "openrouter_app_rankings_daily"
 APP_PAGE_LIMIT = 100
 APP_PAGE_OFFSETS = (0, 100)
+APP_PAGE_ATTEMPTS = 3
 MAX_APP_BACKFILL_DAYS = 200
 # The dataset account permits 500 requests/day but currently throttles near
 # 30 requests/minute. Stay below the short-window limit during long backfills.
@@ -348,6 +349,7 @@ async def capture_openrouter_app_rankings_daily(
 
     rows: list[dict[str, Any]] = []
     page_details: list[dict[str, Any]] = []
+    completed_source_dates: set[str] = set()
     failed_detail: dict[str, Any] | None = None
     async with make_client() as client:
         fetcher = Fetcher(client, rps=APP_REQUESTS_PER_SECOND)
@@ -355,38 +357,44 @@ async def capture_openrouter_app_rankings_daily(
             for offset in APP_PAGE_OFFSETS:
                 if offset and page_details[-1]["page_rows"] < APP_PAGE_LIMIT:
                     break
-                body = await fetcher.get_json(
-                    _app_url(
-                        source_date,
+                for attempt in range(1, APP_PAGE_ATTEMPTS + 1):
+                    body = await fetcher.get_json(
+                        _app_url(
+                            source_date,
+                            sort=sort,
+                            category=category,
+                            subcategory=subcategory,
+                            offset=offset,
+                        ),
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                    page_rows, page_detail = app_rankings_page_rows(
+                        body,
+                        run_ts,
+                        dt,
+                        requested_date=source_date,
                         sort=sort,
                         category=category,
                         subcategory=subcategory,
                         offset=offset,
-                    ),
-                    headers={"Authorization": f"Bearer {token}"},
-                )
-                page_rows, page_detail = app_rankings_page_rows(
-                    body,
-                    run_ts,
-                    dt,
-                    requested_date=source_date,
-                    sort=sort,
-                    category=category,
-                    subcategory=subcategory,
-                    offset=offset,
-                )
-                # Preserve the requested scope even when the response is
-                # missing or malformed, so degraded telemetry cannot itself
-                # raise while summarizing completed dates.
-                page_detail.setdefault("source_date", source_date)
-                page_detail.setdefault("page_offset", offset)
-                page_details.append(page_detail)
+                    )
+                    # Preserve the requested scope even when the response is
+                    # missing or malformed, so degraded telemetry cannot itself
+                    # raise while summarizing completed dates.
+                    page_detail.setdefault("source_date", source_date)
+                    page_detail.setdefault("page_offset", offset)
+                    page_detail["attempt"] = attempt
+                    page_details.append(page_detail)
+                    if page_detail.get("coverage_complete") is True:
+                        break
                 if page_detail.get("coverage_complete") is not True:
+                    page_detail["attempts"] = APP_PAGE_ATTEMPTS
                     failed_detail = page_detail
                     break
                 rows.extend(page_rows)
             if failed_detail:
                 break
+            completed_source_dates.add(source_date)
         write_raw(fetcher.records, "openrouter_datasets", raw_dir, run_ts, dt)
 
     unique_keys = {
@@ -400,13 +408,7 @@ async def capture_openrouter_app_rankings_daily(
         for row in rows
     }
     duplicate_rows = len(unique_keys) != len(rows)
-    complete_dates = len(
-        {
-            detail["source_date"]
-            for detail in page_details
-            if detail.get("coverage_complete") is True and detail.get("source_date")
-        }
-    )
+    complete_dates = len(completed_source_dates)
     complete = failed_detail is None and not duplicate_rows and complete_dates == len(source_dates)
     # Retain fully normalized days collected before a later throttle. The
     # source-run status remains degraded, so downstream coverage gates can
