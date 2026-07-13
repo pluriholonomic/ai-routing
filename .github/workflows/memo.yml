@@ -79,7 +79,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           snapshot = snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset",
               cache_dir=".hf-cache",
@@ -97,7 +97,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           for hour in range(24):
               print(f"hydrating legacy source ledger hour {hour:02d}", flush=True)
               snapshot = snapshot_download(
@@ -122,7 +122,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           for hour in range(0, 6):
               print(f"hydrating legacy source ledger hour {hour:02d}", flush=True)
               snapshot = snapshot_download(
@@ -144,7 +144,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           for hour in range(6, 12):
               print(f"hydrating legacy source ledger hour {hour:02d}", flush=True)
               snapshot = snapshot_download(
@@ -168,7 +168,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           for hour in range(12, 18):
               print(f"hydrating legacy source ledger hour {hour:02d}", flush=True)
               snapshot = snapshot_download(
@@ -190,7 +190,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           for hour in range(18, 24):
               print(f"hydrating legacy source ledger hour {hour:02d}", flush=True)
               snapshot = snapshot_download(
@@ -212,7 +212,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           for hour in range(24):
               print(f"hydrating legacy source ledger hour {hour:02d}", flush=True)
               snapshot = snapshot_download(
@@ -233,7 +233,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           snapshot = snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset",
               cache_dir=".hf-cache",
@@ -273,7 +273,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           snapshot = snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset",
               cache_dir=".hf-cache",
@@ -291,7 +291,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           snapshot = snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset",
               cache_dir=".hf-cache",
@@ -308,7 +308,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
-          from huggingface_hub import snapshot_download
+          from orcap.hf_snapshot_retry import snapshot_download_retry as snapshot_download
           snapshot = snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset",
               cache_dir=".hf-cache",
