@@ -7,7 +7,7 @@ DEST=${2:-data}
 SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
 mkdir -p "$DEST"
 count=0
-for wf in capture.yml gpu.yml hf-router.yml livepeer.yml; do
+for wf in capture.yml gpu.yml hf-router.yml livepeer.yml probes.yml; do
   for id in $(gh run list --workflow "$wf" --status success --limit 40 \
       --json databaseId,createdAt \
       --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId"); do

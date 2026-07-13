@@ -1,0 +1,40 @@
+name: probes
+# Hourly realized-routing probes: ~8 one-token completions through
+# OpenRouter's default policy, recording which provider the router actually
+# selected (generation metadata) into router_route_attempts. Cost is bounded
+# by construction (MAX_PROBES × 1 output token); output is buffered as a
+# workflow artifact and reaches HF in the nightly consolidated push.
+
+on:
+  schedule:
+    - cron: "37 * * * *"  # offset from capture (:07) and market (:29)
+  workflow_dispatch:
+
+concurrency:
+  group: probes
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: send probes and record realized routing
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: uv run python -m orcap.capture_probes
+      - name: buffer output as workflow artifact (HF gets one consolidated push nightly)
+        uses: actions/upload-artifact@v4
+        with:
+          name: probes-${{ github.run_id }}
+          path: data/
+          retention-days: 7
+          compression-level: 0
