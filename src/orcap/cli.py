@@ -564,7 +564,12 @@ def main() -> None:
         out = Path(args.out)
         results = {}
         failures = []
+        from .analysis import data as analysis_data
+
         for h in chosen:
+            # A caught optional-table error must not poison the DuckDB
+            # transaction seen by a later required hypothesis.
+            analysis_data.reset_connection()
             mod = importlib.import_module(f"orcap.analysis.{modules[h]}")
             try:
                 results[h] = mod.run(out)

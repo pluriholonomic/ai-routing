@@ -29,6 +29,16 @@ def connect() -> duckdb.DuckDBPyConnection:
     return con
 
 
+def reset_connection() -> None:
+    """Close and discard the process-wide analytical connection, if any."""
+    if connect.cache_info().currsize:
+        connection = connect()
+        try:
+            connection.close()
+        finally:
+            connect.cache_clear()
+
+
 def table_glob(name: str, layer: str = "curated") -> str:
     source = os.environ.get("ORCAP_ANALYSIS_SOURCE", "hf")
     base = str(DATA_DIR) if source == "local" else _hf_base()
@@ -36,7 +46,17 @@ def table_glob(name: str, layer: str = "curated") -> str:
 
 
 def q(sql: str) -> duckdb.DuckDBPyRelation:
-    return connect().sql(sql)
+    try:
+        return connect().sql(sql)
+    except duckdb.TransactionException as exc:
+        # An optional query can fail inside an explicit DuckDB transaction and
+        # be handled by its hypothesis module, leaving the shared connection in
+        # an aborted state. Heal that state once; preserve the retried query's
+        # real exception if the SQL or input itself is invalid.
+        if "transaction is aborted" not in str(exc).lower():
+            raise
+        reset_connection()
+        return connect().sql(sql)
 
 
 def latest_endpoints() -> str:
