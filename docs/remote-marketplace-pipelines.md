@@ -24,6 +24,8 @@ also launch a hosted smoke run on `main`. A successful compaction launches the
 memo workflow through `workflow_run`; the daily schedules remain independent
 fallbacks. This makes deployment verification and analysis chaining remote as
 well, without requiring an operator laptop or an authenticated local CLI.
+A successful memo immediately launches the full remote-health check, in
+addition to the six-hour watchdog schedule.
 
 ## Required remote secrets
 
