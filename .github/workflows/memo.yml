@@ -33,19 +33,37 @@ jobs:
   memo:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 210
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
       - run: uv sync --no-dev
-      - name: hydrate dataset through the robust Hub cache
-        # fail fast if Hub rate limits stall the download, instead of eating
-        # the whole 150-minute job timeout with everything downstream skipped
+      - name: hydrate source-run ledger through the robust Hub cache
+        # The immutable source ledger is the largest single object group. Give
+        # it an independent bound so it cannot starve the rest of the mirror.
         timeout-minutes: 75
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from huggingface_hub import snapshot_download
+          snapshot = snapshot_download(
+              "t4run/openrouter-market-history", repo_type="dataset",
+              cache_dir=".hf-cache",
+              allow_patterns=["curated/source_runs/*"],
+              max_workers=32,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          PY
+      - name: hydrate remaining analysis mirror through the robust Hub cache
+        timeout-minutes: 75
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
         run: |
           uv run python - <<'PY'
           import shutil
@@ -54,10 +72,7 @@ jobs:
               "t4run/openrouter-market-history", repo_type="dataset",
               cache_dir=".hf-cache",
               allow_patterns=["curated/*", "derived/*", "external/*", "backfill/*"],
-              # The legacy mirror has roughly 3,500 analysis-relevant objects.
-              # Eight workers exhausted the prior 60-minute step guard. The
-              # authenticated resolver allowance can accommodate one bounded
-              # pass, so use enough concurrency to amortize per-object latency.
+              ignore_patterns=["curated/source_runs/*"],
               max_workers=32,
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
