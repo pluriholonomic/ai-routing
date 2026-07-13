@@ -123,7 +123,9 @@ jobs:
         timeout-minutes: 30
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_XET_HIGH_PERFORMANCE: "1"
+          # The legacy rows are tiny LFS objects. This specific window leaves
+          # Xet workers in a long tail; direct HTTP is faster and deterministic.
+          HF_HUB_DISABLE_XET: "1"
         run: |
           uv run python - <<'PY'
           import shutil
@@ -136,7 +138,7 @@ jobs:
                   allow_patterns=[
                       f"curated/source_runs/dt=2026-07-12/20260712T{hour:02d}*",
                   ],
-                  max_workers=32,
+                  max_workers=16,
               )
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -144,7 +146,7 @@ jobs:
         timeout-minutes: 30
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_XET_HIGH_PERFORMANCE: "1"
+          HF_HUB_DISABLE_XET: "1"
         run: |
           uv run python - <<'PY'
           import shutil
@@ -157,7 +159,7 @@ jobs:
                   allow_patterns=[
                       f"curated/source_runs/dt=2026-07-12/20260712T{hour:02d}*",
                   ],
-                  max_workers=32,
+                  max_workers=16,
               )
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
