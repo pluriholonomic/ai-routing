@@ -254,7 +254,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           uv run python scripts/materialize_source_runs_baseline.py \
-            --expect-source-files 1289 --expect-rows 1383
+            --expect-source-files 1289 --expect-rows 1713
       - name: materialize closed 2026-07-13 source-run tail once
         if: >-
           ${{ steps.legacy-source-baseline.outputs.tail_exists != 'true' &&
