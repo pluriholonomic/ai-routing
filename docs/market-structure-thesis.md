@@ -1,181 +1,88 @@
-# The Market Structure of Open AI Inference: Thesis, Experiments, Results
+# How the open AI inference market will evolve
 
-*Working synthesis, 2026-07-12. Data: the orcap capture pipeline (5-minute
-per-provider quotes across ~300 models × ~70 providers on OpenRouter,
-repricing-event stream, demand/congestion panels, GPU rental markets, realized-
-routing probes) plus a 2023–2026 backfill. Companion documents:
-`marketplace-comparison-plan.md` (literature map), `compute-brokerage-
-hypothesis.md` (pre-registration), `analysis/hypothesis_scorecard.json` (live
-status). Statuses reflect the panel as of this date; several results are
-labeled preliminary by their own power gates.*
+*2026-07-12. Short version. Depth lives in `marketplace-comparison-plan.md`
+(literature), `compute-brokerage-hypothesis.md` (pre-registered predictions),
+and the nightly memo (all results).*
 
----
+## The thesis
 
-## 1. The question
+**The AI inference market is becoming a brokerage business sitting on a
+commodity business — like retail stock trading, not like a crypto exchange.**
 
-Open-weights models turned inference into a commodity anyone can serve. A
-marketplace formed around that fact — providers quoting per-token prices on
-identical models, routers allocating requests across them, harnesses and
-agents originating demand. The research question: **what kind of market is
-this, and what will it become?** The method: empirics first, against explicit
-comparator markets with published benchmark constants, so that every claim of
-analogy is a falsifiable quantitative statement rather than a metaphor.
+The money settles into the layer that *owns the customer* (coding agents,
+chat apps — the "brokers"), while everything below them commoditizes: routing
+fees compete to zero, providers become interchangeable dealers earning thin
+spreads on identical open models, and GPU capacity trades like electricity —
+a raw input with its own emerging futures and capacity contracts. Prices in
+this market don't behave like a ticker: they are posted menus that change
+rarely and strategically, while minute-to-minute imbalances are absorbed by
+queues and rate limits instead of price moves.
 
-The original conjecture mapped the stack onto DeFi: harness↔wallet,
-router↔DEX aggregator, open model↔protocol, provider↔liquidity provider. The
-empirical screen broke that mapping in instructive ways, and a five-literature
-sweep (platform economics, DeFi microstructure, ridesharing/gig operations,
-ad exchanges, electricity/cloud/commodity markets) produced a sharper one.
+## Five measured facts that anchor it
 
-## 2. The empirical base: what kind of market it is *today*
+1. **Users don't shop; the router shops for them — 20× more aggressively.**
+   Demand barely responds to price (−0.05 elasticity), but the router
+   reallocates hard (−1.15). That gap is why customer-owning apps, not
+   infrastructure, will capture the margin.
+2. **Prices are menus, not tickers.** Under 3% of provider-model pairs
+   reprice on a given day, and when they do, the median move is 25%. In a
+   6-day window only 7% of busy endpoints ever changed price — while 80% hit
+   rate limits. Congestion is managed with throttling, not surge pricing.
+3. **There is no hidden spread.** The router displays provider prices
+   verbatim (97% exactly zero markup vs. going direct). Its 5.5% fee is a
+   visible convenience charge — which history says gets competed away, while
+   app-layer fees historically don't (MetaMask still charges 0.875% five
+   years after free alternatives appeared).
+4. **Providers price-match instead of undercutting.** On half of
+   multi-provider model-days the two cheapest quotes are *identical to the
+   cent*; otherwise the gap is large (~8%). And providers that reprice
+   frequently sit ~14% *below* slow ones on the same model — slow, sticky
+   pricing is subsidized by customers who don't switch.
+5. **The GPU layer already shows electricity-market behavior.** Providers get
+   paid only per token while holding ~ED-hospital levels of spare capacity —
+   the classic setup that historically forces capacity contracts into
+   existence. Provisioned-throughput products (Azure PTUs, priority tiers)
+   are that prediction already coming true.
 
-Forty-plus hypotheses have been run against the capture (H1–H68). The
-established results, in order of evidential strength:
+## What each layer becomes
 
-**Price formation is menu-cost dealing, not continuous clearing.** Only 2.8%
-of endpoint-days reprice; the median change is 25.6% and 78% exceed 10% (H1;
-replicated on a 3-year, 56k-pair LiteLLM backfill). Repricing is predictable
-out-of-sample (AUC 0.87, H18), lifecycle-driven (cut-share falls from 65% in a
-model's first month to 39% after a year, H17), and reactive (1,513 follower
-pairs, median lag ~21h, 56% within 24h, H21). Prices are administered on cent
-gridpoints (93% of quotes, CBH-6); demand shocks land on queues — over one
-six-day window 7% of hot endpoints ever moved price while 80% experienced
-rate-limit variation (CBH-3).
+| Layer | Today | Becomes | Because |
+|---|---|---|---|
+| Apps/agents (own the user) | Markups, subscriptions | **Keep 15%+ margins; get paid for order flow** | Captive users don't price-shop (fact 1) |
+| Routers | 5.5% fee | **~Free utility; 2–4 survivors; auctions replace posted menus** | Zero-markup rivals already live; fees at this layer always compress |
+| Providers | 70 quoting firms | **Two-speed dealers: fast algorithmic repricers vs. slow premium ones; consolidation per model to 2–5** | Identical models = commodity dealing (facts 2, 4) |
+| Open models | Free assets | **Commodity specs; authors monetize by serving or certifying, not licensing** | The asset earns nothing; the service does |
+| GPUs | Hourly rentals | **Electricity-style market: capacity contracts + futures + peak pricing** | Non-storable output, bursty demand, missing money (fact 5) |
 
-**Quotes are firm and pass through intermediaries unchanged.** Cheap quotes do
-not reject more (the phantom-liquidity/last-look prediction is rejected,
-p=0.02, H10); router-displayed prices equal provider-direct prices essentially
-always (96.6% exact-zero basis across 326 pairs and 8 providers, H13; median
-cross-router basis 0.0%, H44). There is no hidden spread — the adtech "delta"
-extraction mechanism is absent.
+Plus one wildcard: **a quality-fraud scandal** (providers silently serving
+degraded/quantized models — ~⅓ of third-party endpoints already diverge from
+reference weights in outside audits) forces an attestation standard, the way
+ad fraud forced ads.txt.
 
-**Routing is partially algorithmic, demand is not.** Within-model share-price
-elasticity is −1.15 (se 0.09, H4) — between the router's documented
-inverse-square default (−2) and pinned flow (0). End-user demand elasticity
-is ~−0.05 (external estimates on the same platform). The wedge, ~20×, is the
-defining signature of a brokered market: the intermediary shops, the customer
-doesn't (CBH-7).
+## Predictions with dates (hold us to these)
 
-**Competition is entry and entrenchment, not price wars.** Prices fall
-monotonically with provider count (−0.50 log points at N=2 to −1.13 at N=5+,
-H3) and provider counts track demand (ρ=0.63, H20), but incumbents do not cut
-on entry (precise null, 532 events, H26), dispersion does not shrink with N
-(H2), and the cheapest-provider identity is sticky (H68: competition loads on
-crowded dispersed quote boards behind stable price leaders; internally
-consistent latent factor, α=0.81, split-half ρ=0.90). The gap between the two
-cheapest quotes is bimodal: 48% exact ties (price-matching) and otherwise
-large (median 8.3% at N≥10) — not Baye-Morgan's smooth decline and not
-Bertrand ε-undercutting (CBH-2).
+- Router effective take <3% **or** 15+ points of share to zero-fee routers — by end-2027.
+- Explicit pay-for-order-flow deals between providers/routers and apps — within 18 months.
+- A major router introduces per-request provider bidding — within 24 months.
+- A major provider adopts time-of-day pricing — within 24 months.
+- Provisioned/priority capacity becomes a mid-double-digit share of provider revenue — by 2028.
+- GPU futures live or die by a stated test: cross-index basis under 5% with both hedgers present.
+- App-layer margins do **not** compress below 15% through 2027.
 
-**The physical layer is an energy-only capacity market under bursty load.**
-Demand has Fano factors ~10³, Hurst 0.84, INGARCH persistence 0.79 (H38/39);
-providers hold proportional overcapacity (ED-staffing slope 0.83) consistent
-with Erlang loss and no congestion-pricing regime (H37); output is non-storable
-and non-resalable, carry strategies are unprofitable after the no-resale drag
-(H35/36), and token prices deflated −54% over three years against GPU rents
-−19/−24% — deflation is competition/efficiency, not cost pass-through (H7).
+## Score so far
 
-**The two sides are decoupled.** Harness-usage structure (count, concentration,
-category mix) is uncorrelated with supply-side competition (all |ρ|<0.06);
-only aggregate volume weakly correlates (+0.17). The router insulates each
-side from the other's structure — what a functioning aggregator does.
+17 pre-registered predictions graded nightly: **5 consistent, 0 wrong**, 12
+accumulating or awaiting their window. One flag worth watching: after a price
+cut, rivals usually cut and then *drift back up* (72% of typed events) — the
+textbook algorithmic-collusion signature — but the sample is 18 events and
+it's tangled with launch experimentation. If it survives at 100+ events, that
+becomes the headline result.
 
-**Where the DeFi analogy is quantitatively wrong.** Cross-venue dispersion is
-~200× DeFi's (27.5% CV vs 14.2bps); repricing cadence ~10³× slower than base
-fee; the take rate is ~100× aggregator levels (5.5% vs bps); and there is no
-mempool — "front-running" can only mean quote-surface front-running, which is
-measurable but different in kind.
+## What would prove us wrong
 
-## 3. The thesis: what it will become
-
-**The Compute Brokerage Hypothesis** (pre-registered 2026-07-12): the market
-converges to **retail financial brokerage layered over commodity dealing**.
-Each layer inherits the equilibrium of its true analog:
-
-| Layer | Analog | Converges to |
-|---|---|---|
-| Origination (harnesses, agents) | PFOF broker / agency-DSP | Keeps the persistent margin (≥15%); explicit pay-for-flow deals emerge; captive flow is measurably price-insensitive |
-| Routing (OpenRouter, HF, gateways) | FX aggregator over dealer streams / ad exchange | Take compresses toward zero under multi-homing (SSP path: 20–25%→10–15% in ~4yrs); mechanism evolves toward per-request auctions; 2–4 routers regardless of low take |
-| Quoting (providers) | Last-look dealer / retail electricity supplier | Two-speed dealer market: fast algorithmic repricers with thin spreads vs slow posted-price dealers +10–30% above them on pinned flow; adverse selection managed by rationing |
-| Asset (open models) | Listed instrument; author = issuer without a fee switch | Commodity specs enabling cross-venue competition; author monetization migrates to first-party serving or certification |
-| Physical (GPU capacity) | Energy-only electricity market | Missing money resolves via capacity products (PTU/priority = bilateral capacity markets), maturing GPU futures, vertical integration; a first mover adopts time-varying pricing (the yield-management moment) |
-| Integrity | ads.txt gap | Quantization/weight misrepresentation grows with price competition until a scandal forces attestation, which then under-enforces |
-
-Two invariants distinguish brokerage-over-dealing from any exchange story:
-**(i)** the elasticity wedge persists (it *is* the origination rent), and
-**(ii)** quantity clears while price administers at horizons under ~a month.
-Cross-layer, an **integration ratchet** (order flow × execution × capacity
-complementarity) drives share toward integrated players and M&A across layer
-boundaries. Full dated predictions and kill criteria:
-`compute-brokerage-hypothesis.md` §"Layer predictions".
-
-Historical trajectories imported as quantitative priors: header bidding
-compressed non-Google SSP takes 20–25%→10–15% in four years while MetaMask's
-0.875% wallet fee survived five years untouched; every DeFi allocation layer
-(solvers, fillers, builders) converged to 2–5 firms within ~18–24 months;
-PJM capacity payments went from ~3% to 15–20% of generator revenue in two
-years once scarcity arrived; post-2017 AWS spot settled into administered
-prices with preemption clearing.
-
-## 4. The experiments
-
-**Phase 1 — run now on existing capture (CBH-1..9, executed 2026-07-12):**
-
-| Module | Test | Imported benchmark |
-|---|---|---|
-| CBH-1 | Algorithmic-repricer census + saturation-margin test | Assad et al. 2024: +28% margins when all adopt |
-| CBH-2 | Gap(N) between two cheapest quotes | Baye-Morgan 2004: 22%→3.5%, never 0 |
-| CBH-3 | Demand-shock loading: price vs queue; diurnal harmonics | Uber surge outage; post-2017 AWS; pre-RM airlines |
-| CBH-4 | Typed rival reactions to cuts | Calvano 2020 punish-revert vs match-stick vs Edgeworth |
-| CBH-5 | Cadence hierarchy: slow-over-fast price premium | Brown-MacKay 2023: +10–30% |
-| CBH-6 | Administered-price forensics | Ben-Yehuda 2013 AWS spot battery |
-| CBH-7 | Routing vs end-user elasticity wedge | PFOF logic; kill threshold 3× |
-| CBH-8 | Rockets-and-feathers GPU pass-through ECM | BCG 1997; Texas retail 43–47% | 
-| CBH-9 | Skewness-signed forward premium | Bessembinder-Lemmon; Longstaff-Wang |
-
-**Phase 2 — probe extensions (harness live, variants to build):** quote
-firmness/last-look (reject-vs-staleness on pinned-provider probes), weight
-fingerprinting vs price discount (the MFA/obfuscation test), router-neutrality
-audit (choice-model residuals on realized probes), app-attributed elasticity
-split, first-outage reputation event studies.
-
-**Phase 3 — quarterly structural trackers (pre-registered, to instrument):**
-per-layer fee-migration panel, PFOF watch, capacity-product census, futures
-cross-index basis with bandwidth-failure kill criteria, concentration curves
-and the integration test.
-
-## 5. Results to date
-
-Scorecard (17 graded predictions): **5 consistent, 0 inconsistent**, 2
-accumulating, 10 awaiting trackers/windows.
-
-| Prediction | Status | Evidence |
-|---|---|---|
-| Invariant (i): elasticity wedge | **consistent** | 19.9× [17.3–21.7], kill threshold 3 |
-| Invariant (ii): quantity clears, price administers | **consistent** | price ever-moved 7% vs rate-limit 80% of endpoints (6d); latency loads ~30× price at 30-min |
-| Q1: slow-over-fast premium 10–30% | **consistent** | +13.8% [7.8–19.6] within model-day |
-| Q3: dispersion floor ≥3% at high N | **consistent** | 8.3% median gap at N≥10; 48% exact ties |
-| R2: hidden router spread = 0 | **consistent** | 96.6% exact-zero venue basis |
-| Q2: Assad saturation test | accumulating | 13/68 active repricers; markets with repricers show *lower* markups (rank β −0.71) — commoditization branch so far; no all-algorithmic market yet |
-| Q: collusion-signature watch | accumulating | 72% of 18 typed cuts show punish-and-revert — nominally the Calvano signature, currently confounded with launch experimentation; the single most important statistic to re-estimate at n≥100 |
-| CBH-8/9 | gated | 6/90 and 6/60 required daily observations; self-activate |
-| O1–O2, R1, R3–R4, P1–P3, I1, X2 | untested | trackers/windows open through 2027–28 |
-
-Interpretation discipline: "consistent" means the pre-registered criterion is
-met on the current panel, not confirmation — most tests are on days-to-weeks
-of data and re-run nightly. The hypothesis dies, per its own terms, if the
-router take persists ≥5% for 3 years without share migration while harness
-margins compress, if prices begin clearing load at high frequency, or if the
-elasticity wedge closes.
-
-## 6. Positioning
-
-Closest prior art — Demirer-Fradkin-Tadelis-Peng (NBER w34608), Fradkin
-(arXiv:2504.15440), the OpenRouter 100T-token study (arXiv:2601.10088), Du
-(arXiv:2603.28576) — works from usage and list-price data and reaches the
-demand-side conclusions (competitive, differentiated, elastic-ish at the
-model level). None observes the quote panel at 5-minute resolution, the
-repricing-event stream, realized routing, or the GPU-cost joins; the
-microstructure results (firmness, venue basis, reaction dynamics, cadence
-hierarchy, the wedge) and the CBH structural forecast are, to our knowledge,
-unclaimed territory.
+- Router fees hold at 5%+ for years while app margins compress → margins live
+  at the routing layer and the brokerage frame is inverted.
+- Prices start moving with load at high frequency → this is a spot exchange
+  after all.
+- The 20× shopping gap closes → no captive-customer rent exists to sustain
+  the app layer.
