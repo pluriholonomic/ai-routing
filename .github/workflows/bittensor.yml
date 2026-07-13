@@ -3,6 +3,12 @@ name: bittensor-allocation
 # Public Chutes subnet scoring/reward state.  This is a read-only chain query,
 # not an inference request or wallet operation.
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/bittensor.yml"
+      - "src/orcap/capture_bittensor.py"
+      - "config/sources.toml"
   schedule:
     - cron: "12 */6 * * *"
   workflow_dispatch:

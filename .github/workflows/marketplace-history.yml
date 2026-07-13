@@ -5,6 +5,12 @@ name: marketplace-history
 # at most 200 app-ranking days so the OpenRouter account's documented daily
 # request limit cannot be exceeded by one job.
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/marketplace-history.yml"
+      - "src/orcap/capture_openrouter_datasets.py"
+      - "config/sources.toml"
   schedule:
     - cron: "19 6 * * *"
   workflow_dispatch:

@@ -19,6 +19,12 @@ is outside its source-specific schedule SLO, or if the Hugging Face dataset has
 not received a commit within 30 hours.  Its JSON report is retained as a
 30-day Actions artifact.
 
+Changes to the compactor, Bittensor collector, or aggregate-history collector
+also launch a hosted smoke run on `main`. A successful compaction launches the
+memo workflow through `workflow_run`; the daily schedules remain independent
+fallbacks. This makes deployment verification and analysis chaining remote as
+well, without requiring an operator laptop or an authenticated local CLI.
+
 ## Required remote secrets
 
 | GitHub Actions secret | Purpose |

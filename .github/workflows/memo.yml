@@ -5,6 +5,9 @@ name: memo
 # Any separate local artifact copy is optional and not part of data durability.
 
 on:
+  workflow_run:
+    workflows: ["compact"]
+    types: [completed]
   schedule:
     - cron: "13 5 * * *"  # after the 03:17 scrape and 04:13 compact
   workflow_dispatch:
@@ -19,6 +22,7 @@ permissions:
 
 jobs:
   memo:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
