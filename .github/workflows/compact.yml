@@ -22,7 +22,10 @@ on:
 
 concurrency:
   group: compact
-  cancel-in-progress: false
+  # Compaction is idempotent for a UTC day and uploads buffered artifacts
+  # before the fold. A newer implementation should replace a stale fold rather
+  # than wait behind it for up to two hours.
+  cancel-in-progress: true
 
 permissions:
   actions: read
