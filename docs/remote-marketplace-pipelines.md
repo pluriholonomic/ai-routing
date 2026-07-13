@@ -50,9 +50,9 @@ stops backfilling:
 
 | Scheduled UTC day | Historical interval | Maximum app requests |
 |---|---|---:|
-| 2026-07-13 | 2025-01-01 through 2025-06-29 | 360 |
-| 2026-07-14 | 2025-06-30 through 2026-02-04 | 440 |
-| 2026-07-15 | 2026-02-05 through 2026-07-12 | 316 |
+| 2026-07-13 | 2025-01-01 through 2025-05-28 | 296 |
+| 2026-07-14 | 2025-05-29 through 2026-01-13 | 460 |
+| 2026-07-15 | 2026-01-14 through 2026-07-12 | 360 |
 
 Each run uses another two requests for the latest closed day, remaining below
 the documented 500-request account limit. A deployment commit containing the

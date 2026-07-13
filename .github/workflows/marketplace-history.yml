@@ -8,7 +8,6 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/marketplace-history.yml"
       - "src/orcap/capture_openrouter_datasets.py"
       - "config/sources.toml"
   schedule:
@@ -61,14 +60,14 @@ jobs:
             case "$(date -u +%F)" in
               2026-07-13)
                 backfill_start="2025-01-01"
-                backfill_end="2025-06-29"
+                backfill_end="2025-05-28"
                 ;;
               2026-07-14)
-                backfill_start="2025-06-30"
-                backfill_end="2026-02-04"
+                backfill_start="2025-05-29"
+                backfill_end="2026-01-13"
                 ;;
               2026-07-15)
-                backfill_start="2026-02-05"
+                backfill_start="2026-01-14"
                 backfill_end="2026-07-12"
                 ;;
             esac
