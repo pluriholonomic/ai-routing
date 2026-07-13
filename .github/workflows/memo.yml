@@ -5,6 +5,10 @@ name: memo
 # Any separate local artifact copy is optional and not part of data durability.
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/memo.yml"
   workflow_run:
     workflows: ["compact"]
     types: [completed]
@@ -29,7 +33,7 @@ jobs:
   memo:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -38,8 +42,8 @@ jobs:
       - run: uv sync --no-dev
       - name: hydrate dataset (one bulk download beats thousands of hf:// reads)
         # fail fast if Hub rate limits stall the download, instead of eating
-        # the whole 120-minute job timeout with everything downstream skipped
-        timeout-minutes: 60
+        # the whole 150-minute job timeout with everything downstream skipped
+        timeout-minutes: 75
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -48,11 +52,11 @@ jobs:
           snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset", local_dir="data",
               allow_patterns=["curated/*", "derived/*", "external/*", "backfill/*"],
-              # Thousands of immutable parquet objects are retained. Two
-              # workers serialised enough request latency to hit the old
-              # 30-minute limit; eight remains bounded while avoiding that
-              # artificial bottleneck.
-              max_workers=8,
+              # The legacy mirror has roughly 3,500 analysis-relevant objects.
+              # Eight workers exhausted the prior 60-minute step guard. The
+              # authenticated resolver allowance can accommodate one bounded
+              # pass, so use enough concurrency to amortize per-object latency.
+              max_workers=32,
           )
           PY
       - name: overlay fresh intraday buffers
