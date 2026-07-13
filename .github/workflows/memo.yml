@@ -6,7 +6,7 @@ name: memo
 
 on:
   schedule:
-    - cron: "3 5 * * *"  # after the 03:17 scrape and 01:43 compact
+    - cron: "13 5 * * *"  # after the 03:17 scrape and 04:13 compact
   workflow_dispatch:
 
 concurrency:
@@ -20,7 +20,7 @@ permissions:
 jobs:
   memo:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -29,8 +29,8 @@ jobs:
       - run: uv sync --no-dev
       - name: hydrate dataset (one bulk download beats thousands of hf:// reads)
         # fail fast if Hub rate limits stall the download, instead of eating
-        # the whole 75-minute job timeout with everything downstream skipped
-        timeout-minutes: 30
+        # the whole 120-minute job timeout with everything downstream skipped
+        timeout-minutes: 60
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -39,7 +39,11 @@ jobs:
           snapshot_download(
               "t4run/openrouter-market-history", repo_type="dataset", local_dir="data",
               allow_patterns=["curated/*", "derived/*", "external/*", "backfill/*"],
-              max_workers=2,  # gentle under rate limits
+              # Thousands of immutable parquet objects are retained. Two
+              # workers serialised enough request latency to hit the old
+              # 30-minute limit; eight remains bounded while avoiding that
+              # artificial bottleneck.
+              max_workers=8,
           )
           PY
       - name: overlay fresh intraday buffers

@@ -5,7 +5,9 @@ name: compact
 
 on:
   schedule:
-    - cron: "43 1 * * *"
+    # Run after the UTC-day inputs have landed. The 04:13 slot also gives the
+    # remote watchdog time to observe a recovery before its 06:47 check.
+    - cron: "13 4 * * *"
   workflow_dispatch:
     inputs:
       dt:
@@ -26,7 +28,8 @@ jobs:
     # The 2026-07-09 scheduled run was terminated at the old 30-minute job
     # limit while folding the prior day's endpoint history.  A missed fold
     # leaves raw snapshots intact but silently stalls pricing_changes.
-    timeout-minutes: 60
+    # A full endpoint fold can exceed one hour as the retained panel grows.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
