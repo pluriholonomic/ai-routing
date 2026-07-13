@@ -33,6 +33,9 @@ APP_SOURCE = "openrouter_app_rankings_daily"
 APP_PAGE_LIMIT = 100
 APP_PAGE_OFFSETS = (0, 100)
 MAX_APP_BACKFILL_DAYS = 200
+# The dataset account permits 500 requests/day but currently throttles near
+# 30 requests/minute. Stay below the short-window limit during long backfills.
+APP_REQUESTS_PER_SECOND = 0.4
 
 
 def _date(value: Any) -> str | None:
@@ -347,7 +350,7 @@ async def capture_openrouter_app_rankings_daily(
     page_details: list[dict[str, Any]] = []
     failed_detail: dict[str, Any] | None = None
     async with make_client() as client:
-        fetcher = Fetcher(client, rps=1.0)
+        fetcher = Fetcher(client, rps=APP_REQUESTS_PER_SECOND)
         for source_date in source_dates:
             for offset in APP_PAGE_OFFSETS:
                 if offset and page_details[-1]["page_rows"] < APP_PAGE_LIMIT:
@@ -372,6 +375,11 @@ async def capture_openrouter_app_rankings_daily(
                     subcategory=subcategory,
                     offset=offset,
                 )
+                # Preserve the requested scope even when the response is
+                # missing or malformed, so degraded telemetry cannot itself
+                # raise while summarizing completed dates.
+                page_detail.setdefault("source_date", source_date)
+                page_detail.setdefault("page_offset", offset)
                 page_details.append(page_detail)
                 if page_detail.get("coverage_complete") is not True:
                     failed_detail = page_detail
@@ -392,16 +400,25 @@ async def capture_openrouter_app_rankings_daily(
         for row in rows
     }
     duplicate_rows = len(unique_keys) != len(rows)
-    complete_dates = len({detail["source_date"] for detail in page_details})
+    complete_dates = len(
+        {
+            detail["source_date"]
+            for detail in page_details
+            if detail.get("coverage_complete") is True and detail.get("source_date")
+        }
+    )
     complete = failed_detail is None and not duplicate_rows and complete_dates == len(source_dates)
-    if rows and complete:
+    # Retain fully normalized days collected before a later throttle. The
+    # source-run status remains degraded, so downstream coverage gates can
+    # distinguish partial backfill from complete coverage.
+    if rows:
         write_partition(pa.Table.from_pylist(rows), APP_SOURCE, run_ts, dt, curated_dir)
     detail = {
         "url": APP_RANKINGS_URL,
         "requested_start_date": source_dates[0],
         "requested_end_date": source_dates[-1],
         "requested_source_days": len(source_dates),
-        "complete_source_days": complete_dates if complete else 0,
+        "complete_source_days": complete_dates,
         "page_requests": len(page_details),
         "ranking_sort": sort,
         "category": category,

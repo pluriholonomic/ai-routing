@@ -1,5 +1,7 @@
 import asyncio
+from contextlib import asynccontextmanager
 
+import orcap.capture_openrouter_datasets as datasets
 from orcap.capture_openrouter_datasets import (
     app_rankings_page_rows,
     capture_openrouter_app_rankings_daily,
@@ -168,3 +170,42 @@ def test_app_rankings_capture_skips_without_credential(monkeypatch, tmp_path):
     assert result["rows"] == 0
     assert not (tmp_path / "raw").exists()
     assert list((tmp_path / "curated" / "source_runs").rglob("*.parquet"))
+
+
+def test_app_rankings_capture_retains_completed_days_before_degraded_page(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-token")
+
+    @asynccontextmanager
+    async def fake_client():
+        yield object()
+
+    class FakeFetcher:
+        def __init__(self, client, rps):
+            assert rps == datasets.APP_REQUESTS_PER_SECOND
+            self.records = []
+            self.responses = [_app_body(source_date="2026-07-01"), None]
+
+        async def get_json(self, url, headers=None):
+            return self.responses.pop(0)
+
+    monkeypatch.setattr(datasets, "make_client", fake_client)
+    monkeypatch.setattr(datasets, "Fetcher", FakeFetcher)
+
+    result = asyncio.run(
+        capture_openrouter_app_rankings_daily(
+            start_date="2026-07-01",
+            end_date="2026-07-02",
+            raw_dir=tmp_path / "raw",
+            curated_dir=tmp_path / "curated",
+        )
+    )
+
+    assert result["source_status"] == "degraded"
+    assert result["rows"] == 2
+    assert result["complete_source_days"] == 1
+    assert result["failed_detail"]["source_date"] == "2026-07-02"
+    assert list(
+        (tmp_path / "curated" / "openrouter_app_rankings_daily").rglob("*.parquet")
+    )

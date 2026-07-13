@@ -40,16 +40,18 @@ authorization headers or tokens in raw evidence.
 
 ## Historical OpenRouter backfill
 
-The app endpoint is limited to 500 account requests/day.  Each full top-200
-app-day normally consumes two requests, so one workflow run is capped at 200
-days. The scheduled workflow performs the following non-overlapping chunks on
+The app endpoint is limited to 500 account requests/day. Each full top-200
+app-day normally consumes two requests. A manual collector invocation is capped
+at 200 days; the automated workflow uses 20-day sub-invocations and can cover a
+slightly longer interval while remaining under the daily request limit. It
+performs the following non-overlapping intervals on
 GitHub-hosted runners, alongside the latest closed day, and then automatically
 stops backfilling:
 
 | Scheduled UTC day | Historical interval | Maximum app requests |
 |---|---|---:|
-| 2026-07-13 | 2025-01-01 through 2025-07-19 | 400 |
-| 2026-07-14 | 2025-07-20 through 2026-02-04 | 400 |
+| 2026-07-13 | 2025-01-01 through 2025-06-29 | 360 |
+| 2026-07-14 | 2025-06-30 through 2026-02-04 | 440 |
 | 2026-07-15 | 2026-02-05 through 2026-07-12 | 316 |
 
 Each run uses another two requests for the latest closed day, remaining below
@@ -74,7 +76,9 @@ Each chunk uses one model-ranking request; the app collector requests one UTC
 day at a time within the chunk, preserves every raw page, rejects
 date/rank/schema mismatches, and never turns an absent rank into zero usage.
 Chunking avoids oversized aggregate responses and preserves completed portions
-of a long backfill.
+of a long backfill. The workflow pushes partial raw and curated evidence before
+surfacing a degraded quality gate, so a late throttle does not discard earlier
+successful chunks.
 
 ## Remote recovery jobs
 

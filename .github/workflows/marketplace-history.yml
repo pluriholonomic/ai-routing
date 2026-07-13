@@ -61,10 +61,10 @@ jobs:
             case "$(date -u +%F)" in
               2026-07-13)
                 backfill_start="2025-01-01"
-                backfill_end="2025-07-19"
+                backfill_end="2025-06-29"
                 ;;
               2026-07-14)
-                backfill_start="2025-07-20"
+                backfill_start="2025-06-30"
                 backfill_end="2026-02-04"
                 ;;
               2026-07-15)
@@ -86,6 +86,8 @@ jobs:
             --start-date "${{ steps.dates.outputs.start }}" \
             --end-date "${{ steps.dates.outputs.end }}"
       - name: capture scheduled historical chunk
+        id: history_capture
+        continue-on-error: true
         if: ${{ steps.dates.outputs.backfill_start != '' }}
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -107,11 +109,18 @@ jobs:
             chunk_start=$(date -u -d "$chunk_end + 1 day" +%F)
           done
       - name: validate aggregate-history source health
+        id: quality
+        if: always()
+        continue-on-error: true
         run: uv run orcap quality --profile marketplace_history --fail-on-degraded
       - name: push immutable raw and curated history
+        if: always()
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: >-
           uv run orcap push
           --message "marketplace history ${{ steps.dates.outputs.start }} to ${{ steps.dates.outputs.end }} run ${{ github.run_id }}"
           --delete-local
+      - name: enforce capture and quality result after preserving evidence
+        if: ${{ steps.history_capture.outcome == 'failure' || steps.quality.outcome == 'failure' }}
+        run: exit 1
