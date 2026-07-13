@@ -60,11 +60,12 @@ literal marker `[history-backfill]` also executes the current UTC day's chunk;
 ordinary pushes only smoke-test the latest closed day. Manual recovery remains
 available:
 
-The July 13 run stopped on the second page of May 28 after preserving its
-earlier complete days and first-page evidence. The July 14 interval therefore
-replays May 28 in full. The collector retries a malformed page up to three
-times, and a source day counts as complete only after every required page has
-validated.
+The July 13 run exhausted the account's daily Data API quota on the second page
+of May 28 after preserving its earlier complete days and first-page evidence.
+The quota resets at 00:00 UTC and the July 14 job starts at 06:19 UTC, so that
+interval replays May 28 in full. The collector retries a contract-invalid 200
+response up to three times without multiplying exhausted HTTP retries, and a
+source day counts as complete only after every required page has validated.
 
 ```bash
 gh workflow run marketplace-history.yml \

@@ -64,7 +64,7 @@ jobs:
                 ;;
               2026-07-14)
                 # The July 13 run received only the first page for May 28
-                # before the source returned a malformed throttle response.
+                # before the account's daily Data API quota was exhausted.
                 # Re-request the whole day so top-200 coverage is complete.
                 backfill_start="2025-05-28"
                 backfill_end="2026-01-13"

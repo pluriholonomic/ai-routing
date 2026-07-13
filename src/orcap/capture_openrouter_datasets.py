@@ -387,8 +387,14 @@ async def capture_openrouter_app_rankings_daily(
                     page_details.append(page_detail)
                     if page_detail.get("coverage_complete") is True:
                         break
+                    # Fetcher already retries transport errors and retryable
+                    # HTTP statuses. Do not multiply those attempts here;
+                    # reserve page-level retries for a syntactically valid
+                    # 200 response that fails the dataset contract.
+                    if body is None:
+                        break
                 if page_detail.get("coverage_complete") is not True:
-                    page_detail["attempts"] = APP_PAGE_ATTEMPTS
+                    page_detail["attempts"] = attempt
                     failed_detail = page_detail
                     break
                 rows.extend(page_rows)

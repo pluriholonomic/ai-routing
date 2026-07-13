@@ -185,7 +185,7 @@ def test_app_rankings_capture_retains_completed_days_before_degraded_page(
         def __init__(self, client, rps):
             assert rps == datasets.APP_REQUESTS_PER_SECOND
             self.records = []
-            self.responses = [_app_body(source_date="2026-07-01"), None, None, None]
+            self.responses = [_app_body(source_date="2026-07-01"), None]
 
         async def get_json(self, url, headers=None):
             return self.responses.pop(0)
@@ -222,7 +222,7 @@ def test_app_rankings_capture_retries_transient_invalid_page(monkeypatch, tmp_pa
         def __init__(self, client, rps):
             assert rps == datasets.APP_REQUESTS_PER_SECOND
             self.records = []
-            self.responses = [None, _app_body()]
+            self.responses = [{"error": "transient"}, _app_body()]
 
         async def get_json(self, url, headers=None):
             return self.responses.pop(0)
@@ -256,7 +256,7 @@ def test_app_rankings_capture_does_not_count_partial_two_page_day(monkeypatch, t
         def __init__(self, client, rps):
             assert rps == datasets.APP_REQUESTS_PER_SECOND
             self.records = []
-            self.responses = [_app_body(rows=100), None, None, None]
+            self.responses = [_app_body(rows=100), None]
 
         async def get_json(self, url, headers=None):
             return self.responses.pop(0)
@@ -277,4 +277,4 @@ def test_app_rankings_capture_does_not_count_partial_two_page_day(monkeypatch, t
     assert result["rows"] == 100
     assert result["complete_source_days"] == 0
     assert result["failed_detail"]["page_offset"] == 100
-    assert result["failed_detail"]["attempts"] == datasets.APP_PAGE_ATTEMPTS
+    assert result["failed_detail"]["attempts"] == 1
