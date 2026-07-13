@@ -40,10 +40,27 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --no-dev
+      - name: detect verified legacy source-run baseline
+        id: legacy-source-baseline
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          exists = HfApi(token=os.environ["HF_TOKEN"]).file_exists(
+              "t4run/openrouter-market-history",
+              "curated/source_runs/dt=legacy/baseline.parquet",
+              repo_type="dataset",
+          )
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"exists={str(exists).lower()}\n")
+          PY
       - name: hydrate source-run ledger for 2026-07-10
         # Legacy captures predate daily bundling and contain thousands of tiny
         # immutable objects. Hydrate the known high-cardinality dates in
         # separate bounded steps while sharing the same Hub cache.
+        if: ${{ steps.legacy-source-baseline.outputs.exists != 'true' }}
         timeout-minutes: 75
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -61,6 +78,7 @@ jobs:
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
       - name: hydrate source-run ledger for 2026-07-11
+        if: ${{ steps.legacy-source-baseline.outputs.exists != 'true' }}
         timeout-minutes: 75
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -81,6 +99,7 @@ jobs:
         # This legacy date is also the partition that exceeded the compaction
         # guard. Its timestamped filenames let us bound each migration window
         # without dropping or sampling any ledger rows.
+        if: ${{ steps.legacy-source-baseline.outputs.exists != 'true' }}
         timeout-minutes: 30
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -100,6 +119,7 @@ jobs:
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
       - name: hydrate source-run ledger for 2026-07-12 hours 06-11
+        if: ${{ steps.legacy-source-baseline.outputs.exists != 'true' }}
         timeout-minutes: 30
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -120,6 +140,7 @@ jobs:
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
       - name: hydrate source-run ledger for 2026-07-12 hours 12-17
+        if: ${{ steps.legacy-source-baseline.outputs.exists != 'true' }}
         timeout-minutes: 30
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -143,6 +164,7 @@ jobs:
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
       - name: hydrate source-run ledger for 2026-07-12 hours 18-23
+        if: ${{ steps.legacy-source-baseline.outputs.exists != 'true' }}
         timeout-minutes: 30
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -164,21 +186,26 @@ jobs:
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
       - name: hydrate source-run ledger for 2026-07-13
+        if: ${{ steps.legacy-source-baseline.outputs.exists != 'true' }}
         timeout-minutes: 75
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_XET_HIGH_PERFORMANCE: "1"
+          HF_HUB_DISABLE_XET: "1"
         run: |
           uv run python - <<'PY'
           import shutil
           from huggingface_hub import snapshot_download
-          snapshot = snapshot_download(
-              "t4run/openrouter-market-history", repo_type="dataset",
-              cache_dir=".hf-cache",
-              allow_patterns=["curated/source_runs/dt=2026-07-13/*"],
-              max_workers=32,
-          )
-          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          for hour in range(24):
+              print(f"hydrating legacy source ledger hour {hour:02d}", flush=True)
+              snapshot = snapshot_download(
+                  "t4run/openrouter-market-history", repo_type="dataset",
+                  cache_dir=".hf-cache",
+                  allow_patterns=[
+                      f"curated/source_runs/dt=2026-07-13/20260713T{hour:02d}*",
+                  ],
+                  max_workers=16,
+              )
+              shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
       - name: hydrate bundled and future source-run ledger
         timeout-minutes: 75
@@ -203,6 +230,13 @@ jobs:
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
+      - name: materialize verified legacy source-run baseline once
+        if: ${{ steps.legacy-source-baseline.outputs.exists != 'true' }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python scripts/materialize_source_runs_baseline.py \
+            --expect-source-files 1566 --expect-rows 1660
       - name: hydrate remaining analysis mirror through the robust Hub cache
         timeout-minutes: 75
         env:

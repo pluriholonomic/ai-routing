@@ -4,6 +4,7 @@ import pytest
 from orcap.compact import (
     TRACKED_PRICE_FIELDS,
     _shard_tables,
+    build_source_runs_baseline,
     bundle_curated_partitions,
     fold_pricing_changes,
 )
@@ -140,3 +141,38 @@ def test_bundle_curated_partitions_uses_stable_name_and_migration_guard(tmp_path
 def test_bundle_curated_partitions_rejects_non_filename_bundle_name(tmp_path):
     with pytest.raises(ValueError):
         bundle_curated_partitions(tmp_path, bundle_name="nested/part.parquet")
+
+
+def test_build_source_runs_baseline_preserves_all_legacy_rows(tmp_path):
+    import pyarrow.parquet as pq
+
+    source_runs = tmp_path / "curated" / "source_runs"
+    for dt, run_ts in (("2026-07-10", "a"), ("2026-07-11", "b")):
+        partition = source_runs / f"dt={dt}"
+        partition.mkdir(parents=True)
+        pq.write_table(pa.table({"run_ts": [run_ts], "dt": [dt]}), partition / "part.parquet")
+    ignored = source_runs / "dt=2026-07-14"
+    ignored.mkdir(parents=True)
+    pq.write_table(
+        pa.table({"run_ts": ["future"], "dt": ["2026-07-14"]}),
+        ignored / "buffered-part.parquet",
+    )
+
+    output = tmp_path / "baseline" / "source-runs.parquet"
+    summary = build_source_runs_baseline(
+        tmp_path,
+        ("2026-07-10", "2026-07-11"),
+        output,
+    )
+
+    assert summary["source_files"] == 2
+    assert summary["rows"] == 2
+    assert pq.ParquetFile(output).read().to_pydict() == {
+        "run_ts": ["a", "b"],
+        "dt": ["2026-07-10", "2026-07-11"],
+    }
+
+
+def test_build_source_runs_baseline_requires_hydrated_inputs(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        build_source_runs_baseline(tmp_path, ("2026-07-10",), tmp_path / "out.parquet")

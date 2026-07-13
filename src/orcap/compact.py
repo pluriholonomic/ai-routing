@@ -123,6 +123,55 @@ def bundle_curated_partitions(
     return summary
 
 
+def build_source_runs_baseline(
+    data_dir: Path,
+    dates: tuple[str, ...],
+    output_path: Path,
+) -> dict[str, Any]:
+    """Materialize exact legacy source-run partitions as one Parquet object.
+
+    The baseline is a migration artifact, not a sample: every input row is
+    preserved.  Future capture dates remain separate daily bundles so nightly
+    hydration needs one legacy object plus a bounded number of recent objects.
+    """
+    if not dates:
+        raise ValueError("at least one legacy date is required")
+    for dt in dates:
+        datetime.strptime(dt, "%Y-%m-%d")
+
+    source_dir = data_dir / "curated" / "source_runs"
+    files = sorted(
+        path
+        for dt in dates
+        for path in (source_dir / f"dt={dt}").glob("*.parquet")
+    )
+    if not files:
+        raise FileNotFoundError("no legacy source-run files were hydrated")
+    tables = [pq.ParquetFile(path).read() for path in files]
+    expected_rows = sum(table.num_rows for table in tables)
+    merged = pa.concat_tables(tables, promote_options="permissive")
+    if merged.num_rows != expected_rows:
+        raise RuntimeError(
+            f"legacy source-run row mismatch: expected {expected_rows}, got {merged.num_rows}"
+        )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output_path.with_suffix(f"{output_path.suffix}.tmp")
+    pq.write_table(merged, temporary, compression="zstd")
+    if pq.read_metadata(temporary).num_rows != expected_rows:
+        temporary.unlink(missing_ok=True)
+        raise RuntimeError("written legacy source-run baseline failed row-count verification")
+    temporary.replace(output_path)
+    summary = {
+        "dates": list(dates),
+        "source_files": len(files),
+        "rows": expected_rows,
+        "output_path": str(output_path),
+    }
+    log.info("legacy source-run baseline summary: %s", summary)
+    return summary
+
+
 # ------------------------------------------------------- pricing change fold
 
 
