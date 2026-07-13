@@ -32,7 +32,7 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -90,12 +90,22 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          uv run orcap capture-openrouter-usage \
-            --start-date "${{ steps.dates.outputs.backfill_start }}" \
-            --end-date "${{ steps.dates.outputs.backfill_end }}"
-          uv run orcap capture-openrouter-apps \
-            --start-date "${{ steps.dates.outputs.backfill_start }}" \
-            --end-date "${{ steps.dates.outputs.backfill_end }}"
+          chunk_start="${{ steps.dates.outputs.backfill_start }}"
+          final_end="${{ steps.dates.outputs.backfill_end }}"
+          while [[ "$chunk_start" < "$final_end" || "$chunk_start" == "$final_end" ]]; do
+            chunk_end=$(date -u -d "$chunk_start + 19 days" +%F)
+            if [[ "$chunk_end" > "$final_end" ]]; then
+              chunk_end="$final_end"
+            fi
+            echo "capturing history chunk $chunk_start through $chunk_end"
+            uv run orcap capture-openrouter-usage \
+              --start-date "$chunk_start" \
+              --end-date "$chunk_end"
+            uv run orcap capture-openrouter-apps \
+              --start-date "$chunk_start" \
+              --end-date "$chunk_end"
+            chunk_start=$(date -u -d "$chunk_end + 1 day" +%F)
+          done
       - name: validate aggregate-history source health
         run: uv run orcap quality --profile marketplace_history --fail-on-degraded
       - name: push immutable raw and curated history

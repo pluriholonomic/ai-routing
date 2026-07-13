@@ -69,9 +69,12 @@ gh workflow run marketplace-history.yml \
   -f start_date=2026-02-05 -f end_date=2026-07-12
 ```
 
-The model-ranking request covers each whole interval in one API call.  The app
-collector requests one UTC day at a time, preserves each raw page, rejects
+Both collectors execute each historical interval as bounded 20-day chunks.
+Each chunk uses one model-ranking request; the app collector requests one UTC
+day at a time within the chunk, preserves every raw page, rejects
 date/rank/schema mismatches, and never turns an absent rank into zero usage.
+Chunking avoids oversized aggregate responses and preserves completed portions
+of a long backfill.
 
 ## Remote recovery jobs
 
