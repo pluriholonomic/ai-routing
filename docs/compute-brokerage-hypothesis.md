@@ -253,3 +253,18 @@ arrives and cadence stays put, the mechanism is wrong.
   proportional entry. First maintained *inconsistency* with an
   intent-market structural prediction — the routing layer allocates like an
   intent market (screen v1), but its entry margin does not scale like one.
+
+### Correction to CBH-14's interpretation (2026-07-14, same day)
+
+The sqrt-law benchmark assumes i.i.d. order draws. Measured inference demand
+is long-memory (H39 Hurst ~0.835), and posted prices make the unit of
+competition the repricing-epoch x burst rather than the individual request,
+so independent contested opportunities scale as n_eff ~ n^(2-2H). The
+correlation-adjusted entry law is k* ~ n^((2-2H)/2) = n^0.165 at the measured
+H — against which the observed active-provider slope of 0.161 is a match, not
+an inconsistency. CBH-14's status is therefore reclassified from "maintained
+inconsistency with intent-market scaling" to "consistent with the
+correlation-adjusted intent-market law; the i.i.d. variant is rejected."
+Discriminating test (pre-registered): cross-sectional slope should be steeper
+for low-H models; gates on ~3+ months of per-model daily demand history
+(weekly rankings are top-N-truncated: only 2 models carry 30+ weeks).

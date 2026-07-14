@@ -10,9 +10,10 @@
   "slope_active_providers": 0.1611,
   "r2_active": 0.433,
   "benchmarks": {
-    "sqrt_law": 0.5,
-    "cube_root_law": 0.333
+    "sqrt_law_iid": 0.5,
+    "cube_root_law_iid": 0.333,
+    "correlation_adjusted_sqrt_law_at_H0.835": 0.165
   },
-  "read": "slope ~0.5 = entry-cost intent-market scaling; ~0.33 = uniform-tail variant; slope near 0 = listing is ~free and unrelated to demand",
+  "read": "slope ~0.5 = i.i.d. entry-cost scaling; ~0.165 = the same law with effective market size n^(2-2H) under measured long-memory demand (H=0.835); slope near 0 = listing unrelated to demand. The measured active-provider slope matching the correlation-adjusted value is consistent with the intent-market law once i.i.d. is dropped \u2014 the low-H/high-H interaction test discriminates and gates on panel length.",
   "claim_boundary": "Cross-sectional; 'active provider' = quoting, not serving. Demand aggregated over a ~1-week window; simultaneity (entry raises capacity, hence tokens) inflates the slope \u2014 panel version gates on months."
 }
