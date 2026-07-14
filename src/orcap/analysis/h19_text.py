@@ -47,17 +47,9 @@ KEYWORDS = {
 }
 
 
-def provider_homepages() -> pd.DataFrame:
-    import asyncio
-
-    from ..http import Fetcher, make_client
-
-    async def _get():
-        async with make_client() as client:
-            f = Fetcher(client, rps=2)
-            return await f.get_json("https://openrouter.ai/api/frontend/all-providers")
-
-    body = asyncio.run(_get())
+def _provider_homepage_frame(body: dict | None) -> pd.DataFrame:
+    """Normalize the provider directory, including an empty/unavailable response."""
+    columns = ["slug", "provider", "homepage", "pricing_strategy", "byok_enabled"]
     rows = []
     for p in (body or {}).get("data", []):
         icon = ((p.get("icon") or {}).get("url")) or ""
@@ -72,8 +64,22 @@ def provider_homepages() -> pd.DataFrame:
                 "byok_enabled": bool(p.get("byokEnabled")),
             }
         )
-    df = pd.DataFrame(rows).drop_duplicates("provider")
+    df = pd.DataFrame(rows, columns=columns).drop_duplicates("provider")
     return df[df["homepage"].notna()]
+
+
+def provider_homepages() -> pd.DataFrame:
+    import asyncio
+
+    from ..http import Fetcher, make_client
+
+    async def _get():
+        async with make_client() as client:
+            f = Fetcher(client, rps=2)
+            return await f.get_json("https://openrouter.ai/api/frontend/all-providers")
+
+    body = asyncio.run(_get())
+    return _provider_homepage_frame(body)
 
 
 _TAGS = re.compile(r"<(script|style|svg|noscript)[^>]*>.*?</\1>", re.DOTALL | re.IGNORECASE)
