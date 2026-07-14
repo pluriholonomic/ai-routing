@@ -559,6 +559,24 @@ def main() -> None:
             "h72": "h72_openrouter_apps",
             "h75": "h75_bittensor_allocation",
             "h76": "h76_akash_lease_choice",
+            # Compute Brokerage Hypothesis modules are part of the full screen,
+            # not static memo artifacts. Keep the scorecard last so it reads
+            # summaries produced by this same invocation.
+            "cbh1": "cbh1_repricer_census",
+            "cbh2": "cbh2_gap_curve",
+            "cbh3": "cbh3_price_vs_queue",
+            "cbh4": "cbh4_reaction_typing",
+            "cbh5": "cbh5_cadence_hierarchy",
+            "cbh6": "cbh6_price_forensics",
+            "cbh7": "cbh7_elasticity_wedge",
+            "cbh8": "cbh8_passthrough_asym",
+            "cbh9": "cbh9_forward_premium",
+            "cbh10": "cbh10_price_parity",
+            "cbh11": "cbh11_insulation",
+            "cbh12": "cbh12_cold_start",
+            "cbh13": "cbh13_spectral_dispatch",
+            "cbh14": "cbh14_entry_law",
+            "cbh_scorecard": "scorecard",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)
