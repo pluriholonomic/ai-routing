@@ -1,0 +1,67 @@
+# Fee/pricing pages watched daily by capture_fees.py.
+# kind: router_fee | harness_price | capacity_product
+
+[[pages]]
+name = "openrouter-faq"
+url = "https://openrouter.ai/docs/faq"
+kind = "router_fee"
+
+[[pages]]
+name = "openrouter-terms"
+url = "https://openrouter.ai/terms"
+kind = "router_fee"
+
+[[pages]]
+name = "openrouter-credits-docs"
+url = "https://openrouter.ai/docs/use-cases/crypto-api"
+kind = "router_fee"
+
+[[pages]]
+name = "hf-inference-providers-pricing"
+url = "https://huggingface.co/docs/inference-providers/en/pricing"
+kind = "router_fee"
+
+[[pages]]
+name = "cloudflare-ai-gateway-pricing"
+url = "https://developers.cloudflare.com/ai-gateway/reference/pricing/"
+kind = "router_fee"
+
+[[pages]]
+name = "vercel-ai-gateway-pricing"
+url = "https://vercel.com/docs/ai-gateway/pricing"
+kind = "router_fee"
+
+[[pages]]
+name = "cursor-pricing"
+url = "https://cursor.com/pricing"
+kind = "harness_price"
+
+[[pages]]
+name = "windsurf-pricing"
+url = "https://windsurf.com/pricing"
+kind = "harness_price"
+
+[[pages]]
+name = "janitorai-pricing"
+url = "https://janitorai.com/pricing"
+kind = "harness_price"
+
+[[pages]]
+name = "azure-openai-ptu"
+url = "https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/provisioned-throughput"
+kind = "capacity_product"
+
+[[pages]]
+name = "bedrock-provisioned-throughput"
+url = "https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html"
+kind = "capacity_product"
+
+[[pages]]
+name = "openai-priority-processing"
+url = "https://platform.openai.com/docs/guides/priority-processing"
+kind = "capacity_product"
+
+[[pages]]
+name = "anthropic-priority-tier"
+url = "https://docs.anthropic.com/en/api/service-tiers"
+kind = "capacity_product"

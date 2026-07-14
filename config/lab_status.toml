@@ -1,0 +1,26 @@
+# statuspage.io-compatible status APIs polled by capture_labstatus.py.
+# Missing/404 endpoints are recorded as skipped, not failures.
+
+[[pages]]
+provider = "openai"
+base_url = "https://status.openai.com"
+
+[[pages]]
+provider = "anthropic"
+base_url = "https://status.anthropic.com"
+
+[[pages]]
+provider = "together"
+base_url = "https://status.together.ai"
+
+[[pages]]
+provider = "groq"
+base_url = "https://groqstatus.com"
+
+[[pages]]
+provider = "fireworks"
+base_url = "https://status.fireworks.ai"
+
+[[pages]]
+provider = "deepinfra"
+base_url = "https://status.deepinfra.com"

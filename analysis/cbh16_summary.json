@@ -1,0 +1,13 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_models": 41,
+  "rank_beta_latency_on_n_providers": 0.036,
+  "rank_beta_ratelimit_on_n_providers": 0.742,
+  "read": "positive betas = quality degrades with thickness (Li-Netessine backfire); zero/negative = router absorbs congestion",
+  "event_version": {
+    "trigger": ">=5 new providers on a top-50 model within 14d",
+    "qualifying_waves_in_panel": 0,
+    "status": "armed"
+  },
+  "claim_boundary": "Cross-sectional, hot-panel models only; provider count correlates with demand and model age, and quality drives entry \u2014 the event version carries the identification."
+}
