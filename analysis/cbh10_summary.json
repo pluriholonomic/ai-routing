@@ -1,0 +1,10 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_pairs": 272,
+  "share_parity_exact": 0.9963235294117647,
+  "share_router_above_direct": 0.0,
+  "share_direct_below_router": 0.003676470588235294,
+  "nonzero_sign_persistence": 1.0,
+  "read": "near-total exact parity = voluntary MFN (no price discipline from disintermediation); persistent direct<router = showroom equilibrium",
+  "claim_boundary": "Output-price parity on H13's matched sample (DeepInfra-dominated); parity on price does not preclude channel competition on rate limits, priority, or contract terms."
+}

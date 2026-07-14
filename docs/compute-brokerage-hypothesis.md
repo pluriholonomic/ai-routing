@@ -214,3 +214,42 @@ appended here, never edits to this one.
 3. The elasticity wedge closes (routing elasticity magnitude falls toward
    end-user elasticity) — no origination rent exists to sustain the brokerage
    layer.
+
+## Addendum 2026-07-14: bench experiments CBH-10..14 and the hedge-cadence mechanism
+
+**Mechanism registered.** The quoting layer's slow cadence is attributed to
+*non-hedgeability*: RFQ/PMM dealers requote in milliseconds because they mark
+to an external reference and hedge fills; inference output has no reference
+price and no secondary market, so dealers hold posted menus and ration
+quantity. Dated corollary: **if compute futures mature into a usable hedge
+(P3 passing), repricing cadence accelerates materially toward continuous** —
+Q1's two-speed structure is predicted to compress within ~12 months of a
+liquid hedge existing. If cadence accelerates *without* a hedge, or a hedge
+arrives and cadence stays put, the mechanism is wrong.
+
+**Bench results (first pass, ~1-week panel):**
+
+- **CBH-10 price parity:** 99.6% of matched router/direct pairs price
+  identically; providers essentially never undercut their own channel (0.4%
+  direct-below, sign-persistent). Voluntary MFN — the router faces no price
+  discipline from disintermediation; discipline must come from rival routers.
+- **CBH-11 insulation:** honestly gated — zero derank transitions in-window
+  (5 endpoints deranked throughout). Self-populates.
+- **CBH-12 cold start:** no early-traffic advantage. Even pro-rata-normalized,
+  entrants into high-demand markets end at 0.13x equal-split vs 1.0x for
+  cold-market entrants (conditional rank beta -0.25). Share tracks price and
+  incumbency, not exposure — against the Pallais information channel, with
+  the entry-timing selection caveat.
+- **CBH-13 spectral dispatch:** after prewhitening, **no dispatch clock** —
+  zero endpoints with a prominent sub-12h spectral peak, no common period.
+  Allocation shifts are aperiodic (per-request/continuous routing), not
+  scheduled re-ranking. (Unwhitened spectra are badly red; the naive version
+  of this test false-alarms.)
+- **CBH-14 entry law:** log(providers) on log(tokens) slope **0.14**
+  [0.12-0.17] (active-provider margin 0.16) — far below the intent-market
+  sqrt-law (0.5) and the cube-root variant (0.33), despite simultaneity
+  biasing the slope UP. Provider counts are strikingly flat in demand:
+  hot markets concentrate volume per provider rather than attracting
+  proportional entry. First maintained *inconsistency* with an
+  intent-market structural prediction — the routing layer allocates like an
+  intent market (screen v1), but its entry margin does not scale like one.

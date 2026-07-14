@@ -1,0 +1,9 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_endpoints": 260,
+  "median_peak_prominence": 8.521127760465735,
+  "share_endpoints_prominence_ge_20": 0.0,
+  "common_periods_among_strong_h": {},
+  "read": "a shared sub-12h period across many endpoints = dispatch re-rank clock; scattered idiosyncratic peaks = no clock (per-request or continuous)",
+  "claim_boundary": "request_count_30m is a rolling window: it low-passes the series and can alias sub-30-minute clocks; absence of a peak below ~1h is not evidence of absence at that scale."
+}
