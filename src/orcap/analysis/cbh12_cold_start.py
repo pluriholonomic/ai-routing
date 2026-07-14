@@ -32,6 +32,12 @@ MIN_ENTRIES = 20
 MIN_POST_DAYS = 3
 
 
+def _latest_common_day(quotes: pd.DataFrame, shares: pd.DataFrame) -> str | None:
+    """Return the latest day with both quote and realized-share coverage."""
+    common = set(quotes["dt"].dropna()) & set(shares["dt"].dropna())
+    return max(common) if common else None
+
+
 def entries() -> pd.DataFrame:
     ev = data.q(
         f"""
@@ -48,7 +54,19 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     ent = entries()
     shares = demand_shares()
     quotes = daily_quotes()
-    last_dt = quotes["dt"].max()
+    # Intraday endpoint snapshots usually cross into a new UTC day before the
+    # effective-pricing daily table closes. Using the quote-only maximum then
+    # turns every missing share into a false zero. Anchor outcomes to the latest
+    # day observed in both panels.
+    last_dt = _latest_common_day(quotes, shares)
+    if last_dt is None:
+        summary = {
+            "evidence_status": "power_gated",
+            "gate": "no common quote/share outcome day",
+            "n_raw_entries": int(len(ent)),
+        }
+        save_json(summary, out_dir, "cbh12_summary")
+        return summary
     rows = []
     for _, e in ent.iterrows():
         post_days = (
