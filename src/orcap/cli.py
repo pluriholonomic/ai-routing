@@ -562,6 +562,7 @@ def main() -> None:
             "h80": "h80_matched_quote_firmness",
             "h81": "h81_delegation_decomposition",
             "h82": "h82_enforcement_substitution",
+            "h83": "h83_capacity_overshoot",
             # Compute Brokerage Hypothesis modules are part of the full screen,
             # not static memo artifacts. Keep the scorecard last so it reads
             # summaries produced by this same invocation.

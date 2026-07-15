@@ -68,6 +68,10 @@ contrast must have the same sign for every component. Matching is within model
 and uses only pre-event log model attempts, UTC hour, and calendar distance,
 exactly as in H82.
 
+Each early, late, break-side, and recovery-side subwindow must contain at least
+two observed share cells. Events lacking that support remain in the protocol
+ledger but not the shape estimator.
+
 Completion-price stickiness is the share of events with no price change beyond
 relative numerical tolerance from -30 through +60. Its frozen requirement is
 at least 95%.
@@ -113,6 +117,11 @@ support, protocol, and gate diagnostics. It does not reveal future shape
 coefficients early. H82 remains visible as discovery evidence and must never be
 pooled into H83.
 
+Once the time, sample, support, matching, and accounting gates are met, the
+earliest deterministic cut is released whether the shape restrictions pass or
+fail. A failed shape verdict terminates that confirmatory cut; the analyzer may
+not wait for later observations to turn it significant.
+
 ## Claim boundary after a successful gate
 
 A successful H83 cut would establish a reproducible public
@@ -121,4 +130,3 @@ would still not identify a randomized causal effect, private router logic,
 provider intent, front-running, user welfare, or the treatment effect of
 capacity certification. Those require owned-traffic randomization or a real
 commitment intervention.
-
