@@ -58,24 +58,26 @@ def prepare_candidates(frame: pd.DataFrame) -> pd.DataFrame:
     )
     for column in ["eligible_pair", "request_sent"]:
         out[column] = out.get(column, False).fillna(False).astype(bool)
-    out["assignment"] = out.get("assignment", pd.Series(pd.NA, index=out.index)).astype(
-        "string"
-    )
+    out["assignment"] = out.get("assignment", pd.Series(pd.NA, index=out.index)).astype("string")
 
     def replay(row: pd.Series) -> bool:
         try:
-            return random.Random(int(row["block_seed"])).choice(POLICIES) == row["assignment"]
+            assignment = row["assignment"]
+            if pd.isna(assignment):
+                return False
+            return random.Random(int(row["block_seed"])).choice(POLICIES) == str(assignment)
         except (KeyError, TypeError, ValueError):
             return False
 
     out["seed_replay_pass"] = out.apply(replay, axis=1)
-    out["expected_requested_provider"] = np.where(
-        out["assignment"].eq("capacity_safe"),
-        out.get("safe_provider"),
-        np.where(
-            out["assignment"].eq("capacity_risky"), out.get("risky_provider"), None
-        ),
-    )
+    safe_assignment = out["assignment"].eq("capacity_safe").fillna(False)
+    risky_assignment = out["assignment"].eq("capacity_risky").fillna(False)
+    expected = pd.Series(None, index=out.index, dtype="object")
+    if "safe_provider" in out:
+        expected.loc[safe_assignment] = out.loc[safe_assignment, "safe_provider"]
+    if "risky_provider" in out:
+        expected.loc[risky_assignment] = out.loc[risky_assignment, "risky_provider"]
+    out["expected_requested_provider"] = expected
     out["candidate_cluster"] = (
         out["model_id"].astype(str) + "|" + out["candidate_ts"].dt.strftime("%Y-%m-%d")
     )
@@ -89,9 +91,7 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
     out = out[out["study_id"].astype(str).eq(STUDY_ID)].copy()
     metadata = out.get("metadata_json", pd.Series("{}", index=out.index)).map(_metadata)
     out["block_id"] = [item.get("block_id") for item in metadata]
-    out["attempt_candidate_state_hash"] = [
-        item.get("candidate_state_hash") for item in metadata
-    ]
+    out["attempt_candidate_state_hash"] = [item.get("candidate_state_hash") for item in metadata]
     out["attempt_ts"] = pd.to_datetime(out.get("observed_at"), utc=True, errors="coerce")
     out["success"] = out["outcome"].astype(str).eq("succeeded")
     out["rejected_429"] = (~out["success"]) & out.get(
@@ -104,9 +104,7 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def cross_study_overlap_blocks(
-    candidates: pd.DataFrame, all_attempts: pd.DataFrame
-) -> set[str]:
+def cross_study_overlap_blocks(candidates: pd.DataFrame, all_attempts: pd.DataFrame) -> set[str]:
     if candidates.empty or all_attempts.empty:
         return set()
     other = all_attempts[~all_attempts["study_id"].astype(str).eq(STUDY_ID)].copy()
@@ -160,30 +158,34 @@ def assignment_ledger(
     ledger["attempt_present"] = ledger["event_id"].notna()
     ledger["assignment_payload_compliant"] = (
         ledger["policy"].astype("string").eq(ledger["assignment"])
-        & ledger["requested_provider"].fillna("<default>").astype(str).eq(
-            ledger["expected_requested_provider"].fillna("<default>").astype(str)
-        )
-        & ledger["attempt_candidate_state_hash"].astype("string").eq(
-            ledger["candidate_state_hash"].astype("string")
-        )
-    )
-    successful_pinned = (
-        ledger["assignment"].isin(["capacity_safe", "capacity_risky"])
-        & ledger["success"].fillna(False).astype(bool)
-    )
-    selected_matches = ledger["selected_provider"].astype("string").eq(
-        ledger["expected_requested_provider"].astype("string")
+        & ledger["requested_provider"]
+        .fillna("<default>")
+        .astype(str)
+        .eq(ledger["expected_requested_provider"].fillna("<default>").astype(str))
+        & ledger["attempt_candidate_state_hash"]
+        .astype("string")
+        .eq(ledger["candidate_state_hash"].astype("string"))
+    ).fillna(False)
+    successful_pinned = ledger["assignment"].isin(["capacity_safe", "capacity_risky"]) & ledger[
+        "success"
+    ].astype("boolean").fillna(False)
+    selected_matches = (
+        ledger["selected_provider"]
+        .astype("string")
+        .eq(ledger["expected_requested_provider"].astype("string"))
+        .fillna(False)
     )
     ledger["treatment_compliant"] = ledger["assignment_payload_compliant"] & (
         ~successful_pinned | selected_matches
     )
+    ledger["treatment_compliant"] = ledger["treatment_compliant"].fillna(False)
     ledger["valid_assignment"] = (
-        ledger["eligible_pair"].astype(bool)
-        & ledger["request_sent"].astype(bool)
-        & ledger["attempt_present"].astype(bool)
-        & ledger["seed_replay_pass"].astype(bool)
-        & ledger["treatment_compliant"].astype(bool)
-        & ~ledger["cross_study_overlap"].astype(bool)
+        ledger["eligible_pair"].astype("boolean").fillna(False)
+        & ledger["request_sent"].astype("boolean").fillna(False)
+        & ledger["attempt_present"].astype("boolean").fillna(False)
+        & ledger["seed_replay_pass"].astype("boolean").fillna(False)
+        & ledger["treatment_compliant"].astype("boolean").fillna(False)
+        & ~ledger["cross_study_overlap"].astype("boolean").fillna(False)
     )
     return ledger
 
@@ -261,8 +263,7 @@ def release_gates_pass(
         and support["pinned_treatment_compliance"]
         >= requirements["min_pinned_treatment_compliance"]
         and (
-            not requirements["require_seed_replay"]
-            or np.isclose(support["seed_replay_rate"], 1.0)
+            not requirements["require_seed_replay"] or np.isclose(support["seed_replay_rate"], 1.0)
         )
         and (
             not requirements["require_no_cross_study_overlap"]
@@ -280,18 +281,15 @@ def first_release_cutoff(
         return None
     # The arm and elapsed-time gates cheaply exclude almost every early row.
     cumulative = (
-        pd.get_dummies(valid["assignment"])
-        .reindex(columns=POLICIES, fill_value=0)
-        .cumsum()
+        pd.get_dummies(valid["assignment"]).reindex(columns=POLICIES, fill_value=0).cumsum()
     )
     first_ts = valid["candidate_ts"].iloc[0]
     possible = np.ones(len(valid), dtype=bool)
     for policy in POLICIES:
         possible &= cumulative[policy].to_numpy() >= requirements["assignments_per_arm"]
     possible &= (
-        (valid["candidate_ts"] - first_ts).dt.total_seconds().to_numpy() / 86400
-        >= requirements["complete_days"]
-    )
+        valid["candidate_ts"] - first_ts
+    ).dt.total_seconds().to_numpy() / 86400 >= requirements["complete_days"]
     for position in np.flatnonzero(possible):
         prefix = ledger[ledger["candidate_ts"].le(valid.iloc[position]["candidate_ts"])]
         if release_gates_pass(support_summary(prefix), requirements):
@@ -442,9 +440,7 @@ def released_results(
                 ),
                 "successful_latency_mean_ms": (
                     float(
-                        pd.to_numeric(
-                            arm.loc[arm["success"], "latency_ms"], errors="coerce"
-                        ).mean()
+                        pd.to_numeric(arm.loc[arm["success"], "latency_ms"], errors="coerce").mean()
                     )
                     if arm.loc[arm["success"], "latency_ms"].notna().any()
                     else None

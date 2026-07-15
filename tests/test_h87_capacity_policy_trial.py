@@ -4,7 +4,7 @@ import random
 import pandas as pd
 import pytest
 
-from orcap.analysis.h87_capacity_policy_trial import analyze
+from orcap.analysis.h87_capacity_policy_trial import analyze, prepare_candidates
 from orcap.capture_capacity_policy_probes import POLICIES, STUDY_ID
 
 
@@ -61,11 +61,7 @@ def _attempt(index: int, policy: str, ts: pd.Timestamp, success: bool):
         "model_id": f"model-{index % 2}",
         "requested_provider": requested,
         "selected_provider": (
-            requested
-            if success and requested
-            else "default-provider"
-            if success
-            else None
+            requested if success and requested else "default-provider" if success else None
         ),
         "attempt_index": 0,
         "outcome": "succeeded" if success else "failed",
@@ -112,6 +108,28 @@ def test_h87_masks_all_outcomes_before_sample_gate(tmp_path):
     assert "success" not in support.columns
 
 
+def test_h87_prepare_candidates_tolerates_unassigned_support_rows():
+    row = _candidate(0, "capacity_safe", pd.Timestamp("2026-07-16T00:00:00Z"))
+    row.update(
+        {
+            "assignment": pd.NA,
+            "assigned_requested_provider": pd.NA,
+            "safe_provider": pd.NA,
+            "risky_provider": pd.NA,
+            "eligible_pair": False,
+            "request_sent": False,
+            "exclusion_reason": "fewer_than_two_capacity_complete_providers",
+        }
+    )
+    prepared = prepare_candidates(pd.DataFrame([row]))
+    assert prepared.loc[0, "seed_replay_pass"] is False or not prepared.loc[0, "seed_replay_pass"]
+    assert pd.isna(prepared.loc[0, "expected_requested_provider"])
+    summary = analyze(pd.DataFrame([row]), pd.DataFrame(), pd.DataFrame())
+    assert summary["outcomes_released"] is False
+    assert summary["support"]["candidate_rows"] == 1
+    assert summary["support"]["valid_assignments"] == 0
+
+
 def test_h87_releases_earliest_supported_randomized_effect(tmp_path):
     candidates, attempts = _panel()
     requirements = {
@@ -134,9 +152,7 @@ def test_h87_releases_earliest_supported_randomized_effect(tmp_path):
         randomization_draws=1000,
     )
     assert summary["outcomes_released"] is True
-    contrasts = {
-        row["comparison"]: row for row in summary["released_results"]["primary_contrasts"]
-    }
+    contrasts = {row["comparison"]: row for row in summary["released_results"]["primary_contrasts"]}
     assert contrasts["capacity_safe_minus_capacity_risky"]["mean"] == pytest.approx(1.0)
     assert contrasts["openrouter_default_minus_capacity_safe"]["mean"] == pytest.approx(0.0)
     assert (tmp_path / "h87_released_trial_rows.parquet").exists()
