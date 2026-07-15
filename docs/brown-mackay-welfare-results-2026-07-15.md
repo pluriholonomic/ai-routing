@@ -35,7 +35,7 @@ welfare loss.
 | BM2 outcome-adaptive sensitivity | 116 waves, 1,340 risk pairs; fast-after-slow n=3, with zero post and placebo moves | retained to disclose the original full-panel classification, not promoted |
 | BM3 cadence premium | cadence-only beta -0.0998, clustered SE 0.0292, CI [-0.1570, -0.0425], 5,575 observations/131 models; slow-over-fast premium 10.5% | statistically resolved association, not causal |
 | BM3 quality-complete | beta -0.2888, SE 0.1336, CI [-0.5507, -0.0268], 468 observations/26 models; premium 33.5% | selected-subsample sensitivity; not the headline causal estimate |
-| BM4 frozen-cadence reaction rule | MAE 0.1241 to 0.1189 and RMSE 0.2166 to 0.2156 after cadence/reaction features | small predictive improvement; not causal and insufficient without BM2 exposure |
+| BM4 frozen-cadence reaction rule | 206 linked reactions; MAE 0.1180 to 0.1098 and RMSE 0.2135 to 0.2119 after cadence/reaction features | small predictive improvement; not causal and insufficient without BM2 exposure |
 | BM5 hazard horse race | state-only log loss 0.0865/AUC 0.617; strategic 0.0806/AUC 0.595 | log loss improves, discrimination worsens; joint BM gate fails |
 
 The 10.5% cadence-only premium is close to the Brown-MacKay daily-versus-fast

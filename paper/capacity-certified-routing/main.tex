@@ -676,7 +676,7 @@ Model object & Current measurement status & Permitted use in this paper \\
 Posted quote $p_i$ & public quote for a fixed workload & score input and quote heterogeneity \\
 Public performance & exact-match uptime and p90 fields are partial & coverage and missingness audit only \\
 Simulated share $\hat s_i$ & documented public price proxy & mechanical comparative static only \\
-Selection / retries & 716 legacy attempts plus 72 outcome-gated prospective rows & account/workload policy calibration only \\
+Selection / retries & 716 legacy attempts plus 98 outcome-gated prospective rows & account/workload policy calibration only \\
 Capacity / cost / value & no controlled commitment panel & theorem primitives and protocol fields only \\
 Joint outage support & no joint-outage observations & declared synthetic support only \\
 \bottomrule
@@ -699,23 +699,33 @@ MEV-like behavior.
 \subsection{Brown--MacKay pricing-technology screen}
 
 The public quote panel also tests the pricing-technology channel emphasized by
-Brown and MacKay \cite{brownmackay2023}. Across 2,062,359 endpoint snapshots in
-1,684 capture runs, the retained completion-price event panel contains 274
-changes over 7.53 days. Of 69 providers with sufficient quote exposure, only
-19 reprice at all: 10 are classified intraday, six daily, and three weekly.
+Brown and MacKay \cite{brownmackay2023}. The retained completion-price event
+panel contains 278 changes over 7.53 days. Of 69 providers with sufficient
+quote exposure, only 19 reprice at all: 10 are classified intraday, seven
+daily, and two weekly.
 This supports heterogeneous pricing cadence but leaves most providers in a
 no-observed-change group.
 
-The stronger reaction-rule implication is not supported. In 115 independent
-rival price waves, only 15 fast-provider windows follow a slow-provider move.
-Their post-move response rate is 6.7\%, versus a 13.3\% pre-period placebo,
-for a $-6.7$ percentage-point difference with a cluster interval of
-$[-20.0,0.0]$ pp. A cadence-only regression finds that slow providers quote a
-10.1\% premium over fast providers conditional on model, but state-based and
-strategic reaction models trade off predictive metrics and the joint
-competitive-null gate fails. We therefore use pricing technology as a
-descriptive market characteristic, not evidence of algorithmic reaction,
-collusion, or Brown--MacKay equilibrium effects.
+The stronger reaction-rule implication is not currently estimable. An interim
+refresh revealed that one additional NextBit change crossed the cadence
+threshold, moving it from weekly to daily and shrinking the full-panel focal
+risk set from 15 to three. This exposed outcome look-ahead in classifying a
+provider with its complete event history. After observing that aggregate
+instability, we froze cadence classes on the first 70\% of events, evaluated
+only later waves, and removed waves without a complete 24-hour response window;
+the original classification remains an explicitly outcome-adaptive sensitivity.
+The corrected holdout has 21 independent waves and 124 rival risk pairs but no
+slow-initiator/fast-responder exposure, so it supplies no response rate or
+confidence interval. The full-panel sensitivity has 116 waves and three focal
+pairs, with no post- or placebo-window move.
+
+A cadence-only regression still finds that slow providers quote a 10.5\%
+premium over fast providers conditional on model. With cadence frozen before
+the holdout, adding reaction features reduces MAE from 0.1180 to 0.1098 and RMSE
+from 0.2135 to 0.2119, while the separate strategic hazard model improves log
+loss but reduces AUC. The reaction exposure and 30-day gates therefore fail.
+We use pricing technology as a descriptive market characteristic, not evidence
+of algorithmic reaction, collusion, or Brown--MacKay equilibrium effects.
 
 \subsection{Randomized micro-probe protocol}
 
@@ -745,15 +755,17 @@ the disclosure. The incident limits analyst blinding for those launch data but
 does not change the randomized first-position estimator or deterministic
 earliest-balanced-prefix rule.
 
-The latest pre-outcome audit contains 12 verified H80 position-zero blocks
-across four models and three hourly clusters; each model contributes three
-blocks. H81 contains four verified blocks across two models and two runs. All
-12 H80 seed replays and all four H81 seed and treatment-control replays pass.
-Arm counts are $(3,1,2,6)$ for H80 and $(1,1,2)$ for H81, so both analyzers
+The latest pre-outcome audit contains 16 verified H80 position-zero blocks
+across four models and four hourly clusters; each model contributes four
+blocks. H81 contains six verified blocks across two models and three runs. All
+16 H80 seed replays and all six H81 seed and treatment-control replays pass.
+Arm counts are $(5,2,2,7)$ for H80 and $(3,1,2)$ for H81, so both analyzers
 remain below their 40-per-arm gates and release no outcome, confidence interval,
-or $p$-value. The H81 candidate-funnel table begins after these four blocks;
-the earlier support is therefore correctly labeled left-truncated rather than
-used to infer which public-rank candidates were excluded.
+or $p$-value. The H81 candidate-funnel table begins after its first four blocks,
+so the earlier support remains left-truncated. In the first fully audited run,
+both rank-five and rank-six candidates were eligible: they displayed 25 and
+three distinct positive-price providers, respectively. This measures public
+eligibility for the sampled ranks, not the router's private eligible set.
 
 \begin{table}[t]
 \centering
