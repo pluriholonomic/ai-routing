@@ -1,0 +1,19 @@
+{
+  "audited_grid": {
+    "advantage": {
+      "0.3": 13.41646698306935,
+      "0.8": 0.0
+    },
+    "scale": 60.06681458631117
+  },
+  "robust_outage": {
+    "robust_cheap": -0.0,
+    "robust_expected": 10.0,
+    "robust_independent": 10.0,
+    "robust_worst_case": 10.0,
+    "score_cheap": 8.0,
+    "score_expected": 8.4,
+    "score_independent": 2.0,
+    "score_worst_case": 2.0
+  }
+}
