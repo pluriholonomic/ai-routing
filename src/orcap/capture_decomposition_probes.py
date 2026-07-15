@@ -73,16 +73,19 @@ def decomposition_tasks(
         {
             "policy": "delegated_default",
             "provider_order": None,
+            "provider_only": None,
             "allow_fallbacks": True,
         },
         {
             "policy": "price_only_no_fallback",
             "provider_order": [order[0]],
+            "provider_only": [order[0]],
             "allow_fallbacks": False,
         },
         {
             "policy": "price_order_fallback",
             "provider_order": order,
+            "provider_only": order,
             "allow_fallbacks": True,
         },
     ]
@@ -127,6 +130,7 @@ def run_decomposition_probes(model_ids: list[str] | None = None) -> list[dict[st
                     client,
                     model_id,
                     provider_order=order,
+                    provider_only=task["provider_only"],
                     allow_fallbacks=bool(task["allow_fallbacks"]),
                 )
                 record = probe_record(
@@ -155,6 +159,7 @@ def run_decomposition_probes(model_ids: list[str] | None = None) -> list[dict[st
                         "public_cheapest_provider": provider_order[0],
                         "public_cheapest_completion_price": cheapest_price,
                         "requested_order_length": len(order) if order else 0,
+                        "provider_only_count": len(task["provider_only"] or []),
                         "allow_fallbacks": bool(task["allow_fallbacks"]),
                     },
                 )

@@ -1,7 +1,8 @@
+import os
 import random
 
 from orcap.capture_decomposition_probes import decomposition_tasks, public_provider_order
-from orcap.capture_probes import hot_model_ids, probe_record
+from orcap.capture_probes import _send_probe, hot_model_ids, probe_record
 from orcap.route_telemetry import validate_attempt
 
 
@@ -70,9 +71,51 @@ def test_decomposition_tasks_hold_public_order_fixed_and_randomize_policy():
     }
     by_policy = {task["policy"]: task for task in tasks}
     assert by_policy["price_only_no_fallback"]["provider_order"] == ["Cheap"]
+    assert by_policy["price_only_no_fallback"]["provider_only"] == ["Cheap"]
     assert by_policy["price_order_fallback"]["provider_order"] == [
         "Cheap",
         "Middle",
         "Expensive",
     ]
+    assert by_policy["price_order_fallback"]["provider_only"] == [
+        "Cheap",
+        "Middle",
+        "Expensive",
+    ]
     assert by_policy["price_order_fallback"]["allow_fallbacks"] is True
+
+
+def test_send_probe_can_restrict_fallback_to_explicit_provider_set():
+    class Response:
+        status_code = 429
+
+    class Client:
+        body = None
+
+        def post(self, _url, *, headers, json):
+            assert headers["Authorization"].startswith("Bearer ")
+            self.body = json
+            return Response()
+
+    client = Client()
+    previous = os.environ.get("OPENROUTER_API_KEY")
+    os.environ["OPENROUTER_API_KEY"] = "test-key"
+    try:
+        _, _, error, status = _send_probe(
+            client,
+            "model/a",
+            provider_order=["A", "B"],
+            provider_only=["A", "B"],
+            allow_fallbacks=True,
+        )
+    finally:
+        if previous is None:
+            os.environ.pop("OPENROUTER_API_KEY", None)
+        else:
+            os.environ["OPENROUTER_API_KEY"] = previous
+    assert status == 429 and error == "http_429"
+    assert client.body["provider"] == {
+        "order": ["A", "B"],
+        "only": ["A", "B"],
+        "allow_fallbacks": True,
+    }

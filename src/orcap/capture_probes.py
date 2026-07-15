@@ -150,6 +150,7 @@ def _send_probe(
     provider: str | None = None,
     *,
     provider_order: list[str] | None = None,
+    provider_only: list[str] | None = None,
     allow_fallbacks: bool = False,
 ) -> tuple[dict | None, dict | None, str | None, int | None]:
     completion = generation = None
@@ -165,8 +166,12 @@ def _send_probe(
     if provider is not None and provider_order is not None:
         raise ValueError("provide either provider or provider_order, not both")
     order = provider_order if provider_order is not None else ([provider] if provider else None)
-    if order is not None:
-        body["provider"] = {"order": order, "allow_fallbacks": allow_fallbacks}
+    if order is not None or provider_only is not None:
+        body["provider"] = {"allow_fallbacks": allow_fallbacks}
+        if order is not None:
+            body["provider"]["order"] = order
+        if provider_only is not None:
+            body["provider"]["only"] = provider_only
     try:
         r = client.post(CHAT_URL, headers=_headers(), json=body)
         status = r.status_code

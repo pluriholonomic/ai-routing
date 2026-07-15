@@ -13,7 +13,8 @@ snapshot and three policies:
 1. `price_only_no_fallback`: request only the cheapest displayed provider and
    disable fallback.
 2. `price_order_fallback`: submit every displayed provider in cheapest-first
-   order and allow fallback.
+   order, restrict eligibility to that same list with the provider `only`
+   field, and allow fallback within the list.
 3. `delegated_default`: submit no provider restriction and allow the router to
    select and fall back under its default policy.
 
@@ -41,7 +42,7 @@ eligible only when at least two distinct positive-price providers are displayed.
 
 The collector records the full public provider order, its SHA-256 digest, the
 cheapest price and identity, policy order, block and run seeds, fallback
-permission, first-position probability, final selected provider, success,
+permission, provider `only` count, first-position probability, final selected provider, success,
 HTTP status, latency, token accounting, and billed cost. It never stores prompt
 or completion payloads.
 

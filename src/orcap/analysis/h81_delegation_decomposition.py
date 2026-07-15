@@ -64,6 +64,7 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
         "public_cheapest_provider",
         "public_cheapest_completion_price",
         "requested_order_length",
+        "provider_only_count",
         "allow_fallbacks",
     )
     for key in keys:
