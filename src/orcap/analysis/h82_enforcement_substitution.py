@@ -43,6 +43,12 @@ MIN_PRE_CELLS = 4
 MIN_POST_CELLS = 4
 BOOTSTRAP_DRAWS = 2_000
 BOOTSTRAP_SEED = 82_071_526
+# H82 is the exploratory discovery sample that generated H83.  Freeze it at
+# the exact last public snapshot used for the reported result so subsequent
+# captures cannot leak into both the discovery analysis and the future-only
+# holdout.  This freeze was imposed after the first H82 result and is disclosed
+# in the preregistration execution log.
+DISCOVERY_MAX_TS = pd.Timestamp("2026-07-15T11:33:02Z")
 
 PRIMARY_METRICS = [
     "endpoint_success_share",
@@ -205,6 +211,13 @@ def canonical_panel(rows: pd.DataFrame) -> pd.DataFrame:
         + panel["other_provider_success_5m"]
     )
     return panel
+
+
+def discovery_panel(panel: pd.DataFrame) -> pd.DataFrame:
+    """Return the immutable H82 discovery cut, disjoint from future H83 data."""
+    if panel.empty:
+        return panel.copy()
+    return panel.loc[panel["ts"].le(DISCOVERY_MAX_TS)].copy()
 
 
 def _minutes_to_nearest(timestamp: pd.Timestamp, candidates: np.ndarray) -> float:
@@ -418,7 +431,35 @@ def _window_mean(group: pd.DataFrame, metric: str, bounds: tuple[int, int]) -> f
 def event_effects(event_time: pd.DataFrame) -> pd.DataFrame:
     """Collapse event paths to pre/post and placebo contrasts."""
     if event_time.empty:
-        return pd.DataFrame()
+        columns = [
+            "event_id",
+            "event_class",
+            "event_ts",
+            "model_permaslug",
+            "endpoint_uuid",
+            "provider_name",
+            "pre_cells",
+            "post_cells",
+            "complete_event",
+            "event_date",
+            "event_hour_utc",
+            "cluster",
+            "pre_log1p_model_attempt",
+            "accounting_residual_max",
+            "price_sticky",
+        ]
+        for metric in OUTCOME_METRICS + RAW_ACCOUNTING_METRICS:
+            columns.extend(
+                [
+                    f"{metric}_pre",
+                    f"{metric}_post",
+                    f"{metric}_delta",
+                    f"{metric}_placebo",
+                ]
+            )
+        columns.extend(["joint_accounting_pre_cells", "joint_accounting_post_cells"])
+        columns.extend(f"joint_{metric}_delta" for metric in RAW_ACCOUNTING_METRICS)
+        return pd.DataFrame(columns=columns)
     records: list[dict[str, Any]] = []
     for event_id, group in event_time.groupby("event_id", sort=False):
         first = group.iloc[0]
@@ -494,6 +535,7 @@ def match_negative_controls(effects: pd.DataFrame) -> pd.DataFrame:
         "high_event_id",
         "low_event_id",
         "model_permaslug",
+        "cluster",
         "match_score",
         *[f"{metric}_high_minus_low" for metric in PRIMARY_METRICS],
     ]
@@ -775,6 +817,7 @@ def summarize(
             else "descriptive_enforcement_substitution_power_gated"
         ),
         "preregistration": "docs/h82-enforcement-substitution-preregistration.md",
+        "analysis_cutoff_utc": DISCOVERY_MAX_TS.isoformat(),
         "observed_span_days": float(span_days),
         "n_panel_rows": int(len(panel)),
         "n_candidate_high_onsets": int(events["event_class"].eq("high").sum())
@@ -822,8 +865,16 @@ def plot_event_paths(event_time: pd.DataFrame, out_dir: Path) -> None:
     fig, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
     for axis, (metric, title) in zip(axes.flat, metrics, strict=True):
         for event_class, color in [("high", "#B23A48"), ("low", "#3572A5")]:
-            subset = event_time[event_time["event_class"].eq(event_class)]
-            path = subset.groupby("relative_minutes")[metric].agg(["mean", "std", "count"])
+            subset = event_time[event_time["event_class"].eq(event_class)].copy()
+            pre_mean = (
+                subset[subset["relative_minutes"].between(*PRIMARY_PRE)]
+                .groupby("event_id")[metric]
+                .mean()
+            )
+            subset["normalized_outcome"] = subset[metric] - subset["event_id"].map(pre_mean)
+            path = subset.groupby("relative_minutes")["normalized_outcome"].agg(
+                ["mean", "std", "count"]
+            )
             if path.empty:
                 continue
             se = path["std"] / np.sqrt(path["count"].clip(lower=1))
@@ -838,6 +889,7 @@ def plot_event_paths(event_time: pd.DataFrame, out_dir: Path) -> None:
         axis.axvline(0, color="black", lw=1, ls="--")
         axis.axvspan(PRIMARY_POST[0], PRIMARY_POST[1], color="#999999", alpha=0.08)
         axis.set_title(title)
+        axis.set_ylabel("Change from event pre-mean")
         axis.grid(alpha=0.2)
     axes[1, 0].set_xlabel("Minutes from rate-limit onset")
     axes[1, 1].set_xlabel("Minutes from rate-limit onset")
@@ -851,7 +903,7 @@ def plot_event_paths(event_time: pd.DataFrame, out_dir: Path) -> None:
 
 
 def analyze(rows: pd.DataFrame, out_dir: Path | None = None) -> dict[str, Any]:
-    panel = canonical_panel(rows)
+    panel = discovery_panel(canonical_panel(rows))
     events = event_registry(panel)
     event_time = build_event_time_panel(panel, events)
     effects = event_effects(event_time)

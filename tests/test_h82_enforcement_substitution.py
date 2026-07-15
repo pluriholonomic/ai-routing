@@ -10,6 +10,7 @@ from orcap.analysis.h82_enforcement_substitution import (
     analyze,
     build_event_time_panel,
     canonical_panel,
+    discovery_panel,
     event_effects,
     event_registry,
     match_negative_controls,
@@ -160,3 +161,32 @@ def test_h82_coerces_decimal_backed_authoritative_counts():
     panel = canonical_panel(rows)
     assert np.issubdtype(panel["model_success_5m"].dtype, np.floating)
     assert np.isfinite(panel["log1p_other_provider_success"]).all()
+
+
+def test_h82_discovery_cut_excludes_later_holdout_rows():
+    rows = _event_rows()
+    later = _row(
+        pd.Timestamp("2026-07-15T12:30:00Z"),
+        endpoint="future-endpoint",
+        provider="future-provider",
+        success=10,
+    )
+    full = canonical_panel(pd.concat([rows, pd.DataFrame([later])], ignore_index=True))
+    frozen = discovery_panel(full)
+    assert len(frozen) == len(full) - 1
+    assert frozen["ts"].max() <= pd.Timestamp("2026-07-15T11:33:02Z")
+    assert "future-endpoint" not in set(frozen["endpoint_uuid"])
+
+
+def test_h82_handles_panel_without_an_eligible_event(tmp_path: Path):
+    row = _row(
+        pd.Timestamp("2026-07-15T10:00:00Z"),
+        endpoint="quiet-endpoint",
+        provider="quiet-provider",
+        success=10,
+    )
+    summary = analyze(pd.DataFrame([row]), tmp_path)
+    assert summary["n_candidate_high_onsets"] == 0
+    assert summary["n_complete_high_events"] == 0
+    assert summary["n_matched_high_low_pairs"] == 0
+    assert not summary["release_gate"]["all_pass"]

@@ -149,3 +149,10 @@ change after outcome inspection; any amendment is versioned and disclosed.
   the event sample; this amendment completes the correction by computing every
   additive component on the same jointly observed pre and post cells. Primary
   share outcomes, matches, intervals, and release gates are unchanged.
+- After the first successful H82 result suggested the H83 overshoot hypothesis,
+  H82 was frozen at its exact final discovery snapshot,
+  `2026-07-15T11:33:02Z`. This is a post-result sample freeze, not a
+  preregistered H82 design choice, and is disclosed as such. Its purpose is to
+  prevent later public captures from entering both the exploratory H82 result
+  and the disjoint future-only H83 holdout. No H82 estimate changed because the
+  cutoff is the last timestamp in the already reported discovery panel.

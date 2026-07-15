@@ -55,6 +55,13 @@ selection value, and give a three-arm design that separately identifies them.
 Because public-provider support selects which model-hours can enter that design,
 we distinguish the eligible-block estimand from the all-candidate estimand and
 give design-based bounds for secondary outcomes with missing accounting fields.
+Separately, a preregistered public enforcement study retains 231 complete,
+isolated high-intensity rate-limit onsets. Focal endpoint successful share falls
+2.1 percentage points (clustered 95\% CI 1.1--3.2 pp), and a pre-treatment
+matched high-minus-low contrast is $-2.6$ pp (CI $-4.1$ to $-1.2$ pp), while
+every retained posted price is unchanged. Nonzero pretrends and an imprecise
+rival-volume contrast make this a descriptive capacity-event signature, not a
+causal rerouting result.
 In a fixed-order pilot of 96
 matched four-policy blocks, default routing succeeded 17.7 percentage points
 more often than pinning the cheapest displayed quote (hour-cluster 95\% CI
@@ -75,7 +82,7 @@ mechanism design is not an automated market maker. It is the distinction
 between displayed and delivered RFQ liquidity: a quote can be visible without
 being a deliverable commitment.
 
-This paper isolates that distinction. It makes six contributions.
+This paper isolates that distinction. It makes seven contributions.
 \begin{enumerate}
   \item We formalize a capacity-certified score-routing mechanism. It is the
   unique entropy-regularized allocation with reliability-weighted
@@ -100,6 +107,13 @@ This paper isolates that distinction. It makes six contributions.
   logged-propensity bounds for missing secondary outcomes. A 96-block pilot
   reveals a large displayed-quote firmness gap; prospective randomizations
   separate policy from the pilot's fixed-order confound.
+  \item We introduce a high-frequency enforcement event study. Across 231
+  complete isolated high-intensity rate-limit onsets, focal endpoint and
+  provider successful share fall by 2.1 percentage points, and the matched
+  high-minus-low contrast is $-2.6$ pp, while every retained posted price is
+  unchanged. Nonzero pretrends and an imprecise rival-volume contrast prevent a
+  causal rerouting claim; they instead motivate a separately frozen,
+  future-only capacity-overshoot test.
 \end{enumerate}
 
 The point is deliberately conditional. A certified capacity cap is an
@@ -675,6 +689,7 @@ Model object & Current measurement status & Permitted use in this paper \\
 \midrule
 Posted quote $p_i$ & public quote for a fixed workload & score input and quote heterogeneity \\
 Public performance & exact-match uptime and p90 fields are partial & coverage and missingness audit only \\
+Router enforcement & 503,321 endpoint snapshots; 231 complete isolated high onsets & descriptive capacity-event calibration only \\
 Simulated share $\hat s_i$ & documented public price proxy & mechanical comparative static only \\
 Selection / retries & 716 legacy attempts plus 98 outcome-gated prospective rows & account/workload policy calibration only \\
 Capacity / cost / value & no controlled commitment panel & theorem primitives and protocol fields only \\
@@ -726,6 +741,62 @@ from 0.2135 to 0.2119, while the separate strategic hazard model improves log
 loss but reduces AUC. The reaction exposure and 30-day gates therefore fail.
 We use pricing technology as a descriptive market characteristic, not evidence
 of algorithmic reaction, collusion, or Brown--MacKay equilibrium effects.
+
+\subsection{Public enforcement and the hidden-capacity margin}
+
+H82 uses router-side rolling five-minute success and rate-limit counts to ask
+whether an endpoint-specific enforcement event marks a change in delivered
+share while its money quote remains fixed. Before inspecting event paths, we
+defined a high-intensity onset as a contiguous zero-to-positive transition with
+at least five rate-limited requests, rate-limit share at least 20\%, and at least
+ten success-plus-rate-limit observations. We retain only a single treated
+endpoint per model and exclude another high onset within 60 minutes. Of 2,228
+candidates in 503,321 endpoint snapshots, 342 satisfy the isolation rule and
+231 have at least four observations in both the fixed $[-30,-5]$ and $[5,30]$
+minute windows. They span 22 models and 38 providers; the largest provider
+contributes 15.6\%. After the first H82 result generated the H83 hypothesis, we
+immutably capped H82 at its exact last discovery snapshot,
+2026-07-15 11:33:02 UTC. This is a disclosed post-result sample freeze, not a
+retroactive claim that H82 was confirmatory; it prevents any later observation
+from entering both discovery and holdout samples.
+
+Focal endpoint successful share falls by 2.09 pp (model-day cluster-bootstrap
+95\% CI $[-3.17,-1.11]$), and provider share falls by 2.08 pp
+($[-3.06,-1.13]$). Matching each high onset to a low-intensity onset in the
+same model using only pre-event model volume, UTC hour, and calendar distance
+gives $-2.57$ pp ($[-4.14,-1.22]$) and $-2.56$ pp
+($[-4.09,-1.21]$), respectively. Every leave-one-provider-out endpoint estimate
+is negative. Posted completion price is unchanged in every complete event
+window. Thus the operational state moves on a five-minute horizon on which the
+money quote does not.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/h82_enforcement_substitution.pdf}
+\caption{H82 event paths, normalized by each event's pre-period mean. Red is an
+isolated high-intensity rate-limit onset; blue is the low-intensity control
+cohort. Bands are descriptive event-level standard-error bands, not the
+clustered intervals used for the reported contrasts.}
+\label{fig:h82}
+\end{figure}
+
+The event study does not establish causal substitution. Endpoint share already
+rises by 0.71 pp from the early to late pre-period (CI $[0.09,1.44]$), violating
+the frozen pretrend gate. Other-provider log success rises after high onsets,
+but its matched interval crosses zero. On jointly observed raw-count cells,
+focal successes fall by 456.6 and model successes by 512.2 on average; the
+additive accounting residual is zero, but the rival component is tail-sensitive.
+The data therefore support a price-invariant \emph{capacity-event signature},
+not recovered flow, a causal enforcement effect, or the welfare gain in
+\cref{thm:count}.
+
+The failed pretrend suggests an exploratory capacity-overshoot cycle: share
+loads onto the soon-constrained endpoint, breaks at onset, and partially
+recovers. We froze that shape as H83 on a disjoint future-only panel beginning
+after 2026-07-15 12:00 UTC. H83 reveals no coefficient before 28 complete days,
+300 complete high events, and its sample-only support gates; its first eligible
+cut will be released whether it confirms or rejects the cycle. H82 is never
+pooled into that holdout.
 
 \subsection{Randomized micro-probe protocol}
 
@@ -845,10 +916,15 @@ reveals: verified or collateralized capacity, collectable liability, a finite
 report domain, independently assigned objective audits, an external audit fund,
 and a declared joint-outage support. The owned probes identify neither those
 private inputs nor provider intent, other users' flow, or literal front-running.
-The current pilot also confounds policy and order. These limitations are the
-result: displayed prices alone do not supply a delivery guarantee, and the
-value of hidden eligibility requires a prospective experiment rather than a
-retrospective causal label.
+The current pilot also confounds policy and order. Public enforcement events
+show that successful share can move materially while posted price remains
+fixed, but endogenous loading and incomplete rival recovery prevent a causal
+routing or welfare interpretation. These limitations are the result: displayed
+prices alone do not supply a delivery guarantee, and the value of hidden
+eligibility requires a prospective experiment rather than a retrospective
+causal label. The running H80/H81 randomizations and outcome-masked H83 future
+holdout make those unresolved claims falsifiable without pooling discovery and
+confirmation data.
 
 \bibliographystyle{plain}
 \bibliography{../references}
