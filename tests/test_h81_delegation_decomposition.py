@@ -86,3 +86,48 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert summary["outcomes_released"] is True
     assert summary["confirmatory_prefix_blocks"] == 120
     assert summary["evidence_status"] == "randomized_decomposition_ready"
+
+
+def test_zero_randomization_draws_still_runs_blinded_design_audit():
+    policy = "delegated_default"
+    seed = _seed_for_first(policy, 50_000)
+    frame = pd.DataFrame(
+        [
+            {
+                "source": "openrouter_generation",
+                "event_id": "event-zero-draws",
+                "run_ts": "20260715T120000Z",
+                "study_id": "openrouter-fallback-selection-decomposition-v1",
+                "model_id": "model/a",
+                "policy": policy,
+                "outcome": "succeeded",
+                "retry_reason": None,
+                "cost_usd": 0.00001,
+                "latency_ms": 100.0,
+                "selected_provider": "Provider",
+                "fallback_triggered": False,
+                "metadata_json": json.dumps(
+                    {
+                        "block_id": "h81-zero-draws",
+                        "block_policy_count": 3,
+                        "policy_order": 0,
+                        "block_seed": seed,
+                        "assignment_probability_first": 1 / 3,
+                        "randomized_order": True,
+                        "public_provider_count": 3,
+                        "requested_order_length": 0,
+                        "provider_only_count": 0,
+                        "allow_fallbacks": True,
+                    }
+                ),
+            }
+        ]
+    )
+
+    panel, _, contrasts, summary = analyze(frame, simulations=0)
+
+    assert summary["assignment_replay_passes"] == 1
+    assert summary["treatment_metadata_passes"] == 1
+    assert summary["outcomes_released"] is False
+    assert panel["success_rate"].isna().all()
+    assert contrasts["randomization_p_greater"].isna().all()

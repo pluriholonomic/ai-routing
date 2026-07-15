@@ -269,13 +269,16 @@ def analyze(
             )
     model_panel = pd.DataFrame(model_rows)
 
+    outcomes = (
+        first["success"].astype(float).to_numpy()
+        if n_blocks
+        else np.array([], dtype=float)
+    )
     if n_blocks and simulations:
-        outcomes = first["success"].astype(float).to_numpy()
         labels = np.random.default_rng(20260715).integers(
             0, len(POLICIES), size=(simulations, n_blocks), dtype=np.int8
         )
     else:
-        outcomes = np.array([], dtype=float)
         labels = np.empty((0, 0), dtype=np.int8)
     policy_index = {policy: index for index, policy in enumerate(POLICIES)}
     probability = 1.0 / len(POLICIES)
