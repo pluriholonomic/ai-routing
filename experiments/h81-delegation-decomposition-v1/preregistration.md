@@ -62,7 +62,8 @@ The total-delegation contrast is secondary and excluded from the Holm family.
 Secondary outcomes are HTTP 429 incidence, observed billed spend per attempt,
 successful-request latency, final selected-provider missingness, and observed
 fallback incidence. Spend effects are released only when accounting is complete
-in both compared arms; otherwise missingness is reported without imputation.
+in both compared arms; otherwise no point estimate is imputed and only the
+prespecified support bounds are reported.
 
 ## Stopping and exclusions
 
@@ -114,3 +115,23 @@ decision was changed after this inadvertent disclosure. The incident means the
 analyst was not fully outcome-blind for those two launch blocks; the fixed
 first-position estimator, earliest-balanced-prefix rule, and 40-per-arm gate
 remain unchanged and will be reported with this limitation.
+
+After four verified blocks, an outcome-free eligibility table was added for
+resolved public ranking positions five and six. It records every candidate's
+endpoint-fetch status, positive-quote and distinct-provider counts, eligibility
+decision and reason, public quote digest, ranking position, and evaluation
+order. Candidate and eligible model counts, exclusion reasons, dominance,
+effective support, entropy, and adjacent-run support turnover are public before
+the outcome gate. The first four blocks predate this table and are explicitly
+left-truncated: their successful block formation proves eligibility but cannot
+recover excluded candidates.
+
+The same amendment prespecifies distribution-free missingness bounds for
+secondary outcomes. Explicit public-order arms receive a finite spend cap only
+when the captured public quotes cover at most 64 input tokens plus the fixed
+one output token; delegated default may leave that provider set and is not
+assigned the public-set cap. Successful-request latency is bounded by the
+fixed 60-second HTTP timeout, and selected-provider observation is reported by
+arm. No primary outcome, treatment, assignment, exclusion, multiplicity, or
+stopping rule changed, and these outcome-derived bounds remain blinded until
+the fixed 40-per-arm gate.

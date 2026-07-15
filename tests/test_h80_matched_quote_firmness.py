@@ -102,9 +102,7 @@ def test_later_corruption_does_not_invalidate_preregistered_first_position():
         _row("corrupt-later", policy, i, True, explicit=True, position=i)
         for i, policy in enumerate(order)
     ]
-    duplicate = _row(
-        "corrupt-later", "pinned_random", 5, True, explicit=True, position=3
-    )
+    duplicate = _row("corrupt-later", "pinned_random", 5, True, explicit=True, position=3)
     duplicate["event_id"] += "-duplicate"
     rows.append(duplicate)
     blocks = construct_probe_blocks(pd.DataFrame(rows))
@@ -186,12 +184,18 @@ def test_randomized_first_position_emits_ipw_model_panel_and_gate():
         pd.DataFrame(rows), simulations=2_000
     )
     assert panel.set_index("policy").loc["openrouter_default", "ht_success_mean"] == 1.0
+    assert panel["spend_mean_lower_bound_usd"].eq(0.000004).all()
+    assert panel["spend_mean_upper_bound_usd"].eq(0.000004).all()
+    assert contrasts["spend_difference_lower_bound_usd"].eq(0.0).all()
+    assert contrasts["spend_difference_upper_bound_usd"].eq(0.0).all()
     assert len(model_panel) == 4
     assert set(model_panel["model_id"]) == {"model/0", "model/1"}
     assert contrasts["success_difference_ht"].eq(1.0).all()
     assert contrasts["holm_p_greater"].notna().all()
     assert audit["assignment_replay_rate"] == 1.0
     assert audit["models_represented"] == 2
+    assert audit["support_diagnostics"]["model_support_dominance"] == 0.5
+    assert audit["support_diagnostics"]["effective_model_count"] == 2.0
     assert audit["outcomes_released"] is True
     assert audit["confirmatory_prefix_blocks"] == 160
     assert audit["evidence_status"] == "randomized_first_position_ready"

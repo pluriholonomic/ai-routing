@@ -113,3 +113,17 @@ analyzers. No assignment, treatment, exclusion, multiplicity, or stopping
 decision was changed after seeing the pooled aggregates. This incident limits
 analyst blinding but does not change the prespecified first-position estimator
 or deterministic stopping rule.
+
+After 12 verified first-position blocks, the reporting code was extended with
+outcome-free repeated-support diagnostics and prespecified missingness bounds
+for secondary outcomes. The support audit reports model block counts, model
+dominance, effective model count, normalized entropy, hourly clusters, and
+calendar span. For spend, a pinned arm receives a finite upper support only
+when its captured public prompt and completion quotes imply a cap for at most
+64 input tokens and the fixed one output token; default routing and rows
+without that captured cap remain upper-unbounded when accounting is missing.
+Successful-request latency uses the collector's fixed 60-second HTTP timeout
+as its upper support. Selected-provider observation rates and missing counts
+are reported directly. These additions do not change the primary outcome,
+treatments, assignment, exclusion rule, multiplicity family, or 40-per-arm
+stopping gate, and every outcome-derived bound remains hidden before that gate.

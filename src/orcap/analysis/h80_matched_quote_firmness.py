@@ -37,6 +37,7 @@ from statsmodels.stats.proportion import confint_proportions_2indep, proportion_
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
+from .missingness_bounds import bounded_mean, difference_bounds
 
 POLICIES = (
     "openrouter_default",
@@ -82,6 +83,9 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
         "assignment_probability_first",
         "randomized_order",
         "quoted_price_completion",
+        "public_quote_cost_cap_usd",
+        "quote_cap_input_tokens",
+        "request_timeout_ms",
         "quoted_rank",
         "n_quoted",
     ):
@@ -105,6 +109,12 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
     out["observed_spend_usd"] = cost.where(out["success"], 0.0)
     out["policy_order"] = pd.to_numeric(out["policy_order"], errors="coerce")
     out["quoted_rank"] = pd.to_numeric(out["quoted_rank"], errors="coerce")
+    for column in (
+        "public_quote_cost_cap_usd",
+        "quote_cap_input_tokens",
+        "request_timeout_ms",
+    ):
+        out[column] = pd.to_numeric(out[column], errors="coerce")
     return out.dropna(subset=["observed_ts", "model_id"])
 
 
@@ -400,9 +410,7 @@ def first_balanced_prefix(
     if frame.empty:
         return frame.copy(), False, None
     sort_columns = [
-        column
-        for column in ("observed_ts", "observed_at", "run_ts", "block_id")
-        if column in frame
+        column for column in ("observed_ts", "observed_at", "run_ts", "block_id") if column in frame
     ]
     ordered = frame.sort_values(sort_columns, kind="stable").reset_index(drop=True)
     counts = {policy: 0 for policy in policies}
@@ -422,6 +430,107 @@ def first_balanced_prefix(
             cutoff = str(ordered.loc[position, cutoff_column]) if cutoff_column else None
             return ordered.iloc[: position + 1].copy(), True, cutoff
     return ordered, False, None
+
+
+def arm_missingness_bounds(arm: pd.DataFrame) -> dict[str, Any]:
+    """Bound H80 secondary means without conditioning the primary ITT sample."""
+    n = len(arm)
+    policy = str(arm["policy"].iloc[0]) if n else ""
+    spend = pd.to_numeric(
+        arm.get("observed_spend_usd", pd.Series(index=arm.index, dtype=float)),
+        errors="coerce",
+    )
+    quote_cap = pd.to_numeric(
+        arm.get("public_quote_cost_cap_usd", pd.Series(index=arm.index, dtype=float)),
+        errors="coerce",
+    )
+    if policy == "openrouter_default":
+        quote_cap[:] = np.nan
+    spend_bounds = bounded_mean(spend, lower=0.0, upper=quote_cap)
+
+    successful = arm[arm["success"].astype(bool)] if n else arm
+    latency = pd.to_numeric(
+        successful.get("latency_ms", pd.Series(index=successful.index, dtype=float)),
+        errors="coerce",
+    )
+    timeout = pd.to_numeric(
+        successful.get(
+            "request_timeout_ms",
+            pd.Series(60_000.0, index=successful.index, dtype=float),
+        ),
+        errors="coerce",
+    ).fillna(60_000.0)
+    latency_bounds = bounded_mean(latency, lower=0.0, upper=timeout)
+    selected = successful.get(
+        "selected_provider", pd.Series(index=successful.index, dtype="string")
+    ).astype("string")
+    selected_missing = selected.fillna("").eq("")
+    return {
+        "spend_observed": spend_bounds["observed"],
+        "spend_missing": spend_bounds["missing"],
+        "spend_mean_lower_bound_usd": spend_bounds["mean_lower_bound"],
+        "spend_mean_upper_bound_usd": spend_bounds["mean_upper_bound"],
+        "spend_upper_support_complete_for_missing": spend_bounds[
+            "upper_support_complete_for_missing"
+        ],
+        "spend_observed_upper_support_violations": spend_bounds[
+            "observed_upper_support_violations"
+        ],
+        "successful_latency_observed": latency_bounds["observed"],
+        "successful_latency_missing": latency_bounds["missing"],
+        "successful_latency_mean_lower_bound_ms": latency_bounds["mean_lower_bound"],
+        "successful_latency_mean_upper_bound_ms": latency_bounds["mean_upper_bound"],
+        "selected_provider_observed_successes": int((~selected_missing).sum()),
+        "selected_provider_missing_successes": int(selected_missing.sum()),
+        "selected_provider_observation_rate_success": (
+            float((~selected_missing).mean()) if len(successful) else None
+        ),
+    }
+
+
+def randomized_support_diagnostics(first_positions: pd.DataFrame) -> dict[str, Any]:
+    """Describe repeated model/time support without reading probe outcomes."""
+    if first_positions.empty:
+        return {
+            "blocks": 0,
+            "unique_models": 0,
+            "hour_clusters": 0,
+            "span_hours": 0.0,
+        }
+    counts = first_positions["model_id"].astype(str).value_counts()
+    shares = counts.to_numpy(dtype=float) / counts.sum()
+    observed_raw = first_positions.get(
+        "observed_ts",
+        first_positions.get("observed_at", pd.Series(pd.NaT, index=first_positions.index)),
+    )
+    observed = pd.Series(
+        pd.to_datetime(observed_raw, errors="coerce", utc=True),
+        index=first_positions.index,
+    )
+    span_hours = (
+        float((observed.max() - observed.min()).total_seconds() / 3600)
+        if observed.notna().sum() >= 2
+        else 0.0
+    )
+    return {
+        "blocks": int(len(first_positions)),
+        "unique_models": int(len(counts)),
+        "hour_clusters": int(observed.dt.floor("h").nunique()),
+        "span_hours": span_hours,
+        "model_block_counts": {str(key): int(value) for key, value in counts.items()},
+        "model_support_dominance": float(shares.max()),
+        "effective_model_count": float(1.0 / np.square(shares).sum()),
+        "normalized_model_entropy": (
+            float(-(shares * np.log(shares)).sum() / math.log(len(shares)))
+            if len(shares) > 1
+            else 0.0
+        ),
+        "claim_boundary": (
+            "Support describes dynamically selected hot models observed by this account. "
+            "Repeated model-hour blocks do not expand the target population to all models "
+            "or other accounts."
+        ),
+    }
 
 
 def randomized_first_position_analysis(
@@ -462,19 +571,15 @@ def randomized_first_position_analysis(
         n = len(arm)
         successes = int(arm["success"].sum())
         low, high = (
-            proportion_confint(successes, n, alpha=0.05, method="wilson")
-            if n
-            else (np.nan, np.nan)
+            proportion_confint(successes, n, alpha=0.05, method="wilson") if n else (np.nan, np.nan)
         )
-        probabilities = pd.to_numeric(
-            arm["assignment_probability_first"], errors="coerce"
-        )
+        probabilities = pd.to_numeric(arm["assignment_probability_first"], errors="coerce")
         ht_success = (
             float((arm["success"].astype(float) / probabilities).sum() / n_blocks)
             if n_blocks and n and probabilities.notna().all()
             else np.nan
         )
-        spend_missing = int(arm["observed_spend_usd"].isna().sum())
+        missingness = arm_missingness_bounds(arm)
         panel_rows.append(
             {
                 "policy": policy,
@@ -485,11 +590,10 @@ def randomized_first_position_analysis(
                 "success_ci_high": float(high),
                 "ht_success_mean": ht_success,
                 "rate_429": float(arm["rejected_429"].mean()) if n else np.nan,
-                "spend_observed": n - spend_missing,
-                "spend_missing": spend_missing,
+                **missingness,
                 "mean_observed_spend_usd": (
                     float(arm["observed_spend_usd"].mean())
-                    if n and spend_missing == 0
+                    if n and missingness["spend_missing"] == 0
                     else np.nan
                 ),
             }
@@ -498,9 +602,7 @@ def randomized_first_position_analysis(
 
     model_rows = []
     for (model_id, policy), arm in valid.groupby(["model_id", "policy"], sort=True):
-        probabilities = pd.to_numeric(
-            arm["assignment_probability_first"], errors="coerce"
-        )
+        probabilities = pd.to_numeric(arm["assignment_probability_first"], errors="coerce")
         model_blocks = int(valid["model_id"].eq(model_id).sum())
         successes = int(arm["success"].sum())
         model_rows.append(
@@ -539,9 +641,7 @@ def randomized_first_position_analysis(
         pinned = valid[valid["policy"].eq(policy)]
         nd, npin = len(default), len(pinned)
         raw_difference = (
-            float(default["success"].mean() - pinned["success"].mean())
-            if nd and npin
-            else np.nan
+            float(default["success"].mean() - pinned["success"].mean()) if nd and npin else np.nan
         )
         if nd and npin:
             ci_low, ci_high = confint_proportions_2indep(
@@ -562,8 +662,7 @@ def randomized_first_position_analysis(
                 (
                     (valid["policy"].eq("openrouter_default").to_numpy() * observed_outcomes)
                     / probability
-                    - (valid["policy"].eq(policy).to_numpy() * observed_outcomes)
-                    / probability
+                    - (valid["policy"].eq(policy).to_numpy() * observed_outcomes) / probability
                 ).sum()
                 / n_blocks
             )
@@ -572,18 +671,12 @@ def randomized_first_position_analysis(
         )
         if n_blocks and simulations:
             simulated = (
-                (
-                    (labels == 0) * observed_outcomes[None, :] / probability
-                    - (labels == policy_index) * observed_outcomes[None, :] / probability
-                ).sum(axis=1)
-                / n_blocks
-            )
-            p_greater = float(
-                (1 + (simulated >= observed_ht - 1e-15).sum()) / (simulations + 1)
-            )
+                (labels == 0) * observed_outcomes[None, :] / probability
+                - (labels == policy_index) * observed_outcomes[None, :] / probability
+            ).sum(axis=1) / n_blocks
+            p_greater = float((1 + (simulated >= observed_ht - 1e-15).sum()) / (simulations + 1))
             p_two_sided = float(
-                (1 + (np.abs(simulated) >= abs(observed_ht) - 1e-15).sum())
-                / (simulations + 1)
+                (1 + (np.abs(simulated) >= abs(observed_ht) - 1e-15).sum()) / (simulations + 1)
             )
         else:
             p_greater = p_two_sided = np.nan
@@ -600,6 +693,30 @@ def randomized_first_position_analysis(
             if raw_difference > 0 and np.isfinite(spend_difference)
             else np.nan
         )
+        default_missingness = arm_missingness_bounds(default)
+        pinned_missingness = arm_missingness_bounds(pinned)
+        spend_bound_low, spend_bound_high = difference_bounds(
+            {
+                "mean_lower_bound": default_missingness["spend_mean_lower_bound_usd"],
+                "mean_upper_bound": default_missingness["spend_mean_upper_bound_usd"],
+            },
+            {
+                "mean_lower_bound": pinned_missingness["spend_mean_lower_bound_usd"],
+                "mean_upper_bound": pinned_missingness["spend_mean_upper_bound_usd"],
+            },
+        )
+        latency_bound_low, latency_bound_high = difference_bounds(
+            {
+                "mean_lower_bound": default_missingness["successful_latency_mean_lower_bound_ms"],
+                "mean_upper_bound": default_missingness["successful_latency_mean_upper_bound_ms"],
+            },
+            {
+                "mean_lower_bound": pinned_missingness["successful_latency_mean_lower_bound_ms"],
+                "mean_upper_bound": pinned_missingness["successful_latency_mean_upper_bound_ms"],
+            },
+        )
+        default_provider_rate = default_missingness["selected_provider_observation_rate_success"]
+        pinned_provider_rate = pinned_missingness["selected_provider_observation_rate_success"]
         contrast_rows.append(
             {
                 "comparison": f"openrouter_default_minus_{policy}",
@@ -612,25 +729,28 @@ def randomized_first_position_analysis(
                 "success_difference_ht": observed_ht,
                 "randomization_p_greater": p_greater,
                 "randomization_p_two_sided": p_two_sided,
-                "spend_complete_both_arms": (
-                    default_spend_complete and pinned_spend_complete
-                ),
+                "spend_complete_both_arms": (default_spend_complete and pinned_spend_complete),
                 "observed_spend_difference_usd": spend_difference,
+                "spend_difference_lower_bound_usd": spend_bound_low,
+                "spend_difference_upper_bound_usd": spend_bound_high,
+                "successful_latency_difference_lower_bound_ms": latency_bound_low,
+                "successful_latency_difference_upper_bound_ms": latency_bound_high,
+                "selected_provider_observation_rate_difference": (
+                    float(default_provider_rate - pinned_provider_rate)
+                    if default_provider_rate is not None and pinned_provider_rate is not None
+                    else np.nan
+                ),
                 "break_even_value_per_success_usd": float(threshold),
             }
         )
     contrasts = pd.DataFrame(contrast_rows)
     if len(contrasts):
-        contrasts["holm_p_greater"] = holm_adjust(
-            contrasts["randomization_p_greater"].tolist()
-        )
+        contrasts["holm_p_greater"] = holm_adjust(contrasts["randomization_p_greater"].tolist())
 
-    analysis_counts = (
-        panel.set_index("policy")["first_position_attempts"].reindex(POLICIES, fill_value=0)
+    analysis_counts = panel.set_index("policy")["first_position_attempts"].reindex(
+        POLICIES, fill_value=0
     )
-    collection_counts = (
-        collection_valid["policy"].value_counts().reindex(POLICIES, fill_value=0)
-    )
+    collection_counts = collection_valid["policy"].value_counts().reindex(POLICIES, fill_value=0)
     min_count = int(collection_counts.min()) if len(collection_counts) else 0
     candidate = blocks.iloc[0:0].copy()
     if not blocks.empty:
@@ -655,12 +775,8 @@ def randomized_first_position_analysis(
         "assignment_replay_rate": (
             replay_passes / len(candidate_unique) if len(candidate_unique) else None
         ),
-        "first_position_counts": {
-            key: int(value) for key, value in collection_counts.items()
-        },
-        "confirmatory_prefix_counts": {
-            key: int(value) for key, value in analysis_counts.items()
-        },
+        "first_position_counts": {key: int(value) for key, value in collection_counts.items()},
+        "confirmatory_prefix_counts": {key: int(value) for key, value in analysis_counts.items()},
         "confirmatory_prefix_blocks": n_blocks if release_ready else 0,
         "confirmatory_cutoff": confirmatory_cutoff,
         "outcomes_released": release_ready,
@@ -672,6 +788,7 @@ def randomized_first_position_analysis(
             if len(collection_valid) and "model_id" in collection_valid
             else []
         ),
+        "support_diagnostics": randomized_support_diagnostics(collection_valid),
         "min_first_position_per_policy": min_count,
         "target_per_policy": MIN_FIRST_POSITION_PER_POLICY,
         "randomization_draws": simulations,
@@ -688,26 +805,16 @@ def randomized_first_position_analysis(
         ),
     }
     if not release_ready:
-        for column in (
-            "successes",
-            "success_rate",
-            "success_ci_low",
-            "success_ci_high",
-            "ht_success_mean",
-            "rate_429",
-            "spend_observed",
-            "spend_missing",
-            "mean_observed_spend_usd",
-        ):
-            panel[column] = np.nan
-        for column in (
-            "successes",
-            "success_rate",
-            "ht_success_mean_within_model",
-            "rate_429",
-            "spend_missing",
-        ):
-            if column in model_panel:
+        for column in panel.columns:
+            if column not in {"policy", "first_position_attempts"}:
+                panel[column] = np.nan
+        for column in model_panel.columns:
+            if column not in {
+                "model_id",
+                "policy",
+                "model_blocks",
+                "first_position_attempts",
+            }:
                 model_panel[column] = np.nan
         for column in contrasts.columns:
             if column not in {"comparison", "n_blocks", "default_n", "pinned_n"}:
@@ -788,9 +895,11 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
         if len(legacy)
         else {}
     )
-    randomized["complete_randomized_blocks"] = int(
-        explicit.loc[explicit["block_complete"].astype(bool), "block_id"].nunique()
-    ) if len(explicit) else 0
+    randomized["complete_randomized_blocks"] = (
+        int(explicit.loc[explicit["block_complete"].astype(bool), "block_id"].nunique())
+        if len(explicit)
+        else 0
+    )
     summary = {
         "evidence_status": (
             "randomized_first_position_ready"

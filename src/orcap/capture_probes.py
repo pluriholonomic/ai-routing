@@ -48,6 +48,8 @@ MAX_PROBES = int(os.environ.get("ORCAP_PROBE_MAX_MODELS", "8"))
 PINNED_MODELS = int(os.environ.get("ORCAP_PROBE_PINNED_MODELS", "4"))
 GENERATION_POLL_ATTEMPTS = 5
 GENERATION_POLL_SECONDS = 2.0
+REQUEST_TIMEOUT_MS = 60_000.0
+QUOTE_CAP_INPUT_TOKENS = 64
 RANKINGS_URL = f"{BASE_URL}/api/frontend/v1/rankings/models?view=week"
 MODELS_URL = f"{BASE_URL}/api/v1/models"
 CHAT_URL = f"{BASE_URL}/api/v1/chat/completions"
@@ -186,14 +188,28 @@ def _send_probe(
     return completion, generation, error, status
 
 
-def _quoted_endpoints(client: httpx.Client, model_id: str) -> list[dict[str, Any]]:
-    """Public endpoint list with completion quotes, cheapest first."""
+def quoted_endpoints_audit(
+    client: httpx.Client, model_id: str
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Fetch positive public quotes and return an outcome-free fetch audit."""
     try:
         r = client.get(f"{API_V1}/models/{model_id}/endpoints")
         if r.status_code != 200:
-            return []
-    except httpx.HTTPError:
-        return []
+            return [], {
+                "endpoint_fetch_status": f"http_{r.status_code}",
+                "endpoint_http_status": int(r.status_code),
+                "raw_endpoint_count": 0,
+                "positive_quote_count": 0,
+                "distinct_provider_count": 0,
+            }
+    except httpx.HTTPError as exc:
+        return [], {
+            "endpoint_fetch_status": type(exc).__name__,
+            "endpoint_http_status": None,
+            "raw_endpoint_count": 0,
+            "positive_quote_count": 0,
+            "distinct_provider_count": 0,
+        }
 
     def _sf(x: Any) -> float | None:
         try:
@@ -201,13 +217,35 @@ def _quoted_endpoints(client: httpx.Client, model_id: str) -> list[dict[str, Any
         except (TypeError, ValueError):
             return None
 
+    raw = (r.json().get("data") or {}).get("endpoints") or []
     eps = []
-    for ep in (r.json().get("data") or {}).get("endpoints") or []:
-        price = _sf((ep.get("pricing") or {}).get("completion"))
+    for ep in raw:
+        pricing = ep.get("pricing") or {}
+        price = _sf(pricing.get("completion"))
+        input_price = _sf(pricing.get("prompt"))
         name = ep.get("provider_name")
         if name and price is not None and price > 0:
-            eps.append({"provider": name, "price": price})
-    return sorted(eps, key=lambda e: e["price"])
+            eps.append(
+                {
+                    "provider": name,
+                    "price": price,
+                    "input_price": input_price,
+                }
+            )
+    eps = sorted(eps, key=lambda e: e["price"])
+    return eps, {
+        "endpoint_fetch_status": "ok",
+        "endpoint_http_status": int(r.status_code),
+        "raw_endpoint_count": len(raw),
+        "positive_quote_count": len(eps),
+        "distinct_provider_count": len({str(endpoint["provider"]) for endpoint in eps}),
+    }
+
+
+def _quoted_endpoints(client: httpx.Client, model_id: str) -> list[dict[str, Any]]:
+    """Public endpoint list with completion quotes, cheapest first."""
+    endpoints, _ = quoted_endpoints_audit(client, model_id)
+    return endpoints
 
 
 def _pinned_targets(eps: list[dict[str, Any]], rng: random.Random) -> list[tuple[str, dict]]:
@@ -219,6 +257,15 @@ def _pinned_targets(eps: list[dict[str, Any]], rng: random.Random) -> list[tuple
     if rest:
         picks.append(("pinned_random", rng.choice(rest)))
     return picks
+
+
+def quoted_probe_cost_cap(endpoint: dict[str, Any]) -> float | None:
+    """Conservative quote-implied cap for the fixed prompt and one output token."""
+    input_price = endpoint.get("input_price")
+    completion_price = endpoint.get("price")
+    if input_price is None or completion_price is None:
+        return None
+    return float(input_price) * QUOTE_CAP_INPUT_TOKENS + float(completion_price)
 
 
 def randomized_probe_tasks(
@@ -273,6 +320,8 @@ def run_probes(model_ids: list[str] | None = None) -> list[dict[str, Any]]:
                 if ep is not None:
                     quote_metadata = {
                         "quoted_price_completion": ep["price"],
+                        "public_quote_cost_cap_usd": quoted_probe_cost_cap(ep),
+                        "quote_cap_input_tokens": QUOTE_CAP_INPUT_TOKENS,
                         "quoted_rank": next(
                             (k for k, endpoint in enumerate(eps) if endpoint is ep), None
                         ),
@@ -297,6 +346,7 @@ def run_probes(model_ids: list[str] | None = None) -> list[dict[str, Any]]:
                             "assignment_probability_first": 1.0 / len(tasks),
                             "randomized_order": len(tasks) > 1,
                             "primary_estimand": "first_position_no_prior_probe",
+                            "request_timeout_ms": REQUEST_TIMEOUT_MS,
                             "n_quoted": len(eps),
                             **quote_metadata,
                         },

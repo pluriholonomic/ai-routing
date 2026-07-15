@@ -3,7 +3,11 @@ import random
 
 import pandas as pd
 
-from orcap.analysis.h81_delegation_decomposition import POLICIES, analyze
+from orcap.analysis.h81_delegation_decomposition import (
+    POLICIES,
+    analyze,
+    eligibility_diagnostics,
+)
 
 
 def _seed_for_first(policy: str, start: int) -> int:
@@ -80,6 +84,11 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert indexed.loc[["fallback_option", "hidden_selection"], "holm_p_greater"].notna().all()
     assert pd.isna(indexed.loc["total_delegation", "holm_p_greater"])
     assert panel["first_position_attempts"].eq(40).all()
+    assert panel["spend_mean_lower_bound_usd"].notna().all()
+    assert panel["spend_mean_upper_bound_usd"].notna().all()
+    assert panel["selected_provider_observation_rate_success"].eq(1.0).all()
+    assert indexed["spend_difference_lower_bound_usd"].notna().all()
+    assert indexed["spend_difference_upper_bound_usd"].notna().all()
     assert len(model_panel) == 6
     assert summary["assignment_replay_rate"] == 1.0
     assert summary["treatment_metadata_passes"] == 120
@@ -131,3 +140,67 @@ def test_zero_randomization_draws_still_runs_blinded_design_audit():
     assert summary["outcomes_released"] is False
     assert panel["success_rate"].isna().all()
     assert contrasts["randomization_p_greater"].isna().all()
+
+
+def test_eligibility_funnel_reports_exclusions_and_support_turnover():
+    eligibility = pd.DataFrame(
+        [
+            {
+                "study_id": "openrouter-fallback-selection-decomposition-v1",
+                "run_id": "run-1",
+                "run_ts": "20260715T120000Z",
+                "observed_at": "2026-07-15T12:00:00Z",
+                "model_id": "model/a",
+                "ranking_position": 5,
+                "eligible": True,
+                "exclusion_reason": "eligible",
+            },
+            {
+                "study_id": "openrouter-fallback-selection-decomposition-v1",
+                "run_id": "run-1",
+                "run_ts": "20260715T120000Z",
+                "observed_at": "2026-07-15T12:00:00Z",
+                "model_id": "model/b",
+                "ranking_position": 6,
+                "eligible": False,
+                "exclusion_reason": "fewer_than_two_distinct_positive_price_providers",
+            },
+            {
+                "study_id": "openrouter-fallback-selection-decomposition-v1",
+                "run_id": "run-2",
+                "run_ts": "20260715T130000Z",
+                "observed_at": "2026-07-15T13:00:00Z",
+                "model_id": "model/a",
+                "ranking_position": 5,
+                "eligible": True,
+                "exclusion_reason": "eligible",
+            },
+            {
+                "study_id": "openrouter-fallback-selection-decomposition-v1",
+                "run_id": "run-2",
+                "run_ts": "20260715T130000Z",
+                "observed_at": "2026-07-15T13:00:00Z",
+                "model_id": "model/c",
+                "ranking_position": 6,
+                "eligible": True,
+                "exclusion_reason": "eligible",
+            },
+        ]
+    )
+
+    rows, models, runs, summary = eligibility_diagnostics(eligibility, pd.DataFrame())
+
+    assert len(rows) == 4
+    assert len(models) == 3
+    assert len(runs) == 2
+    assert summary["candidate_rows"] == 4
+    assert summary["eligible_rows"] == 3
+    assert summary["eligibility_rate"] == 0.75
+    assert summary["unique_eligible_models"] == 2
+    assert summary["eligible_support_dominance"] == 2 / 3
+    assert summary["mean_adjacent_support_jaccard"] == 0.5
+    assert summary["mean_adjacent_support_turnover"] == 0.5
+    assert summary["exclusion_reason_counts"] == {
+        "eligible": 3,
+        "fewer_than_two_distinct_positive_price_providers": 1,
+    }

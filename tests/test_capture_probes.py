@@ -1,8 +1,19 @@
 import os
 import random
 
-from orcap.capture_decomposition_probes import decomposition_tasks, public_provider_order
-from orcap.capture_probes import _send_probe, hot_model_ids, probe_record
+import pyarrow.parquet as pq
+
+from orcap.capture_decomposition_probes import (
+    decomposition_tasks,
+    public_provider_order,
+    write_eligibility_audit,
+)
+from orcap.capture_probes import (
+    _send_probe,
+    hot_model_ids,
+    probe_record,
+    quoted_endpoints_audit,
+)
 from orcap.route_telemetry import validate_attempt
 
 
@@ -119,3 +130,85 @@ def test_send_probe_can_restrict_fallback_to_explicit_provider_set():
         "only": ["A", "B"],
         "allow_fallbacks": True,
     }
+
+
+def test_quoted_endpoints_audit_separates_fetch_and_eligibility_inputs():
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {
+                "data": {
+                    "endpoints": [
+                        {
+                            "provider_name": "Expensive",
+                            "pricing": {"prompt": "0.000002", "completion": "0.000004"},
+                        },
+                        {
+                            "provider_name": "Cheap",
+                            "pricing": {"prompt": "0.000001", "completion": "0.000003"},
+                        },
+                        {
+                            "provider_name": "Free",
+                            "pricing": {"prompt": "0", "completion": "0"},
+                        },
+                    ]
+                }
+            }
+
+    class Client:
+        @staticmethod
+        def get(_url):
+            return Response()
+
+    endpoints, audit = quoted_endpoints_audit(Client(), "model/a")
+
+    assert [endpoint["provider"] for endpoint in endpoints] == ["Cheap", "Expensive"]
+    assert endpoints[0]["input_price"] == 0.000001
+    assert audit == {
+        "endpoint_fetch_status": "ok",
+        "endpoint_http_status": 200,
+        "raw_endpoint_count": 3,
+        "positive_quote_count": 2,
+        "distinct_provider_count": 2,
+    }
+
+
+def test_write_eligibility_audit_uses_stable_privacy_safe_schema(tmp_path):
+    path = write_eligibility_audit(
+        [
+            {
+                "run_id": "20260715T120000Z",
+                "observed_at": "20260715T120001Z",
+                "study_id": "openrouter-fallback-selection-decomposition-v1",
+                "ranking_position": 5,
+                "evaluation_order": 0,
+                "model_id": "model/a",
+                "endpoint_fetch_status": "ok",
+                "endpoint_http_status": 200,
+                "raw_endpoint_count": 3,
+                "positive_quote_count": 3,
+                "distinct_provider_count": 2,
+                "eligible": True,
+                "exclusion_reason": "eligible",
+                "provider_order_sha256": "abc",
+                "public_min_completion_price": 0.000001,
+                "public_max_completion_price": 0.000003,
+                "public_quote_cost_cap_usd": 0.0001,
+                "quote_cap_input_tokens": 64,
+                "request_timeout_ms": 60_000.0,
+                "block_id": "block-a",
+                "run_seed": "18446744073709551615",
+            }
+        ],
+        run_ts="20260715T120000Z",
+        dt="2026-07-15",
+        curated_dir=tmp_path,
+    )
+
+    assert path is not None
+    row = pq.ParquetFile(path).read().to_pylist()[0]
+    assert row["eligible"] is True
+    assert row["payload_retained"] is False
+    assert row["run_seed"] == "18446744073709551615"

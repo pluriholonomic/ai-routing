@@ -15,6 +15,7 @@ from statsmodels.stats.proportion import confint_proportions_2indep, proportion_
 from . import data
 from .common import DEFAULT_OUT, save, save_json
 from .h80_matched_quote_firmness import first_balanced_prefix, holm_adjust
+from .missingness_bounds import bounded_mean, difference_bounds
 
 STUDY_ID = "openrouter-fallback-selection-decomposition-v1"
 POLICIES = (
@@ -63,6 +64,11 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
         "public_provider_order_sha256",
         "public_cheapest_provider",
         "public_cheapest_completion_price",
+        "public_quote_cost_cap_usd",
+        "quote_cap_input_tokens",
+        "request_timeout_ms",
+        "ranking_position",
+        "eligibility_run_id",
         "requested_order_length",
         "provider_only_count",
         "allow_fallbacks",
@@ -77,17 +83,195 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
             )
         else:
             out[key] = pd.Series(values, index=out.index)
-    out["policy_order"] = pd.to_numeric(out["policy_order"], errors="coerce")
+    for column in (
+        "policy_order",
+        "public_quote_cost_cap_usd",
+        "quote_cap_input_tokens",
+        "request_timeout_ms",
+        "ranking_position",
+    ):
+        out[column] = pd.to_numeric(out[column], errors="coerce")
     out["success"] = out["outcome"].astype(str).eq("succeeded")
-    retry_reason = out.get(
-        "retry_reason", pd.Series("", index=out.index, dtype="string")
-    ).astype("string")
-    out["rejected_429"] = (~out["success"]) & retry_reason.fillna("").str.contains(
-        "429"
+    retry_reason = out.get("retry_reason", pd.Series("", index=out.index, dtype="string")).astype(
+        "string"
     )
+    out["rejected_429"] = (~out["success"]) & retry_reason.fillna("").str.contains("429")
     cost = pd.to_numeric(out.get("cost_usd"), errors="coerce")
     out["observed_spend_usd"] = cost.where(out["success"], 0.0)
     return out
+
+
+def prepare_eligibility(
+    frame: pd.DataFrame | None, attempts: pd.DataFrame
+) -> tuple[pd.DataFrame, str]:
+    """Normalize outcome-free candidate telemetry, with an attempts-only fallback."""
+    if frame is not None and not frame.empty:
+        out = frame[frame["study_id"].astype(str).eq(STUDY_ID)].copy()
+        if out.empty:
+            return out, "eligibility_table_empty_for_study"
+        out = out.sort_values(["run_id", "model_id", "run_ts"]).drop_duplicates(
+            ["run_id", "model_id"], keep="last"
+        )
+        for column in (
+            "ranking_position",
+            "evaluation_order",
+            "raw_endpoint_count",
+            "positive_quote_count",
+            "distinct_provider_count",
+            "public_min_completion_price",
+            "public_max_completion_price",
+            "public_quote_cost_cap_usd",
+            "request_timeout_ms",
+        ):
+            if column in out:
+                out[column] = pd.to_numeric(out[column], errors="coerce")
+        out["eligible"] = out["eligible"].astype("boolean")
+        return out, "candidate_eligibility_table"
+
+    if attempts.empty:
+        return pd.DataFrame(), "no_eligibility_telemetry"
+    blocks = (
+        attempts.sort_values(["block_id", "policy_order"])
+        .drop_duplicates("block_id", keep="first")
+        .copy()
+    )
+    if blocks.empty:
+        return pd.DataFrame(), "no_eligibility_telemetry"
+    run_id = blocks.get("eligibility_run_id", pd.Series(index=blocks.index, dtype=object))
+    parsed = blocks["block_id"].astype(str).str.split("|", regex=False).str[1]
+    blocks["run_id"] = run_id.where(run_id.notna() & run_id.astype(str).ne(""), parsed)
+    blocks["ranking_position"] = pd.to_numeric(blocks.get("ranking_position"), errors="coerce")
+    blocks["eligible"] = True
+    blocks["exclusion_reason"] = "eligible_attempt_observed"
+    blocks["observed_at"] = blocks.get(
+        "observed_at", blocks.get("run_ts", pd.Series(index=blocks.index, dtype=object))
+    )
+    return blocks, "attempts_only_left_truncated"
+
+
+def eligibility_diagnostics(
+    frame: pd.DataFrame | None,
+    attempts: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    """Build the H81 target-population funnel without touching outcomes."""
+    candidates, telemetry_status = prepare_eligibility(frame, attempts)
+    if candidates.empty:
+        return (
+            candidates,
+            pd.DataFrame(),
+            pd.DataFrame(),
+            {
+                "telemetry_status": telemetry_status,
+                "candidate_rows": 0,
+                "eligible_rows": 0,
+                "eligibility_rate": None,
+            },
+        )
+
+    eligible_mask = candidates["eligible"].fillna(False).astype(bool)
+    eligible = candidates[eligible_mask].copy()
+    model_rows = []
+    for model_id, group in candidates.groupby("model_id", sort=True):
+        group_eligible = group["eligible"].fillna(False).astype(bool)
+        model_rows.append(
+            {
+                "model_id": str(model_id),
+                "candidate_runs": int(group["run_id"].nunique()),
+                "eligible_runs": int(group.loc[group_eligible, "run_id"].nunique()),
+                "eligibility_rate": float(group_eligible.mean()),
+                "minimum_ranking_position": float(
+                    pd.to_numeric(group.get("ranking_position"), errors="coerce").min()
+                ),
+                "maximum_ranking_position": float(
+                    pd.to_numeric(group.get("ranking_position"), errors="coerce").max()
+                ),
+            }
+        )
+    model_panel = pd.DataFrame(model_rows)
+
+    run_rows = []
+    eligible_sets: list[set[str]] = []
+    for run_id, group in candidates.groupby("run_id", sort=True):
+        group_eligible = group["eligible"].fillna(False).astype(bool)
+        support = set(group.loc[group_eligible, "model_id"].astype(str))
+        eligible_sets.append(support)
+        run_rows.append(
+            {
+                "run_id": str(run_id),
+                "candidate_models": int(group["model_id"].nunique()),
+                "eligible_models": int(len(support)),
+                "eligibility_rate": float(group_eligible.mean()),
+                "eligible_model_ids": json.dumps(sorted(support), separators=(",", ":")),
+            }
+        )
+    run_panel = pd.DataFrame(run_rows)
+
+    if len(eligible):
+        shares = eligible["model_id"].astype(str).value_counts(normalize=True).to_numpy()
+        dominance = float(shares.max())
+        effective_models = float(1.0 / np.square(shares).sum())
+        normalized_entropy = (
+            float(-(shares * np.log(shares)).sum() / math.log(len(shares)))
+            if len(shares) > 1
+            else 0.0
+        )
+    else:
+        dominance = effective_models = normalized_entropy = None
+    jaccards = []
+    for previous, current in zip(eligible_sets, eligible_sets[1:], strict=False):
+        union = previous | current
+        jaccards.append(len(previous & current) / len(union) if union else 1.0)
+    reasons = (
+        candidates.get("exclusion_reason", pd.Series(dtype=object))
+        .fillna("unknown")
+        .astype(str)
+        .value_counts()
+        .to_dict()
+    )
+    ranks = pd.to_numeric(candidates.get("ranking_position"), errors="coerce")
+    rank_counts = (
+        candidates.assign(_rank=ranks)
+        .dropna(subset=["_rank"])
+        .groupby("_rank")["eligible"]
+        .agg(candidate_rows="size", eligible_rows="sum")
+        .reset_index()
+    )
+    observed = pd.to_datetime(candidates.get("observed_at"), errors="coerce", utc=True)
+    span_hours = (
+        float((observed.max() - observed.min()).total_seconds() / 3600)
+        if observed.notna().sum() >= 2
+        else 0.0
+    )
+    summary = {
+        "telemetry_status": telemetry_status,
+        "candidate_rows": int(len(candidates)),
+        "eligible_rows": int(len(eligible)),
+        "eligibility_rate": float(eligible_mask.mean()),
+        "run_count": int(candidates["run_id"].nunique()),
+        "span_hours": span_hours,
+        "unique_candidate_models": int(candidates["model_id"].nunique()),
+        "unique_eligible_models": int(eligible["model_id"].nunique()),
+        "eligible_support_dominance": dominance,
+        "eligible_effective_model_count": effective_models,
+        "eligible_normalized_model_entropy": normalized_entropy,
+        "mean_adjacent_support_jaccard": (float(np.mean(jaccards)) if jaccards else None),
+        "mean_adjacent_support_turnover": (float(1.0 - np.mean(jaccards)) if jaccards else None),
+        "exclusion_reason_counts": {str(key): int(value) for key, value in reasons.items()},
+        "ranking_position_funnel": [
+            {
+                "ranking_position": int(row["_rank"]),
+                "candidate_rows": int(row["candidate_rows"]),
+                "eligible_rows": int(row["eligible_rows"]),
+            }
+            for _, row in rank_counts.iterrows()
+        ],
+        "claim_boundary": (
+            "The funnel covers only resolved public ranking positions assigned to H81. "
+            "It measures displayed positive-price provider eligibility and repeated model "
+            "support, not the router's private eligible set or all model demand."
+        ),
+    }
+    return candidates, model_panel, run_panel, summary
 
 
 def verify_first_assignment(block: pd.DataFrame) -> bool:
@@ -185,10 +369,71 @@ def _order_entropy(attempts: pd.DataFrame) -> float | None:
     return float(np.mean(values)) if values else None
 
 
+def arm_missingness_bounds(arm: pd.DataFrame) -> dict[str, Any]:
+    """Bound H81 secondary means under protocol-level support restrictions."""
+    n = len(arm)
+    policy = str(arm["policy"].iloc[0]) if n else ""
+    spend = pd.to_numeric(
+        arm.get("observed_spend_usd", pd.Series(index=arm.index, dtype=float)),
+        errors="coerce",
+    )
+    quote_cap = pd.to_numeric(
+        arm.get("public_quote_cost_cap_usd", pd.Series(index=arm.index, dtype=float)),
+        errors="coerce",
+    )
+    if policy == "delegated_default":
+        # Default delegation can leave the displayed provider set, so a cap
+        # derived from that public set is not a valid support restriction.
+        quote_cap[:] = np.nan
+    spend_bounds = bounded_mean(spend, lower=0.0, upper=quote_cap)
+
+    successful = arm[arm["success"].astype(bool)] if n else arm
+    latency = pd.to_numeric(
+        successful.get("latency_ms", pd.Series(index=successful.index, dtype=float)),
+        errors="coerce",
+    )
+    timeout = pd.to_numeric(
+        successful.get(
+            "request_timeout_ms",
+            pd.Series(60_000.0, index=successful.index, dtype=float),
+        ),
+        errors="coerce",
+    ).fillna(60_000.0)
+    latency_bounds = bounded_mean(latency, lower=0.0, upper=timeout)
+    selected = successful.get(
+        "selected_provider", pd.Series(index=successful.index, dtype="string")
+    ).astype("string")
+    selected_missing = selected.fillna("").eq("")
+    selected_observation_rate = float((~selected_missing).mean()) if len(successful) else None
+    return {
+        "spend_observed": spend_bounds["observed"],
+        "spend_missing": spend_bounds["missing"],
+        "spend_mean_lower_bound_usd": spend_bounds["mean_lower_bound"],
+        "spend_mean_upper_bound_usd": spend_bounds["mean_upper_bound"],
+        "spend_upper_support_complete_for_missing": spend_bounds[
+            "upper_support_complete_for_missing"
+        ],
+        "spend_observed_upper_support_violations": spend_bounds[
+            "observed_upper_support_violations"
+        ],
+        "successful_latency_observed": latency_bounds["observed"],
+        "successful_latency_missing": latency_bounds["missing"],
+        "successful_latency_mean_lower_bound_ms": latency_bounds["mean_lower_bound"],
+        "successful_latency_mean_upper_bound_ms": latency_bounds["mean_upper_bound"],
+        "selected_provider_observed_successes": int((~selected_missing).sum()),
+        "selected_provider_missing_successes": int(selected_missing.sum()),
+        "selected_provider_observation_rate_success": selected_observation_rate,
+    }
+
+
 def analyze(
-    frame: pd.DataFrame, *, simulations: int = RANDOMIZATION_DRAWS
+    frame: pd.DataFrame,
+    *,
+    eligibility: pd.DataFrame | None = None,
+    simulations: int = RANDOMIZATION_DRAWS,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     attempts = prepare_attempts(frame)
+    _, _, _, eligibility_summary = eligibility_diagnostics(eligibility, attempts)
     first, audit = first_position_sample(attempts)
     collection_first = first.copy()
     first, release_ready, confirmatory_cutoff = first_balanced_prefix(
@@ -200,25 +445,9 @@ def analyze(
         arm = first[first["policy"].eq(policy)] if n_blocks else first
         n = len(arm)
         successes = int(arm["success"].sum()) if n else 0
-        low, high = (
-            proportion_confint(successes, n, method="wilson")
-            if n
-            else (np.nan, np.nan)
-        )
-        probability = pd.to_numeric(
-            arm.get("assignment_probability_first"), errors="coerce"
-        )
-        spend_missing = int(arm["observed_spend_usd"].isna().sum()) if n else 0
-        successful = arm[arm["success"]] if n else arm
-        successful_latency = pd.to_numeric(
-            successful.get(
-                "latency_ms", pd.Series(index=successful.index, dtype=float)
-            ),
-            errors="coerce",
-        )
-        successful_provider = successful.get(
-            "selected_provider", pd.Series(index=successful.index, dtype=object)
-        )
+        low, high = proportion_confint(successes, n, method="wilson") if n else (np.nan, np.nan)
+        probability = pd.to_numeric(arm.get("assignment_probability_first"), errors="coerce")
+        missingness = arm_missingness_bounds(arm)
         panel_rows.append(
             {
                 "policy": policy,
@@ -236,14 +465,10 @@ def analyze(
                 "fallback_observed_rate": (
                     float(arm["fallback_triggered"].mean()) if n else np.nan
                 ),
-                "spend_missing": spend_missing,
-                "latency_missing_successes": int(successful_latency.isna().sum()),
-                "selected_provider_missing_successes": int(
-                    successful_provider.isna().sum()
-                ),
+                **missingness,
                 "mean_observed_spend_usd": (
                     float(arm["observed_spend_usd"].mean())
-                    if n and not spend_missing
+                    if n and not missingness["spend_missing"]
                     else np.nan
                 ),
             }
@@ -269,11 +494,7 @@ def analyze(
             )
     model_panel = pd.DataFrame(model_rows)
 
-    outcomes = (
-        first["success"].astype(float).to_numpy()
-        if n_blocks
-        else np.array([], dtype=float)
-    )
+    outcomes = first["success"].astype(float).to_numpy() if n_blocks else np.array([], dtype=float)
     if n_blocks and simulations:
         labels = np.random.default_rng(20260715).integers(
             0, len(POLICIES), size=(simulations, n_blocks), dtype=np.int8
@@ -315,12 +536,9 @@ def analyze(
         )
         if n_blocks and simulations:
             simulated = (
-                (
-                    (labels == policy_index[positive]) * outcomes[None, :] / probability
-                    - (labels == policy_index[negative]) * outcomes[None, :] / probability
-                ).sum(axis=1)
-                / n_blocks
-            )
+                (labels == policy_index[positive]) * outcomes[None, :] / probability
+                - (labels == policy_index[negative]) * outcomes[None, :] / probability
+            ).sum(axis=1) / n_blocks
             p_greater = float((1 + (simulated >= ht - 1e-15).sum()) / (simulations + 1))
             p_two_sided = float(
                 (1 + (np.abs(simulated) >= abs(ht) - 1e-15).sum()) / (simulations + 1)
@@ -338,6 +556,30 @@ def analyze(
             if spend_complete
             else np.nan
         )
+        pos_missingness = arm_missingness_bounds(pos)
+        neg_missingness = arm_missingness_bounds(neg)
+        spend_bound_low, spend_bound_high = difference_bounds(
+            {
+                "mean_lower_bound": pos_missingness["spend_mean_lower_bound_usd"],
+                "mean_upper_bound": pos_missingness["spend_mean_upper_bound_usd"],
+            },
+            {
+                "mean_lower_bound": neg_missingness["spend_mean_lower_bound_usd"],
+                "mean_upper_bound": neg_missingness["spend_mean_upper_bound_usd"],
+            },
+        )
+        latency_bound_low, latency_bound_high = difference_bounds(
+            {
+                "mean_lower_bound": pos_missingness["successful_latency_mean_lower_bound_ms"],
+                "mean_upper_bound": pos_missingness["successful_latency_mean_upper_bound_ms"],
+            },
+            {
+                "mean_lower_bound": neg_missingness["successful_latency_mean_lower_bound_ms"],
+                "mean_upper_bound": neg_missingness["successful_latency_mean_upper_bound_ms"],
+            },
+        )
+        pos_provider_rate = pos_missingness["selected_provider_observation_rate_success"]
+        neg_provider_rate = neg_missingness["selected_provider_observation_rate_success"]
         contrast_rows.append(
             {
                 "estimand": name,
@@ -355,6 +597,15 @@ def analyze(
                 "randomization_p_two_sided": p_two_sided,
                 "spend_complete_both_arms": spend_complete,
                 "observed_spend_difference_usd": spend_difference,
+                "spend_difference_lower_bound_usd": spend_bound_low,
+                "spend_difference_upper_bound_usd": spend_bound_high,
+                "successful_latency_difference_lower_bound_ms": latency_bound_low,
+                "successful_latency_difference_upper_bound_ms": latency_bound_high,
+                "selected_provider_observation_rate_difference": (
+                    float(pos_provider_rate - neg_provider_rate)
+                    if pos_provider_rate is not None and neg_provider_rate is not None
+                    else np.nan
+                ),
             }
         )
     contrasts = pd.DataFrame(contrast_rows)
@@ -364,8 +615,8 @@ def analyze(
         contrasts.loc[primary_mask, "randomization_p_greater"].tolist()
     )
 
-    analysis_counts = (
-        panel.set_index("policy")["first_position_attempts"].reindex(POLICIES, fill_value=0)
+    analysis_counts = panel.set_index("policy")["first_position_attempts"].reindex(
+        POLICIES, fill_value=0
     )
     collection_counts = (
         collection_first["policy"].value_counts().reindex(POLICIES, fill_value=0)
@@ -375,9 +626,7 @@ def analyze(
     audit.update(
         {
             "study_id": STUDY_ID,
-            "first_position_counts": {
-                key: int(value) for key, value in collection_counts.items()
-            },
+            "first_position_counts": {key: int(value) for key, value in collection_counts.items()},
             "confirmatory_prefix_counts": {
                 key: int(value) for key, value in analysis_counts.items()
             },
@@ -385,9 +634,7 @@ def analyze(
             "confirmatory_cutoff": confirmatory_cutoff,
             "outcomes_released": release_ready,
             "models_represented": (
-                int(collection_first["model_id"].nunique())
-                if len(collection_first)
-                else 0
+                int(collection_first["model_id"].nunique()) if len(collection_first) else 0
             ),
             "model_ids": (
                 sorted(collection_first["model_id"].astype(str).unique().tolist())
@@ -397,6 +644,7 @@ def analyze(
             "normalized_order_entropy": _order_entropy(attempts),
             "target_per_policy": MIN_FIRST_POSITION_PER_POLICY,
             "randomization_draws": simulations,
+            "eligibility_funnel": eligibility_summary,
             "evidence_status": (
                 "randomized_decomposition_ready"
                 if release_ready
@@ -438,9 +686,28 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
         from read_parquet('{data.table_glob("router_route_attempts")}', union_by_name=true)
         """
     ).df()
-    panel, model_panel, contrasts, summary = analyze(frame)
+    try:
+        eligibility = data.q(
+            f"""
+            select *
+            from read_parquet(
+              '{data.table_glob("router_probe_eligibility")}',
+              union_by_name=true
+            )
+            """
+        ).df()
+    except Exception:
+        # The table is prospective and optional for historical/local datasets.
+        eligibility = pd.DataFrame()
+    panel, model_panel, contrasts, summary = analyze(frame, eligibility=eligibility)
+    eligibility_rows, eligibility_models, eligibility_runs, _ = eligibility_diagnostics(
+        eligibility, prepare_attempts(frame)
+    )
     save(panel, out_dir, "h81_policy_panel")
     save(model_panel, out_dir, "h81_model_policy_panel")
     save(contrasts, out_dir, "h81_contrasts")
+    save(eligibility_rows, out_dir, "h81_eligibility_rows")
+    save(eligibility_models, out_dir, "h81_eligibility_models")
+    save(eligibility_runs, out_dir, "h81_eligibility_runs")
     save_json(summary, out_dir, "h81_summary")
     return summary
