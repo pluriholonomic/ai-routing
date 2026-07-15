@@ -125,6 +125,7 @@ def test_h82_builds_isolated_event_paths_and_exact_flow_accounting(tmp_path: Pat
     assert summary["n_complete_high_events"] == 1
     assert summary["n_matched_high_low_pairs"] == 1
     assert summary["flow_accounting"]["maximum_snapshot_identity_residual"] < 1e-12
+    assert abs(summary["flow_accounting"]["mean_identity_residual"]) < 1e-12
     assert not summary["release_gate"]["all_pass"]
     assert (tmp_path / "h82_enforcement_substitution.png").exists()
 

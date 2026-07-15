@@ -191,8 +191,10 @@ def canonical_panel(rows: pd.DataFrame) -> pd.DataFrame:
         panel["other_provider_success_5m"].clip(lower=0)
     )
     panel["log1p_model_success"] = np.log1p(panel["model_success_5m"].clip(lower=0))
-    panel["log_price_completion"] = np.where(
-        panel["price_completion"] > 0, np.log(panel["price_completion"]), np.nan
+    panel["log_price_completion"] = np.nan
+    positive_price = panel["price_completion"].gt(0)
+    panel.loc[positive_price, "log_price_completion"] = np.log(
+        panel.loc[positive_price, "price_completion"]
     )
     panel["log1p_capacity_ceiling_rpm"] = np.log1p(
         panel["capacity_ceiling_rpm"].clip(lower=0)
@@ -670,9 +672,15 @@ def summarize(
         }
 
     accounting: dict[str, Any] = {}
+    joint_delta_columns = [f"{metric}_delta" for metric in RAW_ACCOUNTING_METRICS]
+    joint_accounting = high.dropna(subset=joint_delta_columns) if not high.empty else high
     for metric in RAW_ACCOUNTING_METRICS:
         column = f"{metric}_delta"
-        values = high[column].dropna() if not high.empty else pd.Series(dtype=float)
+        values = (
+            joint_accounting[column].dropna()
+            if not joint_accounting.empty
+            else pd.Series(dtype=float)
+        )
         if len(values):
             low_q, high_q = values.quantile([0.01, 0.99])
             winsorized = float(values.clip(low_q, high_q).mean())
@@ -771,6 +779,7 @@ def summarize(
         "primary_results": primary,
         "flow_accounting": {
             **accounting,
+            "joint_complete_events": int(len(joint_accounting)),
             "mean_identity_residual": flow_identity_delta,
             "maximum_snapshot_identity_residual": accounting_max,
             "other_provider_diversion_ratio_when_focal_declines": diversion_ratio,
