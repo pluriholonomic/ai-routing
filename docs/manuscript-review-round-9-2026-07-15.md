@@ -37,9 +37,9 @@ capacity-overshoot hypothesis: load before onset, break after onset, partial
 recovery, and sticky price. It begins after the discovery cut, masks every
 coefficient until sample-only gates are met, and requires release of the first
 eligible cut whether the shape confirms or rejects the hypothesis. At present
-it has no eligible future observations, so no outcome is exposed. The H80 and
-H81 randomized routing studies also remain below their frozen 40-per-arm
-release gates.
+it has 16 candidate high onsets, two eligible isolated onsets, and no complete
+shape window, so no outcome is exposed. The H80 and H81 randomized routing
+studies also remain below their frozen 40-per-arm release gates.
 
 ## Material improvements
 
@@ -94,8 +94,8 @@ or market-regime dependence. H83 appropriately requires a longer future panel.
 
 ### 4. The randomized studies are still outcome-gated
 
-H80 has only 16 verified position-zero blocks with arm counts (5, 2, 2, 7).
-H81 has six blocks with counts (3, 1, 2). These designs are the cleanest path to
+H80 has only 20 verified position-zero blocks with arm counts (5, 2, 5, 8).
+H81 has eight blocks with counts (3, 3, 2). These designs are the cleanest path to
 selection and fallback effects, but their confidence intervals and economic
 magnitudes remain intentionally unavailable.
 

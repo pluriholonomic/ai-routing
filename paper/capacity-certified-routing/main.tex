@@ -796,7 +796,9 @@ recovers. We froze that shape as H83 on a disjoint future-only panel beginning
 after 2026-07-15 12:00 UTC. H83 reveals no coefficient before 28 complete days,
 300 complete high events, and its sample-only support gates; its first eligible
 cut will be released whether it confirms or rejects the cycle. H82 is never
-pooled into that holdout.
+pooled into that holdout. The current masked ledger contains 16 future high
+candidates, two eligible isolated onsets, and no complete shape window; it
+therefore exposes no coefficient.
 
 \subsection{Randomized micro-probe protocol}
 
@@ -826,17 +828,17 @@ the disclosure. The incident limits analyst blinding for those launch data but
 does not change the randomized first-position estimator or deterministic
 earliest-balanced-prefix rule.
 
-The latest pre-outcome audit contains 16 verified H80 position-zero blocks
-across four models and four hourly clusters; each model contributes four
-blocks. H81 contains six verified blocks across two models and three runs. All
-16 H80 seed replays and all six H81 seed and treatment-control replays pass.
-Arm counts are $(5,2,2,7)$ for H80 and $(3,1,2)$ for H81, so both analyzers
+The latest pre-outcome audit contains 20 verified H80 position-zero blocks
+across four models and five hourly clusters; each model contributes five
+blocks. H81 contains eight verified blocks across two models. All 20 H80 seed
+replays and all eight H81 seed and treatment-control replays pass. Arm counts
+are $(5,2,5,8)$ for H80 and $(3,3,2)$ for H81, so both analyzers
 remain below their 40-per-arm gates and release no outcome, confidence interval,
 or $p$-value. The H81 candidate-funnel table begins after its first four blocks,
-so the earlier support remains left-truncated. In the first fully audited run,
-both rank-five and rank-six candidates were eligible: they displayed 25 and
-three distinct positive-price providers, respectively. This measures public
-eligibility for the sampled ranks, not the router's private eligible set.
+so the earlier support remains left-truncated. It now covers two audited runs,
+and four of four rank-five/rank-six candidate rows are eligible; adjacent public
+support is unchanged across those runs. This measures public eligibility for
+the sampled ranks, not the router's private eligible set.
 
 \begin{table}[t]
 \centering
