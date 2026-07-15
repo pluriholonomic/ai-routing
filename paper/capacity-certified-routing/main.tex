@@ -678,6 +678,10 @@ and uses only position zero for the primary contrast. The protocol was frozen
 after inspecting v1 and before collecting v2. Its first confirmatory cut
 requires at least 40 first-position assignments per policy and 160 valid
 blocks; HTTP and network failures remain intention-to-treat outcomes.
+Before that gate, the analyzer exposes only assignment counts and seed-replay
+diagnostics. At the gate, it freezes the earliest chronological prefix meeting
+all four arm counts, so a later download cannot silently replace the first
+confirmatory cut with a larger sample.
 
 \begin{table}[t]
 \centering
