@@ -1,0 +1,22 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_changes": 275,
+  "kurtosis_raw_pooled": 113.06,
+  "kurtosis_within_provider_standardized": 3.54,
+  "n_standardized_changes": 269,
+  "benchmarks": {
+    "calvo": 6.0,
+    "golosov_lucas_menu_cost": 1.0,
+    "micro_data_typical": 4.0
+  },
+  "freq_per_endpoint_day": 0.03743,
+  "implied_duration_days": 26.7,
+  "cir_index_kur_over_6N": 503.4,
+  "small_change_mass_lt5pct": 0.182,
+  "small_change_mass_lt1pct": 0.109,
+  "median_abs_dlog": 0.134,
+  "share_cuts": 0.665,
+  "size_vs_age_rank_corr": 0.051,
+  "n_completed_spells": 212,
+  "claim_boundary": "Panel-window spells only (first spells left-censored, excluded from the age moment); kurtosis pools heterogeneous endpoints \u2014 ALL theory wants within-unit standardization, which gates on more events per endpoint."
+}

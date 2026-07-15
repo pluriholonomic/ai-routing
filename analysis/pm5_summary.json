@@ -1,0 +1,33 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "gap_density": {
+    "share_ticks_at_exact_min_excl_holder": 0.474260195318251,
+    "gap_bins_pct": {
+      "0_to_0.5": 0.006127163613940926,
+      "0.5_to_2": 0.01929340038039655,
+      "2_to_5": 0.015254943852426981,
+      "5_to_15": 0.13770268275101397,
+      "gt_15": 0.8216218094022216
+    },
+    "n_nonmin_obs": 690858
+  },
+  "tie_formation": {
+    "n": 28,
+    "share_formed_by_downward_move": 0.7142857142857143
+  },
+  "tie_break": {
+    "n": 38,
+    "share_broken_by_downward_move": 0.868421052631579
+  },
+  "focality": {
+    "n_tied_models_latest_tick": 146,
+    "share_tie_levels_round_tenth_mtok": 0.6095890410958904,
+    "n_tied_models_with_first_party_quote": 72,
+    "share_ties_at_first_party_price": 0.9027777777777778
+  },
+  "signatures": {
+    "coordination": "atom at 0 + missing mass at small undercuts; ties formed by upward moves; ties at first-party focal price; breaks upward",
+    "competition": "smooth small-undercut mass; ties formed downward; breaks downward"
+  },
+  "claim_boundary": "Single-mover tie events only (multi-mover ticks skipped); first-party matching by author-name heuristic; 5-min grid means sub-tick sequencing within a tie tick is unobserved."
+}

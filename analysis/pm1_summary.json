@@ -1,0 +1,59 @@
+{
+  "evidence_status": "power_gated",
+  "gate": "9/30 panel days \u2014 age bins coarse, no unit frailty, in-sample AUC only",
+  "n_pair_days": 7347,
+  "n_events": 110,
+  "base_daily_hazard": 0.015,
+  "ladder": {
+    "L1": {
+      "llf": -571.3,
+      "auc_in_sample": 0.5,
+      "lr_p_vs_previous": null,
+      "key_coefs": {}
+    },
+    "L2": {
+      "llf": -378.6,
+      "auc_in_sample": 0.895,
+      "lr_p_vs_previous": "7.56e-76",
+      "key_coefs": {}
+    },
+    "L3": {
+      "llf": -365.7,
+      "auc_in_sample": 0.896,
+      "lr_p_vs_previous": "1.02e-05",
+      "key_coefs": {
+        "abs_gap": 1.287,
+        "gap_positive": -1.011,
+        "abs_gpu_dlog": -0.299
+      }
+    },
+    "L4": {
+      "llf": -363.2,
+      "auc_in_sample": 0.9,
+      "lr_p_vs_previous": "1.71e-01",
+      "key_coefs": {
+        "abs_gap": 1.194,
+        "gap_positive": -1.019,
+        "abs_gpu_dlog": -0.308,
+        "util": -0.063,
+        "rl_share": -0.181
+      }
+    },
+    "L5": {
+      "llf": -356.9,
+      "auc_in_sample": 0.907,
+      "lr_p_vs_previous": "1.77e-03",
+      "key_coefs": {
+        "abs_gap": 1.172,
+        "gap_positive": -0.905,
+        "abs_gpu_dlog": -0.314,
+        "util": -0.032,
+        "rl_share": -0.116,
+        "rival_moves_1d": 0.202,
+        "rival_raises_1d": 0.144
+      }
+    }
+  },
+  "reading": "L2>L1 = duration/calendar dependence (anti-Calvo); L3 abs_gap>0 = state-dependent (menu cost); L4 util/rl>0 = congestion pricing (exclusion: should be ~0 given L3); L5 rival terms>0 = strategic",
+  "claim_boundary": "Ten-day panel: rungs are directional, not conclusive; congestion covariates exist only for hot-panel pairs (cong_missing indicator); provider_rate is an endogenous frailty substitute."
+}
