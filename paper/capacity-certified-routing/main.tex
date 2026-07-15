@@ -62,6 +62,14 @@ matched high-minus-low contrast is $-2.6$ pp (CI $-4.1$ to $-1.2$ pp), while
 every retained posted price is unchanged. Nonzero pretrends and an imprecise
 rival-volume contrast make this a descriptive capacity-event signature, not a
 causal rerouting result.
+In a separate retrospectively preregistered same-model hazard design, the
+endpoint that binds next is not older and cheaper than contemporaneous rivals:
+the stale-by-cheap contrast is $-0.118$ (clustered 95\% CI
+$[-0.181,-0.056]$) across 1,227 choice sets, versus $-0.083$ in a backward
+placebo. Quote age is null and stale-quote features do not improve temporal
+prediction; cases are instead relatively expensive, smaller-capacity, and at
+higher displayed utilization. This rejects the specified stale-liquidity
+channel in the discovery panel but is not a causal capacity estimate.
 In a fixed-order pilot of 96
 matched four-policy blocks, default routing succeeded 17.7 percentage points
 more often than pinning the cheapest displayed quote (hour-cluster 95\% CI
@@ -82,7 +90,7 @@ mechanism design is not an automated market maker. It is the distinction
 between displayed and delivered RFQ liquidity: a quote can be visible without
 being a deliverable commitment.
 
-This paper isolates that distinction. It makes seven contributions.
+This paper isolates that distinction. It makes eight contributions.
 \begin{enumerate}
   \item We formalize a capacity-certified score-routing mechanism. It is the
   unique entropy-regularized allocation with reliability-weighted
@@ -114,6 +122,13 @@ This paper isolates that distinction. It makes seven contributions.
   unchanged. Nonzero pretrends and an imprecise rival-volume contrast prevent a
   causal rerouting claim; they instead motivate a separately frozen,
   future-only capacity-overshoot test.
+  \item We preregister and reject a sharper quote-surface adverse-selection
+  hypothesis. Within 1,227 same-model snapshots, the endpoint that becomes
+  rate-limited next is not an older, relatively cheaper quote; quote age is
+  null and adding stale-quote state does not improve temporal prediction.
+  Smaller displayed capacity and higher utilization are more informative,
+  favoring a thin-capacity or queueing interpretation over a stale-liquidity
+  interpretation in this discovery panel.
 \end{enumerate}
 
 The point is deliberately conditional. A certified capacity cap is an
@@ -690,6 +705,7 @@ Model object & Current measurement status & Permitted use in this paper \\
 Posted quote $p_i$ & public quote for a fixed workload & score input and quote heterogeneity \\
 Public performance & exact-match uptime and p90 fields are partial & coverage and missingness audit only \\
 Router enforcement & 503,321 endpoint snapshots; 231 complete isolated high onsets & descriptive capacity-event calibration only \\
+Pre-onset quote state & 1,227 same-model next-onset choice sets; 1,144 backward placebos & predictive mechanism rejection and diagnostics only \\
 Simulated share $\hat s_i$ & documented public price proxy & mechanical comparative static only \\
 Selection / retries & 716 legacy attempts plus 98 outcome-gated prospective rows & account/workload policy calibration only \\
 Capacity / cost / value & no controlled commitment panel & theorem primitives and protocol fields only \\
@@ -799,6 +815,64 @@ cut will be released whether it confirms or rejects the cycle. H82 is never
 pooled into that holdout. The current masked ledger contains 16 future high
 candidates, two eligible isolated onsets, and no complete shape window; it
 therefore exposes no coefficient.
+
+\subsection{Stale-quote adverse-selection test}
+
+H84 asks a temporally sharper question: conditional on a model and public
+snapshot, does an old, relatively cheap quote predict which endpoint records a
+high-intensity rate-limit event at the next contiguous snapshot? We froze the
+feature and estimands before computing this contrast, but after the H82 and
+Brown--MacKay results motivated the question; H84 is therefore a
+retrospectively preregistered discovery analysis. Let cheapness be minus the
+endpoint's log-price deviation from the contemporaneous same-model median and
+define
+\[
+ z_{it}=\log(1+\text{observed quote age}_{it})\times
+        \text{cheapness}_{it}.
+\]
+Each of 1,227 retained model-snapshot choice sets has exactly one endpoint that
+binds next and at least one at-risk rival. The frozen directional hypothesis is
+that the case-minus-mean-rival contrast in $z_{it}$ is positive.
+
+The data reject that direction. The contrast is $-0.118$ (model-day
+cluster-bootstrap 95\% CI $[-0.181,-0.056]$); every leave-one-provider-out and
+leave-one-model-out estimate remains negative. The backward previous-onset
+placebo is also negative, $-0.083$ ($[-0.140,-0.031]$), so the forward
+contrast does not exceed the placebo. Quote age alone is essentially zero,
+$0.0001$ ($[-0.0041,0.0035]$). The result is driven by relative price rather
+than staleness: cases are more expensive than same-model rivals
+($-0.147$ in the cheapness scale, CI $[-0.222,-0.076]$), while 99.92\% of case
+prices remain unchanged into the next snapshot.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/h84_stale_quote_hazard.pdf}
+\caption{H84 pre-onset public-state diagnostics. The preregistered positive
+stale-by-cheap direction is rejected; its forward contrast is negative and
+does not exceed the backward placebo. Quote age is null. Adding stale-quote or
+operational fields does not improve held-out conditional-choice log loss.
+Intervals in the upper-left panel are model-day cluster-bootstrap intervals.}
+\label{fig:h84}
+\end{figure}
+
+Cases already have lower successful volume (log contrast $-0.954$, CI
+$[-1.173,-0.718]$) and lower within-model successful share ($-6.19$ pp, CI
+$[-8.47,-4.07]$ pp), but higher displayed utilization when capacity fields are
+observed ($+0.422$, CI $[0.126,0.875]$). A conditional-choice baseline using
+price and displayed capacity ceiling attains held-out log loss 1.42536.
+Adding quote age, stale-by-cheap, and spell-censoring fields worsens it to
+1.42594; adding operational state worsens it further to 1.43119. The baseline's
+standardized log-capacity-ceiling coefficient is $-1.327$ (SE 0.082), while the
+stale-by-cheap coefficient is $-0.050$ (SE 0.098).
+
+Thus the discovery panel does not support the DeFi-style stale-liquidity
+mechanism. Its public signature is closer to a thin-capacity queue: smaller,
+more utilized endpoints bind without repricing. This remains descriptive. The
+negative backward placebo, left-censored quote ages, endogenous capacity
+state, and seven-day window prevent a causal or structural interpretation. H85
+applies the unchanged directional hypothesis to observations after 2026-07-15
+12:00 UTC, masks all outcomes until 28 complete days and its sample-only gates,
+and forces publication of the first eligible cut regardless of sign.
 
 \subsection{Randomized micro-probe protocol}
 
@@ -924,9 +998,12 @@ fixed, but endogenous loading and incomplete rival recovery prevent a causal
 routing or welfare interpretation. These limitations are the result: displayed
 prices alone do not supply a delivery guarantee, and the value of hidden
 eligibility requires a prospective experiment rather than a retrospective
-causal label. The running H80/H81 randomizations and outcome-masked H83 future
-holdout make those unresolved claims falsifiable without pooling discovery and
-confirmation data.
+causal label. The stale-quote screen further rejects a simple adverse-selection
+story in which cheap old quotes are picked off; smaller capacity and higher
+utilization predict the next event, but those public fields are not randomized
+commitments. The running H80/H81 randomizations and outcome-masked H83/H85
+future holdouts make the unresolved claims falsifiable without pooling
+discovery and confirmation data.
 
 \bibliographystyle{plain}
 \bibliography{../references}
