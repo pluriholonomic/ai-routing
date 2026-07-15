@@ -15,6 +15,9 @@ Outputs:
   h80_probe_blocks.parquet
   h80_policy_panel.parquet
   h80_pairwise_contrasts.parquet
+  h80_randomized_first_position.parquet
+  h80_randomized_model_policy.parquet
+  h80_randomized_contrasts.parquet
   h80_summary.json
   h80_quote_firmness.png / .pdf
 """
@@ -30,7 +33,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from scipy.stats import binomtest
-from statsmodels.stats.proportion import proportion_confint
+from statsmodels.stats.proportion import confint_proportions_2indep, proportion_confint
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
@@ -45,6 +48,7 @@ LEGACY_STUDY_ID = "openrouter-default-probes-v1"
 RANDOMIZED_STUDY_ID = "openrouter-routing-crossover-v2"
 MAX_LEGACY_BLOCK_SECONDS = 120
 MIN_FIRST_POSITION_PER_POLICY = 40
+RANDOMIZATION_DRAWS = 100_000
 
 
 def _metadata(value: Any) -> dict[str, Any]:
@@ -83,12 +87,14 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
     ):
         values = [item.get(key) for item in meta]
         # Seeds are unsigned 64-bit integers.  An ordinary pandas column with
-        # legacy nulls would coerce them to float and silently lose bits.
-        out[key] = pd.Series(
-            values,
-            index=out.index,
-            dtype="object" if key == "block_seed" else None,
-        )
+        # legacy nulls would coerce them to float and silently lose bits, while
+        # Arrow's default signed integer conversion can overflow.  Decimal text
+        # is exact, portable, and int(text) remains sufficient for replay.
+        if key == "block_seed":
+            values = [str(value) if value is not None else None for value in values]
+            out[key] = pd.Series(values, index=out.index, dtype="string")
+        else:
+            out[key] = pd.Series(values, index=out.index)
     out["success"] = out["outcome"].astype(str).eq("succeeded")
     out["rejected_429"] = (~out["success"]) & out.get(
         "retry_reason", pd.Series("", index=out.index)
@@ -109,25 +115,29 @@ def _explicit_blocks(rows: pd.DataFrame, *, source: str) -> pd.DataFrame:
     for block_id, block in rows.groupby("block_id", sort=False):
         if not block_id or pd.isna(block_id):
             continue
-        if block["policy"].duplicated().any():
-            continue
         block = block.sort_values("observed_ts").copy()
         if block["policy_order"].isna().any():
             block["policy_order"] = np.arange(len(block))
-        if block["policy_order"].duplicated().any():
-            continue
         block["block_source"] = source
-        block["block_complete"] = set(block["policy"]) == set(POLICIES)
+        block["block_complete"] = (
+            len(block) == len(POLICIES)
+            and not block["policy"].duplicated().any()
+            and not block["policy_order"].duplicated().any()
+            and set(block["policy"]) == set(POLICIES)
+        )
         block["block_span_seconds"] = (
             block["observed_ts"].max() - block["observed_ts"].min()
         ).total_seconds()
         block["assignment_verified"] = _verify_assignment(block)
+        block["first_assignment_verified"] = _verify_first_assignment(block)
         keep.append(block)
     return pd.concat(keep, ignore_index=True) if keep else rows.iloc[0:0].copy()
 
 
 def _verify_assignment(block: pd.DataFrame) -> bool:
     """Replay the published seed for complete four-policy v2 blocks."""
+    if block["policy"].duplicated().any() or block["policy_order"].duplicated().any():
+        return False
     try:
         seed = int(block["block_seed"].iloc[0])
         n_quoted = int(block["n_quoted"].dropna().iloc[0])
@@ -153,6 +163,26 @@ def _verify_assignment(block: pd.DataFrame) -> bool:
             return False
         return actual_random_rank == expected_random_rank
     return True
+
+
+def _verify_first_assignment(block: pd.DataFrame) -> bool:
+    """Replay only position zero, the preregistered carryover-robust unit."""
+    try:
+        seed = int(block["block_seed"].iloc[0])
+        n_quoted = int(block["n_quoted"].dropna().iloc[0])
+        policy_count = int(block["block_policy_count"].dropna().iloc[0])
+    except (IndexError, TypeError, ValueError):
+        return False
+    if policy_count != len(POLICIES) or n_quoted < 3:
+        return False
+    first = block[pd.to_numeric(block["policy_order"], errors="coerce").eq(0)]
+    if len(first) != 1:
+        return False
+    rng = random.Random(seed)
+    rng.choice(range(2, n_quoted))
+    expected = list(POLICIES)
+    rng.shuffle(expected)
+    return str(first["policy"].iloc[0]) == expected[0]
 
 
 def construct_probe_blocks(
@@ -204,6 +234,7 @@ def construct_probe_blocks(
         candidate["block_span_seconds"] = span
         candidate["randomized_order"] = False
         candidate["assignment_verified"] = False
+        candidate["first_assignment_verified"] = False
         legacy_blocks.append(candidate)
     legacy_frame = (
         pd.concat(legacy_blocks, ignore_index=True) if legacy_blocks else frame.iloc[0:0].copy()
@@ -344,6 +375,265 @@ def policy_panel(blocks: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def holm_adjust(pvalues: list[float]) -> list[float]:
+    """Holm step-down adjusted p-values in original order."""
+    if not pvalues:
+        return []
+    values = np.asarray(pvalues, dtype=float)
+    adjusted = np.full(len(values), np.nan, dtype=float)
+    finite = np.flatnonzero(np.isfinite(values))
+    order = finite[np.argsort(values[finite])]
+    running = 0.0
+    m = len(finite)
+    for rank, index in enumerate(order):
+        running = max(running, (m - rank) * values[index])
+        adjusted[index] = min(1.0, running)
+    return adjusted.tolist()
+
+
+def randomized_first_position_analysis(
+    blocks: pd.DataFrame, *, simulations: int = RANDOMIZATION_DRAWS
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    """Design-based v2 ITT estimates using only audited position-zero rows.
+
+    Under the sharp null, each observed first-position outcome can be assigned
+    to any of the four policies.  Monte Carlo randomization inference therefore
+    conditions on the full vector of outcomes and does not require independent
+    outcome shocks across models in the same hourly run.
+    """
+    if blocks.empty:
+        valid = blocks.copy()
+    else:
+        verification_column = (
+            "first_assignment_verified"
+            if "first_assignment_verified" in blocks
+            else "assignment_verified"
+        )
+        valid = blocks[
+            blocks["block_source"].eq("explicit_assignment")
+            & blocks["study_id"].astype(str).eq(RANDOMIZED_STUDY_ID)
+            & blocks[verification_column].astype(bool)
+            & pd.to_numeric(blocks["policy_order"], errors="coerce").eq(0)
+            & blocks["randomized_order"].astype(bool)
+        ].copy()
+    valid = valid.sort_values("block_id").drop_duplicates("block_id", keep="first")
+    n_blocks = len(valid)
+
+    panel_rows = []
+    for policy in POLICIES:
+        arm = valid[valid["policy"].eq(policy)]
+        n = len(arm)
+        successes = int(arm["success"].sum())
+        low, high = (
+            proportion_confint(successes, n, alpha=0.05, method="wilson")
+            if n
+            else (np.nan, np.nan)
+        )
+        probabilities = pd.to_numeric(
+            arm["assignment_probability_first"], errors="coerce"
+        )
+        ht_success = (
+            float((arm["success"].astype(float) / probabilities).sum() / n_blocks)
+            if n_blocks and n and probabilities.notna().all()
+            else np.nan
+        )
+        spend_missing = int(arm["observed_spend_usd"].isna().sum())
+        panel_rows.append(
+            {
+                "policy": policy,
+                "first_position_attempts": n,
+                "successes": successes,
+                "success_rate": successes / n if n else np.nan,
+                "success_ci_low": float(low),
+                "success_ci_high": float(high),
+                "ht_success_mean": ht_success,
+                "rate_429": float(arm["rejected_429"].mean()) if n else np.nan,
+                "spend_observed": n - spend_missing,
+                "spend_missing": spend_missing,
+                "mean_observed_spend_usd": (
+                    float(arm["observed_spend_usd"].mean())
+                    if n and spend_missing == 0
+                    else np.nan
+                ),
+            }
+        )
+    panel = pd.DataFrame(panel_rows)
+
+    model_rows = []
+    for (model_id, policy), arm in valid.groupby(["model_id", "policy"], sort=True):
+        probabilities = pd.to_numeric(
+            arm["assignment_probability_first"], errors="coerce"
+        )
+        model_blocks = int(valid["model_id"].eq(model_id).sum())
+        successes = int(arm["success"].sum())
+        model_rows.append(
+            {
+                "model_id": model_id,
+                "policy": policy,
+                "model_blocks": model_blocks,
+                "first_position_attempts": len(arm),
+                "successes": successes,
+                "success_rate": successes / len(arm),
+                "ht_success_mean_within_model": (
+                    float((arm["success"].astype(float) / probabilities).sum() / model_blocks)
+                    if model_blocks and probabilities.notna().all()
+                    else np.nan
+                ),
+                "rate_429": float(arm["rejected_429"].mean()),
+                "spend_missing": int(arm["observed_spend_usd"].isna().sum()),
+            }
+        )
+    model_panel = pd.DataFrame(model_rows)
+
+    contrast_rows = []
+    if n_blocks:
+        observed_outcomes = valid["success"].astype(float).to_numpy()
+        labels = np.random.default_rng(20260715).integers(
+            0,
+            len(POLICIES),
+            size=(simulations, n_blocks),
+            dtype=np.int8,
+        )
+    else:
+        observed_outcomes = np.array([], dtype=float)
+        labels = np.empty((0, 0), dtype=np.int8)
+    for policy_index, policy in enumerate(POLICIES[1:], start=1):
+        default = valid[valid["policy"].eq("openrouter_default")]
+        pinned = valid[valid["policy"].eq(policy)]
+        nd, npin = len(default), len(pinned)
+        raw_difference = (
+            float(default["success"].mean() - pinned["success"].mean())
+            if nd and npin
+            else np.nan
+        )
+        if nd and npin:
+            ci_low, ci_high = confint_proportions_2indep(
+                int(default["success"].sum()),
+                nd,
+                int(pinned["success"].sum()),
+                npin,
+                method="newcomb",
+                compare="diff",
+                alpha=0.05,
+            )
+        else:
+            ci_low = ci_high = np.nan
+
+        probability = 1.0 / len(POLICIES)
+        observed_ht = (
+            float(
+                (
+                    (valid["policy"].eq("openrouter_default").to_numpy() * observed_outcomes)
+                    / probability
+                    - (valid["policy"].eq(policy).to_numpy() * observed_outcomes)
+                    / probability
+                ).sum()
+                / n_blocks
+            )
+            if n_blocks
+            else np.nan
+        )
+        if n_blocks and simulations:
+            simulated = (
+                (
+                    (labels == 0) * observed_outcomes[None, :] / probability
+                    - (labels == policy_index) * observed_outcomes[None, :] / probability
+                ).sum(axis=1)
+                / n_blocks
+            )
+            p_greater = float(
+                (1 + (simulated >= observed_ht - 1e-15).sum()) / (simulations + 1)
+            )
+            p_two_sided = float(
+                (1 + (np.abs(simulated) >= abs(observed_ht) - 1e-15).sum())
+                / (simulations + 1)
+            )
+        else:
+            p_greater = p_two_sided = np.nan
+
+        default_spend_complete = bool(nd and default["observed_spend_usd"].notna().all())
+        pinned_spend_complete = bool(npin and pinned["observed_spend_usd"].notna().all())
+        spend_difference = (
+            float(default["observed_spend_usd"].mean() - pinned["observed_spend_usd"].mean())
+            if default_spend_complete and pinned_spend_complete
+            else np.nan
+        )
+        threshold = (
+            spend_difference / raw_difference
+            if raw_difference > 0 and np.isfinite(spend_difference)
+            else np.nan
+        )
+        contrast_rows.append(
+            {
+                "comparison": f"openrouter_default_minus_{policy}",
+                "n_blocks": n_blocks,
+                "default_n": nd,
+                "pinned_n": npin,
+                "success_difference_hajek": raw_difference,
+                "success_difference_ci_low": float(ci_low),
+                "success_difference_ci_high": float(ci_high),
+                "success_difference_ht": observed_ht,
+                "randomization_p_greater": p_greater,
+                "randomization_p_two_sided": p_two_sided,
+                "spend_complete_both_arms": (
+                    default_spend_complete and pinned_spend_complete
+                ),
+                "observed_spend_difference_usd": spend_difference,
+                "break_even_value_per_success_usd": float(threshold),
+            }
+        )
+    contrasts = pd.DataFrame(contrast_rows)
+    if len(contrasts):
+        contrasts["holm_p_greater"] = holm_adjust(
+            contrasts["randomization_p_greater"].tolist()
+        )
+
+    counts = panel.set_index("policy")["first_position_attempts"].reindex(POLICIES, fill_value=0)
+    min_count = int(counts.min()) if len(counts) else 0
+    candidate = blocks.iloc[0:0].copy()
+    if not blocks.empty:
+        candidate = blocks[
+            blocks["block_source"].eq("explicit_assignment")
+            & blocks["study_id"].astype(str).eq(RANDOMIZED_STUDY_ID)
+            & pd.to_numeric(blocks["policy_order"], errors="coerce").eq(0)
+            & blocks["randomized_order"].astype(bool)
+        ].copy()
+    candidate_unique = candidate.drop_duplicates("block_id", keep="first")
+    verification_column = (
+        "first_assignment_verified"
+        if "first_assignment_verified" in candidate_unique
+        else "assignment_verified"
+    )
+    replay_passes = int(candidate_unique[verification_column].astype(bool).sum())
+    audit = {
+        "study_id": RANDOMIZED_STUDY_ID,
+        "valid_position_zero_blocks": n_blocks,
+        "candidate_position_zero_blocks": int(len(candidate_unique)),
+        "assignment_replay_passes": replay_passes,
+        "assignment_replay_rate": (
+            replay_passes / len(candidate_unique) if len(candidate_unique) else None
+        ),
+        "first_position_counts": {key: int(value) for key, value in counts.items()},
+        "models_represented": int(valid["model_id"].nunique()) if n_blocks else 0,
+        "model_ids": sorted(valid["model_id"].astype(str).unique().tolist()),
+        "min_first_position_per_policy": min_count,
+        "target_per_policy": MIN_FIRST_POSITION_PER_POLICY,
+        "randomization_draws": simulations,
+        "primary_multiplicity": "Holm adjustment over three one-sided default-greater contrasts",
+        "evidence_status": (
+            "randomized_first_position_ready"
+            if min_count >= MIN_FIRST_POSITION_PER_POLICY
+            else "randomized_first_position_power_gated"
+        ),
+        "identification": (
+            "First-position HT differences are design-unbiased before within-block probe "
+            "exposure. Hajek differences and Newcombe intervals are companion estimates; "
+            "later-position crossover comparisons require carryover controls."
+        ),
+    }
+    return panel, model_panel, contrasts, audit
+
+
 def _plot(panel: pd.DataFrame, out_dir: Path) -> None:
     if panel.empty:
         return
@@ -380,40 +670,6 @@ def _plot(panel: pd.DataFrame, out_dir: Path) -> None:
     plt.close(fig)
 
 
-def _first_position_audit(blocks: pd.DataFrame) -> dict[str, Any]:
-    explicit = blocks[
-        blocks["block_source"].eq("explicit_assignment")
-        & blocks["study_id"].astype(str).eq(RANDOMIZED_STUDY_ID)
-        & blocks["assignment_verified"].astype(bool)
-    ]
-    first = explicit[pd.to_numeric(explicit["policy_order"], errors="coerce").eq(0)]
-    counts = first["policy"].value_counts().reindex(POLICIES, fill_value=0)
-    rates = first.groupby("policy")["success"].mean().reindex(POLICIES)
-    min_count = int(counts.min()) if len(counts) else 0
-    return {
-        "study_id": RANDOMIZED_STUDY_ID,
-        "valid_position_zero_blocks": int(first["block_id"].nunique()),
-        "complete_randomized_blocks": int(
-            explicit.loc[explicit["block_complete"].astype(bool), "block_id"].nunique()
-        ),
-        "first_position_counts": {key: int(value) for key, value in counts.items()},
-        "first_position_success_rates": {
-            key: (None if pd.isna(value) else float(value)) for key, value in rates.items()
-        },
-        "min_first_position_per_policy": min_count,
-        "target_per_policy": MIN_FIRST_POSITION_PER_POLICY,
-        "evidence_status": (
-            "randomized_first_position_ready"
-            if min_count >= MIN_FIRST_POSITION_PER_POLICY
-            else "randomized_first_position_power_gated"
-        ),
-        "identification": (
-            "First-position differences are randomized policy effects before any within-block "
-            "probe exposure. Later-position crossover comparisons require carryover controls."
-        ),
-    }
-
-
 def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     attempts = data.q(
         f"""
@@ -428,6 +684,12 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     save(blocks, out_dir, "h80_probe_blocks")
     save(panel, out_dir, "h80_policy_panel")
     save(contrasts, out_dir, "h80_pairwise_contrasts")
+    randomized_panel, randomized_model_panel, randomized_contrasts, randomized = (
+        randomized_first_position_analysis(blocks)
+    )
+    save(randomized_panel, out_dir, "h80_randomized_first_position")
+    save(randomized_model_panel, out_dir, "h80_randomized_model_policy")
+    save(randomized_contrasts, out_dir, "h80_randomized_contrasts")
     _plot(panel, out_dir)
 
     explicit = blocks[blocks["block_source"].eq("explicit_assignment")]
@@ -445,7 +707,9 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
         if len(legacy)
         else {}
     )
-    randomized = _first_position_audit(blocks)
+    randomized["complete_randomized_blocks"] = int(
+        explicit.loc[explicit["block_complete"].astype(bool), "block_id"].nunique()
+    ) if len(explicit) else 0
     summary = {
         "evidence_status": (
             "randomized_first_position_ready"

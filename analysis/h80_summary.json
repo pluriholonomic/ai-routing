@@ -72,23 +72,24 @@
   "randomized_first_position": {
     "study_id": "openrouter-routing-crossover-v2",
     "valid_position_zero_blocks": 0,
-    "complete_randomized_blocks": 0,
+    "candidate_position_zero_blocks": 0,
+    "assignment_replay_passes": 0,
+    "assignment_replay_rate": null,
     "first_position_counts": {
       "openrouter_default": 0,
       "pinned_cheapest": 0,
       "pinned_second": 0,
       "pinned_random": 0
     },
-    "first_position_success_rates": {
-      "openrouter_default": null,
-      "pinned_cheapest": null,
-      "pinned_second": null,
-      "pinned_random": null
-    },
+    "models_represented": 0,
+    "model_ids": [],
     "min_first_position_per_policy": 0,
     "target_per_policy": 40,
+    "randomization_draws": 100000,
+    "primary_multiplicity": "Holm adjustment over three one-sided default-greater contrasts",
     "evidence_status": "randomized_first_position_power_gated",
-    "identification": "First-position differences are randomized policy effects before any within-block probe exposure. Later-position crossover comparisons require carryover controls."
+    "identification": "First-position HT differences are design-unbiased before within-block probe exposure. Hajek differences and Newcombe intervals are companion estimates; later-position crossover comparisons require carryover controls.",
+    "complete_randomized_blocks": 0
   },
   "estimand": "For policy p and value v per successful response, Delta U_p(v) = v * Delta success_p - Delta observed spend_p. The reported break-even value is Delta spend_p / Delta success_p when the default success advantage is positive.",
   "claim_boundary": "Legacy v1 contrasts are matched but not causal: default is always first, pinned arms disable fallbacks, and this account's 429 state may not represent other users. A public quote is an eligibility advertisement, not a firm executable offer. Only the v2 first-position randomization identifies a policy contrast under arbitrary post-first probe interference."

@@ -6,8 +6,10 @@ import pandas as pd
 from orcap.analysis.h80_matched_quote_firmness import (
     POLICIES,
     construct_probe_blocks,
+    holm_adjust,
     normalized_order_entropy,
     paired_contrasts,
+    randomized_first_position_analysis,
 )
 
 
@@ -75,6 +77,7 @@ def test_explicit_randomized_block_uses_published_assignment():
     first = blocks.loc[blocks["policy_order"].eq(0), "policy"].iloc[0]
     assert first == "openrouter_default"
     assert blocks["assignment_verified"].all()
+    assert blocks["first_assignment_verified"].all()
 
 
 def test_incomplete_explicit_block_retains_auditable_first_position_itt():
@@ -90,6 +93,24 @@ def test_incomplete_explicit_block_retains_auditable_first_position_itt():
     assert len(blocks) == 1
     assert not bool(blocks["block_complete"].iloc[0])
     assert bool(blocks["assignment_verified"].iloc[0])
+    assert bool(blocks["first_assignment_verified"].iloc[0])
+
+
+def test_later_corruption_does_not_invalidate_preregistered_first_position():
+    order = ["openrouter_default", "pinned_second", "pinned_cheapest", "pinned_random"]
+    rows = [
+        _row("corrupt-later", policy, i, True, explicit=True, position=i)
+        for i, policy in enumerate(order)
+    ]
+    duplicate = _row(
+        "corrupt-later", "pinned_random", 5, True, explicit=True, position=3
+    )
+    duplicate["event_id"] += "-duplicate"
+    rows.append(duplicate)
+    blocks = construct_probe_blocks(pd.DataFrame(rows))
+    assert not blocks["assignment_verified"].any()
+    assert blocks["first_assignment_verified"].all()
+    assert not blocks["block_complete"].any()
 
 
 def test_assignment_replay_preserves_unsigned_64_bit_seed_bits():
@@ -130,3 +151,45 @@ def test_paired_contrast_recovers_success_gap_and_break_even_value():
     assert cheap["success_difference"] == 0.5
     assert cheap["observed_spend_difference_usd"] > 0
     assert cheap["break_even_value_per_success_usd"] > 0
+
+
+def test_holm_adjust_preserves_missing_values():
+    adjusted = holm_adjust([0.01, float("nan"), 0.04, 0.03])
+    assert adjusted[0] == 0.03
+    assert pd.isna(adjusted[1])
+    assert adjusted[2] == 0.06
+    assert adjusted[3] == 0.06
+
+
+def test_randomized_first_position_emits_ipw_model_panel_and_gate():
+    rows = []
+    for block_number in range(16):
+        policy = POLICIES[block_number % len(POLICIES)]
+        model_id = f"model/{block_number % 2}"
+        rows.append(
+            {
+                "block_id": f"v2-{block_number}",
+                "block_source": "explicit_assignment",
+                "study_id": "openrouter-routing-crossover-v2",
+                "assignment_verified": True,
+                "policy_order": 0,
+                "randomized_order": True,
+                "policy": policy,
+                "model_id": model_id,
+                "success": policy == "openrouter_default",
+                "rejected_429": policy != "openrouter_default",
+                "observed_spend_usd": 0.000004,
+                "assignment_probability_first": 0.25,
+            }
+        )
+    panel, model_panel, contrasts, audit = randomized_first_position_analysis(
+        pd.DataFrame(rows), simulations=2_000
+    )
+    assert panel.set_index("policy").loc["openrouter_default", "ht_success_mean"] == 1.0
+    assert len(model_panel) == 4
+    assert set(model_panel["model_id"]) == {"model/0", "model/1"}
+    assert contrasts["success_difference_ht"].eq(1.0).all()
+    assert contrasts["holm_p_greater"].notna().all()
+    assert audit["assignment_replay_rate"] == 1.0
+    assert audit["models_represented"] == 2
+    assert audit["evidence_status"] == "randomized_first_position_power_gated"
