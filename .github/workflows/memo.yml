@@ -229,7 +229,10 @@ jobs:
         timeout-minutes: 75
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_XET_HIGH_PERFORMANCE: "1"
+          # Source-run bundles are small immutable objects. Direct HTTP avoids
+          # an observed Xet transfer that remained in-progress for more than
+          # ten minutes after the same snapshot had completed in 14 seconds.
+          HF_HUB_DISABLE_XET: "1"
         run: |
           uv run python - <<'PY'
           import shutil
