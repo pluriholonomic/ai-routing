@@ -217,3 +217,12 @@ commitment. A positive result would validate public capacity state as a useful
 routing input; a null result would reject the proposed operational use at the
 frozen detectable scale.
 
+## Execution log
+
+- `2026-07-15T14:17Z`: the first authoritative H86 invocation stopped while
+  constructing public provider aggregates because a nullable missing
+  `recent_peak_rpm` coverage flag could not be cast to integer. It produced no
+  state join, risk pair, contrast, model, plot, or outcome summary. The repair
+  explicitly maps missing public coverage flags to false and adds a regression
+  test. No sample, score, match, outcome, estimand, interval, or interpretation
+  rule changed before the rerun.
