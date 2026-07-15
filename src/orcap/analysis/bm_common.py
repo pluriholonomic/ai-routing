@@ -162,6 +162,19 @@ def independent_waves(events: pd.DataFrame, window_hours: float = 6) -> pd.DataF
     return events.loc[keep].sort_values("ts").reset_index(drop=True)
 
 
+def temporal_training_cutoff(
+    events: pd.DataFrame, train_fraction: float = 0.7
+) -> pd.Timestamp | None:
+    """Return a strict temporal cutoff with at least one event on either side."""
+    if len(events) < 2:
+        return None
+    ordered = events.dropna(subset=["ts"]).sort_values("ts")
+    if len(ordered) < 2:
+        return None
+    split = max(1, min(len(ordered) - 1, int(len(ordered) * train_fraction)))
+    return pd.Timestamp(ordered.iloc[split - 1]["ts"])
+
+
 def evidence_status(observed: float, required: float, *, positive: bool = True) -> str:
     if not positive or observed <= 0:
         return "not_collected"

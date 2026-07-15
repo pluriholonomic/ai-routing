@@ -7,7 +7,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .bm_common import completion_events, load_gates, provider_cadence
+from .bm_common import (
+    completion_events,
+    load_gates,
+    provider_cadence,
+    temporal_training_cutoff,
+)
 from .common import DEFAULT_OUT, save, save_json
 
 
@@ -92,14 +97,16 @@ def _score(train: pd.DataFrame, test: pd.DataFrame, columns: list[str]) -> dict:
 
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     events = completion_events()
-    cadence_path = out_dir / "bm1_provider_cadence.parquet"
-    cadence = (
-        pd.read_parquet(cadence_path) if cadence_path.exists() else provider_cadence(events)
-    )
+    cutoff = temporal_training_cutoff(events)
+    training_events = events[events["ts"] <= cutoff] if cutoff is not None else events
+    cadence = provider_cadence(training_events)
     panel = link_reactions(events, cadence)
     save(panel, out_dir, "bm4_reaction_rules")
-    split = max(1, int(len(panel) * 0.7))
-    train, test = panel.iloc[:split], panel.iloc[split:]
+    if cutoff is None:
+        train, test = panel.iloc[:0], panel
+    else:
+        train = panel[panel["ts"] <= cutoff]
+        test = panel[panel["ts"] > cutoff]
     base_columns = ["gap_to_rival_new"]
     bm_columns = [
         "gap_to_rival_new",
@@ -135,9 +142,13 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "state_only_holdout": baseline,
         "brown_mackay_holdout": brown_mackay,
         "n_provider_specific_slopes": len(slopes),
+        "cadence_training_cutoff": cutoff.isoformat() if cutoff is not None else None,
+        "cadence_training_fraction": 0.7,
+        "cadence_training_events": int(len(training_events)),
         "claim_boundary": (
-            "This is a predictive temporal holdout. The Brown-MacKay feature set winning does "
-            "not prove strategic observation; both models omit latent common shocks and costs."
+            "Cadence classes are frozen on the first 70% of events before the temporal holdout. "
+            "The Brown-MacKay feature set winning does not prove strategic observation; both "
+            "models omit latent common shocks and costs."
         ),
     }
     save_json(summary, out_dir, "bm4_summary")

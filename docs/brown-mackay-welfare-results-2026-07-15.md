@@ -3,11 +3,11 @@
 ## Bottom line
 
 The data contain a statistically resolved *cadence price gradient*, but not the
-reaction pattern needed to select Brown-MacKay as the mechanism. Fast
-repricers quote about 9.2% less within model-day, equivalent to a 10.1%
-slow-over-fast premium. However, fast providers do not move more after slow
-rivals than in the equal pre-event placebo window. Brown-MacKay therefore
-remains a power-gated competitive null, not a causal conclusion.
+reaction support needed to select Brown-MacKay as the mechanism. Fast
+repricers quote about 9.5% less within model-day, equivalent to a 10.5%
+slow-over-fast premium. The corrected out-of-time reaction panel has no
+slow-initiator/fast-responder risk pair. Brown-MacKay therefore remains a
+power-gated competitive null, not a causal conclusion.
 
 The C1-C10 welfare conjunction is not satisfied in the observable study
 domain: five conditions are unidentified, three are only approximately
@@ -18,7 +18,7 @@ welfare loss.
 ## Authoritative data freeze
 
 - 2,062,359 endpoint-snapshot rows, 1,684 runs, 9 days.
-- 3,191 all-field price-change rows; 274 positive completion-price changes
+- 3,191 all-field price-change rows; 278 positive completion-price changes
   used by Brown-MacKay, spanning 7.53 days.
 - 377,382 public routing-simulation rows over 6 days.
 - 744 raw owned-route records; 616 unique source/event attempts; 534 with an
@@ -30,17 +30,25 @@ welfare loss.
 
 | Test | Result | Verdict |
 |---|---|---|
-| BM1 pricing technology | 69 quoting providers; 19 repriced; 50 had no observed update; 10 intraday, 6 daily, 3 weekly | 7.53/30 days; inactive means left-censored, not proven slow |
-| BM2 reactions | 115 independent waves, 1,324 risk pairs; fast-after-slow n=15, post 6.7%, pre-placebo 13.3%, uplift -6.7 pp, bootstrap CI [-20, 0] pp | wrong sign and 15/30 focal pairs; power-gated |
-| BM3 cadence premium | cadence-only beta -0.0964, clustered SE 0.0281, CI [-0.1515, -0.0413], 5,501 observations/127 models; slow-over-fast premium 10.1% | statistically resolved association, not causal |
-| BM3 quality-complete | beta -0.3818, SE 0.1323, CI [-0.6410, -0.1226], 423 observations/23 models; premium 46.5% | selected-subsample upper sensitivity; not the headline causal estimate |
-| BM4 reaction rule | MAE 0.1499 to 0.1439, but RMSE 0.2478 to 0.2485 after cadence/reaction features | mixed predictive evidence |
-| BM5 hazard horse race | state-only log loss 0.0865/AUC 0.617; strategic 0.0801/AUC 0.594 | log loss improves, discrimination worsens; joint BM gate fails |
+| BM1 pricing technology | 69 quoting providers; 19 repriced; 50 had no observed update; 10 intraday, 7 daily, 2 weekly | 7.53/30 days; inactive means left-censored, not proven slow |
+| BM2 frozen-cadence reactions | 21 evaluation waves and 124 risk pairs after training on the first 70% of events and removing incomplete 24-hour windows; fast-after-slow n=0 | target contrast is not estimable; power-gated |
+| BM2 outcome-adaptive sensitivity | 116 waves, 1,340 risk pairs; fast-after-slow n=3, with zero post and placebo moves | retained to disclose the original full-panel classification, not promoted |
+| BM3 cadence premium | cadence-only beta -0.0998, clustered SE 0.0292, CI [-0.1570, -0.0425], 5,575 observations/131 models; slow-over-fast premium 10.5% | statistically resolved association, not causal |
+| BM3 quality-complete | beta -0.2888, SE 0.1336, CI [-0.5507, -0.0268], 468 observations/26 models; premium 33.5% | selected-subsample sensitivity; not the headline causal estimate |
+| BM4 frozen-cadence reaction rule | MAE 0.1241 to 0.1189 and RMSE 0.2166 to 0.2156 after cadence/reaction features | small predictive improvement; not causal and insufficient without BM2 exposure |
+| BM5 hazard horse race | state-only log loss 0.0865/AUC 0.617; strategic 0.0806/AUC 0.595 | log loss improves, discrimination worsens; joint BM gate fails |
 
-The 10.1% cadence-only premium is close to the Brown-MacKay daily-versus-fast
+The 10.5% cadence-only premium is close to the Brown-MacKay daily-versus-fast
 retail benchmark, but numerical similarity is not identification. The live
 window mechanically labels providers without a recent move as inactive, and
 technology adoption, costs, fidelity, and private discounts remain endogenous.
+
+The 2026-07-15 refresh exposed a classification defect: one additional NextBit
+change moved it from weekly to daily and reduced the original focal risk set
+from 15 to 3. Because full-panel cadence uses future events to label providers,
+the promoted BM2 and BM4 analyses now freeze cadence on the first 70% of events.
+This is a disclosed post-result bias correction; the original output is retained
+as a sensitivity rather than silently replaced.
 
 ## Other pricing-model evidence
 
@@ -100,8 +108,8 @@ alternatives.
 
 ## Remaining promotion gates
 
-- Brown-MacKay: 30 panel days (7.53 now) and at least 30 fast-after-slow risk
-  pairs (15 now). The 80-wave gate is cleared.
+- Brown-MacKay: 30 panel days (7.53 now), 80 evaluation waves (21 now), and at
+  least 30 frozen-cadence fast-after-slow risk pairs (0 now).
 - Public quote pulse: 193 hours clears the 168-hour span gate; 48/80
   independent cut episodes remain.
 - Realized routing: 534/2,000 unique selected-provider attempts and 0/1,000

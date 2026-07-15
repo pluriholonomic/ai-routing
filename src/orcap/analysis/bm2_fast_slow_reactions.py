@@ -7,7 +7,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .bm_common import completion_events, independent_waves, load_gates
+from .bm_common import (
+    completion_events,
+    independent_waves,
+    load_gates,
+    provider_cadence,
+    temporal_training_cutoff,
+)
 from .common import DEFAULT_OUT, save, save_json
 from .h68_competition import daily_quotes
 
@@ -19,6 +25,8 @@ def build_reaction_panel(
     *,
     independence_hours: float = 6,
     response_hours: float = 24,
+    wave_start: pd.Timestamp | None = None,
+    wave_end: pd.Timestamp | None = None,
 ) -> pd.DataFrame:
     """Risk-set event study with an equal-length pre-event placebo window."""
     columns = [
@@ -37,10 +45,13 @@ def build_reaction_panel(
     if events.empty or quotes.empty or cadence.empty:
         return pd.DataFrame(columns=columns)
     waves = independent_waves(events, independence_hours)
+    if wave_start is not None:
+        waves = waves[waves["ts"] > wave_start]
+    if wave_end is not None:
+        waves = waves[waves["ts"] <= wave_end]
     classes = cadence.set_index("provider_name")["cadence_class"].to_dict()
     by_pair = {
-        key: group.sort_values("ts")
-        for key, group in events.groupby(["model_id", "provider_name"])
+        key: group.sort_values("ts") for key, group in events.groupby(["model_id", "provider_name"])
     }
     active = quotes.groupby(["model_id", "dt"])["provider_name"].unique().to_dict()
     response_delta = pd.to_timedelta(float(response_hours) * 3600, unit="s")
@@ -105,25 +116,7 @@ def _contrast(panel: pd.DataFrame, mask: pd.Series) -> dict:
     }
 
 
-def run(out_dir: Path = DEFAULT_OUT) -> dict:
-    events = completion_events()
-    quotes = daily_quotes()
-    cadence_path = out_dir / "bm1_provider_cadence.parquet"
-    if cadence_path.exists():
-        cadence = pd.read_parquet(cadence_path)
-    else:
-        from .bm_common import provider_cadence
-
-        cadence = provider_cadence(events, set(quotes["provider_name"].dropna()))
-    gate = load_gates()["brown_mackay"]
-    panel = build_reaction_panel(
-        events,
-        quotes,
-        cadence,
-        independence_hours=gate["independence_window_hours"],
-        response_hours=gate["response_window_hours"],
-    )
-    save(panel, out_dir, "bm2_reaction_panel")
+def _summarize_panel(panel: pd.DataFrame, gate: dict) -> dict:
     fast = (
         panel["responder_class"].isin(["intraday", "daily"])
         if not panel.empty
@@ -146,19 +139,73 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     )
     n_waves = int(panel[["wave_ts", "model_id", "initiator"]].drop_duplicates().shape[0])
     ready = n_waves >= gate["min_independent_waves"] and focal["n"] >= gate["min_slow_risk_pairs"]
-    summary = {
+    return {
         "evidence_status": "provisional_descriptive" if ready else "power_gated",
         "n_independent_waves": n_waves,
         "n_risk_pairs": int(len(panel)),
         "fast_response_after_slow_initiator": focal,
         "slow_response_after_slow_initiator": slow_response,
+    }
+
+
+def run(out_dir: Path = DEFAULT_OUT) -> dict:
+    events = completion_events()
+    quotes = daily_quotes()
+    cadence_path = out_dir / "bm1_provider_cadence.parquet"
+    if cadence_path.exists():
+        cadence = pd.read_parquet(cadence_path)
+    else:
+        cadence = provider_cadence(events, set(quotes["provider_name"].dropna()))
+    gate = load_gates()["brown_mackay"]
+    panel = build_reaction_panel(
+        events,
+        quotes,
+        cadence,
+        independence_hours=gate["independence_window_hours"],
+        response_hours=gate["response_window_hours"],
+    )
+    save(panel, out_dir, "bm2_reaction_panel")
+    full_panel = _summarize_panel(panel, gate)
+
+    cutoff = temporal_training_cutoff(events)
+    frozen = pd.DataFrame(columns=panel.columns)
+    if cutoff is not None:
+        training = events[events["ts"] <= cutoff]
+        frozen_cadence = provider_cadence(training, set(quotes["provider_name"].dropna()))
+        wave_end = events["ts"].max() - pd.to_timedelta(
+            float(gate["response_window_hours"]) * 3600, unit="s"
+        )
+        frozen = build_reaction_panel(
+            events,
+            quotes,
+            frozen_cadence,
+            independence_hours=gate["independence_window_hours"],
+            response_hours=gate["response_window_hours"],
+            wave_start=cutoff,
+            wave_end=wave_end,
+        )
+    save(frozen, out_dir, "bm2_frozen_cadence_reaction_panel")
+    frozen_summary = _summarize_panel(frozen, gate)
+    frozen_summary.update(
+        {
+            "cadence_training_cutoff": cutoff.isoformat() if cutoff is not None else None,
+            "cadence_training_fraction": 0.7,
+            "right_censored_response_windows_excluded": True,
+        }
+    )
+    summary = {
+        **frozen_summary,
+        "frozen_temporal": frozen_summary,
+        "full_panel_outcome_adaptive": full_panel,
         "gate": {
             "min_independent_waves": gate["min_independent_waves"],
             "min_slow_risk_pairs": gate["min_slow_risk_pairs"],
         },
         "claim_boundary": (
-            "Post-versus-pre movement is an event-study screen, not causal evidence. Common "
-            "cost, author-price, or demand news can move both providers; BM4 adds state controls."
+            "The promoted screen freezes cadence classes on the first 70% of events, evaluates "
+            "later waves, and excludes incomplete response windows. The full-panel classification "
+            "is retained only as an outcome-adaptive sensitivity. Post-versus-pre movement remains "
+            "noncausal: common cost, author-price, or demand news can move both providers."
         ),
     }
     save_json(summary, out_dir, "bm2_summary")

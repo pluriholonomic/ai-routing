@@ -6,7 +6,11 @@ import pytest
 
 from orcap.analysis.bm2_fast_slow_reactions import build_reaction_panel
 from orcap.analysis.bm3_quality_adjusted_premium import fit_within
-from orcap.analysis.bm_common import classify_cadence, independent_waves
+from orcap.analysis.bm_common import (
+    classify_cadence,
+    independent_waves,
+    temporal_training_cutoff,
+)
 from orcap.analysis.wcv2_welfare_bounds import cadence_neutral_market
 from orcap.analysis.wcv3_agent_regret import provider_best_response
 from orcap.analysis.wcv5_verdict import conjecture_verdict
@@ -68,6 +72,41 @@ def test_reaction_panel_has_post_and_placebo_windows() -> None:
     assert row["responded"] == 1
     assert row["placebo_move"] == 1
     assert row["response_lag_hours"] == 2
+
+
+def test_temporal_cadence_cutoff_and_wave_window_prevent_lookahead() -> None:
+    events = pd.DataFrame(
+        [
+            _event("2026-01-01T00:00:00", "slow"),
+            _event("2026-01-01T06:00:00", "fast"),
+            _event("2026-01-02T00:00:00", "slow"),
+            _event("2026-01-02T03:00:00", "fast"),
+        ]
+    )
+    cutoff = temporal_training_cutoff(events, 0.5)
+    assert cutoff == pd.Timestamp("2026-01-01T06:00:00Z")
+    quotes = pd.DataFrame(
+        [
+            {"dt": day, "model_id": "m", "provider_name": provider, "price": 1.0}
+            for day in ["2026-01-01", "2026-01-02"]
+            for provider in ["slow", "fast"]
+        ]
+    )
+    cadence = pd.DataFrame(
+        [
+            {"provider_name": "slow", "cadence_class": "weekly", "is_fast": False},
+            {"provider_name": "fast", "cadence_class": "intraday", "is_fast": True},
+        ]
+    )
+    panel = build_reaction_panel(
+        events,
+        quotes,
+        cadence,
+        independence_hours=5,
+        wave_start=cutoff,
+        wave_end=pd.Timestamp("2026-01-02T00:00:00Z"),
+    )
+    assert set(panel["wave_ts"]) == {pd.Timestamp("2026-01-02T00:00:00Z")}
 
 
 def test_within_estimator_recovers_fast_discount() -> None:
