@@ -95,3 +95,10 @@ multiplicity family, or stopping threshold. Outcomes from the first four blocks
 had been inspected as a collector smoke test before blinding; no treatment or
 stopping decision was changed in response to their direction. The seed replay
 and arm-count audit remains visible before the gate.
+
+Also on 2026-07-15, after eight valid H80 blocks and while H80 outcomes were
+blinded, the H80 and H81 workflows were assigned one shared non-cancelling
+concurrency group. GitHub cron times are nominal and delayed starts could
+otherwise overlap the two studies despite their 15-minute schedule offset.
+This operational amendment serializes runs but does not change assignment,
+treatment, support, outcomes, estimands, or stopping rules.

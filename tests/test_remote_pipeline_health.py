@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from orcap.remote_health import WORKFLOWS, evaluate_workflow
 
@@ -8,6 +9,15 @@ NOW = datetime(2026, 7, 13, 12, 0, tzinfo=UTC)
 def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["probes.yml"] == 180
     assert WORKFLOWS["decomposition-probes.yml"] == 180
+
+
+def test_confirmatory_probe_workflows_share_concurrency_lock():
+    workflows = Path(__file__).parents[1] / ".github" / "workflows"
+    h80 = (workflows / "probes.yml").read_text(encoding="utf-8")
+    h81 = (workflows / "decomposition-probes.yml").read_text(encoding="utf-8")
+    lock = "group: randomized-routing-probes"
+    assert lock in h80
+    assert lock in h81
 
 
 def _run(*, minutes_ago, status="completed", conclusion="success"):

@@ -95,3 +95,12 @@ The latter can reflect private eligibility, performance scoring, contractual
 rules, or other undocumented state; H81 cannot distinguish those channels.
 Neither effect measures routed market share, other users' welfare, provider
 cost, strategic intent, front-running, or literal capacity certification.
+
+## Operational amendment after launch audit
+
+On 2026-07-15, after two complete H81 blocks and before any outcome was
+released, H80 and H81 were assigned one shared non-cancelling GitHub Actions
+concurrency group. Cron offsets alone do not guarantee actual start-time
+separation when scheduled jobs are delayed. The amendment prevents cross-study
+probe overlap; it changes no assignment, treatment, eligibility rule, outcome,
+estimand, exclusion, multiplicity family, or stopping threshold.

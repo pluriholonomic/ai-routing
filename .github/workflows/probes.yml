@@ -11,7 +11,9 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: probes
+  # Share one lock with H81: cron offsets are nominal, while Actions may start
+  # scheduled jobs late. Serialization prevents cross-study probe overlap.
+  group: randomized-routing-probes
   cancel-in-progress: false
 
 permissions:

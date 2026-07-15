@@ -9,7 +9,9 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: decomposition-probes
+  # Share one lock with H80 because delayed cron starts can erase the nominal
+  # 15-minute separation between the two randomized experiments.
+  group: randomized-routing-probes
   cancel-in-progress: false
 
 permissions:
