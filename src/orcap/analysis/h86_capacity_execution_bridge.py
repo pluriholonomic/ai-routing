@@ -42,6 +42,30 @@ PRICE_CALIPER_RATIO = 1.25
 BOOTSTRAP_DRAWS = 10_000
 PERMUTATION_DRAWS = 10_000
 RANDOM_SEED = 86_870_715
+PAIR_COLUMNS = [
+    "block_id",
+    "model_id",
+    "block_ts",
+    "cluster",
+    "high_provider",
+    "low_provider",
+    "high_failure",
+    "low_failure",
+    "failure_difference",
+    "high_429",
+    "low_429",
+    "rate_429_difference",
+    "risk_difference",
+    "capacity_load_difference",
+    "log_capacity_ceiling_difference",
+    "relative_log_price_difference",
+    "price_ratio",
+    "within_price_caliper",
+    "quoted_rank_difference",
+    "policy_order_difference",
+    "successful_latency_high_ms",
+    "successful_latency_low_ms",
+]
 
 
 def public_provider_states(rows: pd.DataFrame) -> pd.DataFrame:
@@ -274,7 +298,7 @@ def risk_pairs(joined: pd.DataFrame) -> pd.DataFrame:
                 ),
             }
         )
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=PAIR_COLUMNS)
 
 
 def cluster_interval(

@@ -226,3 +226,10 @@ frozen detectable scale.
   explicitly maps missing public coverage flags to false and adds a regression
   test. No sample, score, match, outcome, estimand, interval, or interpretation
   rule changed before the rerun.
+- `2026-07-15T14:19Z`: the second authoritative invocation completed the exact
+  backward match construction but found no block with two distinct complete
+  provider risk scores. The empty pair table then raised a missing-schema error
+  before producing a summary, contrast, coefficient, plot, or outcome result.
+  The repair declares the frozen pair-table schema even when it has zero rows
+  and adds an empty-support regression test. It does not relax the ten-minute
+  window, exact provider match, risk-field completeness, or any other gate.

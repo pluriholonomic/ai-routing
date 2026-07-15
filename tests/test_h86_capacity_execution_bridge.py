@@ -176,3 +176,13 @@ def test_risk_pairs_and_full_analysis_recover_synthetic_direction(tmp_path):
     assert summary["support"]["capacity_risk_complete_attempts"] == 18
     assert summary["evidence_status"] == "retrospective_capacity_execution_bridge"
     assert (tmp_path / "h86_capacity_execution_bridge.pdf").exists()
+
+
+def test_empty_capacity_support_is_reported_without_outcomes(tmp_path):
+    attempts, public = _fixture()
+    public["capacity_ceiling_rpm"] = pd.NA
+    summary = analyze(attempts, public, tmp_path)
+    assert summary["support"]["risk_pairs"] == 0
+    assert summary["primary_failure_contrast"]["mean"] is None
+    assert summary["primary_failure_contrast"]["n"] == 0
+    assert not (tmp_path / "h86_capacity_execution_bridge.pdf").exists()
