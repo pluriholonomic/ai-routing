@@ -31,16 +31,34 @@
       "source": "cbh2"
     },
     {
-      "prediction": "Q reaction dynamics (collusion-signature watch)",
-      "status": "accumulating",
-      "evidence": "punish-and-revert 83% of 95 typed cuts (confounded with launch experimentation at current n)",
-      "source": "cbh4"
-    },
-    {
       "prediction": "R2 hidden router spread == 0",
       "status": "consistent",
       "evidence": "exact-zero basis share 0.9657794676806084",
       "source": "h13"
+    },
+    {
+      "prediction": "PM ladder: state-dependent + strategic, no congestion, not Calvo",
+      "status": "consistent",
+      "evidence": "|gap| coef 1.287; congestion rung p=1.71e-01; L2 vs Calvo p=7.56e-76",
+      "source": "pm1"
+    },
+    {
+      "prediction": "PM sufficient statistic: CalvoPlus mixture (1 < Kur < 6)",
+      "status": "consistent",
+      "evidence": "within-standardized kurtosis 3.54 (menu-cost 1, Calvo 6)",
+      "source": "pm2"
+    },
+    {
+      "prediction": "Tie focal point = author's first-party price",
+      "status": "consistent",
+      "evidence": "90% of ties at first-party price; gap-density atom 47%",
+      "source": "pm5"
+    },
+    {
+      "prediction": "Q reaction dynamics (reclassified)",
+      "status": "accumulating",
+      "evidence": "true punish-and-revert 42% vs initiator-withdrawn 41% of cut events; raises followed 66%",
+      "source": "pm6"
     },
     {
       "prediction": "O1 harness markup >=15% through 2027",
