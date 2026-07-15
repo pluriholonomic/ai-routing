@@ -17,12 +17,13 @@ welfare loss.
 
 ## Authoritative data freeze
 
-- 2,062,359 endpoint-snapshot rows, 1,684 runs, 9 days.
-- 3,191 all-field price-change rows; 278 positive completion-price changes
+- 2,968,449 endpoint-snapshot rows, 1,805 runs, 9 days.
+- 3,212 all-field price-change rows; 278 positive completion-price changes
   used by Brown-MacKay, spanning 7.53 days.
-- 377,382 public routing-simulation rows over 6 days.
-- 744 raw owned-route records; 616 unique source/event attempts; 534 with an
-  observed selected provider.
+- 562,550 public routing-simulation rows over 6 days.
+- 2,659 raw owned-route rows over 65 runs. After deduplication and exclusion of
+  245 outcome-gated rows, the descriptive legacy policy panel has 716 attempts,
+  617 with an observed selected provider.
 - No registered H50 manifest/assignment, capacity commitment/outcome, router
   flow aggregate, decision-event experiment, or H54 audit-assignment table.
 
@@ -33,10 +34,10 @@ welfare loss.
 | BM1 pricing technology | 69 quoting providers; 19 repriced; 50 had no observed update; 10 intraday, 7 daily, 2 weekly | 7.53/30 days; inactive means left-censored, not proven slow |
 | BM2 frozen-cadence reactions | 21 evaluation waves and 124 risk pairs after training on the first 70% of events and removing incomplete 24-hour windows; fast-after-slow n=0 | target contrast is not estimable; power-gated |
 | BM2 outcome-adaptive sensitivity | 116 waves, 1,340 risk pairs; fast-after-slow n=3, with zero post and placebo moves | retained to disclose the original full-panel classification, not promoted |
-| BM3 cadence premium | cadence-only beta -0.0998, clustered SE 0.0292, CI [-0.1570, -0.0425], 5,575 observations/131 models; slow-over-fast premium 10.5% | statistically resolved association, not causal |
+| BM3 cadence premium | cadence-only beta -0.0996, clustered SE 0.0292, CI [-0.1569, -0.0424], 5,576 observations/131 models; slow-over-fast premium 10.5% | statistically resolved association, not causal |
 | BM3 quality-complete | beta -0.2888, SE 0.1336, CI [-0.5507, -0.0268], 468 observations/26 models; premium 33.5% | selected-subsample sensitivity; not the headline causal estimate |
-| BM4 frozen-cadence reaction rule | 206 linked reactions; MAE 0.1180 to 0.1098 and RMSE 0.2135 to 0.2119 after cadence/reaction features | small predictive improvement; not causal and insufficient without BM2 exposure |
-| BM5 hazard horse race | state-only log loss 0.0865/AUC 0.617; strategic 0.0806/AUC 0.595 | log loss improves, discrimination worsens; joint BM gate fails |
+| BM4 frozen-cadence reaction rule | 205 linked reactions; on 53 holdout reactions MAE falls 0.1179 to 0.1123 and RMSE falls 0.2152 to 0.2139 after cadence/reaction features | small predictive improvement; not causal and insufficient without BM2 exposure |
+| BM5 hazard horse race | 2,467 holdout pair-days and 36 events; state-only log loss 0.0866/AUC 0.616; strategic 0.0806/AUC 0.592 | log loss and Brier score improve, discrimination worsens; joint BM gate fails |
 
 The 10.5% cadence-only premium is close to the Brown-MacKay daily-versus-fast
 retail benchmark, but numerical similarity is not identification. The live
@@ -76,10 +77,10 @@ Owned probes are useful but not randomized:
 
 | Policy | Attempts | Success | Mean cost | Mean latency |
 |---|---:|---:|---:|---:|
-| OpenRouter default | 328 | 98.8% | $0.0000305 | 1,178 ms |
-| Pinned cheapest | 96 | 80.2% | $0.0000106 | 1,347 ms |
-| Pinned random | 96 | 76.0% | $0.0000188 | 1,284 ms |
-| Pinned second | 96 | 66.7% | $0.0000083 | 2,289 ms |
+| OpenRouter default | 368 | 98.4% | $0.0000308 | 1,200 ms |
+| Pinned cheapest | 116 | 83.6% | $0.0000103 | 1,374 ms |
+| Pinned random | 116 | 74.1% | $0.0000184 | 1,440 ms |
+| Pinned second | 116 | 65.5% | $0.0000080 | 2,182 ms |
 
 These contrasts strongly motivate H50, but workload, model, provider, and time
 composition can explain them. No causal policy or welfare claim is permitted
@@ -110,9 +111,9 @@ alternatives.
 
 - Brown-MacKay: 30 panel days (7.53 now), 80 evaluation waves (21 now), and at
   least 30 frozen-cadence fast-after-slow risk pairs (0 now).
-- Public quote pulse: 193 hours clears the 168-hour span gate; 48/80
+- Public quote pulse: 205.7 hours clears the 168-hour span gate; 48/80
   independent cut episodes remain.
-- Realized routing: 534/2,000 unique selected-provider attempts and 0/1,000
+- Realized routing: 617/2,000 unique selected-provider attempts and 0/1,000
   quote-linked attempts.
 - Causal routing: zero H50 manifests, assignments, or randomized effects.
 - Capacity: zero commitments, cost curves, or epoch outcomes.

@@ -95,6 +95,27 @@ It requires:
 The current sample therefore supports only feasibility and data-quality claims.
 It contains no releasable causal effect or confidence interval.
 
+## Cumulative outcome-free update
+
+Through `2026-07-15T16:51:34Z`, three successful remote H88 runs contain 24
+candidate model-blocks. Twenty-three are eligible and receive one request; the
+remaining Claude Opus block has fewer than two enforcement-complete providers
+and sends no request. The cumulative assignment counts are seven
+`enforcement_safe`, nine `enforcement_risky`, and seven `openrouter_default`.
+
+The authoritative merged analyzer reports 23 valid assignments, exact seed
+replay, 100% pinned treatment compliance, and zero cross-study overlap blocks.
+The candidate set still has only eight models and fourteen providers.
+Requested-provider dominance is 31.25%, so the concentration gate is currently
+failing; it is not relaxed. The cumulative median stress gap is 0.342, the
+median price ratio is 1.000, and pinned public quoted-cost exposure is
+$0.001110531. Outcomes remain masked.
+
+The full remote reanalysis and publication run is GitHub Actions run
+`29435729411` at commit `dea9d37`. It completed every required analysis,
+published the refreshed private Hugging Face dataset and memo Space, and
+confirmed `outcomes_released=false` for both H87 and H88.
+
 ## Remote operation and reproducibility
 
 The hourly workflow is `.github/workflows/enforcement-policy-probes.yml`; its
