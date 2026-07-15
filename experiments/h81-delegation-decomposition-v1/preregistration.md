@@ -132,6 +132,8 @@ when the captured public quotes cover at most 64 input tokens plus the fixed
 one output token; delegated default may leave that provider set and is not
 assigned the public-set cap. Successful-request latency is bounded by the
 fixed 60-second HTTP timeout, and selected-provider observation is reported by
-arm. No primary outcome, treatment, assignment, exclusion, multiplicity, or
+arm. Spend bounds are reported both as arm-specific sample bounds and with the
+logged first-position probabilities in the Horvitz--Thompson estimator. No
+primary outcome, treatment, assignment, exclusion, multiplicity, or
 stopping rule changed, and these outcome-derived bounds remain blinded until
 the fixed 40-per-arm gate.

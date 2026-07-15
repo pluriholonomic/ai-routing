@@ -186,8 +186,12 @@ def test_randomized_first_position_emits_ipw_model_panel_and_gate():
     assert panel.set_index("policy").loc["openrouter_default", "ht_success_mean"] == 1.0
     assert panel["spend_mean_lower_bound_usd"].eq(0.000004).all()
     assert panel["spend_mean_upper_bound_usd"].eq(0.000004).all()
+    assert panel["ht_spend_mean_lower_bound_usd"].eq(0.000004).all()
+    assert panel["ht_spend_mean_upper_bound_usd"].eq(0.000004).all()
     assert contrasts["spend_difference_lower_bound_usd"].eq(0.0).all()
     assert contrasts["spend_difference_upper_bound_usd"].eq(0.0).all()
+    assert contrasts["ht_spend_difference_lower_bound_usd"].eq(0.0).all()
+    assert contrasts["ht_spend_difference_upper_bound_usd"].eq(0.0).all()
     assert len(model_panel) == 4
     assert set(model_panel["model_id"]) == {"model/0", "model/1"}
     assert contrasts["success_difference_ht"].eq(1.0).all()

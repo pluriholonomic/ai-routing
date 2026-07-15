@@ -1,6 +1,10 @@
 import pandas as pd
 
-from orcap.analysis.missingness_bounds import bounded_mean, difference_bounds
+from orcap.analysis.missingness_bounds import (
+    bounded_mean,
+    difference_bounds,
+    ht_bounded_mean,
+)
 
 
 def test_bounded_mean_uses_row_specific_upper_support_for_missing_values():
@@ -32,3 +36,17 @@ def test_difference_bounds_combines_arm_extremes():
     negative = {"mean_lower_bound": 1.0, "mean_upper_bound": 3.0}
 
     assert difference_bounds(positive, negative) == (-1.0, 4.0)
+
+
+def test_ht_bounded_mean_uses_assignment_probability_and_total_blocks():
+    result = ht_bounded_mean(
+        pd.Series([1.0, None]),
+        pd.Series([0.5, 0.5]),
+        total_blocks=4,
+        lower=0.0,
+        upper=pd.Series([3.0, 2.0]),
+    )
+
+    assert result["mean_lower_bound"] == 0.5
+    assert result["mean_upper_bound"] == 1.5
+    assert result["probability_complete"] is True

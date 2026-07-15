@@ -124,6 +124,8 @@ when its captured public prompt and completion quotes imply a cap for at most
 without that captured cap remain upper-unbounded when accounting is missing.
 Successful-request latency uses the collector's fixed 60-second HTTP timeout
 as its upper support. Selected-provider observation rates and missing counts
-are reported directly. These additions do not change the primary outcome,
+are reported directly. Spend bounds are reported both as arm-specific sample
+bounds and with the logged first-position probabilities in the
+Horvitz--Thompson estimator. These additions do not change the primary outcome,
 treatments, assignment, exclusion rule, multiplicity family, or 40-per-arm
 stopping gate, and every outcome-derived bound remains hidden before that gate.

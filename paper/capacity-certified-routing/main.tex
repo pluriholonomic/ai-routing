@@ -52,6 +52,9 @@ effects despite arbitrary effects on later probes, and success/cost effects
 identify a value-indexed delegation frontier. We show that a default-versus-
 pinned experiment alone cannot distinguish fallback option value from hidden
 selection value, and give a three-arm design that separately identifies them.
+Because public-provider support selects which model-hours can enter that design,
+we distinguish the eligible-block estimand from the all-candidate estimand and
+give design-based bounds for secondary outcomes with missing accounting fields.
 In a fixed-order pilot of 96
 matched four-policy blocks, default routing succeeded 17.7 percentage points
 more often than pinning the cheapest displayed quote (hour-cluster 95\% CI
@@ -92,9 +95,11 @@ This paper isolates that distinction. It makes six contributions.
   \item We give a carryover-robust randomized micro-probe design and a
   value-indexed policy frontier. We characterize the non-identification of
   fallback and hidden-selection effects from a two-policy comparison and give
-  the minimal randomized intermediate policy that identifies both. A 96-block
-  pilot reveals a large displayed-quote firmness gap; prospective
-  randomizations separate policy from the pilot's fixed-order confound.
+  the minimal randomized intermediate policy that identifies both. We separate
+  its eligibility-conditioned estimand from the all-candidate estimand and give
+  logged-propensity bounds for missing secondary outcomes. A 96-block pilot
+  reveals a large displayed-quote firmness gap; prospective randomizations
+  separate policy from the pilot's fixed-order confound.
 \end{enumerate}
 
 The point is deliberately conditional. A certified capacity cap is an
@@ -609,6 +614,45 @@ router uses. The separately preregistered H81 study randomizes these three
 policies on ranked models five and six, leaving the H80 four-arm holdout and its
 stopping rule unchanged.
 
+The randomized support is itself selected. Let $\mathcal B$ be the public-rank
+candidate model-hour blocks and let $E_b=1$ when the block displays at least two
+distinct positive-price providers, making all three policies feasible. H81
+randomizes only on $\mathcal B_E=\{b:E_b=1\}$. For a secondary outcome
+$Y_b(p)$, let $R_b(p)$ indicate that its accounting field is observed and
+suppose a valid pre-treatment support interval
+$[\ell_b(p),u_b(p)]$ is recorded.
+
+\begin{proposition}[Eligibility-conditioned effects and missing-outcome bounds]
+\label{prop:eligibilitybounds}
+First-position randomization identifies $|\mathcal B_E|^{-1}
+\sum_{b\in\mathcal B_E}Y_b(p)$, not the corresponding mean over all public-rank
+candidate blocks. Without assumptions linking eligible and ineligible blocks,
+the latter effect is not identified from eligible-block outcomes. Within
+$\mathcal B_E$, define
+\[
+ \widehat\mu_p^-=\frac1{|\mathcal B_E|}\sum_{b\in\mathcal B_E}
+ \frac{\mathbf 1\{P_b=p\}}{\pi_{bp}}
+ \left[R_bY_b+(1-R_b)\ell_b\right],
+\]
+and define $\widehat\mu_p^+$ by replacing $\ell_b$ with $u_b$. Their design
+expectations bound the finite-block mean of $Y_b(p)$, and the contrast between
+policies $p$ and $q$ lies in
+\[
+ [\mu_p^- - \mu_q^+,\;\mu_p^+ - \mu_q^-].
+\]
+If a valid finite upper support is absent in either arm, the corresponding side
+of the contrast remains unbounded rather than being imputed.
+\end{proposition}
+
+For billed spend, the implementation uses zero as the lower support and a
+public-quote upper support only for explicit-provider arms whose captured prompt
+and completion prices cover the fixed prompt (conservatively capped at 64 input
+tokens) and one output token. Delegated default may leave that public set, so it
+does not inherit the displayed-set cap. The fixed 60-second HTTP timeout bounds
+recorded successful-request latency, but latency conditional on success remains
+a selected secondary description rather than a principal-stratum causal effect.
+Selected-provider observation and missingness are reported directly by arm.
+
 Equation \eqref{eq:valuefrontier} is a partial welfare object. It avoids choosing
 a user value by reporting the full frontier, but it omits output-quality
 differences, provider production cost, router transfers, and externalities.
@@ -632,7 +676,7 @@ Model object & Current measurement status & Permitted use in this paper \\
 Posted quote $p_i$ & public quote for a fixed workload & score input and quote heterogeneity \\
 Public performance & exact-match uptime and p90 fields are partial & coverage and missingness audit only \\
 Simulated share $\hat s_i$ & documented public price proxy & mechanical comparative static only \\
-Selection / retries & 616 owned attempts; 534 selected-provider fields & account/workload policy calibration only \\
+Selection / retries & 716 legacy attempts plus 72 outcome-gated prospective rows & account/workload policy calibration only \\
 Capacity / cost / value & no controlled commitment panel & theorem primitives and protocol fields only \\
 Joint outage support & no joint-outage observations & declared synthetic support only \\
 \bottomrule
@@ -700,6 +744,16 @@ assignment, treatment, exclusion, multiplicity, or stopping rule changed after
 the disclosure. The incident limits analyst blinding for those launch data but
 does not change the randomized first-position estimator or deterministic
 earliest-balanced-prefix rule.
+
+The latest pre-outcome audit contains 12 verified H80 position-zero blocks
+across four models and three hourly clusters; each model contributes three
+blocks. H81 contains four verified blocks across two models and two runs. All
+12 H80 seed replays and all four H81 seed and treatment-control replays pass.
+Arm counts are $(3,1,2,6)$ for H80 and $(1,1,2)$ for H81, so both analyzers
+remain below their 40-per-arm gates and release no outcome, confidence interval,
+or $p$-value. The H81 candidate-funnel table begins after these four blocks;
+the earlier support is therefore correctly labeled left-truncated rather than
+used to infer which public-rank candidates were excluded.
 
 \begin{table}[t]
 \centering
@@ -852,6 +906,25 @@ $(\Delta_F,\Delta_I)=(a,\Delta_T-a)$ without changing the distribution of
 either observed arm. Randomizing the intermediate policy makes $\mu_S(f)$ an
 identified first-position mean by \cref{thm:firstposition}, so subtraction
 identifies both components.
+
+For \cref{prop:eligibilitybounds}, condition first on the realized eligible set
+$\mathcal B_E$. The same randomization identity used in
+\cref{thm:firstposition} applies on that fixed set. For every assigned block,
+the support restriction gives the pointwise inequalities
+\[
+ R_bY_b+(1-R_b)\ell_b
+ \;\leq\;Y_b\;\leq\;
+ R_bY_b+(1-R_b)u_b.
+\]
+Multiplication by $\mathbf 1\{P_b=p\}/\pi_{bp}$, summation, and expectation over
+the randomized assignment proves the arm bounds. The outer contrast combines
+the lower endpoint for one arm with the upper endpoint for the other. If an
+upper endpoint is infinite or unavailable, the associated inequality does not
+yield a finite upper bound. Finally, construct two data-generating processes
+that agree on the eligibility rule and every potential outcome for $E_b=1$, but
+assign different potential outcomes to blocks with $E_b=0$. They induce the
+same randomized eligible-block data and different all-candidate effects,
+proving non-identification without a cross-eligibility restriction.
 
 \Needspace{14\baselineskip}
 \subsection{Proof of robust delivery-floor dominance}

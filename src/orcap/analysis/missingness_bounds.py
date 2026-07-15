@@ -82,3 +82,49 @@ def difference_bounds(
     lower = float(pos_low - neg_high) if pos_low is not None and neg_high is not None else None
     upper = float(pos_high - neg_low) if pos_high is not None and neg_low is not None else None
     return lower, upper
+
+
+def ht_bounded_mean(
+    values: pd.Series,
+    probabilities: pd.Series,
+    *,
+    total_blocks: int,
+    lower: float = 0.0,
+    upper: float | pd.Series | None = None,
+) -> dict[str, Any]:
+    """Horvitz--Thompson bounds for a partially observed arm mean."""
+    numeric = pd.to_numeric(values, errors="coerce")
+    probability = pd.to_numeric(probabilities, errors="coerce").reindex(numeric.index)
+    support = bounded_mean(numeric, lower=lower, upper=upper)
+    if total_blocks <= 0 or probability.isna().any() or (probability <= 0).any():
+        return {
+            **support,
+            "mean_lower_bound": None,
+            "mean_upper_bound": None,
+            "probability_complete": False,
+        }
+    lower_values = numeric.fillna(lower)
+    lower_estimate = float((lower_values / probability).sum() / total_blocks)
+    missing = numeric.isna()
+    if upper is None:
+        upper_values = pd.Series(np.nan, index=numeric.index, dtype=float)
+    elif np.isscalar(upper):
+        upper_values = pd.Series(float(upper), index=numeric.index, dtype=float)
+    else:
+        upper_values = pd.to_numeric(upper, errors="coerce").reindex(numeric.index)
+    if not missing.any():
+        upper_estimate = float((numeric / probability).sum() / total_blocks)
+    elif (
+        support["upper_support_complete_for_missing"]
+        and not support["observed_upper_support_violations"]
+    ):
+        completed = numeric.where(~missing, upper_values)
+        upper_estimate = float((completed / probability).sum() / total_blocks)
+    else:
+        upper_estimate = None
+    return {
+        **support,
+        "mean_lower_bound": lower_estimate,
+        "mean_upper_bound": upper_estimate,
+        "probability_complete": True,
+    }

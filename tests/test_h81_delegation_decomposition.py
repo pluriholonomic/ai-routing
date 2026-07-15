@@ -86,9 +86,13 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert panel["first_position_attempts"].eq(40).all()
     assert panel["spend_mean_lower_bound_usd"].notna().all()
     assert panel["spend_mean_upper_bound_usd"].notna().all()
+    assert panel["ht_spend_mean_lower_bound_usd"].notna().all()
+    assert panel["ht_spend_mean_upper_bound_usd"].notna().all()
     assert panel["selected_provider_observation_rate_success"].eq(1.0).all()
     assert indexed["spend_difference_lower_bound_usd"].notna().all()
     assert indexed["spend_difference_upper_bound_usd"].notna().all()
+    assert indexed["ht_spend_difference_lower_bound_usd"].notna().all()
+    assert indexed["ht_spend_difference_upper_bound_usd"].notna().all()
     assert len(model_panel) == 6
     assert summary["assignment_replay_rate"] == 1.0
     assert summary["treatment_metadata_passes"] == 120

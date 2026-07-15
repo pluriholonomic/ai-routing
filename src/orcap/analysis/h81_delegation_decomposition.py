@@ -15,7 +15,7 @@ from statsmodels.stats.proportion import confint_proportions_2indep, proportion_
 from . import data
 from .common import DEFAULT_OUT, save, save_json
 from .h80_matched_quote_firmness import first_balanced_prefix, holm_adjust
-from .missingness_bounds import bounded_mean, difference_bounds
+from .missingness_bounds import bounded_mean, difference_bounds, ht_bounded_mean
 
 STUDY_ID = "openrouter-fallback-selection-decomposition-v1"
 POLICIES = (
@@ -369,7 +369,7 @@ def _order_entropy(attempts: pd.DataFrame) -> float | None:
     return float(np.mean(values)) if values else None
 
 
-def arm_missingness_bounds(arm: pd.DataFrame) -> dict[str, Any]:
+def arm_missingness_bounds(arm: pd.DataFrame, *, total_blocks: int) -> dict[str, Any]:
     """Bound H81 secondary means under protocol-level support restrictions."""
     n = len(arm)
     policy = str(arm["policy"].iloc[0]) if n else ""
@@ -386,6 +386,19 @@ def arm_missingness_bounds(arm: pd.DataFrame) -> dict[str, Any]:
         # derived from that public set is not a valid support restriction.
         quote_cap[:] = np.nan
     spend_bounds = bounded_mean(spend, lower=0.0, upper=quote_cap)
+    ht_spend_bounds = ht_bounded_mean(
+        spend,
+        pd.to_numeric(
+            arm.get(
+                "assignment_probability_first",
+                pd.Series(index=arm.index, dtype=float),
+            ),
+            errors="coerce",
+        ),
+        total_blocks=total_blocks,
+        lower=0.0,
+        upper=quote_cap,
+    )
 
     successful = arm[arm["success"].astype(bool)] if n else arm
     latency = pd.to_numeric(
@@ -410,6 +423,8 @@ def arm_missingness_bounds(arm: pd.DataFrame) -> dict[str, Any]:
         "spend_missing": spend_bounds["missing"],
         "spend_mean_lower_bound_usd": spend_bounds["mean_lower_bound"],
         "spend_mean_upper_bound_usd": spend_bounds["mean_upper_bound"],
+        "ht_spend_mean_lower_bound_usd": ht_spend_bounds["mean_lower_bound"],
+        "ht_spend_mean_upper_bound_usd": ht_spend_bounds["mean_upper_bound"],
         "spend_upper_support_complete_for_missing": spend_bounds[
             "upper_support_complete_for_missing"
         ],
@@ -447,7 +462,7 @@ def analyze(
         successes = int(arm["success"].sum()) if n else 0
         low, high = proportion_confint(successes, n, method="wilson") if n else (np.nan, np.nan)
         probability = pd.to_numeric(arm.get("assignment_probability_first"), errors="coerce")
-        missingness = arm_missingness_bounds(arm)
+        missingness = arm_missingness_bounds(arm, total_blocks=n_blocks)
         panel_rows.append(
             {
                 "policy": policy,
@@ -556,8 +571,8 @@ def analyze(
             if spend_complete
             else np.nan
         )
-        pos_missingness = arm_missingness_bounds(pos)
-        neg_missingness = arm_missingness_bounds(neg)
+        pos_missingness = arm_missingness_bounds(pos, total_blocks=n_blocks)
+        neg_missingness = arm_missingness_bounds(neg, total_blocks=n_blocks)
         spend_bound_low, spend_bound_high = difference_bounds(
             {
                 "mean_lower_bound": pos_missingness["spend_mean_lower_bound_usd"],
@@ -566,6 +581,16 @@ def analyze(
             {
                 "mean_lower_bound": neg_missingness["spend_mean_lower_bound_usd"],
                 "mean_upper_bound": neg_missingness["spend_mean_upper_bound_usd"],
+            },
+        )
+        ht_spend_bound_low, ht_spend_bound_high = difference_bounds(
+            {
+                "mean_lower_bound": pos_missingness["ht_spend_mean_lower_bound_usd"],
+                "mean_upper_bound": pos_missingness["ht_spend_mean_upper_bound_usd"],
+            },
+            {
+                "mean_lower_bound": neg_missingness["ht_spend_mean_lower_bound_usd"],
+                "mean_upper_bound": neg_missingness["ht_spend_mean_upper_bound_usd"],
             },
         )
         latency_bound_low, latency_bound_high = difference_bounds(
@@ -599,6 +624,8 @@ def analyze(
                 "observed_spend_difference_usd": spend_difference,
                 "spend_difference_lower_bound_usd": spend_bound_low,
                 "spend_difference_upper_bound_usd": spend_bound_high,
+                "ht_spend_difference_lower_bound_usd": ht_spend_bound_low,
+                "ht_spend_difference_upper_bound_usd": ht_spend_bound_high,
                 "successful_latency_difference_lower_bound_ms": latency_bound_low,
                 "successful_latency_difference_upper_bound_ms": latency_bound_high,
                 "selected_provider_observation_rate_difference": (
