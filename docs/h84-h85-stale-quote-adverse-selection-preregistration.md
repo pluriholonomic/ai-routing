@@ -243,3 +243,13 @@ high rate limiting next. Even a successful H85 result does not show that a
 provider strategically left a stale quote, observed incoming flow, traded
 ahead of it, or caused the router to allocate inefficiently. Those stronger
 claims require randomized quote/capacity commitments or private router logs.
+
+## Execution log
+
+- The first authoritative H84 execution on 2026-07-15 stopped before producing
+  a choice contrast, coefficient, prediction score, or plot. A shifted public
+  state column retained a nullable boolean at an endpoint's initial
+  observation, and pandas refused to cast its missing value to `bool`. The
+  implementation now treats an unavailable adjacent state as not an event and
+  includes a regression test. No sample rule, feature, threshold, outcome,
+  estimator, gate, or interpretation changed.

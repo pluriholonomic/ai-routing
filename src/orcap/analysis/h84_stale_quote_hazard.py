@@ -238,8 +238,12 @@ def risk_rows(panel: pd.DataFrame, cadence: pd.DataFrame | None = None) -> pd.Da
     peak = pd.to_numeric(risk["recent_peak_rpm"], errors="coerce")
     risk["capacity_load"] = np.where(ceiling.gt(0), peak / ceiling, np.nan)
     risk["log1p_capacity_ceiling_rpm"] = np.log1p(ceiling.clip(lower=0))
-    risk["case_forward"] = risk["next_high_event"].astype(bool)
-    risk["case_backward"] = risk["previous_high_event"].astype(bool)
+    risk["case_forward"] = (
+        risk["next_high_event"].astype("boolean").fillna(False).astype(bool)
+    )
+    risk["case_backward"] = (
+        risk["previous_high_event"].astype("boolean").fillna(False).astype(bool)
+    )
     risk["choice_set_id"] = (
         risk["model_permaslug"].astype(str) + "|" + risk["run_ts"].astype(str)
     )

@@ -102,6 +102,18 @@ def test_forward_choice_set_identifies_stale_cheap_case_and_backward_placebo():
     assert bool(contrast["case_price_sticky"])
 
 
+def test_nullable_adjacent_state_is_coerced_to_not_an_event():
+    rows = _hazard_rows(pd.Timestamp("2026-07-15T00:00Z"))
+    rows.loc[
+        rows["endpoint_uuid"].eq("expensive") & rows["run_ts"].eq("20260715T000000Z"),
+        "success_5m",
+    ] = pd.NA
+    risk = risk_rows(canonical_panel(rows), _cadence())
+    assert risk["case_forward"].dtype == bool
+    assert risk["case_backward"].dtype == bool
+    assert not risk[["case_forward", "case_backward"]].isna().any().any()
+
+
 def test_h84_discovery_reports_predictive_not_causal_result(tmp_path: Path):
     summary = analyze_discovery(
         _hazard_rows(pd.Timestamp("2026-07-15T00:00Z")),
