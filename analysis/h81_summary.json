@@ -1,0 +1,19 @@
+{
+  "candidate_blocks": 0,
+  "verified_first_position_blocks": 0,
+  "complete_blocks": 0,
+  "assignment_replay_rate": null,
+  "study_id": "openrouter-fallback-selection-decomposition-v1",
+  "first_position_counts": {
+    "delegated_default": 0,
+    "price_only_no_fallback": 0,
+    "price_order_fallback": 0
+  },
+  "models_represented": 0,
+  "model_ids": [],
+  "normalized_order_entropy": null,
+  "target_per_policy": 40,
+  "randomization_draws": 100000,
+  "evidence_status": "randomized_decomposition_power_gated",
+  "claim_boundary": "The fallback contrast holds the cheapest first provider fixed and changes fallback permission. The hidden-selection contrast compares delegated default with an explicit public-price order, both permitting fallback. It measures one owned account and does not reveal provider intent or private router scores."
+}

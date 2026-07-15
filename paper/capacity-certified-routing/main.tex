@@ -49,7 +49,10 @@ finite-slot VCG-plus-audit construction and show why finite liability alone
 cannot elicit continuous reliability. We then introduce a randomized
 micro-probe design: randomizing policy order identifies first-exposure routing
 effects despite arbitrary effects on later probes, and success/cost effects
-identify a value-indexed delegation frontier. In a fixed-order pilot of 96
+identify a value-indexed delegation frontier. We show that a default-versus-
+pinned experiment alone cannot distinguish fallback option value from hidden
+selection value, and give a three-arm design that separately identifies them.
+In a fixed-order pilot of 96
 matched four-policy blocks, default routing succeeded 17.7 percentage points
 more often than pinning the cheapest displayed quote (hour-cluster 95\% CI
 9.2--26.4 pp), but default was always first, so this result is descriptive. A
@@ -87,9 +90,11 @@ This paper isolates that distinction. It makes six contributions.
   individual-rationality requirements rather than folding them into an
   unsupported public-price claim.
   \item We give a carryover-robust randomized micro-probe design and a
-  value-indexed policy frontier. A 96-block pilot reveals a large displayed-
-  quote firmness gap; a prospective randomization separates policy from the
-  pilot's fixed-order confound.
+  value-indexed policy frontier. We characterize the non-identification of
+  fallback and hidden-selection effects from a two-policy comparison and give
+  the minimal randomized intermediate policy that identifies both. A 96-block
+  pilot reveals a large displayed-quote firmness gap; prospective
+  randomizations separate policy from the pilot's fixed-order confound.
 \end{enumerate}
 
 The point is deliberately conditional. A certified capacity cap is an
@@ -566,6 +571,38 @@ Thus a positive success effect lower-bounds the frequency with which delegation
 rescues a pinned failure; under monotone delegation, it equals that frequency.
 \end{proposition}
 
+The default-versus-pinned contrast is itself a composite treatment. Let $n$
+pin the cheapest public provider with no fallback, let $f$ submit the full
+public cheapest-first provider order with fallback, and let $d$ delegate both
+selection and fallback to the router. Define
+\[
+ \Delta_F=\mu_S(f)-\mu_S(n),\qquad
+ \Delta_I=\mu_S(d)-\mu_S(f),\qquad
+ \Delta_T=\mu_S(d)-\mu_S(n).
+\]
+
+\begin{proposition}[Fallback-selection decomposition and non-identification]
+\label{prop:decomposition}
+The total delegation effect obeys $\Delta_T=\Delta_F+\Delta_I$. A randomized
+comparison observing only $d$ and $n$ identifies $\Delta_T$ but not its two
+components. In particular, even under the monotonicity restrictions
+$\mu_S(d)\geq\mu_S(f)\geq\mu_S(n)$, every decomposition
+$(\Delta_F,\Delta_I)=(a,\Delta_T-a)$ with
+$a\in[0,\Delta_T]$ is observationally equivalent. Random assignment among
+$d,f,n$ identifies both components from first-position outcomes under the
+conditions of \cref{thm:firstposition}.
+\end{proposition}
+
+The proposition changes the interpretation of the experiment. $\Delta_F$ is
+the option value of continuing past the same cheapest first provider under a
+publicly reproducible order. $\Delta_I$ is the incremental value of replacing
+that order with the router's delegated policy while preserving fallback
+permission. It may reflect private eligibility, performance scores, contracts,
+or other undocumented state; the experiment does not identify which signal the
+router uses. The separately preregistered H81 study randomizes these three
+policies on ranked models five and six, leaving the H80 four-arm holdout and its
+stopping rule unchanged.
+
 Equation \eqref{eq:valuefrontier} is a partial welfare object. It avoids choosing
 a user value by reporting the full frontier, but it omits output-quality
 differences, provider production cost, router transfers, and externalities.
@@ -784,6 +821,15 @@ possible values. The equal pairs cancel from
 $\E[S(d)-S(p)]$, leaving rescue probability minus harm probability. Rescue
 probability is therefore at least $\max\{\Delta S_p,0\}$, and monotonicity
 sets the harm term to zero.
+
+For \cref{prop:decomposition}, add and subtract $\mu_S(f)$ in $\Delta_T$.
+If only $\mu_S(d)$ and $\mu_S(n)$ are observed, choose any
+$a\in[0,\Delta_T]$ and set $\mu_S(f)=\mu_S(n)+a$. This intermediate mean lies
+between the observed endpoint means and produces
+$(\Delta_F,\Delta_I)=(a,\Delta_T-a)$ without changing the distribution of
+either observed arm. Randomizing the intermediate policy makes $\mu_S(f)$ an
+identified first-position mean by \cref{thm:firstposition}, so subtraction
+identifies both components.
 
 \Needspace{14\baselineskip}
 \subsection{Proof of robust delivery-floor dominance}

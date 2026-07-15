@@ -1,0 +1,38 @@
+name: decomposition-probes
+# H81 uses ranked models five and six, disjoint from H80's four-model
+# crossover.  It runs 15 minutes after H80 and 45 minutes before the next H80
+# cycle so its six tiny requests do not alter H80's within-block assignment.
+
+on:
+  schedule:
+    - cron: "52 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: decomposition-probes
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: run randomized fallback-versus-selection decomposition
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: uv run python -m orcap.capture_decomposition_probes
+      - name: buffer output for nightly consolidated push
+        uses: actions/upload-artifact@v4
+        with:
+          name: decomposition-probes-${{ github.run_id }}
+          path: data/
+          retention-days: 7
+          compression-level: 0

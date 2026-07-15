@@ -87,6 +87,8 @@ def probe_record(
     status_code: int | None = None,
     requested_provider: str | None = None,
     policy: str = "openrouter_default",
+    study_id: str = STUDY_ID,
+    scenario: str = SCENARIO,
     extra_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Map one probe's API responses into the redacted attempt contract."""
@@ -99,7 +101,7 @@ def probe_record(
         "observed_at": observed_at,
         "router": "openrouter",
         "source": "openrouter_generation",
-        "study_id": STUDY_ID,
+        "study_id": study_id,
         "request_ref": (completion or {}).get("id"),
         "model_id": model_id,
         "requested_provider": requested_provider,
@@ -114,7 +116,7 @@ def probe_record(
         "cost_usd": gen.get("total_cost") or usage.get("cost"),
         "latency_ms": latency,
         "metadata": {
-            "scenario": SCENARIO,
+            "scenario": scenario,
             "status_code": status_code,
             "request_type": "probe",
             **(extra_metadata or {}),
@@ -143,7 +145,12 @@ def _fetch_generation(client: httpx.Client, generation_id: str) -> dict[str, Any
 
 
 def _send_probe(
-    client: httpx.Client, model_id: str, provider: str | None = None
+    client: httpx.Client,
+    model_id: str,
+    provider: str | None = None,
+    *,
+    provider_order: list[str] | None = None,
+    allow_fallbacks: bool = False,
 ) -> tuple[dict | None, dict | None, str | None, int | None]:
     completion = generation = None
     error = None
@@ -155,8 +162,11 @@ def _send_probe(
         "temperature": 0,
         "usage": {"include": True},
     }
-    if provider is not None:
-        body["provider"] = {"order": [provider], "allow_fallbacks": False}
+    if provider is not None and provider_order is not None:
+        raise ValueError("provide either provider or provider_order, not both")
+    order = provider_order if provider_order is not None else ([provider] if provider else None)
+    if order is not None:
+        body["provider"] = {"order": order, "allow_fallbacks": allow_fallbacks}
     try:
         r = client.post(CHAT_URL, headers=_headers(), json=body)
         status = r.status_code
