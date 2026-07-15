@@ -10,6 +10,7 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["probes.yml"] == 180
     assert WORKFLOWS["decomposition-probes.yml"] == 180
     assert WORKFLOWS["capacity-policy-probes.yml"] == 180
+    assert WORKFLOWS["hf-policy-probes.yml"] == 180
 
 
 def test_confirmatory_probe_workflows_share_concurrency_lock():

@@ -18,6 +18,7 @@ WORKFLOWS = {
     "decomposition-probes.yml": 180,
     "gpu.yml": 180,
     "hf-router.yml": 180,
+    "hf-policy-probes.yml": 180,
     "livepeer.yml": 180,
     "market.yml": 180,
     "probes.yml": 180,

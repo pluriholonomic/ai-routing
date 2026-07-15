@@ -1,0 +1,38 @@
+name: hf-policy-probes
+# H89 independently randomizes Hugging Face's documented fastest/cheapest
+# policies against a pinned public cost-caliper frontier. Candidate records are
+# outcome-free; private redacted attempts are released only by the fixed gate.
+
+on:
+  schedule:
+    - cron: "52 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: randomized-hf-policy-probes
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: run randomized Hugging Face policy trial
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run python -m orcap.capture_hf_policy_probes
+      - name: buffer outcome-free candidates and private attempts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hf-policy-probes-${{ github.run_id }}
+          path: data/
+          retention-days: 7
+          compression-level: 0
