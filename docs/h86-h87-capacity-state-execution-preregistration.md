@@ -233,3 +233,39 @@ frozen detectable scale.
   The repair declares the frozen pair-table schema even when it has zero rows
   and adds an empty-support regression test. It does not relax the ten-minute
   window, exact provider match, risk-field completeness, or any other gate.
+- `2026-07-15T14:20Z`: the repaired H86 support audit completed. It found 348
+  legacy pinned attempts in 116 blocks and zero exact model/provider matches;
+  all attempts failed at the model-key stage because route telemetry stores the
+  API model `id` while frontend operational state stores `canonical_slug`.
+  H86 is permanently reported as unsupported with zero estimates. The audit
+  inspected only the distinct model and provider key namespaces, not any
+  capacity-outcome association.
+
+## H86b: separately frozen official model-identifier bridge
+
+Frozen: `2026-07-15T14:22:00Z`, after H86's zero-match support result and before
+computing any capacity/outcome pair under a canonical identifier bridge.
+
+H86b is a post-support-audit retrospective sensitivity, not a repair that
+replaces H86. It preserves every H86 sample, public-state, provider-name,
+ten-minute as-of, risk-score, pair, outcome, interval, prediction, and claim
+rule. Its only change is an explicitly versioned schema bridge:
+
+1. For each attempt's exact API `model_id`, use `models_snapshots.id` to find
+   the latest official model snapshot at or before the request and no more than
+   seven days old.
+2. Require a nonempty `canonical_slug` and require that every official snapshot
+   for that `id` in the preceding seven days reports the same canonical slug.
+3. Join that exact canonical slug to `model_permaslug`. No prefix stripping,
+   date-suffix heuristic, fuzzy string match, or outcome-dependent choice is
+   permitted.
+4. Provider identity remains an exact string match. Provider aliases such as
+   `Alibaba` versus `Alibaba Cloud Int.` and `Baidu` versus `Baidu Qianfan` stay
+   unmatched.
+5. Publish H86b regardless of support or sign, alongside—not instead of—the
+   zero-support H86 result.
+
+Because the mapping rule was introduced after observing H86's support failure,
+H86b cannot be called preregistered confirmation. It tests whether the frozen
+capacity score transports once the two official OpenRouter identifier fields
+are connected without semantic aliasing.
