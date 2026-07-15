@@ -1,0 +1,30 @@
+{
+  "evidence_status": "power_gated",
+  "n_independent_waves": 115,
+  "n_risk_pairs": 1324,
+  "fast_response_after_slow_initiator": {
+    "n": 15,
+    "post_rate": 0.0667,
+    "placebo_rate": 0.1333,
+    "uplift": -0.0667,
+    "ci95": [
+      -0.2,
+      0.0
+    ]
+  },
+  "slow_response_after_slow_initiator": {
+    "n": 25,
+    "post_rate": 0.0,
+    "placebo_rate": 0.0,
+    "uplift": 0.0,
+    "ci95": [
+      0.0,
+      0.0
+    ]
+  },
+  "gate": {
+    "min_independent_waves": 80,
+    "min_slow_risk_pairs": 30
+  },
+  "claim_boundary": "Post-versus-pre movement is an event-study screen, not causal evidence. Common cost, author-price, or demand news can move both providers; BM4 adds state controls."
+}

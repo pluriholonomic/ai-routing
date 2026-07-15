@@ -1,0 +1,27 @@
+# Pre-registered gates for the Brown-MacKay and welfare-conjecture program.
+# Readiness permits estimation; it is not a positive finding.
+
+[brown_mackay]
+min_panel_days = 30
+min_independent_waves = 80
+min_slow_risk_pairs = 30
+min_linked_reactions = 100
+min_active_events_per_provider = 10
+response_window_hours = 24
+independence_window_hours = 6
+
+[selection]
+min_selected_attempts = 2000
+min_quote_linked_attempts = 1000
+min_randomized_epochs_per_arm = 50
+
+[equivalence]
+max_score_log_loss_gap = 0.05
+min_welfare_efficiency_ratio = 0.90
+max_normalized_agent_regret = 0.05
+min_sign_concordance = 0.90
+
+[counterfactual]
+routing_elasticity = -1.19
+end_user_elasticities = [-0.05, -0.07]
+cost_ratios = [0.10, 0.30, 0.50, 0.70, 0.90]

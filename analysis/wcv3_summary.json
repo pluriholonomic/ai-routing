@@ -1,0 +1,11 @@
+{
+  "evidence_status": "calibrated_regret_screen",
+  "n_provider_scenarios": 18045,
+  "n_user_market_days": 875,
+  "median_provider_normalized_regret": 1.039620087223959,
+  "share_provider_scenarios_below_5pct_regret": 0.12845663618730951,
+  "token_weighted_user_price_only_regret_pct": 19.937608113890953,
+  "router_regret": "not_identified_without_router_objective_and_propensities",
+  "harness_regret": "not_identified_without_retry_policy_and_user retention",
+  "claim_boundary": "Provider regret uses a locally calibrated isoelastic share rule and scenario costs; it is not revealed profit regret. User regret is price-only and deliberately ignores quality, latency, availability, and private discounts."
+}

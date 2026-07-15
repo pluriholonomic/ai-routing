@@ -1,0 +1,134 @@
+{
+  "allocation_rule": "reliability_weighted_inverse_price",
+  "eta": 2.0,
+  "calibrated_provider_rows": 551,
+  "median_predicted_own_price_share_elasticity": -1.8642743673726967,
+  "owned_attempt_coverage": {
+    "attempts": 744,
+    "selected_provider_observed": 660,
+    "cost_observed": 660
+  },
+  "capacity_commitment_coverage": {
+    "commitments": 0,
+    "providers": 0,
+    "models": 0,
+    "studies": 0,
+    "verification_method_observed": 0,
+    "marginal_cost_observed": 0,
+    "committed_requests": 0.0,
+    "capacity_linear_cost_observed": 0,
+    "capacity_cost_curvature_observed": 0,
+    "capacity_cost_curve_observed": 0,
+    "participation_certificate_input_rows": 0,
+    "two_state_funding_certificate_input_rows": 0
+  },
+  "capacity_outcome_coverage": {
+    "outcomes": 0,
+    "providers": 0,
+    "models": 0,
+    "studies": 0,
+    "allocated_requests": 0.0,
+    "served_requests": 0.0,
+    "shortfall_requests": 0.0,
+    "realized_cost_observed": 0,
+    "realized_revenue_observed": 0,
+    "declared_value_observed": 0
+  },
+  "matched_attempt_commitment_coverage": {
+    "matched_attempts": 0,
+    "matched_providers": 0,
+    "matched_models": 0,
+    "matched_studies": 0,
+    "served_observed": 0,
+    "realized_cost_observed": 0
+  },
+  "matched_commitment_outcome_coverage": {
+    "matched_outcomes": 0,
+    "matched_providers": 0,
+    "allocated_requests": 0.0,
+    "served_requests": 0.0,
+    "shortfall_requests": 0.0,
+    "realized_cost_observed": 0,
+    "realized_revenue_observed": 0
+  },
+  "triple_matched_attempt_coverage": {
+    "matched_attempts": 0,
+    "matched_providers": 0,
+    "matched_models": 0,
+    "matched_studies": 0,
+    "served_observed": 0,
+    "realized_cost_observed": 0
+  },
+  "enforcement_gate": {
+    "status": "not_identified",
+    "required_for_capacity_bond_calibration": [
+      "provider/model/time capacity commitment",
+      "allocated and served request counts",
+      "redacted selected-provider route attempts",
+      "realized serving cost or contribution margin"
+    ],
+    "identified_in_matched_controlled_study": {
+      "selected_attempts": 0,
+      "succeeded_attempts": 0,
+      "allocated_requests": 0.0,
+      "served_requests": 0.0,
+      "shortfall_requests": 0.0,
+      "realized_attempt_cost_observed": 0,
+      "realized_epoch_cost_observed": 0,
+      "realized_epoch_revenue_observed": 0
+    },
+    "not_established_by_this_contract": [
+      "market-wide allocation or demand",
+      "delivered capacity beyond a route-attempt outcome",
+      "causal effect of commitment on routing",
+      "optimal bond or welfare claim"
+    ]
+  },
+  "capacity_procurement_gate": {
+    "status": "not_identified",
+    "declared_linear_cost_rows": 0,
+    "declared_curvature_rows": 0,
+    "declared_cost_curve_rows": 0,
+    "minimum_declared_cost_rows": 100,
+    "claim_boundary": "Declared reservation-cost fields support only a controlled-study calibration input. They do not verify private cost, physical capacity, reliability, welfare, or a budget-balanced mechanism."
+  },
+  "participation_certificate_gate": {
+    "status": "not_identified",
+    "declared_complete_input_rows": 0,
+    "minimum_declared_complete_input_rows": 100,
+    "required_commitment_fields": [
+      "marginal_cost_usd_per_request",
+      "contracted_delivery_price_usd_per_request",
+      "posted_collateral_usd",
+      "collateral_capital_cost_rate",
+      "outside_option_usd",
+      "minimum_delivery_gain_usd_per_request"
+    ],
+    "claim_boundary": "Complete declared inputs can calibrate only the known-primitive, all-served collateral-capital participation certificate. They do not verify cost, collateral, outside options, delivery, funding, failure-state IR, or budget balance."
+  },
+  "two_state_funding_certificate_gate": {
+    "status": "not_identified",
+    "declared_complete_input_rows": 0,
+    "minimum_declared_complete_input_rows": 100,
+    "required_commitment_fields": [
+      "marginal_cost_usd_per_request",
+      "contracted_delivery_price_usd_per_request",
+      "posted_collateral_usd",
+      "collateral_capital_cost_rate",
+      "outside_option_usd",
+      "reservation_transfer_usd",
+      "minimum_delivery_gain_usd_per_request",
+      "contract_budget_usd",
+      "fallback_cost_usd_per_missed_request",
+      "contract_audit_cost_usd"
+    ],
+    "claim_boundary": "Complete declared inputs can calibrate only a known-primitive two-state treasury requirement. They do not establish cash revenue, custody, counterparty solvency, budget balance, failure-state IR, truthful reports, or realized delivery."
+  },
+  "welfare_gate": {
+    "status": "not_identified",
+    "declared_value_epochs": 0,
+    "realized_cost_epochs": 0,
+    "claim_boundary": "An owner-declared per-success value is a registered controlled-study proxy, not consumer surplus, market-wide welfare, a revealed willingness to pay, or a basis for comparing unrelated workloads."
+  },
+  "claim_boundary": "The allocation-price elasticity is algebra implied by the disclosed inverse-square proxy. It is not an estimated realized router elasticity, an optimal mechanism, or evidence that providers currently post capacity bonds."
+}

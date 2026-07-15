@@ -1,0 +1,266 @@
+{
+  "evidence_status": "sensitivity_analysis",
+  "n_matched_provider_days": 4886,
+  "n_scenarios": 20,
+  "beta_estimates": [
+    {
+      "beta": -0.09636632500035872,
+      "ci95": [
+        -0.15146607474423013,
+        -0.04126657525648732
+      ],
+      "source": "cadence_only"
+    },
+    {
+      "beta": -0.3818148738743606,
+      "ci95": [
+        -0.6410411209066385,
+        -0.12258862684208272
+      ],
+      "source": "quality_adjusted"
+    }
+  ],
+  "scenarios": [
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.1,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.3672514428934437,
+      "spend_change_pct": -6.690361832289333,
+      "provider_surplus_change_pct": -7.472833103385207
+    },
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.3,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.3672514428934437,
+      "spend_change_pct": -6.690361832289333,
+      "provider_surplus_change_pct": -9.708465306516292
+    },
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.5,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.3672514428934437,
+      "spend_change_pct": -6.690361832289333,
+      "provider_surplus_change_pct": -13.732603272152224
+    },
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.7,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.3672514428934437,
+      "spend_change_pct": -6.690361832289333,
+      "provider_surplus_change_pct": -23.122258525302748
+    },
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.9,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.3672514428934437,
+      "spend_change_pct": -6.690361832289333,
+      "provider_surplus_change_pct": -70.07053479105542
+    },
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.1,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.5145883967922352,
+      "spend_change_pct": -6.5549794394289655,
+      "provider_surplus_change_pct": -7.338761023675236
+    },
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.3,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.5145883967922352,
+      "spend_change_pct": -6.5549794394289655,
+      "provider_surplus_change_pct": -9.578136978664592
+    },
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.5,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.5145883967922352,
+      "spend_change_pct": -6.5549794394289655,
+      "provider_surplus_change_pct": -13.609013697645414
+    },
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.7,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.5145883967922352,
+      "spend_change_pct": -6.5549794394289655,
+      "provider_surplus_change_pct": -23.01439270860069
+    },
+    {
+      "beta_source": "cadence_only",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.9,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.09636632500035872,
+      "n_market_days": 733,
+      "price_change_pct": -7.027819011359263,
+      "demand_change_pct": 0.5145883967922352,
+      "spend_change_pct": -6.5549794394289655,
+      "provider_surplus_change_pct": -70.04128776337708
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.1,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 1.4989190505274093,
+      "spend_change_pct": -24.159480625024372,
+      "provider_surplus_change_pct": -27.013207163857984
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.3,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 1.4989190505274093,
+      "spend_change_pct": -24.159480625024372,
+      "provider_surplus_change_pct": -35.16671156052546
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.5,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 1.4989190505274093,
+      "spend_change_pct": -24.159480625024372,
+      "provider_surplus_change_pct": -49.84301947452694
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.7,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 1.4989190505274093,
+      "spend_change_pct": -24.159480625024372,
+      "provider_surplus_change_pct": -84.08773794053033
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.05,
+      "cost_ratio": 0.9,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 1.4989190505274093,
+      "spend_change_pct": -24.159480625024372,
+      "provider_surplus_change_pct": -255.31133027054747
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.1,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 2.105637616285013,
+      "spend_change_pct": -23.72627593862834,
+      "provider_surplus_change_pct": -26.599052130050506
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.3,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 2.105637616285013,
+      "spend_change_pct": -23.72627593862834,
+      "provider_surplus_change_pct": -34.8069841055424
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.5,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 2.105637616285013,
+      "spend_change_pct": -23.72627593862834,
+      "provider_surplus_change_pct": -49.58126166142782
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.7,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 2.105637616285013,
+      "spend_change_pct": -23.72627593862834,
+      "provider_surplus_change_pct": -84.05457595849376
+    },
+    {
+      "beta_source": "quality_adjusted",
+      "demand_elasticity": -0.07,
+      "cost_ratio": 0.9,
+      "routing_elasticity": -1.19,
+      "beta_fast": -0.3818148738743606,
+      "n_market_days": 733,
+      "price_change_pct": -25.22990208857884,
+      "demand_change_pct": 2.105637616285013,
+      "spend_change_pct": -23.72627593862834,
+      "provider_surplus_change_pct": -256.42114744382366
+    }
+  ],
+  "claim_boundary": "This is a transparent partial-equilibrium sensitivity bound, not structural Bertrand estimation or social welfare. Costs are scenario ratios, user value and quality losses are absent, and the BM coefficient is observational."
+}

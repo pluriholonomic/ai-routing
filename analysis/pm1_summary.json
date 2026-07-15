@@ -30,12 +30,12 @@
     "L4": {
       "llf": -363.2,
       "auc_in_sample": 0.9,
-      "lr_p_vs_previous": "1.71e-01",
+      "lr_p_vs_previous": "1.72e-01",
       "key_coefs": {
         "abs_gap": 1.194,
-        "gap_positive": -1.019,
+        "gap_positive": -1.02,
         "abs_gpu_dlog": -0.308,
-        "util": -0.063,
+        "util": -0.061,
         "rl_share": -0.181
       }
     },
@@ -47,7 +47,7 @@
         "abs_gap": 1.172,
         "gap_positive": -0.905,
         "abs_gpu_dlog": -0.314,
-        "util": -0.032,
+        "util": -0.03,
         "rl_share": -0.116,
         "rival_moves_1d": 0.202,
         "rival_raises_1d": 0.144

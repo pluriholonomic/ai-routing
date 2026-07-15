@@ -18,13 +18,13 @@
     "cut": 95,
     "raise": 44
   },
-  "low_volume_initiator_share": 0.489,
+  "low_volume_initiator_share": 0.439,
   "low_volume_initiator_classes": {
-    "punish_and_revert": 0.338,
+    "punish_and_revert": 0.311,
+    "cut_withdrawn": 0.295,
     "followed_leadership": 0.279,
-    "cut_withdrawn": 0.279,
-    "unfollowed_raise_held": 0.074,
-    "no_response": 0.029
+    "unfollowed_raise_held": 0.082,
+    "no_response": 0.033
   },
   "reading_keys": {
     "punish_and_revert": "Green-Porter candidate (cut held; rivals cut then re-raise)",

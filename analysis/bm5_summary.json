@@ -1,0 +1,25 @@
+{
+  "evidence_status": "power_gated",
+  "n_pair_days": 7347,
+  "n_days": 9,
+  "state_dependent_L3": {
+    "n_train": 4883,
+    "n_test": 2464,
+    "events_test": 36,
+    "log_loss": 0.08653584106555412,
+    "brier": 0.018592043729898484,
+    "auc": 0.6171517481237415
+  },
+  "strategic_L5": {
+    "n_train": 4883,
+    "n_test": 2464,
+    "events_test": 36,
+    "log_loss": 0.08013467662691338,
+    "brier": 0.01543879766729636,
+    "auc": 0.5943048691195314
+  },
+  "strategic_log_loss_improvement": 0.006401164438640736,
+  "preferred_interpretation_rule": "Prefer Brown-MacKay only if strategic features improve temporal holdout performance and the quality-adjusted cadence and fast-on-slow reaction predictions both survive.",
+  "collusion_verdict": "not_identified",
+  "claim_boundary": "This screens competitive structural twins before collusion. It cannot identify profits, common pricing vendors, private signals, or tacit coordination."
+}

@@ -1,0 +1,83 @@
+{
+  "evidence_status": "condition_audit",
+  "counts": {
+    "not_identified": 5,
+    "approximately_consistent": 3,
+    "inconsistent_with_condition": 1,
+    "power_gated": 1
+  },
+  "all_conditions_supported": false,
+  "conditions": [
+    {
+      "condition": "C1",
+      "name": "tier prices equal congestion externality differences",
+      "status": "not_identified",
+      "evidence": "H14 observes tier shares but not value, priority, or marginal delay tolls",
+      "blocking_data": "tier-specific service order, willingness-to-pay, LRD delay externality"
+    },
+    {
+      "condition": "C2",
+      "name": "router objective aligns with aggregate user surplus",
+      "status": "not_identified",
+      "evidence": "public elasticity is behavioral; only H50 can identify policy effects",
+      "blocking_data": "randomized router assignments plus registered user-value outcome"
+    },
+    {
+      "condition": "C3",
+      "name": "no missing money for capacity",
+      "status": "not_identified",
+      "evidence": "public capacity slack is consistent with adequacy, but H48 has no capacity commitments or cost curves",
+      "blocking_data": "capacity cost curves, scarcity rents, commitment delivery outcomes"
+    },
+    {
+      "condition": "C4",
+      "name": "rationing is value ordered",
+      "status": "approximately_consistent",
+      "evidence": "tier-level and toxicity/rejection patterns are descriptive, not within-tier order",
+      "blocking_data": "request value/tier and admission order during shared shortages"
+    },
+    {
+      "condition": "C5",
+      "name": "no pivotal provider",
+      "status": "approximately_consistent",
+      "evidence": "multi-provider public quote competition is a proxy, not shortage-state pivotality",
+      "blocking_data": "realized eligibility sets and counterfactual shortfall without each provider"
+    },
+    {
+      "condition": "C6",
+      "name": "entry fixed-cost wedge is small",
+      "status": "approximately_consistent",
+      "evidence": "entry scales weakly with token demand, consistent with cheap listing",
+      "blocking_data": "provider fixed and capacity costs plus causal entry shocks"
+    },
+    {
+      "condition": "C7",
+      "name": "retry externality is internalized",
+      "status": "inconsistent_with_condition",
+      "evidence": "market contracts do not price retries; telemetry does not yet quantify amplification",
+      "blocking_data": "attempt chains, retry policy, shortage state, and user-level arrival grouping"
+    },
+    {
+      "condition": "C8",
+      "name": "endpoint fidelity is monitored",
+      "status": "power_gated",
+      "evidence": "H11 cheap-bad association p=0.0872; H54 audit status not_run",
+      "blocking_data": "randomized fidelity audits linked to realized selections"
+    },
+    {
+      "condition": "C9",
+      "name": "no kickback steering and harnesses are wary",
+      "status": "not_identified",
+      "evidence": "price parity cannot reveal provider-router compensation or hidden steering",
+      "blocking_data": "rebates/commissions or a valid randomized steering instrument"
+    },
+    {
+      "condition": "C10",
+      "name": "no common pricing delegation",
+      "status": "not_identified",
+      "evidence": "BM cadence and reaction commonality do not reveal vendor identity",
+      "blocking_data": "pricing-stack adoption dates or vendor-overlap disclosure"
+    }
+  ],
+  "claim_boundary": "A condition can be inconsistent with current evidence without proving the entire conjecture false. Unidentified conditions must never be silently treated as satisfied."
+}

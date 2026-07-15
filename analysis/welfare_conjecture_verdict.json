@@ -1,0 +1,54 @@
+{
+  "evidence_status": "final_audit",
+  "full_conjecture_verdict": "decentralization_conditions_not_satisfied",
+  "naive_static_score_verdict": "rejected",
+  "inverse_square_z": 10.055367041797815,
+  "brown_mackay_competitive_null": "power_gated",
+  "condition_counts": {
+    "not_identified": 5,
+    "approximately_consistent": 3,
+    "inconsistent_with_condition": 1,
+    "power_gated": 1
+  },
+  "randomized_policy_ready": false,
+  "sensitivity_analysis_ready": true,
+  "regret_screen_ready": true,
+  "readiness_ledger_status": {
+    "ready": 1,
+    "power_gated": 3,
+    "not_collected": 8
+  },
+  "verdicts": [
+    {
+      "claim": "public inverse-square routing is the realized allocation rule",
+      "verdict": "rejected",
+      "reason": "H4 elasticity z versus -2 = 10.06"
+    },
+    {
+      "claim": "price is a sufficient routing/welfare score",
+      "verdict": "provisional_contrary_evidence",
+      "reason": "delivered quality explains 6.2% of residual within-model price variation; cheap-bad p=0.087"
+    },
+    {
+      "claim": "Brown-MacKay is the preferred competitive pricing null",
+      "verdict": "power_gated",
+      "reason": "requires temporal holdout gain plus cadence premium and reaction predictions"
+    },
+    {
+      "claim": "capacity-certified routing improves welfare",
+      "verdict": "not_identified",
+      "reason": "requires valid commitments, outcomes, costs, and randomized assignments"
+    },
+    {
+      "claim": "fidelity monitoring is adequate",
+      "verdict": "not_identified",
+      "reason": "requires linked randomized reliability audits"
+    },
+    {
+      "claim": "selfish optimization attains approximate global welfare",
+      "verdict": "decentralization_conditions_not_satisfied",
+      "reason": "C1-C10 conjunction and causal policy comparison are required"
+    }
+  ],
+  "claim_boundary": "Failure of observed decentralization conditions means the welfare conclusion is not licensed; it is not a structural estimate of welfare loss. Brown-MacKay can be a preferred competitive null without being causally confirmed."
+}

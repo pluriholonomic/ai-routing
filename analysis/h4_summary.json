@@ -1,10 +1,12 @@
 {
-  "n_obs": 746,
-  "n_groups": 147,
-  "share_price_elasticity": -1.1915523066887546,
-  "se": 0.16769162646390778,
-  "elasticity_dropping_sub1pct_shares": -1.2462524060831843,
-  "se_sub1pct": 0.20965777508057445,
+  "n_obs": 5769,
+  "n_groups": 1271,
+  "share_price_elasticity": -1.0102648843859234,
+  "se": 0.09842854184237916,
+  "elasticity_dropping_sub1pct_shares": -0.8281037111545526,
+  "se_sub1pct": 0.08388084461931364,
   "null_inverse_square_routing": -2.0,
+  "unit": "provider within model-day-variant; endpoint/region aliases collapsed",
+  "claim_level": "descriptive association; realized default-router selection is unobserved",
   "interpretation": "\u2248 -2 \u21d2 algorithmic router dominates (aggregator-like); |e| << 1 \u21d2 pinned order flow (front-end stickiness); e << -2 \u21d2 near-marginal-price-equalization (AMM-splitter-like)"
 }

@@ -1,0 +1,21 @@
+{
+  "n_ready_gates": 1,
+  "n_power_gated_gates": 3,
+  "n_not_collected_gates": 8,
+  "quote_surface": {
+    "span_hours": 193.27138888888888,
+    "independent_cuts": 48,
+    "snapshot_count": 1684
+  },
+  "private_telemetry": {
+    "selected_attempts": 534,
+    "quote_linked_attempts": 0,
+    "decision_events": 0,
+    "visible_arm_events": 0,
+    "blinded_arm_events": 0,
+    "decoy_arm_events": 0,
+    "aggregate_days": 0,
+    "repricing_episodes": 0
+  },
+  "claim_boundary": "Readiness is a data-coverage result, not evidence for any routing mechanism. Public quote, enforcement, or comparator gates cannot identify selected provider, private order flow, provider profit, or literal front-running."
+}

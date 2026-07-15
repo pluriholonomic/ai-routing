@@ -1,0 +1,39 @@
+{
+  "evidence_status": "power_gated",
+  "panel_span_days": 7.53,
+  "cadence_only": {
+    "n_obs": 5501,
+    "n_models": 127,
+    "beta_fast": -0.09636632500035872,
+    "se": 0.028112117216260918,
+    "ci95": [
+      -0.15146607474423013,
+      -0.04126657525648732
+    ],
+    "slow_over_fast_premium_pct": 10.1162373425145,
+    "r2_within": 0.0214793226921568,
+    "all_coefficients": {
+      "is_fast_dm": -0.09636632500035872
+    }
+  },
+  "quality_adjusted": {
+    "n_obs": 423,
+    "n_models": 23,
+    "beta_fast": -0.3818148738743606,
+    "se": 0.13225828930218259,
+    "ci95": [
+      -0.6410411209066385,
+      -0.12258862684208272
+    ],
+    "slow_over_fast_premium_pct": 46.49408612024914,
+    "r2_within": 0.2902589601045291,
+    "all_coefficients": {
+      "is_fast_dm": -0.3818148738743606,
+      "log_throughput_dm": 0.0921151835999818,
+      "log_latency_dm": 0.05327561487688481,
+      "tool_err_dm": -0.0029592569402472606,
+      "struct_err_dm": 0.005175005304942611
+    }
+  },
+  "claim_boundary": "The regression absorbs model-day price levels and public delivered latency, throughput, tool-call error, and structured-output error. It does not observe all endpoint fidelity, private discounts, costs, or endogenous adoption of fast repricing, so the coefficient is not a causal technology effect."
+}

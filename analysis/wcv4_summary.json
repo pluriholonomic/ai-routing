@@ -1,0 +1,43 @@
+{
+  "evidence_status": "descriptive_owned_traffic",
+  "attempts": 616,
+  "attempts_with_selected_provider": 534,
+  "policies_observed": 4,
+  "randomized_h50_ready": false,
+  "off_policy_evaluation": "not_identified_without_logged_assignment_propensity_and_overlap",
+  "policy_panel": [
+    {
+      "policy": "openrouter_default",
+      "attempts": 328,
+      "success_rate": 0.9878048780487805,
+      "fallback_rate": 0.0,
+      "mean_cost_usd": 3.0513769659442723e-05,
+      "mean_latency_ms": 1178.121212121212
+    },
+    {
+      "policy": "pinned_cheapest",
+      "attempts": 96,
+      "success_rate": 0.8020833333333334,
+      "fallback_rate": 0.0,
+      "mean_cost_usd": 1.0565671052631578e-05,
+      "mean_latency_ms": 1347.3866666666668
+    },
+    {
+      "policy": "pinned_random",
+      "attempts": 96,
+      "success_rate": 0.7604166666666666,
+      "fallback_rate": 0.0,
+      "mean_cost_usd": 1.8846450704225354e-05,
+      "mean_latency_ms": 1283.514705882353
+    },
+    {
+      "policy": "pinned_second",
+      "attempts": 96,
+      "success_rate": 0.6666666666666666,
+      "fallback_rate": 0.0,
+      "mean_cost_usd": 8.28805625e-06,
+      "mean_latency_ms": 2288.5873015873017
+    }
+  ],
+  "claim_boundary": "Policy aggregates are descriptive unless they inherit a valid pre-registered H50 randomization. OPE is intentionally refused without known propensities and overlap."
+}

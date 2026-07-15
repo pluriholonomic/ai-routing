@@ -1,0 +1,13 @@
+{
+  "audit_manifest_count": 0,
+  "audit_assignment_count": 0,
+  "certificate_count": 0,
+  "certification_status_counts": {},
+  "claim_boundary": "H54 certifies only an exact one-sided lower success-probability bound for a pre-registered provider/model direct-audit population, conditional on independent completed attempts, the disclosed sampling schedule, and complete redacted outcome logging. It does not establish platform-wide reliability, exogenous provider selection, truthful reliability reports, correlated-outage risk, or welfare.",
+  "required_design": [
+    "immutable manifest and provider/model/epoch schedule before audit outcomes",
+    "later auditor verification of the disclosed random seed against its commitment",
+    "requested_provider and selected_provider both equal the pre-assigned provider",
+    "all linked direct-attempt outcomes retained, including failures and cancellations"
+  ]
+}

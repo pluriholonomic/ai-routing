@@ -1,0 +1,15 @@
+{
+  "evidence_status": "power_gated",
+  "panel_span_days": 7.53,
+  "required_panel_days": 30,
+  "n_price_changes": 274,
+  "n_quote_providers": 69,
+  "n_repricing_providers": 19,
+  "cadence_counts": {
+    "inactive": 50,
+    "intraday": 10,
+    "daily": 6,
+    "weekly": 3
+  },
+  "claim_boundary": "Cadence is inferred from public quote changes, not a provider's internal repricing technology. The live window left-censors slow providers and cannot identify adoption."
+}

@@ -1,32 +1,21 @@
 {
   "staffing": {
-    "n_endpoints": 253,
-    "buffer_load_slope": 0.833,
-    "se": 0.074,
-    "r2": 0.333,
-    "regime": "ED (proportional overcapacity)",
-    "caveat": "ceiling is router-estimated; slope not level is informative"
+    "gated": "needs >=100 endpoints (have 0)"
   },
   "erlang": {
-    "n_endpoints": 416,
-    "median_implied_over_fortuna": 0.96,
-    "iqr": [
-      0.49,
-      1.79
-    ],
-    "read": "\u22481 = fortuna ceiling consistent with Erlang loss; >1 = ceiling conservative"
+    "gated": "no endpoints with measurable blocking + throughput"
   },
   "latency_curve": {
-    "n_endpoints": 269,
-    "n_ticks": 60830,
-    "latency_load_elasticity": -0.098,
-    "se": 0.025,
+    "n_endpoints": 301,
+    "n_ticks": 646831,
+    "latency_load_elasticity": -0.051,
+    "se": 0.02,
     "read": ">0 = congestion regime; \u22480 = capacity slack (latency set by model size, not load)"
   },
   "hawkes": {
-    "n_events": 11,
-    "children_within_24h_per_event": 1.45,
+    "n_events": 275,
+    "children_within_24h_per_event": 9.74,
     "read": "counting estimate (upper bound; double-counts chains); ratio\u21921 = self-sustaining cascade regime. Exponential-kernel MLE gates at 100 events.",
-    "mle_gate": "11/100"
+    "mle_gate": "275/100"
   }
 }

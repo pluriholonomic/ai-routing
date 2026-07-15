@@ -577,6 +577,27 @@ def main() -> None:
             "cbh13": "cbh13_spectral_dispatch",
             "cbh14": "cbh14_entry_law",
             "cbh_scorecard": "scorecard",
+            # Pricing-model ladder and the Brown-MacKay competitive-null
+            # sequence. BM modules consume PM outputs where available.
+            "pm1": "pm1_hazard_baseline",
+            "pm2": "pm2_sufficient_stats",
+            "pm5": "pm5_tie_microstructure",
+            "pm6": "pm6_event_reclassification",
+            "pm9": "pm9_author_anchor",
+            "bm1": "bm1_pricing_technology",
+            "bm2": "bm2_fast_slow_reactions",
+            "bm3": "bm3_quality_adjusted_premium",
+            "bm4": "bm4_reaction_rules",
+            "bm5": "bm5_competitive_null",
+            # Validation of C1-C10, counterfactual sensitivity, agent regret,
+            # owned-policy identification, and the integrated verdict.
+            "wcv0": "wcv0_data_audit",
+            "wcv1": "wcv1_condition_audit",
+            "wcv2": "wcv2_welfare_bounds",
+            "wcv3": "wcv3_agent_regret",
+            "wcv4": "wcv4_policy_evaluation",
+            "wcv5": "wcv5_verdict",
+            "wcv_dashboard": "wcv_dashboard",
         }
         chosen = [args.hypothesis] if args.hypothesis else list(modules)
         out = Path(args.out)

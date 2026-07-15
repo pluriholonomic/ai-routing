@@ -1,0 +1,12 @@
+{
+  "study_count": 0,
+  "statuses": [],
+  "effect_rows": 0,
+  "claim_boundary": "H50 identifies an owned, pre-registered randomized model-epoch policy contrast only when its design and power gates clear. It does not identify market-wide routing, provider profit, an optimal bond, or welfare without a registered request-value proxy.",
+  "required_design": [
+    "immutable manifest registered before the first assigned epoch",
+    "non-overlapping model-epoch assignments with disclosed arm probabilities",
+    "attempt policy equal to the assigned arm",
+    "redacted route outcomes and matched capacity aggregates"
+  ]
+}
