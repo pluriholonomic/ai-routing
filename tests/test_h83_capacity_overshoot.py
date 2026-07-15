@@ -146,3 +146,27 @@ def test_h83_masks_future_outcomes_before_sample_release(tmp_path: Path):
     ledger = pd.read_parquet(tmp_path / "h83_capacity_overshoot_protocol_ledger.parquet")
     assert "success_5m" not in ledger
     assert np.isfinite(ledger["rate_limit_share_5m"]).all()
+
+
+def test_h83_handles_nonempty_discovery_panel_with_no_future_events(tmp_path: Path):
+    timestamp = pd.Timestamp("2026-07-15T11:30:00Z")
+    rows = pd.DataFrame(
+        [
+            _raw_row(
+                timestamp,
+                endpoint="endpoint-a",
+                provider="provider-a",
+                success=10,
+            ),
+            _raw_row(
+                timestamp,
+                endpoint="endpoint-b",
+                provider="provider-b",
+                success=10,
+            ),
+        ]
+    )
+    summary = analyze(rows, tmp_path)
+    assert summary["evidence_status"] == "future_holdout_power_gated"
+    assert not summary["outcomes_released"]
+    assert summary["support"]["candidate_high_onsets"] == 0

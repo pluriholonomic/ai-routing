@@ -407,7 +407,9 @@ def analyze(rows: pd.DataFrame, out_dir: Path | None = None) -> dict[str, Any]:
     event_time = build_event_time_panel(panel, events)
     base_effects = event_effects(event_time)
     shapes = shape_effects(event_time, base_effects)
-    base_matches = match_negative_controls(base_effects)
+    base_matches = (
+        match_negative_controls(base_effects) if not base_effects.empty else pd.DataFrame()
+    )
     matched = matched_shape_contrasts(shapes, base_matches)
     post_panel = panel[panel["ts"].gt(DISCOVERY_CUTOFF)].copy()
     coverage = daily_coverage(post_panel)
