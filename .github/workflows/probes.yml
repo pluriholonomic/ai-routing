@@ -1,9 +1,9 @@
 name: probes
-# Hourly realized-routing probes: ~8 one-token completions through
-# OpenRouter's default policy, recording which provider the router actually
-# selected (generation metadata) into router_route_attempts. Cost is bounded
-# by construction (MAX_PROBES × 1 output token); output is buffered as a
-# workflow artifact and reaches HF in the nightly consolidated push.
+# Hourly realized-routing crossover: one-token requests compare OpenRouter's
+# default policy with three pinned public-quote policies.  Policy and model
+# order are randomized and recorded; first-position attempts are the primary
+# carryover-robust estimand. Cost is bounded by construction and output reaches
+# HF through the nightly consolidated artifact push.
 
 on:
   schedule:

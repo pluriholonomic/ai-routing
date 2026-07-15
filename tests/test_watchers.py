@@ -1,9 +1,8 @@
-import pandas as pd
+import random
 
 from orcap.capture_fees import pct_tokens
 from orcap.capture_labstatus import incident_rows
-from orcap.capture_probes import _pinned_targets
-import random
+from orcap.capture_probes import _pinned_targets, randomized_probe_tasks
 
 
 def test_pct_tokens_extracts_values_with_context():
@@ -14,20 +13,47 @@ def test_pct_tokens_extracts_values_with_context():
 
 
 def test_incident_rows_flatten_components():
-    body = {"incidents": [{"id": "abc", "name": "Elevated errors", "impact": "major",
-                           "status": "resolved", "created_at": "2026-07-01T00:00:00Z",
-                           "resolved_at": "2026-07-01T02:00:00Z",
-                           "components": [{"name": "API"}, {"name": "Chat"}]}]}
+    body = {
+        "incidents": [
+            {
+                "id": "abc",
+                "name": "Elevated errors",
+                "impact": "major",
+                "status": "resolved",
+                "created_at": "2026-07-01T00:00:00Z",
+                "resolved_at": "2026-07-01T02:00:00Z",
+                "components": [{"name": "API"}, {"name": "Chat"}],
+            }
+        ]
+    }
     rows = incident_rows("openai", body, "20260714T000000Z", "2026-07-14")
     assert rows[0]["components"] == "API,Chat"
     assert rows[0]["impact"] == "major"
 
 
 def test_pinned_targets_orders_cheapest_second_random():
-    eps = [{"provider": "A", "price": 1.0}, {"provider": "B", "price": 2.0},
-           {"provider": "C", "price": 3.0}, {"provider": "D", "price": 4.0}]
+    eps = [
+        {"provider": "A", "price": 1.0},
+        {"provider": "B", "price": 2.0},
+        {"provider": "C", "price": 3.0},
+        {"provider": "D", "price": 4.0},
+    ]
     picks = _pinned_targets(eps, random.Random(0))
     assert picks[0] == ("pinned_cheapest", eps[0])
     assert picks[1] == ("pinned_second", eps[1])
     assert picks[2][0] == "pinned_random" and picks[2][1] in eps[2:]
     assert _pinned_targets(eps[:1], random.Random(0)) == []
+
+
+def test_randomized_probe_tasks_is_seeded_permutation_of_four_policies():
+    eps = [{"provider": x, "price": float(i)} for i, x in enumerate("ABCDE", start=1)]
+    left = randomized_probe_tasks(eps, random.Random(17))
+    right = randomized_probe_tasks(eps, random.Random(17))
+    assert left == right
+    assert sorted(policy for policy, _ in left) == [
+        "openrouter_default",
+        "pinned_cheapest",
+        "pinned_random",
+        "pinned_second",
+    ]
+    assert len({policy for policy, _ in left}) == 4

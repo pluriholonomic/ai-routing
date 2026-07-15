@@ -21,10 +21,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import random
+import secrets
 import time
 from typing import Any
-
-import random
 
 import httpx
 
@@ -33,7 +33,12 @@ from .route_telemetry import write_attempts
 
 log = logging.getLogger(__name__)
 
-STUDY_ID = "openrouter-default-probes-v1"
+# v1 always sent the default policy first and therefore confounded policy with
+# within-block order.  v2 randomizes the full four-policy crossover and records
+# the assignment.  The primary estimand uses only first-position attempts, so
+# it remains identified even if a probe changes the rate limit faced by later
+# probes in the same block.
+STUDY_ID = "openrouter-routing-crossover-v2"
 SCENARIO = "probe_short_chat"
 PROBE_PROMPT = "Reply with the single word: pong"
 MAX_PROBES = int(os.environ.get("ORCAP_PROBE_MAX_MODELS", "8"))
@@ -174,6 +179,7 @@ def _quoted_endpoints(client: httpx.Client, model_id: str) -> list[dict[str, Any
             return []
     except httpx.HTTPError:
         return []
+
     def _sf(x: Any) -> float | None:
         try:
             return float(x)
@@ -200,65 +206,96 @@ def _pinned_targets(eps: list[dict[str, Any]], rng: random.Random) -> list[tuple
     return picks
 
 
+def randomized_probe_tasks(
+    eps: list[dict[str, Any]], rng: random.Random
+) -> list[tuple[str, dict[str, Any] | None]]:
+    """Return default plus pinned policies in a uniformly random order.
+
+    Endpoint selection happens before the shuffle.  This keeps the treatment
+    arms fixed within a block while making policy position auditable from the
+    published seed and metadata.
+    """
+    tasks: list[tuple[str, dict[str, Any] | None]] = [("openrouter_default", None)]
+    tasks.extend(_pinned_targets(eps, rng))
+    rng.shuffle(tasks)
+    return tasks
+
+
 def run_probes(model_ids: list[str] | None = None) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
-    rng = random.Random()
+    seed_text = os.environ.get("ORCAP_PROBE_RANDOMIZATION_SEED")
+    run_seed = int(seed_text, 0) if seed_text else secrets.randbits(64)
+    rng = random.Random(run_seed)
+    run_id = run_timestamp()
     with httpx.Client(timeout=60) as client:
         if model_ids is None:
             rankings = client.get(RANKINGS_URL).json()
             models = client.get(MODELS_URL).json()
             model_ids = hot_model_ids(rankings, models)
-        for i, model_id in enumerate(model_ids[:MAX_PROBES]):
-            observed_at = run_timestamp()
-            completion, generation, error, status = _send_probe(client, model_id)
-            records.append(
-                probe_record(
-                    model_id,
-                    completion,
-                    generation,
-                    observed_at=observed_at,
-                    error=error,
-                    status_code=status,
+
+        # Choose the hot-model study set before randomizing model order.  This
+        # avoids systematically exposing the same model to earlier clock time.
+        selected_models = list(model_ids[:MAX_PROBES])
+        pinned_models = set(selected_models[:PINNED_MODELS])
+        rng.shuffle(selected_models)
+        for model_id in selected_models:
+            eps = _quoted_endpoints(client, model_id) if model_id in pinned_models else []
+            block_seed = rng.getrandbits(64)
+            block_rng = random.Random(block_seed)
+            tasks = (
+                randomized_probe_tasks(eps, block_rng)
+                if model_id in pinned_models and len(eps) >= 2
+                else [("openrouter_default", None)]
+            )
+            block_id = f"{STUDY_ID}|{run_id}|{model_id}"
+            for position, (policy, ep) in enumerate(tasks):
+                provider = ep["provider"] if ep is not None else None
+                obs = run_timestamp()
+                completion, generation, error, status = _send_probe(
+                    client, model_id, provider=provider
                 )
-            )
-            log.info(
-                "probe %s -> provider=%s outcome=%s",
-                model_id,
-                records[-1]["selected_provider"],
-                records[-1]["outcome"],
-            )
-            # pinned variants (firmness / tokenizer-inflation / neutrality feeds)
-            if i < PINNED_MODELS:
-                eps = _quoted_endpoints(client, model_id)
-                for policy, ep in _pinned_targets(eps, rng):
-                    obs = run_timestamp()
-                    c, g, err, st = _send_probe(client, model_id, provider=ep["provider"])
-                    records.append(
-                        probe_record(
-                            model_id,
-                            c,
-                            g,
-                            observed_at=obs,
-                            error=err,
-                            status_code=st,
-                            requested_provider=ep["provider"],
-                            policy=policy,
-                            extra_metadata={
-                                "quoted_price_completion": ep["price"],
-                                "quoted_rank": next(
-                                    (k for k, e in enumerate(eps) if e is ep), None
-                                ),
-                                "n_quoted": len(eps),
-                            },
-                        )
-                    )
-                    log.info(
-                        "pinned %s@%s (%s) -> outcome=%s",
+                quote_metadata: dict[str, Any] = {}
+                if ep is not None:
+                    quote_metadata = {
+                        "quoted_price_completion": ep["price"],
+                        "quoted_rank": next(
+                            (k for k, endpoint in enumerate(eps) if endpoint is ep), None
+                        ),
+                        "n_quoted": len(eps),
+                    }
+                records.append(
+                    probe_record(
                         model_id,
-                        ep["provider"],
-                        policy,
-                        records[-1]["outcome"],
+                        completion,
+                        generation,
+                        observed_at=obs,
+                        error=error,
+                        status_code=status,
+                        requested_provider=provider,
+                        policy=policy,
+                        extra_metadata={
+                            "block_id": block_id,
+                            "block_policy_count": len(tasks),
+                            "policy_order": position,
+                            "block_seed": block_seed,
+                            "run_seed": run_seed,
+                            "assignment_probability_first": 1.0 / len(tasks),
+                            "randomized_order": len(tasks) > 1,
+                            "primary_estimand": "first_position_no_prior_probe",
+                            "n_quoted": len(eps),
+                            **quote_metadata,
+                        },
                     )
+                )
+                log.info(
+                    "probe block=%s position=%d policy=%s model=%s provider=%s outcome=%s",
+                    block_id,
+                    position,
+                    policy,
+                    model_id,
+                    provider,
+                    records[-1]["outcome"],
+                )
     return records
 
 

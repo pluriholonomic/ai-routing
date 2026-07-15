@@ -19,6 +19,7 @@ MODULES = [
     "h50_controlled_routing",
     "h54_reliability_audit",
     "h69_experiment_readiness",
+    "h80_matched_quote_firmness",
     "pm1_hazard_baseline",
     "pm2_sufficient_stats",
     "pm5_tie_microstructure",

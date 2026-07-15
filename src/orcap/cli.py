@@ -559,6 +559,7 @@ def main() -> None:
             "h72": "h72_openrouter_apps",
             "h75": "h75_bittensor_allocation",
             "h76": "h76_akash_lease_choice",
+            "h80": "h80_matched_quote_firmness",
             # Compute Brokerage Hypothesis modules are part of the full screen,
             # not static memo artifacts. Keep the scorecard last so it reads
             # summaries produced by this same invocation.

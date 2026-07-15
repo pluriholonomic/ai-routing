@@ -1,0 +1,91 @@
+{
+  "evidence_status": "matched_descriptive_fixed_order",
+  "attempts_read": 616,
+  "complete_legacy_blocks": 96,
+  "legacy_models": 4,
+  "legacy_median_block_span_seconds": 29.5,
+  "order_audit": {
+    "legacy_normalized_order_entropy": 0.23916748561545811,
+    "randomized_normalized_order_entropy": null,
+    "legacy_default_first_share": 1.0
+  },
+  "default_selected_quote_class": {
+    "other_quoted_or_unmatched": 45,
+    "cheapest": 21,
+    "random": 18,
+    "second": 9,
+    "unobserved_default_provider": 3
+  },
+  "legacy_pairwise_contrasts": [
+    {
+      "comparison": "openrouter_default_minus_pinned_cheapest",
+      "n_blocks": 96,
+      "n_hourly_clusters": 23,
+      "default_success_rate": 0.9791666666666666,
+      "comparison_success_rate": 0.8020833333333334,
+      "success_difference": 0.17708333333333334,
+      "success_difference_ci_low": 0.09195109078114004,
+      "success_difference_ci_high": 0.2636388611388611,
+      "discordant_default_only_success": 18,
+      "discordant_pinned_only_success": 1,
+      "mcnemar_exact_p": 7.62939453125e-05,
+      "hour_cluster_signflip_p": 0.0018599814001859982,
+      "observed_spend_difference_usd": 3.777202127659574e-06,
+      "break_even_value_per_success_usd": 2.1330082603254065e-05
+    },
+    {
+      "comparison": "openrouter_default_minus_pinned_second",
+      "n_blocks": 96,
+      "n_hourly_clusters": 23,
+      "default_success_rate": 0.9791666666666666,
+      "comparison_success_rate": 0.6666666666666666,
+      "success_difference": 0.3125,
+      "success_difference_ci_low": 0.2441860465116279,
+      "success_difference_ci_high": 0.38,
+      "discordant_default_only_success": 30,
+      "discordant_pinned_only_success": 0,
+      "mcnemar_exact_p": 1.862645149230957e-09,
+      "hour_cluster_signflip_p": 9.99990000099999e-06,
+      "observed_spend_difference_usd": 6.873604210526316e-06,
+      "break_even_value_per_success_usd": 2.1995533473684212e-05
+    },
+    {
+      "comparison": "openrouter_default_minus_pinned_random",
+      "n_blocks": 96,
+      "n_hourly_clusters": 23,
+      "default_success_rate": 0.9791666666666666,
+      "comparison_success_rate": 0.7604166666666666,
+      "success_difference": 0.21875,
+      "success_difference_ci_low": 0.16666666666666666,
+      "success_difference_ci_high": 0.27184466019417475,
+      "discordant_default_only_success": 23,
+      "discordant_pinned_only_success": 2,
+      "mcnemar_exact_p": 1.9431114196777344e-05,
+      "hour_cluster_signflip_p": 9.99990000099999e-06,
+      "observed_spend_difference_usd": -1.7792473118279567e-06,
+      "break_even_value_per_success_usd": -8.133701996927802e-06
+    }
+  ],
+  "randomized_first_position": {
+    "study_id": "openrouter-routing-crossover-v2",
+    "complete_randomized_blocks": 0,
+    "first_position_counts": {
+      "openrouter_default": 0,
+      "pinned_cheapest": 0,
+      "pinned_second": 0,
+      "pinned_random": 0
+    },
+    "first_position_success_rates": {
+      "openrouter_default": null,
+      "pinned_cheapest": null,
+      "pinned_second": null,
+      "pinned_random": null
+    },
+    "min_first_position_per_policy": 0,
+    "target_per_policy": 40,
+    "evidence_status": "randomized_first_position_power_gated",
+    "identification": "First-position differences are randomized policy effects before any within-block probe exposure. Later-position crossover comparisons require carryover controls."
+  },
+  "estimand": "For policy p and value v per successful response, Delta U_p(v) = v * Delta success_p - Delta observed spend_p. The reported break-even value is Delta spend_p / Delta success_p when the default success advantage is positive.",
+  "claim_boundary": "Legacy v1 contrasts are matched but not causal: default is always first, pinned arms disable fallbacks, and this account's 429 state may not represent other users. A public quote is an eligibility advertisement, not a firm executable offer. Only the v2 first-position randomization identifies a policy contrast under arbitrary post-first probe interference."
+}
