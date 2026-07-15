@@ -12,6 +12,7 @@ from typing import Any
 from huggingface_hub import HfApi
 
 WORKFLOWS = {
+    "capacity-policy-probes.yml": 180,
     "capture.yml": 150,
     "decomposition-probes.yml": 180,
     "gpu.yml": 180,

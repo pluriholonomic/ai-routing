@@ -567,6 +567,7 @@ def main() -> None:
             "h85": "h85_stale_quote_holdout",
             "h86": "h86_capacity_execution_bridge",
             "h86b": "h86b_canonical_capacity_bridge",
+            "h87": "h87_capacity_policy_trial",
             # Compute Brokerage Hypothesis modules are part of the full screen,
             # not static memo artifacts. Keep the scorecard last so it reads
             # summaries produced by this same invocation.
