@@ -9,31 +9,31 @@
     {
       "prediction": "invariant-ii quantity clears / price administers",
       "status": "consistent",
-      "evidence": "price ever-moved 7% vs rate-limit 80% over 6d",
+      "evidence": "price ever-moved 12% vs rate-limit 86% over 9d",
       "source": "cbh3"
     },
     {
       "prediction": "Q1 slow-over-fast price premium 10-30%",
       "status": "consistent",
-      "evidence": "premium 13.8% (Brown-MacKay band 10-30)",
+      "evidence": "premium 10.5% (Brown-MacKay band 10-30)",
       "source": "cbh5"
     },
     {
       "prediction": "Q2 algorithmic saturation vs margins (Assad)",
       "status": "accumulating",
-      "evidence": "13/68 active repricers; rank beta -0.7125 (v0 census, no all-algo markets yet)",
+      "evidence": "18/69 active repricers; rank beta -0.2803 (v0 census, no all-algo markets yet)",
       "source": "cbh1"
     },
     {
       "prediction": "Q3 dispersion floor >=3% at high N",
       "status": "consistent",
-      "evidence": "median gap at N>=10: 8.3%; exact-tie share 48%",
+      "evidence": "median gap at N>=10: 7.7%; exact-tie share 46%",
       "source": "cbh2"
     },
     {
       "prediction": "Q reaction dynamics (collusion-signature watch)",
       "status": "accumulating",
-      "evidence": "punish-and-revert 72% of 18 typed cuts (confounded with launch experimentation at current n)",
+      "evidence": "punish-and-revert 83% of 95 typed cuts (confounded with launch experimentation at current n)",
       "source": "cbh4"
     },
     {

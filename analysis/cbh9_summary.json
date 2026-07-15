@@ -1,11 +1,11 @@
 {
   "evidence_status": "power_gated",
-  "gate": "conditional moments need 60 daily spot obs; have 6",
-  "spot_days": 6,
+  "gate": "conditional moments need 60 daily spot obs; have 9",
+  "spot_days": 9,
   "descriptive": {
     "spot_latest": 2.0,
-    "dlog_std": 0.054,
-    "dlog_skew_preliminary": 0.512
+    "dlog_std": 0.0414,
+    "dlog_skew_preliminary": 0.068
   },
   "pre_registered_tests": {
     "premium_regression": "forward premium on rolling Var and Skew of spot (a<0, b>0)",

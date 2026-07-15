@@ -13,17 +13,17 @@
     "Together",
     "Wafer"
   ],
-  "steady_state_jit_token_share": 0.1582,
+  "steady_state_jit_token_share": 0.146,
   "benchmark_uniswap_jit": 0.003,
   "spike_differential": {
     "n_models_with_jit_flow": 20,
-    "median_jit_share_spike_ticks": 0.2087775258615608,
-    "median_jit_share_calm_ticks": 0.24360424738224706,
-    "median_spike_minus_calm_pp": -0.5390750358683195
+    "median_jit_share_spike_ticks": 0.18333455991503111,
+    "median_jit_share_calm_ticks": 0.22948438104695495,
+    "median_spike_minus_calm_pp": -0.7236989490143455
   },
   "diagnostic_behavioral_label": {
-    "n_flagged": 19,
-    "token_share": 0.4974,
+    "n_flagged": 23,
+    "token_share": 0.5425,
     "note": "confounded by ceiling-reporting availability; not used"
   },
   "claim_boundary": "Keyword label = 'serverless' in provider marketing copy, which both over-includes (standing-capacity providers marketing serverless) and under-includes; a serving-architecture-verified label needs provider docs review. Spike differential is hot-panel only."

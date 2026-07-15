@@ -1,7 +1,7 @@
 {
   "evidence_status": "provisional_descriptive",
-  "n_endpoints": 260,
-  "median_peak_prominence": 8.521127760465735,
+  "n_endpoints": 284,
+  "median_peak_prominence": 9.240792668032057,
   "share_endpoints_prominence_ge_20": 0.0,
   "common_periods_among_strong_h": {},
   "read": "a shared sub-12h period across many endpoints = dispatch re-rank clock; scattered idiosyncratic peaks = no clock (per-request or continuous)",

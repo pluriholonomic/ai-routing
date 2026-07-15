@@ -1,14 +1,14 @@
 {
   "evidence_status": "provisional_descriptive",
-  "n_models": 301,
-  "slope_log_providers_on_log_tokens": 0.1429,
+  "n_models": 304,
+  "slope_log_providers_on_log_tokens": 0.1494,
   "slope_ci95": [
-    0.1195,
-    0.1692
+    0.1257,
+    0.175
   ],
-  "r2": 0.37,
-  "slope_active_providers": 0.1611,
-  "r2_active": 0.433,
+  "r2": 0.38,
+  "slope_active_providers": 0.1726,
+  "r2_active": 0.453,
   "benchmarks": {
     "sqrt_law_iid": 0.5,
     "cube_root_law_iid": 0.333,

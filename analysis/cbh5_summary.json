@@ -1,14 +1,14 @@
 {
   "evidence_status": "provisional_descriptive",
-  "n_obs": 3210,
-  "n_models": 103,
-  "n_fast_providers": 19,
-  "beta_fast_on_logprice_within_model_day": -0.129,
+  "n_obs": 4641,
+  "n_models": 87,
+  "n_fast_providers": 25,
+  "beta_fast_on_logprice_within_model_day": -0.0997,
   "beta_ci95": [
-    -0.1921,
-    -0.0696
+    -0.1477,
+    -0.0522
   ],
-  "slow_over_fast_premium_pct": 13.77,
+  "slow_over_fast_premium_pct": 10.49,
   "benchmark_brown_mackay_pct": [
     10,
     30

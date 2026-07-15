@@ -1,10 +1,10 @@
 {
   "evidence_status": "provisional_descriptive",
-  "n_entries": 206,
-  "median_prorata_share_hot_entry": 0.13455682431166396,
+  "n_entries": 224,
+  "median_prorata_share_hot_entry": 0.16530432657224012,
   "median_prorata_share_cold_entry": 1.0,
-  "spearman_entrydemand_x_prorata_share": -0.256,
-  "rank_beta_entrydemand_controlling_price": -0.247,
+  "spearman_entrydemand_x_prorata_share": -0.281,
+  "rank_beta_entrydemand_controlling_price": -0.255,
   "read": "positive conditional effect = information/cold-start channel (early traffic builds durable share); zero = share tracks current price only",
   "claim_boundary": "Days-scale 'durability' only; entry timing is not random (providers choose hot models), so this is an association pending the listing-DiD."
 }

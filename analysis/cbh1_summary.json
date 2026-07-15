@@ -1,70 +1,70 @@
 {
   "evidence_status": "power_gated",
   "gate": "census window ~6 days: 'algorithmic' means recently-active repricer, not verified automation; Assad-style structural-break detection needs months",
-  "n_providers_scored": 68,
-  "n_algorithmic_v0": 13,
+  "n_providers_scored": 69,
+  "n_algorithmic_v0": 18,
   "most_active": [
     {
       "provider_name": "StreamLake",
-      "n_changes": 43,
-      "n_models_changed": 4,
-      "n_reactive_48h": 41
+      "n_changes": 71,
+      "n_models_changed": 5,
+      "n_reactive_48h": 66
     },
     {
       "provider_name": "Novita",
-      "n_changes": 38,
+      "n_changes": 67,
       "n_models_changed": 3,
-      "n_reactive_48h": 35
-    },
-    {
-      "provider_name": "Ambient",
-      "n_changes": 14,
-      "n_models_changed": 2,
-      "n_reactive_48h": 13
+      "n_reactive_48h": 64
     },
     {
       "provider_name": "SambaNova",
-      "n_changes": 11,
+      "n_changes": 17,
       "n_models_changed": 2,
       "n_reactive_48h": 0
     },
     {
-      "provider_name": "Inceptron",
-      "n_changes": 9,
-      "n_models_changed": 2,
-      "n_reactive_48h": 9
+      "provider_name": "Azure",
+      "n_changes": 16,
+      "n_models_changed": 8,
+      "n_reactive_48h": 0
     },
     {
-      "provider_name": "Io Net",
-      "n_changes": 7,
-      "n_models_changed": 1,
+      "provider_name": "Ambient",
+      "n_changes": 16,
+      "n_models_changed": 2,
+      "n_reactive_48h": 13
+    },
+    {
+      "provider_name": "Inceptron",
+      "n_changes": 14,
+      "n_models_changed": 2,
+      "n_reactive_48h": 14
+    },
+    {
+      "provider_name": "Google",
+      "n_changes": 14,
+      "n_models_changed": 6,
       "n_reactive_48h": 6
     },
     {
-      "provider_name": "Mara",
-      "n_changes": 5,
-      "n_models_changed": 3,
-      "n_reactive_48h": 1
-    },
-    {
-      "provider_name": "AtlasCloud",
-      "n_changes": 5,
-      "n_models_changed": 3,
-      "n_reactive_48h": 2
+      "provider_name": "Amazon Bedrock",
+      "n_changes": 12,
+      "n_models_changed": 6,
+      "n_reactive_48h": 5
     }
   ],
-  "h100_usd_hr_used": 2.08,
+  "h100_usd_hr_used": 2.0,
   "markup_by_saturation": {
     "mixed": {
-      "median_log_markup": -2.705,
-      "n_markets": 15
+      "median_log_markup": -1.841,
+      "n_markets": 32
     },
     "none": {
-      "median_log_markup": -0.573,
-      "n_markets": 23
+      "median_log_markup": -1.083,
+      "n_markets": 9
     }
   },
-  "rank_beta_algo_share_on_markup": -0.7125,
+  "rank_beta_algo_share_on_markup": -0.2803,
   "prediction_q2": "Assad: markup HIGHER where all major quoters are algorithmic; commoditization: markup falls with adoption everywhere",
   "claim_boundary": "Markup levels are overstated (single-stream GPU cost bound; batching economies ignored) \u2014 only the ordering across saturation classes is informative. Preliminary census; re-run as the panel lengthens."
 }

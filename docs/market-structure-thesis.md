@@ -71,12 +71,27 @@ ad fraud forced ads.txt.
 
 ## Score so far
 
-17 pre-registered predictions graded nightly: **5 consistent, 0 wrong**, 12
-accumulating or awaiting their window. One flag worth watching: after a price
-cut, rivals usually cut and then *drift back up* (72% of typed events) — the
-textbook algorithmic-collusion signature — but the sample is 18 events and
-it's tangled with launch experimentation. If it survives at 100+ events, that
-becomes the headline result.
+17 pre-registered predictions graded: **5 consistent, 0 wrong**, the rest
+accumulating or awaiting their window. Newer measurements (2026-07-15):
+
+- **Quotes are ~75–80% firm, individually.** Pinning a specific provider (no
+  fallback) gets refused via rate-limit 20–33% of the time; free routing
+  succeeds 98.7%. Individual quotes are revocable; the *market* is firm only
+  because the router substitutes instantly. And it's the pricier quotes that
+  refuse more — the opposite of bait-quoting.
+- **The collusion-signature watch escalated.** After a price cut, rivals cut
+  and then *drift back up* in **83% of 95 typed events** (was 72% of 18) —
+  the textbook algorithmic punish-and-revert pattern, strengthening with
+  sample size. Still confounded with launch experimentation; now the
+  program's top verification priority.
+- **No just-in-time capacity dynamics** (serverless-branded providers gain
+  nothing during demand spikes), **no dispatch clock** (allocation shifts are
+  aperiodic), and providers **never undercut their own direct channel**
+  (99.6% exact parity — voluntary MFN).
+- **Entry is far flatter than naive theory** (provider count ~ demand^0.15) —
+  but matches the intent-market entry law once demand's measured long memory
+  (Hurst 0.84) replaces the i.i.d. assumption (predicted 0.165, observed
+  0.17). Burstiness disciplines entry.
 
 ## What would prove us wrong
 

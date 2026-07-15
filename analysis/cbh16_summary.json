@@ -1,8 +1,8 @@
 {
   "evidence_status": "provisional_descriptive",
-  "n_models": 41,
-  "rank_beta_latency_on_n_providers": 0.036,
-  "rank_beta_ratelimit_on_n_providers": 0.742,
+  "n_models": 44,
+  "rank_beta_latency_on_n_providers": 0.024,
+  "rank_beta_ratelimit_on_n_providers": 0.798,
   "read": "positive betas = quality degrades with thickness (Li-Netessine backfire); zero/negative = router absorbs congestion",
   "event_version": {
     "trigger": ">=5 new providers on a top-50 model within 14d",
