@@ -1,5 +1,6 @@
 """Synthetic identification and accounting checks for H82."""
 
+from decimal import Decimal
 from pathlib import Path
 
 import numpy as np
@@ -149,3 +150,12 @@ def test_h82_excludes_simultaneous_high_onsets():
     assert len(high) == 2
     assert not high["analysis_eligible"].any()
     assert set(high["exclusion_reason"]) == {"simultaneous_high"}
+
+
+def test_h82_coerces_decimal_backed_authoritative_counts():
+    rows = _event_rows()
+    for column in ("success_5m", "rate_limited_5m", "capacity_ceiling_rpm"):
+        rows[column] = rows[column].map(lambda value: Decimal(str(value)))
+    panel = canonical_panel(rows)
+    assert np.issubdtype(panel["model_success_5m"].dtype, np.floating)
+    assert np.isfinite(panel["log1p_other_provider_success"]).all()

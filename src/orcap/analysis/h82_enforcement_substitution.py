@@ -151,6 +151,23 @@ def canonical_panel(rows: pd.DataFrame) -> pd.DataFrame:
     panel["other_provider_success_5m"] = (
         panel["model_success_5m"] - panel["provider_success_5m"]
     )
+    # DuckDB may materialize very large aggregate counts as Decimal-backed
+    # object columns.  Force every derived count to a numeric floating dtype
+    # before applying NumPy ufuncs; otherwise ``np.log1p`` dispatches to Python
+    # integers and fails only on the authoritative, high-volume panel.
+    derived_counts = [
+        "success_5m",
+        "attempt_proxy_5m",
+        "model_success_5m",
+        "model_attempt_5m",
+        "provider_success_5m",
+        "same_provider_other_success_5m",
+        "other_provider_success_5m",
+        "price_completion",
+        "capacity_ceiling_rpm",
+    ]
+    for column in derived_counts:
+        panel[column] = pd.to_numeric(panel[column], errors="coerce").astype(float)
     panel["endpoint_success_share"] = np.where(
         panel["model_success_5m"] > 0,
         panel["success_5m"] / panel["model_success_5m"],
