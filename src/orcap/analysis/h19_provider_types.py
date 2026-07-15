@@ -258,9 +258,14 @@ def cluster(g: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     from sklearn.mixture import GaussianMixture
     from sklearn.preprocessing import StandardScaler
 
-    X = g[CLUSTER_FEATURES].copy()
-    med = X.median(numeric_only=True)
-    X = X.fillna(med)
+    X = g[CLUSTER_FEATURES].apply(pd.to_numeric, errors="coerce")
+    X = X.replace([np.inf, -np.inf], np.nan)
+    # Sparse live panels can leave an entire feature column unobserved. Its
+    # median is then NaN, so ordinary median imputation still passes NaNs into
+    # StandardScaler/PCA. Zero is the neutral standardized placeholder for an
+    # all-missing feature and makes the fit depend only on observed columns.
+    med = X.median(numeric_only=True).fillna(0.0)
+    X = X.fillna(med).fillna(0.0)
     Xs = StandardScaler().fit_transform(X)
 
     pca = PCA(n_components=4, random_state=7)
