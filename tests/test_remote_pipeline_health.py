@@ -1,8 +1,13 @@
 from datetime import UTC, datetime, timedelta
 
-from orcap.remote_health import evaluate_workflow
+from orcap.remote_health import WORKFLOWS, evaluate_workflow
 
 NOW = datetime(2026, 7, 13, 12, 0, tzinfo=UTC)
+
+
+def test_confirmatory_probe_workflows_are_remotely_monitored():
+    assert WORKFLOWS["probes.yml"] == 180
+    assert WORKFLOWS["decomposition-probes.yml"] == 180
 
 
 def _run(*, minutes_ago, status="completed", conclusion="success"):

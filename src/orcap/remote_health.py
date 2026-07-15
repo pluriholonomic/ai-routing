@@ -13,6 +13,7 @@ from huggingface_hub import HfApi
 
 WORKFLOWS = {
     "capture.yml": 150,
+    "decomposition-probes.yml": 180,
     "gpu.yml": 180,
     "hf-router.yml": 180,
     "livepeer.yml": 180,
