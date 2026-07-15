@@ -550,7 +550,14 @@ def summarize(joined: pd.DataFrame, pairs: pd.DataFrame) -> dict[str, Any]:
     }
 
 
-def plot_results(pairs: pd.DataFrame, summary: dict[str, Any], out_dir: Path) -> None:
+def plot_results(
+    pairs: pd.DataFrame,
+    summary: dict[str, Any],
+    out_dir: Path,
+    *,
+    prefix: str = "h86",
+    title: str = "H86 public capacity state and realized pinned execution",
+) -> None:
     if pairs.empty:
         return
     fig, axes = plt.subplots(2, 2, figsize=(11, 8))
@@ -609,11 +616,11 @@ def plot_results(pairs: pd.DataFrame, summary: dict[str, Any], out_dir: Path) ->
         ax.text(0.5, 0.5, "Prediction sample insufficient", ha="center", va="center")
         ax.set_axis_off()
 
-    fig.suptitle("H86 public capacity state and realized pinned execution")
+    fig.suptitle(title)
     fig.tight_layout()
     out_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_dir / "h86_capacity_execution_bridge.png", dpi=180)
-    fig.savefig(out_dir / "h86_capacity_execution_bridge.pdf")
+    fig.savefig(out_dir / f"{prefix}_capacity_execution_bridge.png", dpi=180)
+    fig.savefig(out_dir / f"{prefix}_capacity_execution_bridge.pdf")
     plt.close(fig)
 
 

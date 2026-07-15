@@ -10,6 +10,12 @@ from orcap.analysis.h86_capacity_execution_bridge import (
     public_provider_states,
     risk_pairs,
 )
+from orcap.analysis.h86b_canonical_capacity_bridge import (
+    analyze as analyze_canonical,
+)
+from orcap.analysis.h86b_canonical_capacity_bridge import (
+    canonicalize_attempt_models,
+)
 
 
 def _public_row(ts: pd.Timestamp, provider: str, endpoint: str, ceiling: float, peak: float):
@@ -77,7 +83,7 @@ def _fixture():
     attempts = []
     start = pd.Timestamp("2026-07-13T00:00:00Z")
     for block in range(6):
-        snapshot = start + pd.Timedelta(hours=int(block))
+        snapshot = start + pd.Timedelta(f"{int(block)} hours")
         public.extend(
             [
                 _public_row(snapshot, "A", f"a-{block}", 100, 10),
@@ -85,7 +91,7 @@ def _fixture():
                 _public_row(snapshot, "C", f"c-{block}", 50, 25),
             ]
         )
-        observed = snapshot + pd.Timedelta(minutes=5.0)
+        observed = snapshot + pd.Timedelta("5 minutes")
         attempts.extend(
             [
                 _attempt(
@@ -97,7 +103,7 @@ def _fixture():
                     None,
                 ),
                 _attempt(
-                    observed + pd.Timedelta(seconds=1.0),
+                    observed + pd.Timedelta("1 second"),
                     "pinned_cheapest",
                     "A",
                     "succeeded",
@@ -105,7 +111,7 @@ def _fixture():
                     0,
                 ),
                 _attempt(
-                    observed + pd.Timedelta(seconds=2.0),
+                    observed + pd.Timedelta("2 seconds"),
                     "pinned_second",
                     "B",
                     "failed",
@@ -113,7 +119,7 @@ def _fixture():
                     1,
                 ),
                 _attempt(
-                    observed + pd.Timedelta(seconds=3.0),
+                    observed + pd.Timedelta("3 seconds"),
                     "pinned_random",
                     "C",
                     "succeeded" if block % 2 else "failed",
@@ -124,7 +130,7 @@ def _fixture():
         )
     attempts.append(
         _attempt(
-            start + pd.Timedelta(days=1.0),
+            start + pd.Timedelta("1 day"),
             "pinned_cheapest",
             "A",
             "failed",
@@ -186,3 +192,49 @@ def test_empty_capacity_support_is_reported_without_outcomes(tmp_path):
     assert summary["primary_failure_contrast"]["mean"] is None
     assert summary["primary_failure_contrast"]["n"] == 0
     assert not (tmp_path / "h86_capacity_execution_bridge.pdf").exists()
+
+
+def test_official_model_bridge_is_backward_exact_and_recovers_support(tmp_path):
+    attempts, public = _fixture()
+    snapshots = pd.DataFrame(
+        [
+            {
+                "run_ts": "20260712T000000Z",
+                "id": "model/test",
+                "canonical_slug": "model/test",
+            },
+            {
+                "run_ts": "20260712T120000Z",
+                "id": "model/test",
+                "canonical_slug": "model/test",
+            },
+        ]
+    )
+    mapped = canonicalize_attempt_models(attempts, snapshots)
+    assert mapped["model_mapping_status"].eq("mapped_exact_official_snapshot").all()
+
+    summary = analyze_canonical(attempts, public, snapshots, tmp_path)
+    assert summary["study"] == "H86b"
+    assert summary["support"]["risk_pairs"] == 6
+    assert summary["primary_failure_contrast"]["mean"] == pytest.approx(1.0)
+    assert (tmp_path / "h86b_capacity_execution_bridge.pdf").exists()
+
+
+def test_official_model_bridge_rejects_conflicting_recent_slug():
+    attempts, _ = _fixture()
+    snapshots = pd.DataFrame(
+        [
+            {
+                "run_ts": "20260712T000000Z",
+                "id": "model/test",
+                "canonical_slug": "model/test-v1",
+            },
+            {
+                "run_ts": "20260712T120000Z",
+                "id": "model/test",
+                "canonical_slug": "model/test-v2",
+            },
+        ]
+    )
+    mapped = canonicalize_attempt_models(attempts, snapshots)
+    assert mapped["model_mapping_status"].eq("conflicting_recent_canonical_slug").all()
