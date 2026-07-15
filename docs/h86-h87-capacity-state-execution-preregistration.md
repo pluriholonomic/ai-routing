@@ -269,3 +269,72 @@ Because the mapping rule was introduced after observing H86's support failure,
 H86b cannot be called preregistered confirmation. It tests whether the frozen
 capacity score transports once the two official OpenRouter identifier fields
 are connected without semantic aliasing.
+
+## H87 support result and frozen H88 migration
+
+H87's first remote support-only run at `2026-07-15T14:34:07Z` evaluated the
+eight frozen hot models and sent zero requests. Every model had healthy quote
+and stats HTTP responses but fewer than two providers with complete
+`recent_peak_rpm` and `capacity_ceiling_rpm`. An outcome-free census of the top
+40 models also found zero capacity-complete providers. Inspecting the public
+field namespace showed that the historical `fortuna` block is absent and the
+top-level capacity/limit fields are present but null. Five-minute success and
+rate-limit counts remain populated. No H87 assignment or outcome exists.
+
+H87 remains frozen and unsupported. It is not redefined around a different
+field. H88 is a new prospective trial, frozen at `2026-07-15T14:40:00Z` before
+collecting any H88 request.
+
+### H88 public enforcement-stress state
+
+Immediately before each block, fetch the same exact public quote list and
+frontend operational endpoint state. Aggregate exact provider names within a
+model:
+
+- provider completion price is the minimum finite positive quote;
+- `success_5m` and `rate_limited_5m` are sums across provider endpoints;
+- the provider must have at least ten success-plus-rate-limit observations;
+- deranked providers are excluded; and
+- public enforcement stress is the fixed smoothed rate
+
+  `enforcement_stress = (rate_limited_5m + 1) / (success_5m + rate_limited_5m + 2)`.
+
+Generate provider pairs whose completion prices differ by at most 25% and
+whose enforcement stress differs strictly. Choose the pair with the largest
+stress gap, breaking exact ties lexicographically. Label the lower-stress member
+`enforcement_safe` and the higher-stress member `enforcement_risky`.
+
+This score is a public router-side rejection state, not physical capacity,
+provider cost, queue length, or a causal toxicity measure. The fixed smoothing
+prevents zero-count separation and was chosen before any H88 outcome.
+
+### H88 assignment, estimands, and release
+
+For each eligible model-run, uniformly randomize exactly one first-and-only
+one-token request among:
+
+- `enforcement_safe`, pinned with fallback disabled;
+- `enforcement_risky`, pinned with fallback disabled; and
+- `openrouter_default`, with no provider preference.
+
+Persist the public candidate pair and seed before the request; keep the route
+attempt in the redacted private table. The co-primary intention-to-treat
+contrasts are success(`enforcement_safe`) minus
+success(`enforcement_risky`) and success(`openrouter_default`) minus
+success(`enforcement_safe`). Use the same model-day cluster bootstrap,
+blocked randomization inference, Holm correction, missingness treatment, cost
+limits, and first-and-only exposure rule as H87.
+
+Before release, expose only candidate, exclusion, assignment, seed replay,
+provider diversity, compliance, overlap, and public-state support. The first
+release requires the same gates as H87: 28 complete days; 150 valid assignments
+per arm; ten models; twenty candidate providers; at most 20% requested-provider
+dominance; at least 90% pinned compliance; exact seed replay; and no other-study
+request within five minutes. Freeze and publish the earliest qualifying prefix
+regardless of sign.
+
+H88 identifies the effect of acting on a contemporaneous public enforcement
+score for eligible owned probes. It cannot identify physical capacity,
+front-running, provider intent, market-wide routing, or welfare. A positive
+safe-minus-risky effect validates an observable admission-risk policy; it does
+not resurrect the unsupported H87 capacity-score claim.
