@@ -104,3 +104,13 @@ concurrency group. Cron offsets alone do not guarantee actual start-time
 separation when scheduled jobs are delayed. The amendment prevents cross-study
 probe overlap; it changes no assignment, treatment, eligibility rule, outcome,
 estimand, exclusion, multiplicity family, or stopping threshold.
+
+Later on 2026-07-15, a legacy cross-study descriptive audit (`WCV4`) printed
+outcome aggregates for all three H81 labels from the first two blocks, bypassing
+the dedicated H81 analyzer's power gate. WCV4 was then changed to exclude H80
+and H81 study IDs entirely, with a regression test requiring this isolation.
+No assignment, treatment, eligibility, exclusion, multiplicity, or stopping
+decision was changed after this inadvertent disclosure. The incident means the
+analyst was not fully outcome-blind for those two launch blocks; the fixed
+first-position estimator, earliest-balanced-prefix rule, and 40-per-arm gate
+remain unchanged and will be reported with this limitation.

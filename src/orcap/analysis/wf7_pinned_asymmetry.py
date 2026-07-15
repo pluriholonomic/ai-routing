@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 
 from . import data
+from .blinding import exclude_outcome_blinded
 from .common import DEFAULT_OUT, save_json
 
 log = logging.getLogger(__name__)
@@ -26,10 +27,12 @@ log = logging.getLogger(__name__)
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     att = data.q(
         f"""
-        select policy, model_id, requested_provider, selected_provider, outcome, retry_reason
+        select policy, model_id, requested_provider, selected_provider, outcome, retry_reason,
+               study_id
         from read_parquet('{data.table_glob("router_route_attempts")}', union_by_name=true)
         """
     ).df()
+    att, _ = exclude_outcome_blinded(att)
     pinned = att[att["policy"].str.startswith("pinned", na=False)].copy()
     if len(pinned) < 150:
         summary = {"evidence_status": "power_gated", "gate": f"only {len(pinned)}/150 pinned probes"}

@@ -172,8 +172,13 @@ def combined_cluster(behav: pd.DataFrame, text: pd.DataFrame) -> tuple[pd.DataFr
     txt_cols = [c for c in m.columns if c.startswith("txt_")]
 
     def _matrix(cols):
-        X = m[cols].copy()
-        X = X.fillna(X.median(numeric_only=True))
+        X = m[cols].apply(pd.to_numeric, errors="coerce")
+        X = X.replace([np.inf, -np.inf], np.nan)
+        # A live feature can be unobserved for every matched provider. Median
+        # imputation alone leaves such a column NaN, which StandardScaler and
+        # GaussianMixture reject. Keep it as a neutral constant instead.
+        med = X.median(numeric_only=True).fillna(0.0)
+        X = X.fillna(med).fillna(0.0)
         return StandardScaler().fit_transform(X)
 
     Xb = _matrix(CLUSTER_FEATURES)

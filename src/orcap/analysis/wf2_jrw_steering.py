@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from . import data
+from .blinding import exclude_outcome_blinded
 from .common import DEFAULT_OUT, save_json
 from .h68_competition import daily_quotes
 
@@ -30,12 +31,13 @@ log = logging.getLogger(__name__)
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     probes = data.q(
         f"""
-        select observed_at, model_id, selected_provider
+        select observed_at, model_id, selected_provider, study_id
         from read_parquet('{data.table_glob("router_route_attempts")}', union_by_name=true)
         where policy = 'openrouter_default' and outcome = 'succeeded'
           and selected_provider is not null
         """
     ).df()
+    probes, _ = exclude_outcome_blinded(probes)
     if len(probes) < 100:
         summary = {"evidence_status": "power_gated", "gate": f"only {len(probes)}/100 default probes"}
         save_json(summary, out_dir, "wf2_summary")

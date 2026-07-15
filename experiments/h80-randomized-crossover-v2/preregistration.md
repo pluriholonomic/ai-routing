@@ -102,3 +102,14 @@ concurrency group. GitHub cron times are nominal and delayed starts could
 otherwise overlap the two studies despite their 15-minute schedule offset.
 This operational amendment serializes runs but does not change assignment,
 treatment, support, outcomes, estimands, or stopping rules.
+
+Later on 2026-07-15, a legacy cross-study descriptive audit (`WCV4`) printed
+policy-level outcome aggregates that pooled prospective H80 rows with earlier
+rows sharing the same labels. The dedicated H80 analyzer remained blinded, but
+the pooled totals made some full-block prospective information indirectly
+recoverable. WCV4 was then changed to exclude H80 and H81 study IDs entirely;
+their outcomes can now be released only by their dedicated frozen-gate
+analyzers. No assignment, treatment, exclusion, multiplicity, or stopping
+decision was changed after seeing the pooled aggregates. This incident limits
+analyst blinding but does not change the prespecified first-position estimator
+or deterministic stopping rule.

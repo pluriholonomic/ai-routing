@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import data
+from .blinding import OUTCOME_BLINDED_STUDY_IDS, exclude_outcome_blinded
 from .common import DEFAULT_OUT, save, save_json
 
 
@@ -33,6 +34,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         attempts = attempts.sort_values(sort_columns).drop_duplicates(
             ["source", "event_id"], keep="last"
         )
+    attempts, blinded_attempts_excluded = exclude_outcome_blinded(attempts)
     if attempts.empty:
         panel = pd.DataFrame(
             columns=[
@@ -86,6 +88,8 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             else ("descriptive_owned_traffic" if len(attempts) else "not_collected")
         ),
         "attempts": int(len(attempts)),
+        "outcome_blinded_attempts_excluded": blinded_attempts_excluded,
+        "outcome_blinded_study_ids": sorted(OUTCOME_BLINDED_STUDY_IDS),
         "attempts_with_selected_provider": (
             int(attempts["selected_provider"].notna().sum())
             if len(attempts) and "selected_provider" in attempts
@@ -97,7 +101,9 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "policy_panel": panel.to_dict("records"),
         "claim_boundary": (
             "Policy aggregates are descriptive unless they inherit a valid pre-registered H50 "
-            "randomization. OPE is intentionally refused without known propensities and overlap."
+            "randomization. OPE is intentionally refused without known propensities and overlap. "
+            "Prospective H80/H81 outcomes are excluded here and released only by their dedicated "
+            "frozen-gate analyzers."
         ),
     }
     save_json(summary, out_dir, "wcv4_summary")
