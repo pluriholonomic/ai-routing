@@ -468,6 +468,22 @@ def event_effects(event_time: pd.DataFrame) -> pd.DataFrame:
             record[f"{metric}_placebo"] = (
                 late - early if np.isfinite(early) and np.isfinite(late) else np.nan
             )
+        # Flow accounting must use identical relative-time cells for every
+        # additive component. A focal endpoint can have a missing public count
+        # while the model aggregate remains observed; separately averaging the
+        # four columns would then break an identity that holds at every jointly
+        # observed snapshot.
+        joint = group.dropna(subset=RAW_ACCOUNTING_METRICS)
+        joint_pre = joint[joint["relative_minutes"].between(*PRIMARY_PRE)]
+        joint_post = joint[joint["relative_minutes"].between(*PRIMARY_POST)]
+        record["joint_accounting_pre_cells"] = int(len(joint_pre))
+        record["joint_accounting_post_cells"] = int(len(joint_post))
+        for metric in RAW_ACCOUNTING_METRICS:
+            pre = joint_pre[metric].mean()
+            post = joint_post[metric].mean()
+            record[f"joint_{metric}_delta"] = (
+                float(post - pre) if pd.notna(pre) and pd.notna(post) else np.nan
+            )
         records.append(record)
     return pd.DataFrame(records)
 
@@ -672,10 +688,10 @@ def summarize(
         }
 
     accounting: dict[str, Any] = {}
-    joint_delta_columns = [f"{metric}_delta" for metric in RAW_ACCOUNTING_METRICS]
+    joint_delta_columns = [f"joint_{metric}_delta" for metric in RAW_ACCOUNTING_METRICS]
     joint_accounting = high.dropna(subset=joint_delta_columns) if not high.empty else high
     for metric in RAW_ACCOUNTING_METRICS:
-        column = f"{metric}_delta"
+        column = f"joint_{metric}_delta"
         values = (
             joint_accounting[column].dropna()
             if not joint_accounting.empty

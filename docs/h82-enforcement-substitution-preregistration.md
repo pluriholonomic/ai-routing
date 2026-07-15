@@ -136,3 +136,16 @@ all gates is the confirmatory cut. Earlier snapshots remain explicitly
 descriptive and power-gated. Thresholds, windows, outcomes, and gates do not
 change after outcome inspection; any amendment is versioned and disclosed.
 
+## Execution log and non-design corrections
+
+- The first authoritative execution stopped before producing an estimate
+  because DuckDB materialized large counts as Decimal-backed objects. Commit
+  `72e5254` adds explicit numeric coercion and a Decimal regression test. No
+  treatment, outcome, window, matching, or gate changed.
+- The next local execution exposed a reporting defect in the raw additive
+  decomposition. The identity held exactly at every jointly observed snapshot,
+  but independently averaged components used different relative-time cells
+  when the focal public count was missing. Commit `ebc4578` first restricted
+  the event sample; this amendment completes the correction by computing every
+  additive component on the same jointly observed pre and post cells. Primary
+  share outcomes, matches, intervals, and release gates are unchanged.
