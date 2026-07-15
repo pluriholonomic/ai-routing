@@ -23,12 +23,15 @@ does identify both components.
 This is a material improvement. The three-arm decomposition is a sharper and
 more market-specific empirical contribution than the generic first-position
 Horvitz--Thompson result. The collection implementation is also unusually
-auditable: assignment seeds are replayed, treatment controls are checked,
-outcomes are blinded until a fixed balance gate, and the earliest qualifying
-prefix is frozen. However, the paper still has no confirmatory H80 or H81
-outcome. The first H81 launch audit contains only two eligible model blocks.
-I would not accept an empirical paper whose central identified estimands are
-still blank, but the design now gives a credible path to an accept.
+auditable: assignment seeds are replayed, treatment controls are checked, and
+the earliest qualifying prefix is frozen. A legacy descriptive analysis did,
+however, bypass the dedicated analyzers and expose pooled prospective outcome
+aggregates during the launch audit. The incident is disclosed and contained,
+but the analysts are not fully blinded to those launch observations. The paper
+still has no confirmatory H80 or H81 cut. The first H81 audit contains only two
+eligible model blocks. I would not accept an empirical paper whose central
+identified estimands are still power-gated, but the design gives a credible
+path to an accept.
 
 ## What changed my assessment
 
@@ -40,9 +43,11 @@ still blank, but the design now gives a credible path to an accept.
    first provider fixed when turning fallback on, then holds fallback on when
    replacing the public order with delegated selection. This is substantially
    closer to the paper's hidden-eligibility thesis.
-3. **Pre-outcome implementation audits are strong.** The first remote artifact
-   has two complete blocks, two of two successful assignment replays, and two
-   of two treatment-metadata checks. No outcome or p-value is released.
+3. **Implementation audits are strong but blinding was imperfect.** The first
+   remote artifact has two complete blocks, two of two successful assignment
+   replays, and two of two treatment-metadata checks. The dedicated analyzer
+   released no effect or p-value, but a legacy cross-study module printed the
+   three policy aggregates from those blocks before it was isolated.
 4. **Operational interference is addressed.** H80 and H81 share a non-cancelling
    concurrency lock, so delayed GitHub cron starts cannot overlap the studies.
    The amendment was recorded before H81 outcomes were released.
@@ -94,6 +99,16 @@ the frozen prefix cutoff, and sensitivity to repeated observations on the same
 model. Spend and latency should remain secondary and should not condition the
 primary sample on success.
 
+### 6. The launch disclosure must remain in the paper
+
+The fixed stopping rule and earliest-prefix rule sharply limit discretion, so
+the aggregate leak does not destroy design-based identification. It does remove
+full analyst blinding for the affected launch rows. The authors should retain
+the incident report, identify which aggregates were visible, and show that all
+subsequent legacy route analyses exclude prospective study identifiers. A
+reviewer should treat the first cut as preregistered but analyst-unblinded, not
+as a perfectly blinded holdout.
+
 ## Required result package for the next review
 
 1. Release exactly the first frozen H80 and H81 cuts, not the latest larger
@@ -129,4 +144,6 @@ and time support.
 objection and is now waiting on data rather than another conceptual rewrite.
 An accept is plausible after the preregistered cuts if at least one component
 is precisely identified, the eligibility funnel is transparent, and the paper
-does not overclaim direct validation of the capacity mechanism.
+does not overclaim direct validation of the capacity mechanism. The disclosed
+launch leak is survivable because treatment and stopping rules were already
+fixed, but it modestly lowers confidence relative to a fully blinded holdout.
