@@ -1,0 +1,9 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_models": 9,
+  "median_core_utilization": 1.158,
+  "median_fringe_utilization": 1.266,
+  "share_models_fringe_hotter": 0.667,
+  "note_on_direction": "classic Bos-Harrington puts the fringe BELOW the cartel price; here ties are at the minimum, so the 'fringe' is the above-tie tail \u2014 umbrella logic then predicts the CORE (tied, price-competitive) runs hot and the expensive tail slack UNDER COMPETITION, while a collusive residual-supplier core predicts core-slack. Read: core-slack + fringe-hot = collusion cell.",
+  "claim_boundary": "Hot-model panel; fortuna utilization is router-estimated; quality differences across tie membership uncontrolled."
+}

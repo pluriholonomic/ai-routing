@@ -1,0 +1,16 @@
+{
+  "wf1_cost_shock": {
+    "trigger": "abs dlog H100 spot > 0.20 within 30d",
+    "current_window_move": 0.0645,
+    "armed": true
+  },
+  "wf8_derank_comovement": {
+    "trigger": ">= 10 derank transitions",
+    "transitions_observed": 0,
+    "armed": true
+  },
+  "wf10_merger": {
+    "trigger": "provider M&A event (manual)",
+    "armed": true
+  }
+}

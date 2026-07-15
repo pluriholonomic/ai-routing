@@ -1,0 +1,16 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_nontied_model_days": 407,
+  "rank_beta_cadence_gap": -0.007,
+  "cadence_ci95": [
+    -0.307,
+    0.273
+  ],
+  "rank_beta_demand_hhi": 0.064,
+  "hhi_ci95": [
+    -0.347,
+    0.334
+  ],
+  "read": "cadence beta > 0 with hhi ~ 0 = Brown-MacKay commitment funds the gap; hhi beta > 0 with cadence ~ 0 = loyal/pinned flow funds it; both = mixed",
+  "claim_boundary": "Cadence measured on an ~11-day window (coarse classes); demand HHI is a proxy for pinned share, not a measurement of it; non-tied segment only."
+}

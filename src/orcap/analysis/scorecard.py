@@ -37,6 +37,12 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     pm5 = _load(out_dir, "pm5_summary")
     pm6 = _load(out_dir, "pm6_summary")
     pm9 = _load(out_dir, "pm9_summary")
+    wf2 = _load(out_dir, "wf2_summary")
+    wf3 = _load(out_dir, "wf3_summary")
+    wf4 = _load(out_dir, "wf4_summary")
+    wf5 = _load(out_dir, "wf5_summary")
+    wf6 = _load(out_dir, "wf6_summary")
+    wf9 = _load(out_dir, "wf9_summary")
 
     rows = []
 
@@ -156,6 +162,63 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             f"{pm9['share_author_moves_matched_within_96h']:.0%} of author repricings "
             f"matched exactly within 96h (n={pm9['n_author_moves_evaluated']})",
             "pm9",
+        )
+    # welfare-framework (wf-series) tests
+    if wf6.get("phi_dlogreq30m_on_rlshare") is not None:
+        phi = wf6["phi_dlogreq30m_on_rlshare"]
+        lo = wf6.get("phi_ci95", [None])[0]
+        add(
+            "C7 retry externality (unpriced retries amplify demand)",
+            "consistent" if lo is not None and lo > 0 else "accumulating",
+            f"phi={phi} {wf6.get('phi_ci95')} — rate-limit spikes RAISE requests 30m later",
+            "wf6",
+        )
+    if wf2.get("mean_selection_share_by_cell"):
+        add(
+            "C2/JRW: router steering memory (rewards past undercutting?)",
+            "accumulating",
+            f"cheapest w/ recent cut selected {wf2['mean_selection_share_by_cell'].get('(True, True)')}"
+            f" vs w/o {wf2['mean_selection_share_by_cell'].get('(True, False)')} — "
+            "past cuts penalized, not rewarded (collusion-neutral static steering or worse)",
+            "wf2",
+        )
+    if wf3.get("median_regret_pct_movers") is not None:
+        add(
+            "Conduct: calibrated regret of price movers",
+            "accumulating",
+            f"median regret {wf3['median_regret_pct_movers']}% (p90 "
+            f"{wf3['p90_regret_pct_movers']}%) vs best own constant price — "
+            "not textbook best response; attribution open (share-model misspec / "
+            "experimentation / threats)",
+            "wf3",
+        )
+    if wf4.get("median_rival_dlogp_6m") is not None:
+        add(
+            "B-M technology stage: adoption raises rival prices",
+            "accumulating",
+            f"median rival dlogp {wf4['median_rival_dlogp_6m']} over 6m across "
+            f"{wf4['n_adoption_events']} adoption events — no elevation detected; "
+            "rigidity dominates",
+            "wf4",
+        )
+    if wf5.get("rank_beta_cadence_gap") is not None:
+        add(
+            "Dispersion horse race: commitment vs loyal flow",
+            "accumulating",
+            f"cadence beta {wf5['rank_beta_cadence_gap']} {wf5['cadence_ci95']}, "
+            f"hhi beta {wf5['rank_beta_demand_hhi']} {wf5['hhi_ci95']} — both ~0, "
+            "gap floor unexplained at current power",
+            "wf5",
+        )
+    if wf9.get("median_core_utilization") is not None:
+        add(
+            "Umbrella cross-section: core-slack vs fringe-hot",
+            "accumulating",
+            f"core util {wf9['median_core_utilization']} vs fringe "
+            f"{wf9['median_fringe_utilization']}; fringe hotter in "
+            f"{wf9['share_models_fringe_hotter']:.0%} of {wf9['n_models']} models "
+            "(weakly toward the collusion cell; tiny n)",
+            "wf9",
         )
     # dated trackers not yet measurable
     for pred in (

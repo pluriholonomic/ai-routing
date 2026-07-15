@@ -1,0 +1,13 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_cells": 273,
+  "n_cells_with_price_moves": 29,
+  "median_regret_pct_movers": 22.98,
+  "p90_regret_pct_movers": 65.59,
+  "median_regret_algo_vs_not": {
+    "algo": 22.98,
+    "non_algo": 26.31
+  },
+  "read": "high regret among movers = price paths sacrifice short-run best response (consistent with reactive-threat conduct); low regret = near-best-response competitive algorithms. Static (non-moving) cells have zero regret by construction and are silent \u2014 the ABS rigidity story lives outside this test",
+  "claim_boundary": "v1: inverse-square share model (documented default, not audited weights), single-GPU cost proxy, best-in-own-menu comparator (not global). Caveat: threat-free algorithmic collusion evades regret screens entirely."
+}

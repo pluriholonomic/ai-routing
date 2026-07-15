@@ -39,7 +39,7 @@
     {
       "prediction": "PM ladder: state-dependent + strategic, no congestion, not Calvo",
       "status": "consistent",
-      "evidence": "|gap| coef 1.287; congestion rung p=1.71e-01; L2 vs Calvo p=7.56e-76",
+      "evidence": "|gap| coef 1.287; congestion rung p=1.72e-01; L2 vs Calvo p=7.56e-76",
       "source": "pm1"
     },
     {
@@ -59,6 +59,42 @@
       "status": "accumulating",
       "evidence": "true punish-and-revert 42% vs initiator-withdrawn 41% of cut events; raises followed 66%",
       "source": "pm6"
+    },
+    {
+      "prediction": "C7 retry externality (unpriced retries amplify demand)",
+      "status": "consistent",
+      "evidence": "phi=0.163 [0.128, 0.196] \u2014 rate-limit spikes RAISE requests 30m later",
+      "source": "wf6"
+    },
+    {
+      "prediction": "C2/JRW: router steering memory (rewards past undercutting?)",
+      "status": "accumulating",
+      "evidence": "cheapest w/ recent cut selected 0.039 vs w/o 0.233 \u2014 past cuts penalized, not rewarded (collusion-neutral static steering or worse)",
+      "source": "wf2"
+    },
+    {
+      "prediction": "Conduct: calibrated regret of price movers",
+      "status": "accumulating",
+      "evidence": "median regret 22.98% (p90 65.59%) vs best own constant price \u2014 not textbook best response; attribution open (share-model misspec / experimentation / threats)",
+      "source": "wf3"
+    },
+    {
+      "prediction": "B-M technology stage: adoption raises rival prices",
+      "status": "accumulating",
+      "evidence": "median rival dlogp 0.0 over 6m across 6 adoption events \u2014 no elevation detected; rigidity dominates",
+      "source": "wf4"
+    },
+    {
+      "prediction": "Dispersion horse race: commitment vs loyal flow",
+      "status": "accumulating",
+      "evidence": "cadence beta -0.007 [-0.307, 0.273], hhi beta 0.064 [-0.347, 0.334] \u2014 both ~0, gap floor unexplained at current power",
+      "source": "wf5"
+    },
+    {
+      "prediction": "Umbrella cross-section: core-slack vs fringe-hot",
+      "status": "accumulating",
+      "evidence": "core util 1.158 vs fringe 1.266; fringe hotter in 67% of 9 models (weakly toward the collusion cell; tiny n)",
+      "source": "wf9"
     },
     {
       "prediction": "O1 harness markup >=15% through 2027",

@@ -1,0 +1,4 @@
+{
+  "evidence_status": "power_gated",
+  "gate": "only 10/12 provider cells with n>=8"
+}

@@ -1,0 +1,14 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_provider_model_days": 251,
+  "n_default_probes": 449,
+  "rank_beta_past_cut_given_rank": -7.593,
+  "mean_selection_share_by_cell": {
+    "(False, False)": 0.086,
+    "(False, True)": 0.077,
+    "(True, False)": 0.233,
+    "(True, True)": 0.039
+  },
+  "read": "positive past-cut beta given current rank = JRW dynamic steering (collusion-destabilizing); zero = static lowest-price steering (collusion-neutral, tie-friendly)",
+  "claim_boundary": "One-token probes on hot models; selection shares per model-day are coarse; provider eligibility (region/context) unmodeled. This audits the default policy's memory, not its full scoring function."
+}

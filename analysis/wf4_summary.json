@@ -1,0 +1,57 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_adoption_events": 6,
+  "median_rival_dlogp_6m": 0.0,
+  "events": [
+    {
+      "adopter": "azure",
+      "adopt_month": "2024-08",
+      "freq_ratio": 441.4,
+      "n_rival_pairs": 24,
+      "rival_dlogp_mean": -0.06932331170313992,
+      "rival_dlogp_median": 0.0
+    },
+    {
+      "adopter": "azure_ai",
+      "adopt_month": "2025-07",
+      "freq_ratio": 32.3,
+      "n_rival_pairs": 27,
+      "rival_dlogp_mean": -0.04843308493328832,
+      "rival_dlogp_median": 0.0
+    },
+    {
+      "adopter": "deepinfra",
+      "adopt_month": "2025-08",
+      "freq_ratio": 10.1,
+      "n_rival_pairs": 111,
+      "rival_dlogp_mean": 0.0036457366916827962,
+      "rival_dlogp_median": 0.0
+    },
+    {
+      "adopter": "deepseek",
+      "adopt_month": "2025-09",
+      "freq_ratio": 27.3,
+      "n_rival_pairs": 16,
+      "rival_dlogp_mean": 0.0074868968665873226,
+      "rival_dlogp_median": 0.0
+    },
+    {
+      "adopter": "openrouter",
+      "adopt_month": "2025-07",
+      "freq_ratio": 33.8,
+      "n_rival_pairs": 160,
+      "rival_dlogp_mean": -0.03150233772817288,
+      "rival_dlogp_median": 0.0
+    },
+    {
+      "adopter": "watsonx",
+      "adopt_month": "2025-10",
+      "freq_ratio": 24.0,
+      "n_rival_pairs": 17,
+      "rival_dlogp_mean": -0.02656806224759063,
+      "rival_dlogp_median": 0.0
+    }
+  ],
+  "read": "B-M predicts rival prices RISE after one firm's adoption (positive dlogp); competitive-diffusion alternative predicts falls (adoption spreads price cuts)",
+  "claim_boundary": "LiteLLM community-edit timing noise; adoption detection is a frequency heuristic, not verified software adoption; secular token deflation means the NULL drift is negative \u2014 compare against matched non-event windows before structural claims (v2). No causal identification."
+}
