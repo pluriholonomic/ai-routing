@@ -101,11 +101,32 @@ def verify_first_assignment(block: pd.DataFrame) -> bool:
     return str(first["policy"].iloc[0]) == expected[0]
 
 
+def verify_treatment_metadata(row: pd.Series) -> bool:
+    """Check that provider-set controls implement the recorded policy label."""
+    try:
+        order_count = int(row["requested_order_length"])
+        only_count = int(row["provider_only_count"])
+        public_count = int(row["public_provider_count"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    fallback = bool(row["allow_fallbacks"])
+    policy = str(row["policy"])
+    if policy == "delegated_default":
+        return order_count == 0 and only_count == 0 and fallback
+    if policy == "price_only_no_fallback":
+        return order_count == 1 and only_count == 1 and not fallback
+    if policy == "price_order_fallback":
+        return public_count >= 2 and order_count == public_count == only_count and fallback
+    return False
+
+
 def first_position_sample(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
     attempts = prepare_attempts(frame)
     first_rows = []
     candidate_blocks = 0
+    assignment_replay_passes = 0
     verified_blocks = 0
+    treatment_metadata_passes = 0
     complete_blocks = 0
     for block_id, block in attempts.groupby("block_id", sort=False, dropna=True):
         if not block_id:
@@ -119,17 +140,28 @@ def first_position_sample(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, 
         )
         if not verify_first_assignment(block):
             continue
+        assignment_replay_passes += 1
         first = block[block["policy_order"].eq(0)].iloc[0].copy()
+        if not verify_treatment_metadata(first):
+            continue
+        treatment_metadata_passes += 1
         first["assignment_verified"] = True
         first_rows.append(first)
         verified_blocks += 1
     first = pd.DataFrame(first_rows)
     audit = {
         "candidate_blocks": candidate_blocks,
+        "assignment_replay_passes": assignment_replay_passes,
         "verified_first_position_blocks": verified_blocks,
+        "treatment_metadata_passes": treatment_metadata_passes,
         "complete_blocks": complete_blocks,
         "assignment_replay_rate": (
-            verified_blocks / candidate_blocks if candidate_blocks else None
+            assignment_replay_passes / candidate_blocks if candidate_blocks else None
+        ),
+        "treatment_metadata_pass_rate": (
+            treatment_metadata_passes / assignment_replay_passes
+            if assignment_replay_passes
+            else None
         ),
     }
     return first, audit

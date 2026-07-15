@@ -1,8 +1,11 @@
 {
   "candidate_blocks": 0,
+  "assignment_replay_passes": 0,
   "verified_first_position_blocks": 0,
+  "treatment_metadata_passes": 0,
   "complete_blocks": 0,
   "assignment_replay_rate": null,
+  "treatment_metadata_pass_rate": null,
   "study_id": "openrouter-fallback-selection-decomposition-v1",
   "first_position_counts": {
     "delegated_default": 0,

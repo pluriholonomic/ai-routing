@@ -80,9 +80,11 @@ confirmatory cut.
 
 A first-position observation is invalid only when its block ID or assignment
 metadata is absent, position zero is missing or duplicated, or replaying the
-recorded seed does not reproduce its policy. Later-position absence or failure
-does not invalidate position zero. Assignment balance and normalized order
-entropy are design audits rather than outcome-based exclusions.
+recorded seed does not reproduce its policy. Before outcomes are read, the
+analyzer also requires the recorded `order` length, `only` length, and fallback
+flag to match that policy's prespecified controls. Later-position absence or
+failure does not invalidate position zero. Assignment balance and normalized
+order entropy are design audits rather than outcome-based exclusions.
 
 ## Interpretation boundary
 

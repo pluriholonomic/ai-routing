@@ -35,6 +35,17 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
                 "assignment_probability_first": 1 / 3,
                 "randomized_order": True,
                 "public_provider_count": 3,
+                "requested_order_length": (
+                    0
+                    if policy == "delegated_default"
+                    else (1 if policy == "price_only_no_fallback" else 3)
+                ),
+                "provider_only_count": (
+                    0
+                    if policy == "delegated_default"
+                    else (1 if policy == "price_only_no_fallback" else 3)
+                ),
+                "allow_fallbacks": policy != "price_only_no_fallback",
             }
             rows.append(
                 {
@@ -68,6 +79,7 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert panel["first_position_attempts"].eq(40).all()
     assert len(model_panel) == 6
     assert summary["assignment_replay_rate"] == 1.0
+    assert summary["treatment_metadata_passes"] == 120
     assert summary["outcomes_released"] is True
     assert summary["confirmatory_prefix_blocks"] == 120
     assert summary["evidence_status"] == "randomized_decomposition_ready"
