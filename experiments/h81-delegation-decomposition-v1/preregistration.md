@@ -72,6 +72,12 @@ planned collection window is seven days. If the balance gate is not reached,
 the study is reported as power-gated. Collection failures do not extend or
 change the stopping rule based on observed outcomes.
 
+Before that gate, the public analyzer releases assignment counts and replay
+diagnostics but blinds every outcome estimate and p-value. At the gate it
+deterministically freezes the earliest chronological prefix satisfying all
+three arm counts; later observations cannot replace or enlarge the first
+confirmatory cut.
+
 A first-position observation is invalid only when its block ID or assignment
 metadata is absent, position zero is missing or duplicated, or replaying the
 recorded seed does not reproduce its policy. Later-position absence or failure

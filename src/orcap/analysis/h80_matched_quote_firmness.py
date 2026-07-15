@@ -391,6 +391,39 @@ def holm_adjust(pvalues: list[float]) -> list[float]:
     return adjusted.tolist()
 
 
+def first_balanced_prefix(
+    frame: pd.DataFrame,
+    policies: tuple[str, ...],
+    min_per_policy: int,
+) -> tuple[pd.DataFrame, bool, str | None]:
+    """Freeze the earliest chronological prefix satisfying the balance gate."""
+    if frame.empty:
+        return frame.copy(), False, None
+    sort_columns = [
+        column
+        for column in ("observed_ts", "observed_at", "run_ts", "block_id")
+        if column in frame
+    ]
+    ordered = frame.sort_values(sort_columns, kind="stable").reset_index(drop=True)
+    counts = {policy: 0 for policy in policies}
+    minimum_total = len(policies) * min_per_policy
+    for position, policy in enumerate(ordered["policy"].astype(str)):
+        if policy in counts:
+            counts[policy] += 1
+        if position + 1 >= minimum_total and min(counts.values()) >= min_per_policy:
+            cutoff_column = next(
+                (
+                    column
+                    for column in ("observed_ts", "observed_at", "run_ts", "block_id")
+                    if column in ordered
+                ),
+                None,
+            )
+            cutoff = str(ordered.loc[position, cutoff_column]) if cutoff_column else None
+            return ordered.iloc[: position + 1].copy(), True, cutoff
+    return ordered, False, None
+
+
 def randomized_first_position_analysis(
     blocks: pd.DataFrame, *, simulations: int = RANDOMIZATION_DRAWS
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
@@ -417,6 +450,10 @@ def randomized_first_position_analysis(
             & blocks["randomized_order"].astype(bool)
         ].copy()
     valid = valid.sort_values("block_id").drop_duplicates("block_id", keep="first")
+    collection_valid = valid.copy()
+    valid, release_ready, confirmatory_cutoff = first_balanced_prefix(
+        collection_valid, POLICIES, MIN_FIRST_POSITION_PER_POLICY
+    )
     n_blocks = len(valid)
 
     panel_rows = []
@@ -588,8 +625,13 @@ def randomized_first_position_analysis(
             contrasts["randomization_p_greater"].tolist()
         )
 
-    counts = panel.set_index("policy")["first_position_attempts"].reindex(POLICIES, fill_value=0)
-    min_count = int(counts.min()) if len(counts) else 0
+    analysis_counts = (
+        panel.set_index("policy")["first_position_attempts"].reindex(POLICIES, fill_value=0)
+    )
+    collection_counts = (
+        collection_valid["policy"].value_counts().reindex(POLICIES, fill_value=0)
+    )
+    min_count = int(collection_counts.min()) if len(collection_counts) else 0
     candidate = blocks.iloc[0:0].copy()
     if not blocks.empty:
         candidate = blocks[
@@ -613,16 +655,30 @@ def randomized_first_position_analysis(
         "assignment_replay_rate": (
             replay_passes / len(candidate_unique) if len(candidate_unique) else None
         ),
-        "first_position_counts": {key: int(value) for key, value in counts.items()},
-        "models_represented": int(valid["model_id"].nunique()) if n_blocks else 0,
-        "model_ids": sorted(valid["model_id"].astype(str).unique().tolist()),
+        "first_position_counts": {
+            key: int(value) for key, value in collection_counts.items()
+        },
+        "confirmatory_prefix_counts": {
+            key: int(value) for key, value in analysis_counts.items()
+        },
+        "confirmatory_prefix_blocks": n_blocks if release_ready else 0,
+        "confirmatory_cutoff": confirmatory_cutoff,
+        "outcomes_released": release_ready,
+        "models_represented": (
+            int(collection_valid["model_id"].nunique()) if len(collection_valid) else 0
+        ),
+        "model_ids": (
+            sorted(collection_valid["model_id"].astype(str).unique().tolist())
+            if len(collection_valid) and "model_id" in collection_valid
+            else []
+        ),
         "min_first_position_per_policy": min_count,
         "target_per_policy": MIN_FIRST_POSITION_PER_POLICY,
         "randomization_draws": simulations,
         "primary_multiplicity": "Holm adjustment over three one-sided default-greater contrasts",
         "evidence_status": (
             "randomized_first_position_ready"
-            if min_count >= MIN_FIRST_POSITION_PER_POLICY
+            if release_ready
             else "randomized_first_position_power_gated"
         ),
         "identification": (
@@ -631,6 +687,31 @@ def randomized_first_position_analysis(
             "later-position crossover comparisons require carryover controls."
         ),
     }
+    if not release_ready:
+        for column in (
+            "successes",
+            "success_rate",
+            "success_ci_low",
+            "success_ci_high",
+            "ht_success_mean",
+            "rate_429",
+            "spend_observed",
+            "spend_missing",
+            "mean_observed_spend_usd",
+        ):
+            panel[column] = np.nan
+        for column in (
+            "successes",
+            "success_rate",
+            "ht_success_mean_within_model",
+            "rate_429",
+            "spend_missing",
+        ):
+            if column in model_panel:
+                model_panel[column] = np.nan
+        for column in contrasts.columns:
+            if column not in {"comparison", "n_blocks", "default_n", "pinned_n"}:
+                contrasts[column] = np.nan
     return panel, model_panel, contrasts, audit
 
 

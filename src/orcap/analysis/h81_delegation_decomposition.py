@@ -14,7 +14,7 @@ from statsmodels.stats.proportion import confint_proportions_2indep, proportion_
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
-from .h80_matched_quote_firmness import holm_adjust
+from .h80_matched_quote_firmness import first_balanced_prefix, holm_adjust
 
 STUDY_ID = "openrouter-fallback-selection-decomposition-v1"
 POLICIES = (
@@ -155,6 +155,10 @@ def analyze(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     attempts = prepare_attempts(frame)
     first, audit = first_position_sample(attempts)
+    collection_first = first.copy()
+    first, release_ready, confirmatory_cutoff = first_balanced_prefix(
+        collection_first, POLICIES, MIN_FIRST_POSITION_PER_POLICY
+    )
     n_blocks = len(first)
     panel_rows = []
     for policy in POLICIES:
@@ -322,16 +326,34 @@ def analyze(
         contrasts.loc[primary_mask, "randomization_p_greater"].tolist()
     )
 
-    counts = panel.set_index("policy")["first_position_attempts"].reindex(POLICIES, fill_value=0)
-    min_count = int(counts.min())
+    analysis_counts = (
+        panel.set_index("policy")["first_position_attempts"].reindex(POLICIES, fill_value=0)
+    )
+    collection_counts = (
+        collection_first["policy"].value_counts().reindex(POLICIES, fill_value=0)
+        if len(collection_first)
+        else pd.Series(0, index=POLICIES, dtype=int)
+    )
     audit.update(
         {
             "study_id": STUDY_ID,
-            "first_position_counts": {key: int(value) for key, value in counts.items()},
-            "models_represented": int(first["model_id"].nunique()) if n_blocks else 0,
+            "first_position_counts": {
+                key: int(value) for key, value in collection_counts.items()
+            },
+            "confirmatory_prefix_counts": {
+                key: int(value) for key, value in analysis_counts.items()
+            },
+            "confirmatory_prefix_blocks": n_blocks if release_ready else 0,
+            "confirmatory_cutoff": confirmatory_cutoff,
+            "outcomes_released": release_ready,
+            "models_represented": (
+                int(collection_first["model_id"].nunique())
+                if len(collection_first)
+                else 0
+            ),
             "model_ids": (
-                sorted(first["model_id"].astype(str).unique().tolist())
-                if n_blocks
+                sorted(collection_first["model_id"].astype(str).unique().tolist())
+                if len(collection_first)
                 else []
             ),
             "normalized_order_entropy": _order_entropy(attempts),
@@ -339,7 +361,7 @@ def analyze(
             "randomization_draws": simulations,
             "evidence_status": (
                 "randomized_decomposition_ready"
-                if min_count >= MIN_FIRST_POSITION_PER_POLICY
+                if release_ready
                 else "randomized_decomposition_power_gated"
             ),
             "claim_boundary": (
@@ -350,6 +372,24 @@ def analyze(
             ),
         }
     )
+    if not release_ready:
+        for column in panel.columns:
+            if column not in {"policy", "first_position_attempts"}:
+                panel[column] = np.nan
+        for column in model_panel.columns:
+            if column not in {"model_id", "policy", "model_blocks", "attempts"}:
+                model_panel[column] = np.nan
+        for column in contrasts.columns:
+            if column not in {
+                "estimand",
+                "positive_policy",
+                "negative_policy",
+                "primary",
+                "n_blocks",
+                "positive_n",
+                "negative_n",
+            }:
+                contrasts[column] = np.nan
     return panel, model_panel, contrasts, audit
 
 

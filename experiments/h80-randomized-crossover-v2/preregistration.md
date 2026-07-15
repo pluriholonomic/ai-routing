@@ -84,3 +84,14 @@ above. It does not observe other users' order flow, provider intent, private
 router scores, or literal front-running. A rejection of equal success measures
 an execution-firmness difference between delegated and pinned routing; it is
 not by itself evidence of strategic quote manipulation.
+
+## Implementation note after launch
+
+On 2026-07-15, after eight valid blocks but before any arm approached the
+40-observation gate, the analyzer was amended to blind all outcome estimates
+while power-gated and to freeze the earliest chronological prefix satisfying
+the prespecified balance rule. This changes no treatment, estimand, exclusion,
+multiplicity family, or stopping threshold. Outcomes from the first four blocks
+had been inspected as a collector smoke test before blinding; no treatment or
+stopping decision was changed in response to their direction. The seed replay
+and arm-count audit remains visible before the gate.

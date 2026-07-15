@@ -9,6 +9,14 @@
     "price_only_no_fallback": 0,
     "price_order_fallback": 0
   },
+  "confirmatory_prefix_counts": {
+    "delegated_default": 0,
+    "price_only_no_fallback": 0,
+    "price_order_fallback": 0
+  },
+  "confirmatory_prefix_blocks": 0,
+  "confirmatory_cutoff": null,
+  "outcomes_released": false,
   "models_represented": 0,
   "model_ids": [],
   "normalized_order_entropy": null,

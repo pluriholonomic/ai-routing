@@ -18,13 +18,13 @@ def _seed_for_first(policy: str, start: int) -> int:
 def test_randomized_decomposition_recovers_both_policy_wedges():
     rows = []
     success_counts = {
-        "delegated_default": 10,
-        "price_order_fallback": 8,
-        "price_only_no_fallback": 5,
+        "delegated_default": 40,
+        "price_order_fallback": 32,
+        "price_only_no_fallback": 20,
     }
     block_number = 0
     for policy in POLICIES:
-        for within_arm in range(10):
+        for within_arm in range(40):
             seed = _seed_for_first(policy, 1000 + block_number * 10_000)
             success = within_arm < success_counts[policy]
             metadata = {
@@ -65,7 +65,9 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert abs(indexed.loc["total_delegation", "success_difference_ht"] - 0.5) < 1e-12
     assert indexed.loc[["fallback_option", "hidden_selection"], "holm_p_greater"].notna().all()
     assert pd.isna(indexed.loc["total_delegation", "holm_p_greater"])
-    assert panel["first_position_attempts"].eq(10).all()
+    assert panel["first_position_attempts"].eq(40).all()
     assert len(model_panel) == 6
     assert summary["assignment_replay_rate"] == 1.0
-    assert summary["evidence_status"] == "randomized_decomposition_power_gated"
+    assert summary["outcomes_released"] is True
+    assert summary["confirmatory_prefix_blocks"] == 120
+    assert summary["evidence_status"] == "randomized_decomposition_ready"

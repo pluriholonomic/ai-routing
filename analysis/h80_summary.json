@@ -81,6 +81,15 @@
       "pinned_second": 0,
       "pinned_random": 0
     },
+    "confirmatory_prefix_counts": {
+      "openrouter_default": 0,
+      "pinned_cheapest": 0,
+      "pinned_second": 0,
+      "pinned_random": 0
+    },
+    "confirmatory_prefix_blocks": 0,
+    "confirmatory_cutoff": null,
+    "outcomes_released": false,
     "models_represented": 0,
     "model_ids": [],
     "min_first_position_per_policy": 0,

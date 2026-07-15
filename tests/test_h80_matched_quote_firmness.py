@@ -163,7 +163,7 @@ def test_holm_adjust_preserves_missing_values():
 
 def test_randomized_first_position_emits_ipw_model_panel_and_gate():
     rows = []
-    for block_number in range(16):
+    for block_number in range(160):
         policy = POLICIES[block_number % len(POLICIES)]
         model_id = f"model/{block_number % 2}"
         rows.append(
@@ -192,4 +192,33 @@ def test_randomized_first_position_emits_ipw_model_panel_and_gate():
     assert contrasts["holm_p_greater"].notna().all()
     assert audit["assignment_replay_rate"] == 1.0
     assert audit["models_represented"] == 2
-    assert audit["evidence_status"] == "randomized_first_position_power_gated"
+    assert audit["outcomes_released"] is True
+    assert audit["confirmatory_prefix_blocks"] == 160
+    assert audit["evidence_status"] == "randomized_first_position_ready"
+
+
+def test_randomized_first_position_blinds_outcomes_before_gate():
+    rows = []
+    for block_number, policy in enumerate(POLICIES):
+        rows.append(
+            {
+                "block_id": f"blind-{block_number}",
+                "block_source": "explicit_assignment",
+                "study_id": "openrouter-routing-crossover-v2",
+                "assignment_verified": True,
+                "policy_order": 0,
+                "randomized_order": True,
+                "policy": policy,
+                "model_id": "model/a",
+                "success": True,
+                "rejected_429": False,
+                "observed_spend_usd": 0.000004,
+                "assignment_probability_first": 0.25,
+            }
+        )
+    panel, _, contrasts, audit = randomized_first_position_analysis(
+        pd.DataFrame(rows), simulations=100
+    )
+    assert audit["outcomes_released"] is False
+    assert panel["success_rate"].isna().all()
+    assert contrasts["randomization_p_greater"].isna().all()
