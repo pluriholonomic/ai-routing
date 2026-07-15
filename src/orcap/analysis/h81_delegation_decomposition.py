@@ -79,9 +79,12 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
             out[key] = pd.Series(values, index=out.index)
     out["policy_order"] = pd.to_numeric(out["policy_order"], errors="coerce")
     out["success"] = out["outcome"].astype(str).eq("succeeded")
-    out["rejected_429"] = (~out["success"]) & out.get(
-        "retry_reason", pd.Series("", index=out.index)
-    ).fillna("").astype(str).str.contains("429")
+    retry_reason = out.get(
+        "retry_reason", pd.Series("", index=out.index, dtype="string")
+    ).astype("string")
+    out["rejected_429"] = (~out["success"]) & retry_reason.fillna("").str.contains(
+        "429"
+    )
     cost = pd.to_numeric(out.get("cost_usd"), errors="coerce")
     out["observed_spend_usd"] = cost.where(out["success"], 0.0)
     return out

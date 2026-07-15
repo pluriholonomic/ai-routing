@@ -66,9 +66,12 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
             )
             block_number += 1
 
-    panel, model_panel, contrasts, summary = analyze(
-        pd.DataFrame(rows), simulations=5_000
-    )
+    frame = pd.DataFrame(rows)
+    # An all-null Parquet field may round-trip as nullable integer rather than
+    # object/string.  The production analyzer must normalize that schema before
+    # applying text predicates.
+    frame["retry_reason"] = pd.Series(pd.NA, index=frame.index, dtype="Int32")
+    panel, model_panel, contrasts, summary = analyze(frame, simulations=5_000)
     indexed = contrasts.set_index("estimand")
     assert abs(indexed.loc["fallback_option", "success_difference_hajek"] - 0.3) < 1e-12
     assert abs(indexed.loc["hidden_selection", "success_difference_hajek"] - 0.2) < 1e-12
