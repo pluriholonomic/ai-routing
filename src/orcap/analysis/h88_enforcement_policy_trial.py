@@ -112,6 +112,47 @@ def plot_released(result: dict[str, Any], contrasts: pd.DataFrame, out_dir: Path
     plt.close(fig)
 
 
+def plot_support(rows: pd.DataFrame, out_dir: Path) -> None:
+    """Render only public candidate state and assignment support."""
+    eligible = rows[rows.get("eligible_pair", False).fillna(False).astype(bool)].copy()
+    if eligible.empty:
+        return
+    colors = {
+        "enforcement_safe": "#4c956c",
+        "enforcement_risky": "#c14953",
+        "openrouter_default": "#33658a",
+    }
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.2))
+    for policy in POLICIES:
+        arm = eligible[eligible["assignment"].eq(policy)]
+        axes[0].scatter(
+            arm["price_ratio"],
+            arm["enforcement_stress_gap"],
+            label=policy.replace("_", " "),
+            color=colors[policy],
+            s=48,
+        )
+    axes[0].axvline(1.25, color="black", linestyle="--", linewidth=0.8)
+    axes[0].set_xlabel("Higher / lower completion price")
+    axes[0].set_ylabel("Public enforcement-stress gap")
+    axes[0].set_title("Eligible H88 candidate pairs")
+    axes[0].legend(frameon=False, fontsize=8)
+    counts = eligible["assignment"].value_counts().reindex(POLICIES, fill_value=0)
+    axes[1].bar(
+        range(len(counts)),
+        counts,
+        color=[colors[policy] for policy in POLICIES],
+    )
+    axes[1].set_xticks(range(len(counts)), ["safe", "risky", "default"])
+    axes[1].set_ylabel("Assignments sent")
+    axes[1].set_title("Outcome-masked enrollment")
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / "h88_enforcement_policy_support.png", dpi=180)
+    fig.savefig(out_dir / "h88_enforcement_policy_support.pdf")
+    plt.close(fig)
+
+
 def analyze(
     candidates: pd.DataFrame,
     h88_attempts: pd.DataFrame,
@@ -183,11 +224,11 @@ def analyze(
                 "treatment_compliant",
                 "valid_assignment",
             ]
-            save(
-                support_frame[[column for column in support_columns if column in support_frame]],
-                out_dir,
-                "h88_assignment_support",
-            )
+            support_export = support_frame[
+                [column for column in support_columns if column in support_frame]
+            ]
+            save(support_export, out_dir, "h88_assignment_support")
+            plot_support(support_export, out_dir)
         if cutoff is not None:
             released = ledger[
                 ledger["valid_assignment"].astype(bool) & ledger["candidate_ts"].le(cutoff)

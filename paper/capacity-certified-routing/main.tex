@@ -70,6 +70,12 @@ placebo. Quote age is null and stale-quote features do not improve temporal
 prediction; cases are instead relatively expensive, smaller-capacity, and at
 higher displayed utilization. This rejects the specified stale-liquidity
 channel in the discovery panel but is not a causal capacity estimate.
+An exact official-ID bridge recovers 281 legacy request-to-quote matches but
+zero capacity-complete public states, and a prospective capacity-policy run
+finds no eligible pair because the public capacity fields are null. A
+separately preregistered enforcement-stress trial does enroll: its first remote
+run randomizes eight of eight hot-model blocks across low-stress, high-stress,
+and default routing. Those arm outcomes remain masked.
 In a fixed-order pilot of 96
 matched four-policy blocks, default routing succeeded 17.7 percentage points
 more often than pinning the cheapest displayed quote (hour-cluster 95\% CI
@@ -128,7 +134,10 @@ This paper isolates that distinction. It makes eight contributions.
   null and adding stale-quote state does not improve temporal prediction.
   Smaller displayed capacity and higher utilization are more informative,
   favoring a thin-capacity or queueing interpretation over a stale-liquidity
-  interpretation in this discovery panel.
+  interpretation in this discovery panel. An exact request-to-public-state
+  bridge then documents zero capacity-complete matches. We preserve that
+  failed capacity trial and launch a separately preregistered, outcome-masked
+  randomized enforcement-stress policy trial.
 \end{enumerate}
 
 The point is deliberately conditional. A certified capacity cap is an
@@ -706,6 +715,8 @@ Posted quote $p_i$ & public quote for a fixed workload & score input and quote h
 Public performance & exact-match uptime and p90 fields are partial & coverage and missingness audit only \\
 Router enforcement & 503,321 endpoint snapshots; 231 complete isolated high onsets & descriptive capacity-event calibration only \\
 Pre-onset quote state & 1,227 same-model next-onset choice sets; 1,144 backward placebos & predictive mechanism rejection and diagnostics only \\
+Execution-state bridge & 281 exact legacy request/quote matches; zero capacity-complete states & public-capacity support failure only \\
+Randomized enforcement policy & first support run: 8 eligible hot-model blocks; outcomes masked & feasibility and assignment support only \\
 Simulated share $\hat s_i$ & documented public price proxy & mechanical comparative static only \\
 Selection / retries & 716 legacy attempts plus 98 outcome-gated prospective rows & account/workload policy calibration only \\
 Capacity / cost / value & no controlled commitment panel & theorem primitives and protocol fields only \\
@@ -874,6 +885,67 @@ applies the unchanged directional hypothesis to observations after 2026-07-15
 12:00 UTC, masks all outcomes until 28 complete days and its sample-only gates,
 and forces publication of the first eligible cut regardless of sign.
 
+\subsection{Capacity-state execution bridge and enforcement-policy trial}
+
+The next preregistered step asks whether public capacity state predicts the
+realized success of an owned, pinned request. H86 attempts an exact backward
+join from 348 legacy pinned attempts to the contemporaneous public model and
+provider state. It produces zero matches because the request log retains the
+API model ID while the public operational panel uses a versioned canonical
+slug. We do not repair that join after inspecting outcomes.
+
+H86b separately freezes the official historical
+\texttt{models\_snapshots.id}-to-\texttt{canonical\_slug} mapping, requires a
+pre-request mapping no older than seven days, and preserves exact provider
+names. It maps all 348 attempts and recovers 281 exact backward quote/provider
+states; 45 lack an exact provider and 22 have no recent official model map.
+However, all 281 matched states lack a public capacity ceiling and recent peak,
+so no capacity-risk pair or outcome contrast exists. The prospective H87
+capacity-policy collector confirms the support failure: its first eight-model
+run sends zero requests, and an outcome-free top-40 census finds no model with
+two capacity-complete providers. H86b and H87 are missing-treatment-support
+results, not zero effects.
+
+H88 is a new trial, committed before its first request. It uses the public
+five-minute counts that remain populated and defines
+\[
+ e_{it}=\frac{\text{rate-limited}_{it}+1}
+ {\text{success}_{it}+\text{rate-limited}_{it}+2}.
+\]
+Within each model-run, it requires at least ten public attempts per provider,
+excludes deranked providers, and selects the largest low/high $e_{it}$ gap
+among provider pairs whose completion prices differ by at most 25\%. It then
+randomizes exactly one first-and-only request among a pinned low-stress
+provider, a pinned high-stress provider, and default routing. The co-primary
+intention-to-treat contrasts are low-minus-high success and default-minus-low
+success. The first release is the earliest prefix with 28 complete days, 150
+valid assignments per arm, ten models, twenty candidate providers, at most
+20\% requested-provider dominance, at least 90\% pinned compliance, exact seed
+replay, and no cross-study request within five minutes.
+
+The first remote support run enrolls all eight evaluated models and sends eight
+requests: one low-stress, three high-stress, and four default assignments.
+Twelve distinct providers enter the candidate pairs. The median stress gap is
+0.541 while the median high/low price ratio is 1.000. The isolated artifact
+passes seed replay and pinned compliance, but provider dominance is 25\% and
+all duration, arm-count, model, and provider-diversity gates remain open. No
+arm success, rejection, latency, selected-provider, or cost result is released.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/h88_enforcement_policy_support.pdf}
+\caption{Outcome-free H88 enrollment support. Points show the public
+safe/risky candidate-pair stress gap and completion-price ratio, colored by the
+randomized single-request assignment. The dashed line is the frozen 1.25 price
+caliper. The bars report assignments only; no arm outcome is displayed.}
+\label{fig:h88support}
+\end{figure}
+
+H88 can identify an account-level policy effect for acting on a public router
+rejection state. It cannot identify physical capacity, provider cost or
+intent, literal front-running, other-user flow, or the welfare effect of the
+capacity-certified mechanism.
+
 \subsection{Randomized micro-probe protocol}
 
 The fixed-order pilot sent four near-simultaneous one-token requests per hot
@@ -1000,10 +1072,12 @@ prices alone do not supply a delivery guarantee, and the value of hidden
 eligibility requires a prospective experiment rather than a retrospective
 causal label. The stale-quote screen further rejects a simple adverse-selection
 story in which cheap old quotes are picked off; smaller capacity and higher
-utilization predict the next event, but those public fields are not randomized
-commitments. The running H80/H81 randomizations and outcome-masked H83/H85
-future holdouts make the unresolved claims falsifiable without pooling
-discovery and confirmation data.
+utilization predict the next event, but the literal capacity-policy experiment
+has no current public-field support. The separately frozen H88 trial can test
+an observable admission-risk policy without relabeling that missing capacity
+state. The running H80/H81/H88 randomizations and outcome-masked H83/H85 future
+holdouts make the unresolved claims falsifiable without pooling discovery and
+confirmation data.
 
 \bibliographystyle{plain}
 \bibliography{../references}

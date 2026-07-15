@@ -105,6 +105,7 @@ def test_h88_masks_all_outcomes_before_sample_gate(tmp_path):
     assert summary["outcomes_released"] is False
     assert "released_results" not in summary
     assert (tmp_path / "h88_assignment_support.parquet").exists()
+    assert (tmp_path / "h88_enforcement_policy_support.pdf").exists()
     assert not (tmp_path / "h88_released_trial_rows.parquet").exists()
     assert not (tmp_path / "h88_enforcement_policy_trial.pdf").exists()
     support = pd.read_parquet(tmp_path / "h88_assignment_support.parquet")
