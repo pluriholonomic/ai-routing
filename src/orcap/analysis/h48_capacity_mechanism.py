@@ -14,6 +14,7 @@ import pandas as pd
 
 from ..mechanism import own_price_share_elasticity
 from . import data
+from .blinding import sql_outcome_blind_filter
 from .common import DEFAULT_OUT, save, save_json
 
 ETA = 2.0
@@ -72,6 +73,7 @@ def _owned_attempt_coverage() -> dict:
                    count(selected_provider) as selected_provider_observed,
                    count(cost_usd) as cost_observed
             from read_parquet('{data.table_glob("router_route_attempts")}')
+            where {sql_outcome_blind_filter()}
             """
         ).fetchone()
         return {
@@ -262,6 +264,7 @@ def _matched_attempt_commitment_coverage() -> dict:
                        outcome, cost_usd
                 from read_parquet('{data.table_glob("router_route_attempts")}')
                 where selected_provider is not null
+                  and {sql_outcome_blind_filter()}
             ), commitments as (
                 select study_id, model_id, provider,
                        try_cast(epoch_start as timestamptz) as epoch_start,
@@ -386,6 +389,7 @@ def _triple_matched_attempt_coverage() -> dict:
                        outcome, cost_usd
                 from read_parquet('{data.table_glob("router_route_attempts")}')
                 where selected_provider is not null
+                  and {sql_outcome_blind_filter()}
             ), commitments as (
                 select *, row_number() over (
                     partition by commitment_id order by run_ts desc

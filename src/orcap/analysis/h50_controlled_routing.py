@@ -15,6 +15,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import data
+from .blinding import exclude_outcome_blinded
 from .common import DEFAULT_OUT, save, save_json
 
 EPOCH_COLUMNS = [
@@ -513,6 +514,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     manifests = _load("router_study_manifests")
     assignments = _load("router_study_assignments")
     attempts = _load("router_route_attempts")
+    attempts, _ = exclude_outcome_blinded(attempts)
     capacity_outcomes = _load("router_capacity_epoch_outcomes")
     epoch_panel, audit = epoch_outcomes(manifests, assignments, attempts, capacity_outcomes)
     effects = treatment_effects(manifests, epoch_panel)

@@ -276,6 +276,8 @@ def first_release_cutoff(
     ledger: pd.DataFrame,
     requirements: dict[str, Any] = DEFAULT_RELEASE_REQUIREMENTS,
 ) -> pd.Timestamp | None:
+    if ledger.empty or "valid_assignment" not in ledger:
+        return None
     valid = ledger[ledger["valid_assignment"].astype(bool)].sort_values("candidate_ts")
     if valid.empty:
         return None

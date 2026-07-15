@@ -108,6 +108,15 @@ def test_h87_masks_all_outcomes_before_sample_gate(tmp_path):
     assert "success" not in support.columns
 
 
+def test_h87_empty_capture_fails_closed_without_releasing_outcomes(tmp_path):
+    summary = analyze(pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), tmp_path)
+
+    assert summary["outcomes_released"] is False
+    assert summary["support"]["candidate_rows"] == 0
+    assert "released_results" not in summary
+    assert (tmp_path / "h87_assignment_support.parquet").exists()
+
+
 def test_h87_prepare_candidates_tolerates_unassigned_support_rows():
     row = _candidate(0, "capacity_safe", pd.Timestamp("2026-07-16T00:00:00Z"))
     row.update(

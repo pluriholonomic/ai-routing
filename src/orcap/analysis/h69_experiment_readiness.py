@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import data
+from .blinding import exclude_outcome_blinded
 from .common import DEFAULT_OUT, save, save_json
 from .h67_quote_pulse import (
     annotate_surface,
@@ -80,6 +81,7 @@ def quote_metrics(rows: pd.DataFrame) -> dict:
 
 def telemetry_metrics() -> dict:
     attempts = _load_table("router_route_attempts")
+    attempts, _ = exclude_outcome_blinded(attempts)
     decisions = _load_table("router_decision_events")
     aggregates = _load_table("router_flow_aggregates")
     selected = _nonempty_count(attempts, "selected_provider")

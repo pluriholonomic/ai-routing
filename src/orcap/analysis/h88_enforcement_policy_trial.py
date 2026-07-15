@@ -114,7 +114,9 @@ def plot_released(result: dict[str, Any], contrasts: pd.DataFrame, out_dir: Path
 
 def plot_support(rows: pd.DataFrame, out_dir: Path) -> None:
     """Render only public candidate state and assignment support."""
-    eligible = rows[rows.get("eligible_pair", False).fillna(False).astype(bool)].copy()
+    if rows.empty or "eligible_pair" not in rows:
+        return
+    eligible = rows[rows["eligible_pair"].fillna(False).astype(bool)].copy()
     if eligible.empty:
         return
     colors = {

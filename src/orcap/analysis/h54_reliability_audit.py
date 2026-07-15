@@ -14,6 +14,7 @@ import pandas as pd
 
 from ..reliability import exact_one_sided_binomial_lower_bound, meets_reliability_threshold
 from . import data
+from .blinding import exclude_outcome_blinded
 from .common import DEFAULT_OUT, save, save_json
 
 DESIGN_COLUMNS = [
@@ -348,6 +349,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     manifests = _load("router_reliability_audit_manifests")
     assignments = _load("router_reliability_audit_assignments")
     attempts = _load("router_route_attempts")
+    attempts, _ = exclude_outcome_blinded(attempts)
     design = design_audit(manifests, assignments)
     panel, attempt_audit = _attempt_audit(assignments, attempts, design)
     certificate_rows = certificates(manifests, design, panel)

@@ -2,7 +2,11 @@ import pandas as pd
 
 from orcap.analysis import wf2_jrw_steering as wf2
 from orcap.analysis import wf7_pinned_asymmetry as wf7
-from orcap.analysis.blinding import exclude_outcome_blinded
+from orcap.analysis.blinding import OUTCOME_BLINDED_STUDY_IDS, exclude_outcome_blinded
+from orcap.capture_capacity_policy_probes import STUDY_ID as H87_STUDY_ID
+from orcap.capture_decomposition_probes import STUDY_ID as H81_STUDY_ID
+from orcap.capture_enforcement_policy_probes import STUDY_ID as H88_STUDY_ID
+from orcap.capture_probes import STUDY_ID as H80_STUDY_ID
 
 
 class _FrameResult:
@@ -27,7 +31,7 @@ def _attempt(policy, study_id, event):
     }
 
 
-def test_shared_filter_excludes_both_power_gated_studies():
+def test_shared_filter_excludes_every_power_gated_study():
     frame = pd.DataFrame(
         [
             _attempt("legacy", "openrouter-default-probes-v1", "legacy"),
@@ -37,13 +41,24 @@ def test_shared_filter_excludes_both_power_gated_studies():
                 "openrouter-fallback-selection-decomposition-v1",
                 "h81",
             ),
+            _attempt("capacity_safe", "openrouter-capacity-policy-v1", "h87"),
+            _attempt("enforcement_safe", "openrouter-enforcement-policy-v1", "h88"),
         ]
     )
 
     filtered, excluded = exclude_outcome_blinded(frame)
 
-    assert excluded == 2
+    assert excluded == 4
     assert filtered["event_id"].tolist() == ["legacy"]
+
+
+def test_shared_contract_covers_each_prospective_collector():
+    assert OUTCOME_BLINDED_STUDY_IDS == {
+        H80_STUDY_ID,
+        H81_STUDY_ID,
+        H87_STUDY_ID,
+        H88_STUDY_ID,
+    }
 
 
 def test_wf2_gate_ignores_prospective_default_outcomes(monkeypatch, tmp_path):

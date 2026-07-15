@@ -114,6 +114,16 @@ def test_h88_masks_all_outcomes_before_sample_gate(tmp_path):
     assert support.loc[0, "assignment"] == "enforcement_safe"
 
 
+def test_h88_empty_capture_fails_closed_without_releasing_outcomes(tmp_path):
+    summary = analyze(pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), tmp_path)
+
+    assert summary["outcomes_released"] is False
+    assert summary["support"]["candidate_rows"] == 0
+    assert "released_results" not in summary
+    assert (tmp_path / "h88_assignment_support.parquet").exists()
+    assert not (tmp_path / "h88_enforcement_policy_support.pdf").exists()
+
+
 def test_h88_releases_earliest_supported_randomized_effect(tmp_path):
     candidates, attempts = _panel()
     requirements = {

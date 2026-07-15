@@ -1,9 +1,11 @@
 import pandas as pd
 
+from orcap.analysis import h69_experiment_readiness as h69
 from orcap.analysis.h69_experiment_readiness import (
     _nonempty_count,
     quote_metrics,
     readiness_rows,
+    telemetry_metrics,
 )
 
 
@@ -111,3 +113,31 @@ def test_h69_nonempty_count_normalizes_nullable_integer_identifiers():
     rows = pd.DataFrame({"quote_snapshot_id": pd.Series([1, None, 2], dtype="Int32")})
 
     assert _nonempty_count(rows, "quote_snapshot_id") == 2
+
+
+def test_h69_readiness_counts_exclude_gated_study_outcomes(monkeypatch):
+    attempts = pd.DataFrame(
+        [
+            {
+                "study_id": "openrouter-default-probes-v1",
+                "selected_provider": "provider-a",
+                "quote_snapshot_id": "quote-a",
+            },
+            {
+                "study_id": "openrouter-enforcement-policy-v1",
+                "selected_provider": "provider-b",
+                "quote_snapshot_id": "quote-b",
+            },
+        ]
+    )
+
+    monkeypatch.setattr(
+        h69,
+        "_load_table",
+        lambda table: attempts if table == "router_route_attempts" else pd.DataFrame(),
+    )
+
+    metrics = telemetry_metrics()
+
+    assert metrics["selected_attempts"] == 1
+    assert metrics["quote_linked_attempts"] == 1

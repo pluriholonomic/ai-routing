@@ -292,3 +292,67 @@ def test_h48_does_not_cross_match_attempts_and_outcomes_across_epochs(tmp_path, 
     assert h48._matched_attempt_commitment_coverage()["matched_attempts"] == 1
     assert h48._matched_commitment_outcome_coverage()["matched_outcomes"] == 1
     assert h48._triple_matched_attempt_coverage()["matched_attempts"] == 0
+
+
+def test_h48_coverage_excludes_power_gated_study_outcomes(tmp_path, monkeypatch):
+    study_id = "openrouter-enforcement-policy-v1"
+    write_commitments(
+        [
+            {
+                "commitment_id": "gated-capacity",
+                "observed_at": "2026-07-15T00:00:00Z",
+                "study_id": study_id,
+                "provider": "provider-a",
+                "model_id": "model-a",
+                "epoch_start": "2026-07-15T00:00:00Z",
+                "epoch_end": "2026-07-15T01:00:00Z",
+                "committed_requests": 1,
+                "verification_method": "signed_export",
+            }
+        ],
+        curated_dir=tmp_path,
+    )
+    write_outcomes(
+        [
+            {
+                "outcome_id": "gated-outcome",
+                "observed_at": "2026-07-15T01:00:00Z",
+                "study_id": study_id,
+                "provider": "provider-a",
+                "model_id": "model-a",
+                "epoch_start": "2026-07-15T00:00:00Z",
+                "epoch_end": "2026-07-15T01:00:00Z",
+                "allocated_requests": 1,
+                "served_requests": 1,
+                "realized_cost_usd": 0.001,
+            }
+        ],
+        curated_dir=tmp_path,
+    )
+    write_attempts(
+        [
+            {
+                "event_id": "gated-attempt",
+                "observed_at": "2026-07-15T00:30:00Z",
+                "router": "openrouter",
+                "source": "openrouter_generation",
+                "study_id": study_id,
+                "model_id": "model-a",
+                "selected_provider": "provider-a",
+                "outcome": "succeeded",
+                "cost_usd": 0.001,
+            }
+        ],
+        curated_dir=tmp_path,
+    )
+
+    def table_glob(name):
+        return str(tmp_path / name / "*" / "*.parquet")
+
+    connection = duckdb.connect()
+    monkeypatch.setattr(h48.data, "table_glob", table_glob)
+    monkeypatch.setattr(h48.data, "q", connection.sql)
+
+    assert h48._owned_attempt_coverage()["attempts"] == 0
+    assert h48._matched_attempt_commitment_coverage()["matched_attempts"] == 0
+    assert h48._triple_matched_attempt_coverage()["matched_attempts"] == 0
