@@ -1,4 +1,5 @@
 import json
+import random
 
 import pandas as pd
 
@@ -15,6 +16,7 @@ def _row(block, policy, minute, success, *, explicit=False, position=None):
     if explicit:
         metadata = {
             "block_id": block,
+            "block_policy_count": 4,
             "policy_order": position,
             "randomized_order": True,
             "assignment_probability_first": 0.25,
@@ -88,6 +90,27 @@ def test_incomplete_explicit_block_retains_auditable_first_position_itt():
     assert len(blocks) == 1
     assert not bool(blocks["block_complete"].iloc[0])
     assert bool(blocks["assignment_verified"].iloc[0])
+
+
+def test_assignment_replay_preserves_unsigned_64_bit_seed_bits():
+    seed = 16_232_024_600_027_900_149
+    n_quoted = 17
+    rng = random.Random(seed)
+    random_rank = rng.choice(range(2, n_quoted))
+    order = list(POLICIES)
+    rng.shuffle(order)
+    rows = []
+    for position, policy in enumerate(order):
+        row = _row("large-seed", policy, position, True, explicit=True, position=position)
+        metadata = json.loads(row["metadata_json"])
+        metadata["block_seed"] = seed
+        metadata["n_quoted"] = n_quoted
+        if policy == "pinned_random":
+            metadata["quoted_rank"] = random_rank
+        row["metadata_json"] = json.dumps(metadata)
+        rows.append(row)
+    blocks = construct_probe_blocks(pd.DataFrame(rows))
+    assert blocks["assignment_verified"].all()
 
 
 def test_paired_contrast_recovers_success_gap_and_break_even_value():

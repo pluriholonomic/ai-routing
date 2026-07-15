@@ -81,7 +81,14 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
         "quoted_rank",
         "n_quoted",
     ):
-        out[key] = meta.map(lambda item, k=key: item.get(k))
+        values = [item.get(key) for item in meta]
+        # Seeds are unsigned 64-bit integers.  An ordinary pandas column with
+        # legacy nulls would coerce them to float and silently lose bits.
+        out[key] = pd.Series(
+            values,
+            index=out.index,
+            dtype="object" if key == "block_seed" else None,
+        )
     out["success"] = out["outcome"].astype(str).eq("succeeded")
     out["rejected_429"] = (~out["success"]) & out.get(
         "retry_reason", pd.Series("", index=out.index)
@@ -124,7 +131,10 @@ def _verify_assignment(block: pd.DataFrame) -> bool:
     try:
         seed = int(block["block_seed"].iloc[0])
         n_quoted = int(block["n_quoted"].dropna().iloc[0])
+        policy_count = int(block["block_policy_count"].dropna().iloc[0])
     except (IndexError, TypeError, ValueError):
+        return False
+    if policy_count != len(POLICIES) or n_quoted < 3:
         return False
     rng = random.Random(seed)
     expected_random_rank = rng.choice(range(2, n_quoted))
@@ -300,6 +310,7 @@ def paired_contrasts(blocks: pd.DataFrame, *, bootstrap: int = 5000) -> pd.DataF
                 "discordant_pinned_only_success": adverse,
                 "mcnemar_exact_p": p_exact,
                 "hour_cluster_signflip_p": cluster_p,
+                "n_observed_spend_pairs": int(len(spend_pair)),
                 "observed_spend_difference_usd": spend_diff,
                 "break_even_value_per_success_usd": float(threshold),
             }

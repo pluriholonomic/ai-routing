@@ -30,6 +30,7 @@
       "discordant_pinned_only_success": 1,
       "mcnemar_exact_p": 7.62939453125e-05,
       "hour_cluster_signflip_p": 0.0018599814001859982,
+      "n_observed_spend_pairs": 94,
       "observed_spend_difference_usd": 3.777202127659574e-06,
       "break_even_value_per_success_usd": 2.1330082603254065e-05
     },
@@ -46,6 +47,7 @@
       "discordant_pinned_only_success": 0,
       "mcnemar_exact_p": 1.862645149230957e-09,
       "hour_cluster_signflip_p": 9.99990000099999e-06,
+      "n_observed_spend_pairs": 95,
       "observed_spend_difference_usd": 6.873604210526316e-06,
       "break_even_value_per_success_usd": 2.1995533473684212e-05
     },
@@ -62,12 +64,14 @@
       "discordant_pinned_only_success": 2,
       "mcnemar_exact_p": 1.9431114196777344e-05,
       "hour_cluster_signflip_p": 9.99990000099999e-06,
+      "n_observed_spend_pairs": 93,
       "observed_spend_difference_usd": -1.7792473118279567e-06,
       "break_even_value_per_success_usd": -8.133701996927802e-06
     }
   ],
   "randomized_first_position": {
     "study_id": "openrouter-routing-crossover-v2",
+    "valid_position_zero_blocks": 0,
     "complete_randomized_blocks": 0,
     "first_position_counts": {
       "openrouter_default": 0,
