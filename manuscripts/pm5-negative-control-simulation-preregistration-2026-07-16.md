@@ -100,3 +100,30 @@ NC1 and the simulations can show that a restricted asynchronous-menu explanation
 is or is not rejected by a declared test. They cannot reveal private request
 order, literal front-running, provider intent, private rebates, or welfare loss.
 The H80 outcome mask and the earliest-30-date promotion gates remain unchanged.
+
+## RB1 addendum: exact cluster sign-flip robustness
+
+Added and committed after SIM1--SIM2 but before computing this statistic. This is
+a declared robustness check and cannot replace the model-cluster bootstrap
+primary. For both the full factor-1.25 panel and the own-menu-novel panel:
+
+1. Compute event residuals `Y_e-q_e` and sum them within model cluster.
+2. Enumerate every one of the `2^G` Rademacher sign assignments to the `G` cluster
+   sums; do not studentize, trim clusters, or recenter at the observed estimate.
+3. The one-sided exact p-value is the share of signed total sums weakly greater
+   than the observed total sum. Report the two-sided symmetric p-value as
+   secondary.
+
+The sign-flip test assumes cluster-level symmetry and is not design-based for the
+observational quote panel. It is included because percentile coverage in SIM1 was
+91.5% with only 18 clusters. Promotion rules remain unchanged regardless of the
+sign-flip result.
+
+## CAL1 addendum: empirical calibration disclosure
+
+Compare the actual frozen panel with the rho-zero SIM2 distribution on event
+count, exact-landing share, matched-menu probability, and matched-menu excess.
+Report the simulation 5th, median, and 95th percentiles. If the empirical value
+lies outside the simulation 5--95% interval for either probability, SIM2 must be
+described as a stress-test counterexample rather than an empirically calibrated
+data-generating process. No parameter may be retuned in this release.
