@@ -4,6 +4,7 @@ import pytest
 from orcap.analysis.pm5_tie_microstructure import (
     attach_global_price_menu_null,
     attach_historical_model_menu_null,
+    attach_same_provider_menu_control,
     author_anchor_randomization_audit,
     author_anchor_symmetry_panel,
     author_cluster_inference,
@@ -12,6 +13,7 @@ from orcap.analysis.pm5_tie_microstructure import (
     focality,
     isolated_quote_change_events,
     reference_price_landing_inference,
+    same_provider_control_inference,
     selected_tie_random_label_audit,
 )
 from orcap.analysis.pm9_author_anchor import is_author_provider
@@ -103,20 +105,20 @@ def _dynamic_quotes() -> pd.DataFrame:
     snapshots = {
         "2026-07-16T00:00:00Z": {
             "model/a": {"P1": 1.0, "P2": 2.0},
-            "model/b": {"P3": 2.0, "P4": 3.0},
+            "model/b": {"P1": 2.0, "P2": 2.5, "P4": 3.0},
         },
         "2026-07-16T00:05:00Z": {
             "model/a": {"P1": 2.0, "P2": 2.0},
-            "model/b": {"P3": 2.0, "P4": 3.0},
+            "model/b": {"P1": 2.0, "P2": 2.5, "P4": 3.0},
         },
         "2026-07-16T00:10:00Z": {
             "model/a": {"P1": 2.0, "P2": 3.0},
-            "model/b": {"P3": 2.0, "P4": 3.0},
+            "model/b": {"P1": 2.0, "P2": 2.5, "P4": 3.0},
         },
         # This revision is excluded by the 15-minute continuity requirement.
         "2026-07-16T01:00:00Z": {
             "model/a": {"P1": 4.0, "P2": 3.0},
-            "model/b": {"P3": 2.0, "P4": 3.0},
+            "model/b": {"P1": 2.0, "P2": 2.5, "P4": 3.0},
         },
     }
     for timestamp, models in snapshots.items():
@@ -142,7 +144,9 @@ def test_lagged_price_landing_uses_continuous_single_mover_events() -> None:
     panel = attach_global_price_menu_null(events, _dynamic_quotes(), band_factor=2)
     assert panel["global_menu_match_probability"].notna().all()
     assert panel["global_menu_pool_size"].min() >= 2
-    assert panel["global_menu_match_probability"].tolist() == pytest.approx([0.5, 0.5])
+    assert panel["global_menu_match_probability"].tolist() == pytest.approx(
+        [1 / 3, 1 / 3]
+    )
     inference = reference_price_landing_inference(panel)
     assert inference["n_events"] == 2
     assert inference["exact_lagged_rival_match_share"] == pytest.approx(0.5)
@@ -158,6 +162,19 @@ def test_lagged_price_landing_uses_continuous_single_mover_events() -> None:
     )
     historical_inference = reference_price_landing_inference(historical)
     assert historical_inference["n_historical_menu_comparable_events"] == 2
+
+    controlled = attach_same_provider_menu_control(
+        historical,
+        _dynamic_quotes(),
+        band_factor=2,
+    )
+    assert controlled["own_menu_exact"].tolist() == [1, 0]
+    control = same_provider_control_inference(controlled)
+    assert control["n_comparable_events"] == 2
+    assert control["n_own_menu_novel_events"] == 1
+    assert control["four_cell_counts"]["rival_1_own_1"] == 1
+    assert control["four_cell_counts"]["rival_0_own_0"] == 1
+    assert control["model_cluster_association"]["difference"] == pytest.approx(1)
 
 
 def test_author_focality_empty_panel_fails_closed() -> None:

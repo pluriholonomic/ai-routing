@@ -166,6 +166,9 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
                 "pm5",
             )
         landing = (pm5.get("reference_price_landing") or {}).get("primary") or {}
+        provider_control = (pm5.get("reference_price_landing") or {}).get(
+            "same_provider_across_model_control"
+        ) or {}
         landing_excess = landing.get("exact_minus_global_menu")
         historical_excess = landing.get("exact_minus_historical_menu")
         historical_text = (
@@ -176,13 +179,37 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         )
         if landing_excess is not None:
             supported = bool(landing_ci and landing_ci[0] > 0)
+            novel = provider_control.get("own_menu_novel_reference_landing") or {}
+            novel_ci = (novel.get("model_cluster_global_menu") or {}).get(
+                "cluster_bootstrap_ci95"
+            )
             add(
                 "Lagged rival-price landing exceeds a matched common-menu null",
                 "accumulating" if supported else "inconsistent",
                 f"exact share {landing.get('exact_lagged_rival_match_share'):.1%}; "
                 f"matched-menu excess {landing_excess:.1%}; model-cluster CI {landing_ci}; "
                 f"past-only same-model excess {historical_text}; "
+                f"own-menu-novel excess {novel.get('exact_minus_global_menu')}; "
+                f"novel CI {novel_ci}; "
                 f"n={landing.get('n_events')}",
+                "pm5",
+            )
+        association = provider_control.get("model_cluster_association") or {}
+        if association.get("difference") is not None:
+            add(
+                "Same-provider cross-model menu support explains lagged landings",
+                (
+                    "accumulating"
+                    if association.get("difference", 0) > 0
+                    and (association.get("cluster_bootstrap_ci95") or [None])[0]
+                    is not None
+                    and association["cluster_bootstrap_ci95"][0] > 0
+                    else "inconsistent"
+                ),
+                f"own-menu exact share {provider_control.get('own_menu_exact_share'):.1%}; "
+                f"landing-minus-nonlanding association {association.get('difference'):.1%}; "
+                f"model-cluster CI {association.get('cluster_bootstrap_ci95')}; "
+                f"comparable n={provider_control.get('n_comparable_events')}",
                 "pm5",
             )
     if pm6.get("by_initiator_sign"):

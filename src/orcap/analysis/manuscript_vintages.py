@@ -43,6 +43,7 @@ SIGN_METRICS = {
     "pm5_author_random_anchor_excess": "positive",
     "pm5_lagged_landing_global_menu_excess": "positive",
     "pm5_lagged_landing_historical_menu_excess": "positive",
+    "pm5_own_menu_novel_global_menu_excess": "positive",
 }
 
 
@@ -117,6 +118,13 @@ def precommitted_metrics(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
     landing_model = landing.get("model_cluster_global_menu") or {}
     landing_provider = landing.get("provider_cluster_global_menu") or {}
     landing_historical_model = landing.get("model_cluster_historical_menu") or {}
+    control = (pm5.get("reference_price_landing") or {}).get(
+        "same_provider_across_model_control"
+    ) or {}
+    control_association = control.get("model_cluster_association") or {}
+    novel = control.get("own_menu_novel_reference_landing") or {}
+    novel_model = novel.get("model_cluster_global_menu") or {}
+    novel_provider = novel.get("provider_cluster_global_menu") or {}
     active = sum(int(cadence.get(name, 0)) for name in ("intraday", "daily", "weekly", "episodic"))
     fast = int(cadence.get("intraday", 0)) + int(cadence.get("daily", 0))
     return {
@@ -196,6 +204,27 @@ def precommitted_metrics(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
         ),
         "pm5_lagged_landing_historical_model_ci95": _number_list(
             landing_historical_model.get("cluster_bootstrap_ci95")
+        ),
+        "pm5_own_menu_comparable_events": int(
+            control.get("n_comparable_events", 0)
+        ),
+        "pm5_own_menu_exact_share": _number(control.get("own_menu_exact_share")),
+        "pm5_own_menu_association": _number(control_association.get("difference")),
+        "pm5_own_menu_association_model_ci95": _number_list(
+            control_association.get("cluster_bootstrap_ci95")
+        ),
+        "pm5_own_menu_novel_events": int(control.get("n_own_menu_novel_events", 0)),
+        "pm5_own_menu_novel_global_menu_excess": _number(
+            novel.get("exact_minus_global_menu")
+        ),
+        "pm5_own_menu_novel_model_ci95": _number_list(
+            novel_model.get("cluster_bootstrap_ci95")
+        ),
+        "pm5_own_menu_novel_provider_ci95": _number_list(
+            novel_provider.get("cluster_bootstrap_ci95")
+        ),
+        "pm5_own_menu_novel_model_loo_range": _number_list(
+            novel_model.get("leave_one_cluster_out_range")
         ),
     }
 

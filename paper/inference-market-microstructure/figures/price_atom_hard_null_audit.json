@@ -80,6 +80,50 @@
     "largest_model_copy_share": 0.85,
     "downward_share_of_exact_landings": 0.8
   },
+  "same_provider_across_model_control": {
+    "comparable_events": 175,
+    "own_menu_exact_events": 12,
+    "own_menu_exact_share": 0.068571428571,
+    "landing_minus_nonlanding_association": -0.020361121783,
+    "association_model_cluster_ci95": [
+      -0.310344827586,
+      0.009337327793
+    ],
+    "own_menu_novel_events": 163,
+    "own_menu_novel_exact_share": 0.220858895706,
+    "own_menu_novel_menu_probability": 0.086468980898,
+    "own_menu_novel_excess": 0.134389914808,
+    "own_menu_novel_model_cluster_ci95": [
+      -0.114985265013,
+      0.185129825373
+    ],
+    "own_menu_novel_leave_one_model_out_range": [
+      0.014096949239,
+      0.151942832355
+    ]
+  },
+  "preregistered_size_power": {
+    "preregistration_commit": "adc09cd",
+    "robustness_addendum_commit": "dc90d02",
+    "sim1_null_promotion_rate": 0.035,
+    "sim1_observed_equivalent_rho": 0.080856830616,
+    "sim1_observed_effect_interpolated_power": 0.434004327937,
+    "sim1_power_rho_0_10": 0.519,
+    "sim1_power_rho_0_25": 0.947,
+    "sim2_null_promotion_rate": 0.0,
+    "sim2_null_mean_exact_landing_share": 0.598535972256,
+    "sim2_null_mean_menu_probability": 0.904270237849,
+    "sim2_fixed_panel_detection_threshold": 0.761548344221,
+    "sim2_max_grid_promotion_rate": 0.0,
+    "full_panel_exact_cluster_sign_flip_p_one_sided": 0.425048828125,
+    "full_panel_exact_cluster_sign_flip_p_two_sided": 0.85009765625,
+    "own_menu_novel_exact_cluster_sign_flip_p_one_sided": 0.2138671875,
+    "own_menu_novel_exact_cluster_sign_flip_p_two_sided": 0.427734375,
+    "sim2_empirically_calibrated": false,
+    "sim2_empirical_metrics_inside_p05_p95": 0,
+    "sim2_empirical_metrics_compared": 4,
+    "sim2_required_description": "stress-test counterexample, not an empirically calibrated data-generating process"
+  },
   "identified_sets": {
     "exact_strategic_landing_share": [
       0.0,

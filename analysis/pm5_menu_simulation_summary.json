@@ -1,0 +1,108 @@
+{
+  "evidence_status": "preregistered_post_nine_date_simulation_complete",
+  "source_snapshot": {
+    "source": "huggingface",
+    "repo_id": "t4run/openrouter-market-history",
+    "revision": "600bb41fd15189c70f8f78fce8cf0a519fb8dd61",
+    "path": "hf://datasets/t4run/openrouter-market-history@600bb41fd15189c70f8f78fce8cf0a519fb8dd61",
+    "resolution": "environment"
+  },
+  "specification": {
+    "seed": 20260717,
+    "rho_grid": [
+      0.0,
+      0.05,
+      0.1,
+      0.25,
+      0.5
+    ],
+    "sim1_replications": 1000,
+    "sim1_bootstrap_draws": 2000,
+    "sim2_replications": 250,
+    "sim2_bootstrap_draws": 2000,
+    "frozen_start_date": "2026-07-07",
+    "frozen_end_date": "2026-07-15"
+  },
+  "frozen_design": {
+    "n_events": 196,
+    "n_models": 18,
+    "n_providers": 15
+  },
+  "sim1_null": {
+    "rho": 0.0,
+    "replications": 1000.0,
+    "mean_estimate": -0.0005648618644954767,
+    "estimate_p05": -0.026922004721638332,
+    "estimate_median": -0.001411800640005681,
+    "estimate_p95": 0.0292004442579535,
+    "lower_bound_rejection_rate": 0.035,
+    "joint_promotion_rate": 0.035,
+    "events_p05": 196.0,
+    "events_median": 196.0,
+    "events_p95": 196.0,
+    "target_excess": 0.0,
+    "bias": -0.0005648618644954767,
+    "rmse": 0.01646837407409766,
+    "interval_coverage": 0.915
+  },
+  "sim2_null": {
+    "rho": 0.0,
+    "replications": 250,
+    "mean_estimate": -0.3057342655929807,
+    "estimate_p05": -0.41475290299057177,
+    "estimate_median": -0.31491420039008305,
+    "estimate_p95": -0.17324597500153474,
+    "lower_bound_rejection_rate": 0.0,
+    "joint_promotion_rate": 0.0,
+    "events_p05": 1227.95,
+    "events_median": 2149.5,
+    "events_p95": 3381.1,
+    "mean_exact_landing_share": 0.5985359722556391,
+    "mean_menu_probability": 0.9042702378486197,
+    "null_size_criterion_passes": true,
+    "power_interpretable": true
+  },
+  "sim2_power_interpretable": true,
+  "observed_design_diagnostic": {
+    "observed_excess": 0.070016770789,
+    "observed_menu_probability": 0.134064861864,
+    "implied_reactive_probability": 0.080856830616,
+    "linearly_interpolated_sim1_promotion_power": 0.434004327937
+  },
+  "sim2_max_grid_promotion_rate": 0.0,
+  "figures": [
+    "pm5_menu_simulation.pdf",
+    "pm5_menu_simulation.png"
+  ],
+  "claim_boundary": "SIM1 measures finite-sample inference on a declared conditional design; SIM2 measures size and power only inside one registered known-clock menu family, which CAL1 rejects as an empirical calibration and therefore remains a stress-test counterexample. Neither identifies private request order, intent, collusion, or welfare loss.",
+  "cluster_sign_flip_robustness": {
+    "full_factor_1_25_panel": {
+      "n_events": 196,
+      "n_clusters": 18,
+      "n_assignments": 262144,
+      "estimate": 0.07001677080714284,
+      "observed_total": 13.723287078200002,
+      "one_sided_p": 0.425048828125,
+      "two_sided_p": 0.85009765625,
+      "assumption": "model-cluster sign symmetry; observational robustness only"
+    },
+    "own_menu_novel_panel": {
+      "n_events": 163,
+      "n_clusters": 14,
+      "n_assignments": 16384,
+      "estimate": 0.13438991482331286,
+      "observed_total": 21.9055561162,
+      "one_sided_p": 0.2138671875,
+      "two_sided_p": 0.427734375,
+      "assumption": "model-cluster sign symmetry; observational robustness only"
+    }
+  },
+  "sim2_empirical_calibration": {
+    "n_sim2_null_replications": 250,
+    "empirically_calibrated_on_registered_probabilities": false,
+    "required_description": "stress-test counterexample, not an empirically calibrated data-generating process",
+    "n_metrics_inside_p05_p95": 0,
+    "n_metrics_compared": 4
+  },
+  "sim2_power_interpretable_for_empirical_market": false
+}

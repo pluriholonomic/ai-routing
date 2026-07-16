@@ -119,6 +119,23 @@ lagged landings; the strategic exact-landing share is sharply bounded only by
 [0, 40/196]. Formation and breaking directions (74% down-to-tie, 88%
 down-to-break) are competitive. Cross-channel parity remains 99.6%.
 
+**Preregistered control and power.** Commit `adc09cd` froze the follow-up before
+estimation. Only 12/175 comparable revisions reuse the mover's own cross-model
+price, and own-menu support is slightly lower for rival landings (-2.0 points,
+model-cluster interval [-31.0, 0.9]). Removing those events raises the strategic
+residual to 13.4 points, but its interval remains [-11.5, 18.5]. A 5,000-replication
+conditional-design experiment controls one-sided size at 3.5% but has only 43.4%
+interpolated power at the observed effect. In 1,250 known-clock panels the hard
+null has zero false promotions and zero power through 50% reactive replacement.
+The detection-threshold formula
+`rho*=(q-p)/(1-p)` explains why: a benchmark denser than the focal rival set is
+conservative under no response but can mask moderate response. The correct
+reading is nonidentified and underpowered, not no behavior. A timestamped
+robustness addendum gives exact model-cluster sign-flip p-values 0.425 (full) and
+0.214 (own-menu-novel). An empirical calibration audit puts all four observed
+diagnostics outside SIM2's 5--95% null range, so SIM2 is a stress-test
+counterexample rather than a calibrated model of this market.
+
 ## 5. Fact 3: quantity clearing and manufactured firmness
 
 Panel evidence (12% vs 86% ever-moved; latency loads ~30x price at 30-min

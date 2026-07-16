@@ -86,6 +86,35 @@ leave-one-model-out range is [1.11, 15.55] points. This comparison is registered
 as a secondary SKU-specific sensitivity, not selected over the tighter global
 common-menu primary.
 
+## Preregistered same-provider control and size--power audit
+
+The follow-up specification was pushed in commit `adc09cd` before estimation.
+Among 175 comparable events, only 6.86% reuse the provider's own cross-model
+price. That rate is 5.26% among exact rival landings and 7.30% otherwise, a
+-2.04-point association with model-cluster interval [-31.03, 0.93]. Removing the
+12 own-menu-supported events leaves 163 revisions and raises the matched-menu
+excess to 13.44 points, but the model-cluster interval remains
+[-11.50, 18.51]. The control weakens a simple own-template explanation without
+promoting strategic following.
+
+The frozen-design simulation has 3.5% one-sided null promotion, but only 43.4%
+interpolated power at the observed-equivalent response probability `rho=0.0809`.
+In 1,250 full known-clock panels, the null never promotes, but it also never
+promotes at reactive-replacement probabilities through 0.50: the global-menu
+benchmark is much denser than the focal rival set. The hard-null failure is
+therefore both nonidentification and low power, not evidence of no response. Full
+results are in `pm5-negative-control-simulation-results-2026-07-16.md`.
+
+A separately timestamped robustness addendum (`dc90d02`) enumerates every
+model-cluster sign assignment. The one-sided exact p-value is 0.4250 for the full
+196-event panel and 0.2139 for the 163-event own-menu-novel panel, so the positive
+point estimates are not broadly supported across models. The same addendum freezes
+an empirical calibration check. All four empirical diagnostics lie outside the
+SIM2 null's 5--95% range: SIM2 produces 1,228--3,381 events, 49.0--73.2% exact
+landings, and 89.1--91.3% menu probabilities, versus 196, 20.4%, and 13.4% in the
+data. SIM2 is therefore a stress-test counterexample, not an empirically calibrated
+model of the observed market.
+
 ## Identification result
 
 An unrestricted asynchronous-menu model and a rival-response model can generate

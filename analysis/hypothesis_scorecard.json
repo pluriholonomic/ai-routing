@@ -57,7 +57,13 @@
     {
       "prediction": "Lagged rival-price landing exceeds a matched common-menu null",
       "status": "inconsistent",
-      "evidence": "exact share 19.3%; matched-menu excess 6.6%; model-cluster CI [-0.22039684529330011, 0.11470759734346579]; past-only same-model excess 13.6%; n=207",
+      "evidence": "exact share 19.3%; matched-menu excess 6.6%; model-cluster CI [-0.22039684529330011, 0.11470759734346579]; past-only same-model excess 13.6%; own-menu-novel excess 0.12810266733145595; novel CI [-0.11498526501258986, 0.17889872056047015]; n=207",
+      "source": "pm5"
+    },
+    {
+      "prediction": "Same-provider cross-model menu support explains lagged landings",
+      "status": "inconsistent",
+      "evidence": "own-menu exact share 6.6%; landing-minus-nonlanding association -1.6%; model-cluster CI [-0.3103448275862069, 0.012369677686044972]; comparable n=183",
       "source": "pm5"
     },
     {

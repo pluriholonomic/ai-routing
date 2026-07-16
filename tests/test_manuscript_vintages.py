@@ -159,7 +159,26 @@ def _results(*, uplift: float, state_rmse: float, brown_rmse: float):
                     "model_cluster_historical_menu": {
                         "cluster_bootstrap_ci95": [-0.001, 0.26],
                     },
-                }
+                },
+                "same_provider_across_model_control": {
+                    "n_comparable_events": 100,
+                    "n_own_menu_novel_events": 70,
+                    "own_menu_exact_share": 0.3,
+                    "model_cluster_association": {
+                        "difference": 0.2,
+                        "cluster_bootstrap_ci95": [-0.1, 0.4],
+                    },
+                    "own_menu_novel_reference_landing": {
+                        "exact_minus_global_menu": 0.04,
+                        "model_cluster_global_menu": {
+                            "cluster_bootstrap_ci95": [-0.2, 0.1],
+                            "leave_one_cluster_out_range": [-0.1, 0.08],
+                        },
+                        "provider_cluster_global_menu": {
+                            "cluster_bootstrap_ci95": [-0.2, 0.2],
+                        },
+                    },
+                },
             },
         },
     }
@@ -186,5 +205,8 @@ def test_precommitted_metric_set_and_sign_comparison_are_fixed():
     assert frozen["pm5_selected_tie_observed_share"] == pytest.approx(0.89)
     assert frozen["pm5_lagged_landing_global_menu_excess"] == pytest.approx(0.09)
     assert frozen["pm5_lagged_landing_historical_menu_excess"] == pytest.approx(0.19)
+    assert frozen["pm5_own_menu_comparable_events"] == 100
+    assert frozen["pm5_own_menu_exact_share"] == pytest.approx(0.3)
+    assert frozen["pm5_own_menu_novel_global_menu_excess"] == pytest.approx(0.04)
     assert comparison["bm2_fast_after_slow_uplift"]["sign_preserved"] is False
     assert comparison["bm4_brown_mackay_rmse_gain"]["sign_preserved"] is True

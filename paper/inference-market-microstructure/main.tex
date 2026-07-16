@@ -68,6 +68,14 @@ also negative.  Authors occupy a shared price in 54.3\% of 94 markets versus
 [-9.0,16.1].  Among 196 isolated revisions, 20.4\% land exactly on a rival's
 strictly prior quote, but a scale- and menu-frequency-matched common-menu null
 predicts 13.4\%; the 7.0-point excess has model-cluster interval [-23.1,12.2].
+An independently timestamped same-provider control removes own cross-model menu
+reuse: the residual rises to 13.4 points but its cluster interval still crosses
+zero.  In 6,250 preregistered simulations, the conditional-design test has 3.5\%
+one-sided size but only 43\% interpolated power at the observed effect; under a
+known-clock asynchronous menu it is conservative enough to have zero power even
+at 50\% reactive replacement.  All four empirical calibration diagnostics lie
+outside that mechanism's registered 5th--95th percentile ranges, so it is a
+stress-test counterexample rather than a fitted model of the market.
 Third, a randomized-order crossover provides interim evidence that the router
 manufactures firmness from revocable quotes.  In 76 complete four-policy blocks,
 all-position default routing succeeds on 75 requests while three pinned
@@ -144,6 +152,10 @@ and two observational-equivalence results.
   on a tightly matched common public price menu.  These paired failures are the
   empirical counterpart of our asynchronous-menu equivalence theorem and prevent
   an atom from being promoted as author salience, strategic following, or collusion.
+  A preregistered negative control and two size--power experiments then identify
+  the opposite inferential danger: the hard null controls false positives but can
+  have a strictly positive response-detection threshold.  We characterize that
+  threshold analytically and distinguish nonidentification from evidence of no response.
 
   \item \textbf{Power-gated manufactured firmness.} The money quote barely moves while
   operational state changes frequently.  A prospective crossover randomizes the
@@ -537,6 +549,17 @@ baseline and 14.4-point excess.  Yet its model-cluster interval is
 same concentrated models and movers.  We register this SKU-specific comparison as
 secondary rather than selecting it over the tougher primary null.
 
+The preregistered same-provider/across-model control was committed before its
+estimate was computed.  Among 175 comparable events, only 12, or 6.9\%, reuse the
+mover's own price on another model at the strictly prior timestamp.  Own-menu
+support is 5.3\% among exact rival landings and 7.3\% otherwise, a $-2.0$-point
+association with model-cluster interval [-31.0,0.9].  Removing those 12 events
+leaves 163 own-menu-novel revisions: their exact landing rate is 22.1\% against an
+8.6\% matched-menu benchmark.  The 13.4-point residual is larger, and every
+leave-one-model-out estimate is positive [1.4,15.2], but its model-cluster interval
+[-11.5,18.5] still fails the frozen promotion rule.  The negative control therefore
+weakens a simple provider-template explanation without identifying rival response.
+
 \begin{table}[H]
 \centering
 \small
@@ -550,6 +573,8 @@ Adjacent-grid placebo & 1.0\% & 19.5 pp excess \\
 Matched common-menu probability & 13.4\% & factor-1.25 risk set \\
 Exact-minus-common-menu & 7.0 pp & [-23.1,12.2] model-cluster interval \\
 Past-only same-model menu & 14.4 pp & [-0.1,17.5] model-cluster interval \\
+Own-provider cross-model support & 6.9\% & $-2.0$ pp landing association \\
+Own-menu-novel common-menu excess & 13.4 pp & [-11.5,18.5] model-cluster interval \\
 \bottomrule
 \end{tabular}
 \caption{A weak placebo suggests price following; the matched common-menu null
@@ -575,6 +600,83 @@ $L/N=40/196=20.4\%$.  The matched-menu test restricts the otherwise unrestricted
 null by imposing exchangeability within a local public risk set; its failure to
 reject is empirical, while \cref{prop:menu-equivalence} explains why the weak
 adjacent-grid result cannot carry a behavioral interpretation.
+
+The hard null can also fail by being too conservative.  Let $p_e$ denote an
+event's nonreactive exact-landing probability and $q_e$ its matched-menu
+benchmark.  Suppose a response, when it occurs, forces an exact rival-price
+landing.
+
+\begin{proposition}[Detection threshold of a dominating menu null]
+\label{prop:menu-detection-threshold}
+If reactive replacement occurs with probability $\rho$, independently conditional
+on the event risk set, then
+\begin{equation}
+  \mathbb{E}[Y_e-q_e]=p_e-q_e+\rho(1-p_e).
+  \label{eq:menu-detection-threshold}
+\end{equation}
+When $q_e\geq p_e$, the matched-menu residual has correct one-sided sign under the
+nonreactive mechanism but becomes positive only if
+\begin{equation}
+  \rho>\rho_e^\star\equiv\frac{q_e-p_e}{1-p_e}.
+\end{equation}
+For a common $\rho$ over a fixed event panel, replace $(p_e,q_e)$ by their event
+means.  Thus conservativeness and power loss are two implications of the same
+benchmark dominance.
+\end{proposition}
+
+The frozen-design simulation holds each event's $q_e$ and model cluster fixed.  In
+1,000 replications per response level, one-sided false promotion is 3.5\%; power is
+29.7\% at $\rho=0.05$, 51.9\% at $0.10$, and 94.7\% at $0.25$.  The observed
+7.0-point excess corresponds to $\rho=0.081$ in that conditional mixture and only
+43.4\% interpolated power.  A second experiment generates 250 complete 576-tick
+panels per level from public menus and known provider refresh clocks.  At $\rho=0$
+the exact-landing rate is 59.9\% while the global-menu benchmark is 90.4\%; the
+implied fixed-panel threshold is approximately $0.762$.  The unchanged test never
+promotes, even at $\rho=0.50$.  This is not evidence that the market has a large or
+small $\rho$; it shows that failure to reject the hard null cannot be read as
+evidence of no strategic behavior.
+
+Two preregistered robustness disclosures sharpen that boundary.  Exact enumeration
+of all $2^{18}$ model-cluster sign assignments gives one-sided $p=0.425$ for the
+full residual; enumeration over the 14 own-menu-novel clusters gives $p=0.214$.
+The positive event-weighted estimates therefore lack broad cluster support.  The
+known-clock family is also not empirically calibrated.  Its null 5th--95th
+percentile ranges are 1,228--3,381 events, 49.0--73.2\% exact landings, 89.1--91.3\%
+menu probabilities, and $-41.5$ to $-17.3$ points of residual.  The empirical
+values---196, 20.4\%, 13.4\%, and $+7.0$ points---fall outside all four ranges.
+Accordingly SIM2 is a stress-test construction showing possible benchmark
+dominance, not a fitted data-generating process or an estimate of $\rho$.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Calibration statistic & Empirical & SIM2 p05 & SIM2 median & SIM2 p95 \\
+\midrule
+Extracted events & 196 & 1,228 & 2,150 & 3,381 \\
+Exact landing share & 20.4\% & 49.0\% & 58.8\% & 73.2\% \\
+Matched-menu probability & 13.4\% & 89.1\% & 90.5\% & 91.3\% \\
+Exact-minus-menu residual & $+7.0$ pp & $-41.5$ pp & $-31.5$ pp & $-17.3$ pp \\
+\bottomrule
+\end{tabular}
+\caption{Frozen empirical statistics against the registered $\rho=0$ SIM2
+distribution.  Every empirical value is outside the simulated 5th--95th
+percentile range; no simulation parameter was retuned.}
+\label{tab:sim2calibration}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/menu_control_simulation.pdf}
+\caption{Preregistered size and power.  Panel A conditions on the frozen 196-event
+design.  Panels B--C run the unchanged statistic on known-clock asynchronous-menu
+panels with nested reactive replacement.  The global-menu benchmark controls false
+positives but can dominate the focal rival set enough to eliminate power.  The
+registered mechanism fails the empirical calibration audit and is interpreted as
+a stress test.}
+\label{fig:menu-power}
+\end{figure}
 
 Direct provider APIs and router quotes are at exact parity in 99.6\% of matched
 cases; we see almost no systematic direct-channel undercut.  Of 31 isolated tie
@@ -921,7 +1023,12 @@ Five limitations define the claim boundary.  First, the main pricing panel is ni
 days, so dynamic hazard and cadence results await the registered 30-day
 both-vintage re-estimation; the identity and lagged-landing hard nulls are
 post-freeze and await the same replication, while the local outcome-free calendar
-contains 10/30 dates.  Second, the randomized crossover's all-position block screen is
+contains 10/30 dates.  The matched-menu test controls one-sided size in the
+conditional simulation but has only 43.4\% power at the observed effect and can be
+far more conservative in known-clock panels; its nonrejection is not evidence of
+zero response.  Exact cluster sign-flip p-values are 0.425 and 0.214, and every
+registered empirical calibration diagnostic rejects the known-clock family as a
+fitted description.  Second, the randomized crossover's all-position block screen is
 secondary, and its carryover-robust first-position counts are only 33--37 of 500
 per arm.  Third, owned probes identify one
 account, region, prompt family, and time window; they do not identify market-wide
@@ -933,8 +1040,9 @@ do not claim literal front-running, collusion, private cost, or a welfare loss.
 Within those limits, the evidence changes the economic description of inference
 markets.  Prices are not the rapidly clearing state variable.  Providers post
 sticky administered menus, minimum-price ties exceed independent grid benchmarks,
-but exact atoms do not survive hard tests of author identity or strategic
-following.  The secondary block screen is consistent with the platform manufacturing
+but exact atoms do not survive hard tests of author identity.  Strategic following
+is neither promoted nor ruled out: its hard null is observationally defensible but
+underpowered at the observed effect.  The secondary block screen is consistent with the platform manufacturing
 a firm service by substituting across revocable quotes, but that statement awaits
 the first-position gate.  The platform's allocation memory does not reward recent
 undercutting in the observed panel.  Even within these boundaries, the inference
@@ -1016,6 +1124,16 @@ integer number from zero through $L$ as exact strategic landings.  Dividing by
 $N$ attains every grid point in $[0,L/N]$; mixtures attain the full interval.
 No event outside the $L$ exact landings can enter the defined exact-landing
 estimand, proving sharpness.
+\end{proof}
+
+\begin{proof}[Proof of \cref{prop:menu-detection-threshold}]
+Without reactive replacement, $\Pr(Y_e=1)=p_e$.  A replacement forces $Y_e=1$;
+otherwise the nonreactive draw remains.  Hence
+$\Pr(Y_e=1)=\rho+(1-\rho)p_e=p_e+\rho(1-p_e)$.  Subtracting $q_e$ gives
+\cref{eq:menu-detection-threshold}.  If $q_e\geq p_e$ and $p_e<1$, solving the
+strict inequality $p_e-q_e+\rho(1-p_e)>0$ gives the stated threshold.  Linearity
+of expectation gives the event-mean version when $\rho$ is common and the event
+panel is fixed.
 \end{proof}
 
 \begin{proof}[Proof of \cref{prop:coarsening}]
@@ -1144,7 +1262,7 @@ identifiable when bids, acceptance, and termination are public.
 Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
 Administered menus & Frequency, size, grid, clock, day-split gap AUC & Long-run frailty and strategic response & 30 panel days, both vintages \\
-Exact price atoms & Tie atom survives independent grid null; author and lagged-landing hard nulls fail & Anchor identity and strategic response & 30-date endpoint-label and matched-menu replication \\
+Exact price atoms & Tie atom survives independent grid null; author null fails; lagged-landing test is nonrejecting and underpowered & Anchor identity and strategic response & 30-date endpoint-label and matched-menu replication \\
 Manufactured firmness & Secondary randomized-order block level, flat rank gradient & Carryover-robust first-position estimate and transport & 500 first-position assignments per arm \\
 Negative steering memory & Rank-conditioned audit, same-sign eligibility subset & Complete eligibility or visibility instrument & Eligibility-complete panel \\
 Brown--MacKay mechanism & Cadence premium; reaction rules predictively indistinguishable & Slow-initiator/fast-responder exposure & Earliest 30-day vintage with fixed paired test \\

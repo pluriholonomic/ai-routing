@@ -335,6 +335,98 @@ def _clustered_mean_inference(
     }
 
 
+def _clustered_difference_in_means(
+    panel: pd.DataFrame,
+    *,
+    outcome_column: str,
+    group_column: str,
+    cluster_column: str,
+    bootstrap_draws: int = REFERENCE_BOOTSTRAP_DRAWS,
+    seed: int = REFERENCE_BOOTSTRAP_SEED,
+) -> dict[str, Any]:
+    columns = [outcome_column, group_column, cluster_column]
+    if any(column not in panel for column in columns):
+        return {
+            "n_observations": 0,
+            "n_clusters": 0,
+            "group_one_mean": None,
+            "group_zero_mean": None,
+            "difference": None,
+            "cluster_bootstrap_ci95": [None, None],
+            "leave_one_cluster_out_range": [None, None],
+        }
+    usable = panel.dropna(subset=columns).copy()
+    usable = usable[usable[group_column].isin([0, 1])]
+    if usable.empty or usable[group_column].nunique() < 2:
+        return {
+            "n_observations": int(len(usable)),
+            "n_clusters": int(usable[cluster_column].nunique()),
+            "group_one_mean": None,
+            "group_zero_mean": None,
+            "difference": None,
+            "cluster_bootstrap_ci95": [None, None],
+            "leave_one_cluster_out_range": [None, None],
+        }
+
+    grouped = []
+    for cluster, frame in usable.groupby(cluster_column, sort=True):
+        one = frame[frame[group_column].eq(1)][outcome_column]
+        zero = frame[frame[group_column].eq(0)][outcome_column]
+        grouped.append(
+            {
+                "cluster": cluster,
+                "one_sum": float(one.sum()),
+                "one_n": int(len(one)),
+                "zero_sum": float(zero.sum()),
+                "zero_n": int(len(zero)),
+            }
+        )
+
+    def contrast(rows: list[dict[str, Any]]) -> float | None:
+        one_n = sum(int(row["one_n"]) for row in rows)
+        zero_n = sum(int(row["zero_n"]) for row in rows)
+        if one_n == 0 or zero_n == 0:
+            return None
+        one = sum(float(row["one_sum"]) for row in rows) / one_n
+        zero = sum(float(row["zero_sum"]) for row in rows) / zero_n
+        return float(one - zero)
+
+    estimate = contrast(grouped)
+    rng = np.random.default_rng(seed)
+    draws = rng.integers(0, len(grouped), size=(int(bootstrap_draws), len(grouped)))
+    boot = []
+    for draw in draws:
+        value = contrast([grouped[int(index)] for index in draw])
+        if value is not None:
+            boot.append(value)
+    leave_one_out = [
+        value
+        for index in range(len(grouped))
+        if (value := contrast(grouped[:index] + grouped[index + 1 :])) is not None
+    ]
+    group_one = usable[usable[group_column].eq(1)][outcome_column]
+    group_zero = usable[usable[group_column].eq(0)][outcome_column]
+    return {
+        "n_observations": int(len(usable)),
+        "n_clusters": int(len(grouped)),
+        "group_one_mean": float(group_one.mean()),
+        "group_zero_mean": float(group_zero.mean()),
+        "difference": estimate,
+        "bootstrap_draws": int(bootstrap_draws),
+        "bootstrap_seed": int(seed),
+        "cluster_bootstrap_ci95": (
+            [float(value) for value in np.quantile(boot, [0.025, 0.975])]
+            if boot
+            else [None, None]
+        ),
+        "leave_one_cluster_out_range": (
+            [float(min(leave_one_out)), float(max(leave_one_out))]
+            if leave_one_out
+            else [None, None]
+        ),
+    }
+
+
 def author_anchor_randomization_audit(q: pd.DataFrame) -> dict[str, Any]:
     """Exact endpoint-label benchmark for the all-market author atom."""
     panel = author_anchor_symmetry_panel(q)
@@ -710,6 +802,75 @@ def attach_historical_model_menu_null(
     return out
 
 
+def attach_same_provider_menu_control(
+    events: pd.DataFrame,
+    q: pd.DataFrame,
+    *,
+    band_factor: float = REFERENCE_GLOBAL_BAND_FACTOR,
+) -> pd.DataFrame:
+    """Attach the preregistered same-provider/across-model negative control."""
+    out = events.copy()
+    columns = {
+        "own_menu_band_factor": pd.Series(dtype=float),
+        "own_menu_pool_size": pd.Series(dtype="Int64"),
+        "own_menu_exact_hits": pd.Series(dtype="Int64"),
+        "own_menu_exact": pd.Series(dtype=float),
+        "own_menu_novel": pd.Series(dtype=float),
+    }
+    if out.empty:
+        for name, values in columns.items():
+            out[name] = values
+        return out
+
+    snapshots = _normalized_quote_snapshots(q)
+    cache = {timestamp: group for timestamp, group in snapshots.groupby("run_ts")}
+    factor = float(band_factor)
+    pool_sizes: list[int] = []
+    hit_counts: list[int] = []
+    exact_values: list[float] = []
+    novel_values: list[float] = []
+    for row in out.itertuples(index=False):
+        snapshot = cache.get(row.previous_run_ts)
+        if snapshot is None:
+            pool_sizes.append(0)
+            hit_counts.append(0)
+            exact_values.append(math.nan)
+            novel_values.append(math.nan)
+            continue
+        control = snapshot[
+            snapshot["provider_name"].astype(str).eq(str(row.provider_name))
+            & snapshot["model_id"].astype(str).ne(str(row.model_id))
+            & snapshot["price"].between(
+                float(row.new_price) / factor,
+                float(row.new_price) * factor,
+                inclusive="both",
+            )
+        ]["price"].to_numpy(dtype=float)
+        hits = int(
+            np.isclose(
+                control,
+                float(row.new_price),
+                rtol=1e-9,
+                atol=1e-12,
+            ).sum()
+        )
+        pool_sizes.append(int(len(control)))
+        hit_counts.append(hits)
+        if len(control):
+            exact_values.append(float(hits > 0))
+            novel_values.append(float(hits == 0))
+        else:
+            exact_values.append(math.nan)
+            novel_values.append(math.nan)
+
+    out["own_menu_band_factor"] = factor
+    out["own_menu_pool_size"] = pool_sizes
+    out["own_menu_exact_hits"] = hit_counts
+    out["own_menu_exact"] = exact_values
+    out["own_menu_novel"] = novel_values
+    return out
+
+
 def reference_price_landing_panel(
     q: pd.DataFrame,
     *,
@@ -718,7 +879,8 @@ def reference_price_landing_panel(
 ) -> pd.DataFrame:
     events = isolated_quote_change_events(q, max_gap_minutes=max_gap_minutes)
     panel = attach_global_price_menu_null(events, q, band_factor=band_factor)
-    return attach_historical_model_menu_null(panel, q)
+    panel = attach_historical_model_menu_null(panel, q)
+    return attach_same_provider_menu_control(panel, q, band_factor=band_factor)
 
 
 def reference_price_landing_inference(panel: pd.DataFrame) -> dict[str, Any]:
@@ -813,6 +975,76 @@ def reference_price_landing_inference(panel: pd.DataFrame) -> dict[str, Any]:
     }
 
 
+def same_provider_control_inference(panel: pd.DataFrame) -> dict[str, Any]:
+    """Summarize the frozen same-provider/across-model negative control."""
+    if "own_menu_exact" not in panel:
+        return {
+            "n_comparable_events": 0,
+            "n_own_menu_novel_events": 0,
+            "own_menu_exact_share": None,
+            "four_cell_counts": {},
+        }
+    comparable = panel.dropna(subset=["own_menu_exact"]).copy()
+    novel = comparable[comparable["own_menu_novel"].eq(1)].copy()
+    four_cell = {
+        f"rival_{rival}_own_{own}": int(
+            (
+                comparable["exact_lagged_rival_match"].eq(rival)
+                & comparable["own_menu_exact"].eq(own)
+            ).sum()
+        )
+        for rival in (0, 1)
+        for own in (0, 1)
+    }
+
+    def largest_share(frame: pd.DataFrame, column: str) -> float | None:
+        if frame.empty:
+            return None
+        return float(frame.groupby(column).size().max() / len(frame))
+
+    novel_inference = reference_price_landing_inference(novel)
+    own_matches = comparable[comparable["own_menu_exact"].eq(1)]
+    return {
+        "evidence_status": "post_nine_date_control_preregistered_before_estimation",
+        "n_comparable_events": int(len(comparable)),
+        "n_own_menu_novel_events": int(len(novel)),
+        "own_menu_exact_share": (
+            float(comparable["own_menu_exact"].mean()) if len(comparable) else None
+        ),
+        "four_cell_counts": four_cell,
+        "model_cluster_association": _clustered_difference_in_means(
+            comparable,
+            outcome_column="own_menu_exact",
+            group_column="exact_lagged_rival_match",
+            cluster_column="model_id",
+        ),
+        "provider_cluster_association": _clustered_difference_in_means(
+            comparable,
+            outcome_column="own_menu_exact",
+            group_column="exact_lagged_rival_match",
+            cluster_column="provider_name",
+        ),
+        "largest_model_comparable_share": largest_share(comparable, "model_id"),
+        "largest_provider_comparable_share": largest_share(
+            comparable, "provider_name"
+        ),
+        "largest_model_own_match_share": largest_share(own_matches, "model_id"),
+        "largest_provider_own_match_share": largest_share(
+            own_matches, "provider_name"
+        ),
+        "own_menu_novel_reference_landing": novel_inference,
+        "promotion_rule": (
+            "Strategic following survives only if the own-menu-novel "
+            "exact-minus-global-menu model-cluster interval excludes zero and "
+            "every leave-one-model-out estimate is positive."
+        ),
+        "claim_boundary": (
+            "Own-provider cross-model support identifies a public provider-menu "
+            "alternative, not intent, collusion, or literal request front-running."
+        ),
+    }
+
+
 def reference_price_landing_audit(
     q: pd.DataFrame,
     *,
@@ -873,6 +1105,9 @@ def reference_price_landing_audit(
         "primary_global_menu_band_factor": REFERENCE_GLOBAL_BAND_FACTOR,
         "historical_model_menu_washout_hours": REFERENCE_HISTORICAL_WASHOUT_HOURS,
         "primary": reference_price_landing_inference(primary),
+        "same_provider_across_model_control": same_provider_control_inference(
+            primary
+        ),
         "global_menu_band_sensitivity": band_sensitivity,
         "continuity_sensitivity": continuity_sensitivity,
         "confirmatory_gate": (

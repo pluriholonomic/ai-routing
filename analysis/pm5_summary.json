@@ -249,6 +249,153 @@
       "largest_model_copy_share": 0.85,
       "largest_provider_copy_share": 0.55
     },
+    "same_provider_across_model_control": {
+      "evidence_status": "post_nine_date_control_preregistered_before_estimation",
+      "n_comparable_events": 183,
+      "n_own_menu_novel_events": 171,
+      "own_menu_exact_share": 0.06557377049180328,
+      "four_cell_counts": {
+        "rival_0_own_0": 135,
+        "rival_0_own_1": 10,
+        "rival_1_own_0": 36,
+        "rival_1_own_1": 2
+      },
+      "model_cluster_association": {
+        "n_observations": 183,
+        "n_clusters": 18,
+        "group_one_mean": 0.05263157894736842,
+        "group_zero_mean": 0.06896551724137931,
+        "difference": -0.01633393829401089,
+        "bootstrap_draws": 20000,
+        "bootstrap_seed": 20260716,
+        "cluster_bootstrap_ci95": [
+          -0.3103448275862069,
+          0.012369677686044972
+        ],
+        "leave_one_cluster_out_range": [
+          -0.1388888888888889,
+          -0.009326227636086787
+        ]
+      },
+      "provider_cluster_association": {
+        "n_observations": 183,
+        "n_clusters": 14,
+        "group_one_mean": 0.05263157894736842,
+        "group_zero_mean": 0.06896551724137931,
+        "difference": -0.01633393829401089,
+        "bootstrap_draws": 20000,
+        "bootstrap_seed": 20260716,
+        "cluster_bootstrap_ci95": [
+          -0.2777777777777778,
+          0.06328187977017402
+        ],
+        "leave_one_cluster_out_range": [
+          -0.10526315789473684,
+          0.005580923389142567
+        ]
+      },
+      "largest_model_comparable_share": 0.7704918032786885,
+      "largest_provider_comparable_share": 0.453551912568306,
+      "largest_model_own_match_share": 0.5833333333333334,
+      "largest_provider_own_match_share": 0.4166666666666667,
+      "own_menu_novel_reference_landing": {
+        "n_events": 171,
+        "n_global_menu_comparable_events": 171,
+        "n_models": 14,
+        "n_providers": 13,
+        "exact_lagged_rival_matches": 36,
+        "exact_lagged_rival_match_share": 0.21052631578947367,
+        "adjacent_placebo_match_share": 0.007748538011695907,
+        "global_menu_match_probability": 0.08242364845801775,
+        "exact_minus_adjacent_placebo": 0.20277777777777775,
+        "exact_minus_global_menu": 0.12810266733145595,
+        "n_historical_menu_comparable_events": 168,
+        "historical_menu_match_probability": 0.06748661351357017,
+        "exact_minus_historical_menu": 0.14679910077214414,
+        "model_cluster_adjacent_placebo": {
+          "n_observations": 171,
+          "n_clusters": 14,
+          "mean": 0.20277777777777775,
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            0.039391233766233776,
+            0.31875744047618987
+          ],
+          "leave_one_cluster_out_range": [
+            0.143918918918919,
+            0.220859872611465
+          ]
+        },
+        "model_cluster_global_menu": {
+          "n_observations": 171,
+          "n_clusters": 14,
+          "mean": 0.12810266733145595,
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            -0.11498526501258986,
+            0.17889872056047015
+          ],
+          "leave_one_cluster_out_range": [
+            0.014096949238581978,
+            0.1446202862172331
+          ]
+        },
+        "provider_cluster_global_menu": {
+          "n_observations": 171,
+          "n_clusters": 13,
+          "mean": 0.12810266733145595,
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            -0.13834192536310702,
+            0.22171653678711364
+          ],
+          "leave_one_cluster_out_range": [
+            0.04926866879403322,
+            0.1681487847662874
+          ]
+        },
+        "model_cluster_historical_menu": {
+          "n_observations": 168,
+          "n_clusters": 14,
+          "mean": 0.14679910077214414,
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            -0.0007814442510567257,
+            0.17320580107682484
+          ],
+          "leave_one_cluster_out_range": [
+            0.014671349872813266,
+            0.16026371993259766
+          ]
+        },
+        "provider_cluster_historical_menu": {
+          "n_observations": 168,
+          "n_clusters": 12,
+          "mean": 0.14679910077214414,
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            0.0,
+            0.21591428370232152
+          ],
+          "leave_one_cluster_out_range": [
+            0.08450221555510941,
+            0.18775801823216637
+          ]
+        },
+        "downward_share_of_exact_landings": 0.8055555555555556,
+        "largest_model_event_share": 0.783625730994152,
+        "largest_provider_event_share": 0.45614035087719296,
+        "largest_model_copy_share": 0.8333333333333334,
+        "largest_provider_copy_share": 0.5555555555555556
+      },
+      "promotion_rule": "Strategic following survives only if the own-menu-novel exact-minus-global-menu model-cluster interval excludes zero and every leave-one-model-out estimate is positive.",
+      "claim_boundary": "Own-provider cross-model support identifies a public provider-menu alternative, not intent, collusion, or literal request front-running."
+    },
     "global_menu_band_sensitivity": {
       "1.25": {
         "band_factor": 1.25,
