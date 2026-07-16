@@ -172,6 +172,17 @@ to the companion pre-registration.]
 [As v1; limitations lead with panel length and enumerate the five
 registered-and-unfired tests with their triggers.]
 
+**Transparent-compute comparator.** A separately preregistered Akash study
+links public multi-provider bid sets, the accepted lease, and exact on-chain
+termination reasons. Its launch backfill replayed 2,929 retained closed leases
+with a 100% exact-ID match. The pre-preregistration calibration contains only
+36 linked choices and no provider or escrow close within 300 blocks; the
+prospective cohort is still empty under its second-snapshot inception rule.
+We therefore report this as a validated measurement bridge and a negative
+support result, not as evidence about price, quality, or delivery, and exclude
+it from the paper's three facts. Confirmatory outcomes remain masked until the
+fixed 2026-08-15 release.
+
 ---
 
 ## Change log v1 -> v2 (response to review)

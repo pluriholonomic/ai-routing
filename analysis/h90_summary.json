@@ -1,0 +1,73 @@
+{
+  "study_id": "akash-contract-termination-v1",
+  "preregistration": "docs/h90-akash-contract-termination-preregistration.md",
+  "preregistration_cutoff": "2026-07-16T01:15:00+00:00",
+  "fixed_release_cutoff": "2026-08-15T01:15:00+00:00",
+  "outcomes_released": false,
+  "exploratory_evidence_status": "exploratory_pre_preregistration",
+  "exploratory_support": {
+    "linked_multi_provider_leases": 36,
+    "complete_300_block_followup": 36,
+    "selected_providers": 10,
+    "source_days": 3,
+    "above_lowest": 20,
+    "selected_lowest": 16,
+    "observed_on_chain_closes": 20,
+    "exact_close_events": 20,
+    "exact_close_event_replay_rate": 1.0
+  },
+  "exploratory_contrasts": [
+    {
+      "outcome": "provider_close_300",
+      "risk_difference_above_minus_lowest": 0.0,
+      "cluster_bootstrap_low": 0.0,
+      "cluster_bootstrap_high": 0.0,
+      "permutation_p_value": 1.0,
+      "holm_adjusted_p_value": 1.0
+    },
+    {
+      "outcome": "escrow_close_300",
+      "risk_difference_above_minus_lowest": 0.0,
+      "cluster_bootstrap_low": 0.0,
+      "cluster_bootstrap_high": 0.0,
+      "permutation_p_value": 1.0,
+      "holm_adjusted_p_value": 1.0
+    },
+    {
+      "outcome": "nonowner_close_300",
+      "risk_difference_above_minus_lowest": 0.0,
+      "cluster_bootstrap_low": 0.0,
+      "cluster_bootstrap_high": 0.0,
+      "permutation_p_value": 1.0,
+      "holm_adjusted_p_value": 1.0
+    }
+  ],
+  "confirmatory_support": {
+    "linked_multi_provider_leases": 0,
+    "complete_300_block_followup": 0,
+    "selected_providers": 0,
+    "source_days": 0,
+    "above_lowest": 0,
+    "selected_lowest": 0,
+    "observed_on_chain_closes": 0,
+    "exact_close_events": 0,
+    "exact_close_event_replay_rate": null
+  },
+  "confirmatory_complete_followup": 0,
+  "confirmatory_contrasts": null,
+  "confirmatory_power_assessment": null,
+  "post_cutoff_ineligible": 1,
+  "inception_eligibility_reasons": {
+    "pre_preregistration_exploratory": 36,
+    "first_post_cutoff_successful_capture": 1
+  },
+  "release_requirements": {
+    "fixed_calendar_cutoff": "2026-08-15T01:15:00+00:00",
+    "minimum_leases_for_adequate_power_label": 500,
+    "minimum_selected_providers": 20,
+    "minimum_primary_events_per_exposure_arm": 10,
+    "minimum_exact_close_event_replay_rate": 0.95
+  },
+  "claim_boundary": "H90 links public Akash bid price rank to an exact on-chain contract-termination path. It does not observe workload start, readiness, compute delivery, failure, default, provider cost or intent, buyer value, welfare, or a causal price effect.",
+  "protocol_hash": "fdee60181ef0912a2e7bfd5c7071fe76a14dd1386ff9810f3f1500d5b986af72"
+}

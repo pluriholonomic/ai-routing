@@ -165,15 +165,32 @@ def lifecycle_panel(
     missing_created = frame["created_at_block_numeric"].isna()
     missing_closed = frame["closed_on_block_numeric"].isna()
     if missing_created.any():
-        frame.loc[missing_created, "created_at_block_numeric"] = frame.loc[
-            missing_created, "record_json"
-        ].map(lambda value: _record_field(value, "lease", "created_at"))
+        parsed_created = pd.to_numeric(
+            frame["record_json"].map(
+                lambda value: _record_field(value, "lease", "created_at")
+            ),
+            errors="coerce",
+        )
+        frame["created_at_block_numeric"] = frame[
+            "created_at_block_numeric"
+        ].fillna(parsed_created)
     if missing_closed.any():
-        frame.loc[missing_closed, "closed_on_block_numeric"] = frame.loc[
-            missing_closed, "record_json"
-        ].map(lambda value: _record_field(value, "lease", "closed_on"))
+        parsed_closed = pd.to_numeric(
+            frame["record_json"].map(
+                lambda value: _record_field(value, "lease", "closed_on")
+            ),
+            errors="coerce",
+        )
+        frame["closed_on_block_numeric"] = frame["closed_on_block_numeric"].fillna(
+            parsed_closed
+        )
     frame["created_at_block_numeric"] = _number(frame, "created_at_block_numeric")
     frame["closed_on_block_numeric"] = _number(frame, "closed_on_block_numeric")
+    # Akash uses zero as the sentinel for a lease that has not closed.  It is
+    # not an observed close block and must not enter exact-event coverage.
+    frame.loc[
+        frame["closed_on_block_numeric"].le(0), "closed_on_block_numeric"
+    ] = np.nan
     frame = frame.dropna(subset=["execution_id", "observed_at", "created_at_block_numeric"])
     if frame.empty:
         return pd.DataFrame()
@@ -530,9 +547,13 @@ def _support(panel: pd.DataFrame) -> dict[str, Any]:
             "source_days": 0,
             "above_lowest": 0,
             "selected_lowest": 0,
+            "observed_on_chain_closes": 0,
+            "exact_close_events": 0,
             "exact_close_event_replay_rate": None,
         }
-    observed_closes = panel["closed_on_block"].notna()
+    observed_closes = panel["closed_on_block"].notna() & panel[
+        "closed_on_block"
+    ].gt(0)
     exact_rate = (
         float(panel.loc[observed_closes, "close_event_exact"].mean())
         if observed_closes.any()
@@ -545,6 +566,8 @@ def _support(panel: pd.DataFrame) -> dict[str, Any]:
         "source_days": int(panel["source_day_choice"].nunique()),
         "above_lowest": int(panel["selected_above_lowest"].sum()),
         "selected_lowest": int((~panel["selected_above_lowest"]).sum()),
+        "observed_on_chain_closes": int(observed_closes.sum()),
+        "exact_close_events": int(panel["close_event_exact"].sum()),
         "exact_close_event_replay_rate": exact_rate,
     }
 
@@ -694,24 +717,39 @@ def analyze_frames(
 def _plot_support(linked: pd.DataFrame, out_dir: Path) -> None:
     if linked.empty:
         return
-    confirm = linked.loc[linked["confirmatory"]]
-    labels = ["lowest", "above lowest"]
+    post_cutoff = linked.loc[
+        linked["first_seen_at"].ge(PREREG_CUTOFF)
+        & linked["first_seen_at"].le(RELEASE_CUTOFF)
+    ]
+    confirm = post_cutoff.loc[post_cutoff["confirmatory"]]
+    labels = [
+        "post-cutoff\nlinked",
+        "eligible:\nlowest",
+        "eligible:\nabove lowest",
+        "follow-up\ncomplete",
+    ]
     counts = [
+        int(len(post_cutoff)),
         int((~confirm["selected_above_lowest"]).sum()),
         int(confirm["selected_above_lowest"].sum()),
+        int(confirm["followup_complete_300"].sum()),
     ]
-    complete = [
-        int((~confirm["selected_above_lowest"] & confirm["followup_complete_300"]).sum()),
-        int((confirm["selected_above_lowest"] & confirm["followup_complete_300"]).sum()),
-    ]
-    fig, ax = plt.subplots(figsize=(7.2, 4.2))
-    x = np.arange(2)
-    ax.bar(x, counts, color="#8da0cb", label="linked")
-    ax.bar(x, complete, color="#66c2a5", label="300-block follow-up complete")
+    colors = ["#8da0cb", "#4c78a8", "#f58518", "#66c2a5"]
+    fig, ax = plt.subplots(figsize=(8.4, 4.6))
+    x = np.arange(len(labels))
+    bars = ax.bar(x, counts, color=colors)
     ax.set_xticks(x, labels)
     ax.set_ylabel("Leases")
-    ax.set_title("H90 outcome-masked confirmatory support")
-    ax.legend(frameon=False)
+    ax.set_title("H90 outcome-masked confirmatory cohort assembly")
+    ax.set_ylim(0, max(1.2, max(counts, default=0) * 1.25))
+    for bar, count in zip(bars, counts, strict=True):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            count + max(0.03, max(counts, default=0) * 0.03),
+            str(count),
+            ha="center",
+            va="bottom",
+        )
     fig.tight_layout()
     fig.savefig(out_dir / "h90_akash_contract_support.pdf")
     fig.savefig(out_dir / "h90_akash_contract_support.png", dpi=180)

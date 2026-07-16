@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 
-from orcap.analysis.h90_akash_contract_termination import analyze_frames
+from orcap.analysis.h90_akash_contract_termination import analyze_frames, lifecycle_panel
 
 
 def _lease(
@@ -184,6 +184,8 @@ def test_h90_keeps_confirmatory_close_outcomes_masked_before_fixed_cutoff():
     assert len(linked) == 4
     assert summary["outcomes_released"] is False
     assert summary["exploratory_support"]["linked_multi_provider_leases"] == 2
+    assert summary["exploratory_support"]["observed_on_chain_closes"] == 2
+    assert summary["exploratory_support"]["exact_close_events"] == 2
     assert len(summary["exploratory_contrasts"]) == 3
     assert summary["confirmatory_support"]["linked_multi_provider_leases"] == 1
     assert summary["post_cutoff_ineligible"] == 1
@@ -237,3 +239,27 @@ def test_h90_never_admits_post_cutoff_lease_without_successful_capture_ledger():
         linked.iloc[0]["inception_eligibility_reason"]
         == "missing_successful_capture_ledger"
     )
+
+
+def test_h90_treats_zero_closed_on_as_open_sentinel_not_observed_close():
+    lease_id = "tenant-open/10/1/1/provider-open/0"
+    lifecycle = lifecycle_panel(
+        pd.DataFrame(
+            [
+                _lease(
+                    lease_id,
+                    "20260715T000000Z",
+                    1000,
+                    600,
+                    0,
+                    state="active",
+                )
+            ]
+        ),
+        pd.DataFrame(),
+        pd.DataFrame(),
+    )
+
+    assert len(lifecycle) == 1
+    assert pd.isna(lifecycle.iloc[0]["closed_on_block"])
+    assert bool(lifecycle.iloc[0]["close_event_exact"]) is False
