@@ -7,12 +7,24 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .bm_common import completion_events, load_gates, panel_span_days, provider_cadence
+from .bm_common import (
+    completion_events,
+    load_gates,
+    provider_cadence,
+    quote_exposure_by_provider,
+)
 from .common import DEFAULT_OUT, save, save_json
 from .h68_competition import daily_quotes
+from .vintage import clip_date_range, date_support
 
 
-def quote_quality_panel(out_dir: Path) -> pd.DataFrame:
+def quote_quality_panel(
+    out_dir: Path,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    quotes: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     """Join daily prices to the same delivered-quality panel used by H11."""
     path = out_dir / "h11_endpoint_quality.parquet"
     if path.exists():
@@ -31,7 +43,11 @@ def quote_quality_panel(out_dir: Path) -> pd.DataFrame:
         )
     )
     # canonical slug is the key used by effective-pricing and performance panels.
-    quotes = daily_quotes()
+    quotes = (
+        clip_date_range(daily_quotes(), start_date=start_date, end_date=end_date)
+        if quotes is None
+        else clip_date_range(quotes, start_date=start_date, end_date=end_date)
+    )
     collapsed = collapsed.rename(columns={"model_permaslug": "model_id"})
     return quotes.merge(collapsed, on=["model_id", "provider_name"], how="left")
 
@@ -79,14 +95,40 @@ def fit_within(panel: pd.DataFrame, quality_adjusted: bool) -> dict:
     }
 
 
-def run(out_dir: Path = DEFAULT_OUT) -> dict:
-    events = completion_events()
-    prices_and_quality = quote_quality_panel(out_dir)
+def run(
+    out_dir: Path = DEFAULT_OUT,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    events: pd.DataFrame | None = None,
+    quotes: pd.DataFrame | None = None,
+) -> dict:
+    events = (
+        completion_events(start_date=start_date, end_date=end_date)
+        if events is None
+        else clip_date_range(events, start_date=start_date, end_date=end_date)
+    )
+    quotes = (
+        clip_date_range(daily_quotes(), start_date=start_date, end_date=end_date)
+        if quotes is None
+        else clip_date_range(quotes, start_date=start_date, end_date=end_date)
+    )
+    prices_and_quality = quote_quality_panel(
+        out_dir,
+        start_date=start_date,
+        end_date=end_date,
+        quotes=quotes,
+    )
+    exposure_days = int(quotes["dt"].nunique()) if not quotes.empty else 0
     cadence_path = out_dir / "bm1_provider_cadence.parquet"
     cadence = (
         pd.read_parquet(cadence_path)
         if cadence_path.exists()
-        else provider_cadence(events, set(prices_and_quality["provider_name"].dropna()))
+        else provider_cadence(
+            events,
+            set(prices_and_quality["provider_name"].dropna()),
+            exposure_days=quote_exposure_by_provider(quotes),
+        )
     )
     panel = prices_and_quality.merge(
         cadence[["provider_name", "cadence_class", "is_fast"]],
@@ -116,13 +158,15 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
                 }
             )
     save(pd.DataFrame(rows), out_dir, "bm3_premium_coefficients")
-    span = panel_span_days(events)
+    span = float(exposure_days)
     min_days = load_gates()["brown_mackay"]["min_panel_days"]
     summary = {
         "evidence_status": "provisional_descriptive" if span >= min_days else "power_gated",
         "panel_span_days": round(span, 2),
+        "n_observed_quote_days": exposure_days,
         "cadence_only": basic,
         "quality_adjusted": adjusted,
+        "analysis_vintage": date_support(quotes),
         "claim_boundary": (
             "The regression absorbs model-day price levels and public delivered latency, "
             "throughput, tool-call error, and structured-output error. It does not observe all "

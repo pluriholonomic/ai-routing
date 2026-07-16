@@ -28,12 +28,17 @@ import pandas as pd
 from . import data
 from .common import DEFAULT_OUT, save, save_json
 from .h68_competition import daily_quotes
+from .vintage import clip_date_range, date_support
 
 log = logging.getLogger(__name__)
 
 
-def build_panel() -> pd.DataFrame:
-    q = daily_quotes()  # dt, model_id, provider_name, price (daily median)
+def build_panel(
+    *, start_date: str | None = None, end_date: str | None = None
+) -> pd.DataFrame:
+    q = clip_date_range(
+        daily_quotes(), start_date=start_date, end_date=end_date
+    )  # dt, model_id, provider_name, price (daily median)
     ch = data.q(
         f"""
         select cast(dt as varchar) as dt, model_id, provider_name,
@@ -46,6 +51,7 @@ def build_panel() -> pd.DataFrame:
         group by 1, 2, 3
         """
     ).df()
+    ch = clip_date_range(ch, start_date=start_date, end_date=end_date)
     p = q.merge(ch, on=["dt", "model_id", "provider_name"], how="left")
     p["event"] = p["n_changes"].fillna(0) > 0
 
@@ -55,7 +61,10 @@ def build_panel() -> pd.DataFrame:
     last_change = {}
     ages, censored = [], []
     for key, day, ev in zip(
-        zip(p["model_id"], p["provider_name"]), p["d"], p["event"]
+        zip(p["model_id"], p["provider_name"], strict=True),
+        p["d"],
+        p["event"],
+        strict=True,
     ):
         lc = last_change.get(key)
         ages.append((day - lc).days if lc is not None else np.nan)
@@ -79,6 +88,7 @@ def build_panel() -> pd.DataFrame:
         group by 1 order by 1
         """
     ).df()
+    g = clip_date_range(g, start_date=start_date, end_date=end_date)
     g["gpu_dlog"] = np.log(g["spot"]).diff()
     p = p.merge(g[["dt", "gpu_dlog"]], on="dt", how="left")
 
@@ -106,8 +116,10 @@ def build_panel() -> pd.DataFrame:
     cong = data.q(
         f"""
         select model_permaslug, provider_name, substr(run_ts,1,8) as day8,
-               avg(try_cast(recent_peak_rpm as double)/nullif(try_cast(capacity_ceiling_rpm as double),0)) as util,
-               sum(try_cast(rate_limited_30m as double))/nullif(sum(try_cast(request_count_30m as double)),0) as rl
+               avg(try_cast(recent_peak_rpm as double)
+                   /nullif(try_cast(capacity_ceiling_rpm as double),0)) as util,
+               sum(try_cast(rate_limited_30m as double))
+                   /nullif(sum(try_cast(request_count_30m as double)),0) as rl
         from read_parquet('{data.table_glob("congestion_intraday")}', union_by_name=true)
         group by 1,2,3
         """
@@ -122,6 +134,7 @@ def build_panel() -> pd.DataFrame:
     cong = cong.merge(slug, left_on="model_permaslug", right_on="canonical_slug", how="left")
     cong["model_id"] = cong["id"].fillna(cong["model_permaslug"])
     cong["dt"] = cong["day8"].str[:4] + "-" + cong["day8"].str[4:6] + "-" + cong["day8"].str[6:8]
+    cong = clip_date_range(cong, start_date=start_date, end_date=end_date)
     p = p.merge(
         cong[["model_id", "provider_name", "dt", "util", "rl"]],
         on=["model_id", "provider_name", "dt"],
@@ -168,11 +181,16 @@ def design(p: pd.DataFrame, rung: int) -> tuple[np.ndarray, list[str]]:
     return np.column_stack(cols), names
 
 
-def run(out_dir: Path = DEFAULT_OUT) -> dict:
+def run(
+    out_dir: Path = DEFAULT_OUT,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict:
     import statsmodels.api as sm
     from scipy import stats as st
 
-    p = build_panel()
+    p = build_panel(start_date=start_date, end_date=end_date)
     y = p["event"].astype(float).to_numpy()
     n_days = p["dt"].nunique()
     results, prev_llf, prev_df = [], None, None
@@ -204,12 +222,12 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             "lr_p_vs_previous": (f"{lr_p:.2e}" if lr_p is not None else None),
             "key_coefs": {
                 nm: round(float(c), 3)
-                for nm, c in zip(names, fit.params)
+                for nm, c in zip(names, fit.params, strict=True)
                 if nm in ("abs_gap", "gap_positive", "util", "rl_share",
                           "rival_moves_1d", "rival_raises_1d", "abs_gpu_dlog")
             },
         }
-        for nm, c, se in zip(names, fit.params, fit.bse):
+        for nm, c, se in zip(names, fit.params, fit.bse, strict=True):
             results.append({"rung": rung, "term": nm, "coef": float(c), "se": float(se)})
         prev_llf, prev_df = fit.llf, X.shape[1]
     save(pd.DataFrame(results), out_dir, "pm1_ladder")
@@ -219,6 +237,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         "n_pair_days": int(len(p)),
         "n_events": int(y.sum()),
         "base_daily_hazard": round(float(y.mean()), 4),
+        "analysis_vintage": date_support(p),
         "ladder": ladder,
         "reading": (
             "L2>L1 = duration/calendar dependence (anti-Calvo); L3 abs_gap>0 = "
@@ -226,7 +245,8 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             "(exclusion: should be ~0 given L3); L5 rival terms>0 = strategic"
         ),
         "claim_boundary": (
-            "Ten-day panel: rungs are directional, not conclusive; congestion "
+            f"{n_days}-day panel: rungs are directional until the registered 30-day "
+            "vintage; congestion "
             "covariates exist only for hot-panel pairs (cong_missing indicator); "
             "provider_rate is an endogenous frailty substitute."
         ),

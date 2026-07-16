@@ -602,6 +602,10 @@ def main() -> None:
             "bm3": "bm3_quality_adjusted_premium",
             "bm4": "bm4_reaction_rules",
             "bm5": "bm5_competitive_null",
+            # Outcome-free date selection plus executable nine-day/30-day
+            # side-by-side manuscript release. Keep after the component BM
+            # modules so a nightly run has already exercised their live paths.
+            "manuscript_vintages": "manuscript_vintages",
             # Validation of C1-C10, counterfactual sensitivity, agent regret,
             # owned-policy identification, and the integrated verdict.
             "wcv0": "wcv0_data_audit",

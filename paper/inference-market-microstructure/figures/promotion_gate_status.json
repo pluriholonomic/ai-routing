@@ -11,7 +11,14 @@
     "latest_observed_date": "2026-07-16",
     "frozen_vintage_start": "2026-07-07",
     "frozen_vintage_end": "2026-07-15",
-    "confirmatory_vintage": null
+    "confirmatory_vintage": null,
+    "required_side_by_side_analyses": [
+      "pm1_hazard_baseline",
+      "bm1_pricing_technology",
+      "bm2_fast_slow_reactions",
+      "bm3_quality_adjusted_premium",
+      "bm4_reaction_rules"
+    ]
   },
   "h80_first_position_gate": {
     "ready": false,

@@ -251,8 +251,8 @@ and owned generation records for requests made with our study key.
 The pricing freeze used in the main tables contains 2,968,449 endpoint snapshots
 from 1,805 capture runs over nine days.  It covers approximately 300 models and 69
 providers with enough exposure for provider-level cadence classification.  The
-all-field event ledger contains 3,212 changes; the Brown--MacKay completion-price
-screen retains 278 positive-price events spanning 7.53 days.  The public routing
+all-field event ledger contains 3,212 changes; the frozen Brown--MacKay screen
+retains 274 positive completion-price events over nine observed quote days.  The public routing
 simulation contains 562,550 provider-model-time rows over six days.  Owned legacy
 traffic contains 2,659 raw rows over 65 runs; after deduplication and exclusion of
 outcome-masked studies, 716 descriptive attempts remain and 617 identify the
@@ -267,14 +267,14 @@ Panel & Rows / attempts & Span & Primary role \\
 \midrule
 Endpoint snapshots & 2,968,449 & 9 days & Prices, grids, gaps, enforcement state \\
 All-field price events & 3,212 & 9 days & Repricing incidence and event construction \\
-Completion-price events & 278 & 7.53 days & Pricing-technology cadence screen \\
+Completion-price events & 274 & 9 quote days & Pricing-technology cadence screen \\
 Public allocation proxy & 562,550 & 6 days & Mechanical share-price comparative statics \\
 Legacy owned attempts & 716 & 65 runs & Descriptive provider-selection audit \\
 Randomized crossover & 304 + 76 & prospective & 76 matched four-policy blocks plus default-only monitoring \\
 Historical quote registry & multi-year & 3 years & Lifecycle and duration sensitivity \\
 \bottomrule
 \end{tabular}
-\caption{Frozen analysis panels.  Sample sizes refer to the v3 manuscript
+\caption{Frozen analysis panels.  Sample sizes refer to the corrected nine-day manuscript
 release and are updated only at registered promotion gates.}
 \label{tab:samples}
 \end{table}
@@ -575,18 +575,38 @@ the paper's novelty claim.
 
 \subsection{Pricing cadence and Brown--MacKay}
 
-Of 69 exposed providers, 19 reprice at least once: ten are classified intraday,
-seven daily, and two weekly; 50 are inactive or left-censored.  Conditional on
-model, slow providers quote 10.5\% more than fast providers.  The log-price
-coefficient is $-0.0996$ with provider-clustered standard error 0.0292 and 95\%
-interval $[-0.1569,-0.0424]$ across 5,576 observations and 131 models.
+Of 69 exposed providers, 19 reprice at least once: nine are classified intraday,
+seven daily, and three weekly; 50 are inactive or left-censored.  Cadence rates
+divide changes by each provider's observed quote exposure within the nine-day
+window, rather than by the shorter span between its first and last event.
+Conditional on model-day, slow
+providers quote 10.1\% more than fast providers.  The log-price coefficient is
+$-0.0964$ with provider-clustered standard error 0.0281 and 95\% interval
+$[-0.1515,-0.0413]$ across 5,501 observations and 127 models.  On the smaller
+public-quality overlap, the coefficient is $-0.3892$ with interval
+$[-0.6374,-0.1411]$.
 
-This resembles the cadence premium in \citet{brownmackay2023}, but the reaction
-design is not supported.  Freezing cadence on the first 70\% of events leaves 21
-evaluation waves and 124 rival risk pairs, with zero slow-initiator/fast-responder
-exposures.  Adding reaction features slightly improves holdout MAE but not robust
-discrimination.  The cadence premium is a resolved association; Brown--MacKay is a
-power-gated competitive null, not the selected mechanism.
+The association resembles \citet{brownmackay2023}, but the proposed reaction
+mechanism does not yet discriminate from state-dependent pricing.  Capture times
+interval-censor updates, so we exclude simultaneous multi-provider batches as
+initiators and never order changes first observed in the same snapshot.  Freezing
+cadence on the first 70\% of events then leaves 19 unambiguous evaluation waves but
+zero slow-initiator risk pairs.  Among 188 uniquely linked reactions, the temporal
+holdout RMSE is 0.23835 for the state-only rule and 0.23760 for the Brown--MacKay
+rule.  The paired MSE improvement is 0.000355 with seven-model-cluster bootstrap
+interval $[-0.000972,0.008033]$.  An exact cluster sign-flip sensitivity gives
+$p=0.023$, but the few-cluster interval crosses zero.  We therefore call the two
+rules predictively indistinguishable: the cadence premium is a resolved
+association, not evidence that slow firms initiate and fast firms respond.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/brown_mackay_audit.pdf}
+\caption{Frozen Brown--MacKay audit.  Negative cadence coefficients survive
+public-quality adjustment, while the slow-initiator support and incremental
+reaction-rule evidence do not identify the mechanism.}
+\label{fig:bmaudit}
+\end{figure}
 
 \subsection{Entry and long-memory demand}
 
@@ -869,15 +889,6 @@ the paper's promoted facts because its market object is a compute lease rather t
 token-priced inference request.  Its role is methodological: it shows what becomes
 identifiable when bids, acceptance, and termination are public.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.62\linewidth]{../../analysis/h90_akash_contract_support.pdf}
-\caption{Prospective Akash cohort assembly at launch.  The absence of eligible
-post-cutoff observations is a support diagnostic; outcomes remain masked until the
-fixed release.}
-\label{fig:akashsupport}
-\end{figure}
-
 \section{Claim ledger and promotion gates}
 \label{app:ledger}
 
@@ -892,7 +903,7 @@ Administered menus & Frequency, size, grid, clock, day-split gap AUC & Long-run 
 Author focal anchor & Grid null and 65/72 author-price matches & Exogenous author move & First qualifying author repricing \\
 Manufactured firmness & Secondary randomized-order block level, flat rank gradient & Carryover-robust first-position estimate and transport & 500 first-position assignments per arm \\
 Negative steering memory & Rank-conditioned audit, same-sign eligibility subset & Complete eligibility or visibility instrument & Eligibility-complete panel \\
-Brown--MacKay mechanism & Cadence premium & Slow-initiator/fast-responder exposure & 30 risk pairs after frozen cadence \\
+Brown--MacKay mechanism & Cadence premium; reaction rules predictively indistinguishable & Slow-initiator/fast-responder exposure & Earliest 30-day vintage with fixed paired test \\
 Retry externality & Forward/backward asymmetry, small IV estimate & Cross-provider retry and user value & Incident instrument plus attempt logs \\
 Literal front-running & None & Cross-user order and quote-update sequence & Negotiated router/provider event logs \\
 Global welfare loss & None & Values, quality, costs, transfers, capacity response & Structural measurement contract \\
@@ -915,7 +926,9 @@ four-panel figure reads only frozen \texttt{paper\_estimates.json}, not the
 pre-randomization legacy H80 summary.  The outcome-free
 \texttt{manuscript\_promotion\_gate\_summary.json} freezes the nine-day and
 earliest 30-day vintages and masks H80 outcomes until 500 first-position
-assignments per arm.  Each gate release updates estimates, source manifest, and
-PDF in one commit.
+assignments per arm.  The companion \texttt{manuscript\_vintages} program runs
+PM1 and BM1--BM4 under both calendar cutoffs, canonicalizes every table, records
+SHA-256 hashes, and compares only the metrics fixed before the 30-day data exist.
+Each gate release updates estimates, source manifest, and PDF in one commit.
 
 \end{document}

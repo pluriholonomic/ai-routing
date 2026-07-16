@@ -12,10 +12,12 @@ from .bm_common import (
     independent_waves,
     load_gates,
     provider_cadence,
+    quote_exposure_by_provider,
     temporal_training_cutoff,
 )
 from .common import DEFAULT_OUT, save, save_json
 from .h68_competition import daily_quotes
+from .vintage import clip_date_range, date_support
 
 
 def build_reaction_panel(
@@ -58,7 +60,7 @@ def build_reaction_panel(
     rows = []
     for wave in waves.itertuples(index=False):
         day = str(wave.dt)
-        providers = active.get((wave.model_id, day), [])
+        providers = sorted(active.get((wave.model_id, day), []))
         for responder in providers:
             if responder == wave.provider_name:
                 continue
@@ -148,14 +150,34 @@ def _summarize_panel(panel: pd.DataFrame, gate: dict) -> dict:
     }
 
 
-def run(out_dir: Path = DEFAULT_OUT) -> dict:
-    events = completion_events()
-    quotes = daily_quotes()
+def run(
+    out_dir: Path = DEFAULT_OUT,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    events: pd.DataFrame | None = None,
+    quotes: pd.DataFrame | None = None,
+) -> dict:
+    events = (
+        completion_events(start_date=start_date, end_date=end_date)
+        if events is None
+        else clip_date_range(events, start_date=start_date, end_date=end_date)
+    )
+    quotes = (
+        clip_date_range(daily_quotes(), start_date=start_date, end_date=end_date)
+        if quotes is None
+        else clip_date_range(quotes, start_date=start_date, end_date=end_date)
+    )
+    exposure_days = int(quotes["dt"].nunique()) if not quotes.empty else 0
     cadence_path = out_dir / "bm1_provider_cadence.parquet"
     if cadence_path.exists():
         cadence = pd.read_parquet(cadence_path)
     else:
-        cadence = provider_cadence(events, set(quotes["provider_name"].dropna()))
+        cadence = provider_cadence(
+            events,
+            set(quotes["provider_name"].dropna()),
+            exposure_days=quote_exposure_by_provider(quotes),
+        )
     gate = load_gates()["brown_mackay"]
     panel = build_reaction_panel(
         events,
@@ -171,7 +193,14 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     frozen = pd.DataFrame(columns=panel.columns)
     if cutoff is not None:
         training = events[events["ts"] <= cutoff]
-        frozen_cadence = provider_cadence(training, set(quotes["provider_name"].dropna()))
+        training_quotes = clip_date_range(
+            quotes, end_date=cutoff.strftime("%Y-%m-%d")
+        )
+        frozen_cadence = provider_cadence(
+            training,
+            set(quotes["provider_name"].dropna()),
+            exposure_days=quote_exposure_by_provider(training_quotes),
+        )
         wave_end = events["ts"].max() - pd.to_timedelta(
             float(gate["response_window_hours"]) * 3600, unit="s"
         )
@@ -201,6 +230,8 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             "min_independent_waves": gate["min_independent_waves"],
             "min_slow_risk_pairs": gate["min_slow_risk_pairs"],
         },
+        "analysis_vintage": date_support(quotes),
+        "cadence_exposure_days": exposure_days,
         "claim_boundary": (
             "The promoted screen freezes cadence classes on the first 70% of events, evaluates "
             "later waves, and excludes incomplete response windows. The full-panel classification "

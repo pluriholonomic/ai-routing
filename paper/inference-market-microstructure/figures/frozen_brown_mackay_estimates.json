@@ -1,0 +1,42 @@
+{
+  "freeze": "earliest nine observed dates, 2026-07-07 through 2026-07-15",
+  "claim_boundary": "Cadence-price coefficients are associations. Same-snapshot price changes are not ordered. The reaction mechanism is not promoted because the model-cluster bootstrap interval crosses zero and the frozen design has no slow-initiator risk pairs.",
+  "cadence_counts": {
+    "Inactive or censored": 50,
+    "Intraday": 9,
+    "Daily": 7,
+    "Weekly": 3
+  },
+  "price_associations": [
+    {
+      "label": "Cadence only",
+      "beta_fast": -0.096366325,
+      "ci95": [-0.151466074744, -0.041266575256],
+      "observations": 5501,
+      "models": 127
+    },
+    {
+      "label": "Quality adjusted",
+      "beta_fast": -0.389249493033,
+      "ci95": [-0.637372590117, -0.141126395948],
+      "observations": 423,
+      "models": 23
+    }
+  ],
+  "support_counts": {
+    "Unambiguous waves": 19,
+    "Slow-initiator risk pairs": 0,
+    "Linked reactions": 188,
+    "Temporal holdout": 46
+  },
+  "predictive_test": {
+    "mse_improvement": 0.000354950594,
+    "model_cluster_bootstrap_ci95": [-0.000971777804, 0.008032695597],
+    "exact_sign_flip_p_positive": 0.0234375,
+    "model_clusters": 7,
+    "state_only_rmse": 0.238348229256,
+    "brown_mackay_rmse": 0.23760245747,
+    "verdict": "predictively indistinguishable"
+  },
+  "source": "manuscript_vintages frozen_9d release; metrics are rounded publication copies"
+}

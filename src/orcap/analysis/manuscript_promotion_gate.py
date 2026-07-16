@@ -32,6 +32,7 @@ REQUIRED_DUAL_VINTAGE_ANALYSES = (
     "pm1_hazard_baseline",
     "bm1_pricing_technology",
     "bm2_fast_slow_reactions",
+    "bm3_quality_adjusted_premium",
     "bm4_reaction_rules",
 )
 

@@ -6,6 +6,7 @@ import pytest
 
 from orcap.analysis.bm2_fast_slow_reactions import build_reaction_panel
 from orcap.analysis.bm3_quality_adjusted_premium import fit_within
+from orcap.analysis.bm4_reaction_rules import link_reactions, paired_predictive_test
 from orcap.analysis.bm_common import (
     classify_cadence,
     independent_waves,
@@ -107,6 +108,57 @@ def test_temporal_cadence_cutoff_and_wave_window_prevent_lookahead() -> None:
         wave_end=pd.Timestamp("2026-01-02T00:00:00Z"),
     )
     assert set(panel["wave_ts"]) == {pd.Timestamp("2026-01-02T00:00:00Z")}
+
+
+def test_simultaneous_updates_have_no_invented_initiator_or_reaction_order() -> None:
+    events = pd.DataFrame(
+        [
+            _event("2026-01-01T00:00:00", "a"),
+            _event("2026-01-01T00:00:00", "b"),
+            _event("2026-01-01T08:00:00", "c"),
+            _event("2026-01-01T16:00:00", "d"),
+        ]
+    )
+    waves = independent_waves(events, 6)
+    assert waves["provider_name"].tolist() == ["c", "d"]
+
+    cadence = pd.DataFrame(
+        {
+            "provider_name": ["a", "b", "c", "d"],
+            "is_fast": [False, False, True, True],
+        }
+    )
+    linked = link_reactions(events, cadence)
+    assert linked[["provider_name", "rival_provider"]].to_dict("records") == [
+        {"provider_name": "d", "rival_provider": "c"}
+    ]
+    assert (linked["lag_hours"] > 0).all()
+
+
+def test_paired_predictive_test_clusters_temporal_holdout_by_model() -> None:
+    rows = []
+    for index in range(60):
+        rival = (index % 7 - 3) / 10
+        rows.append(
+            {
+                "model_id": f"m{index % 6}",
+                "own_dlog": 0.8 * rival,
+                "gap": 0.0,
+                "rival": rival,
+            }
+        )
+    panel = pd.DataFrame(rows)
+    result = paired_predictive_test(
+        panel.iloc[:48],
+        panel.iloc[48:],
+        ["gap"],
+        ["gap", "rival"],
+        draws=200,
+    )
+    assert result["n_model_clusters"] == 6
+    assert result["mse_improvement"] > 0
+    assert result["exact_sign_flip_p_positive"] <= 0.05
+    assert result["verdict"] == "brown_mackay_predictive_gain"
 
 
 def test_within_estimator_recovers_fast_discount() -> None:
