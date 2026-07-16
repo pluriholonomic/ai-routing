@@ -43,7 +43,8 @@ scales as demand^0.16 (rejecting sqrt-law free entry; a long-memory
 correction matches point estimates but awaits its registered discriminator);
 retry amplification of rationed demand is positive in asymmetric
 OLS (+0.17 forward vs -0.13 placebo) but small under a capacity-spillover
-instrument (phi = 0.02 [-0.04, 0.09]); and a persistence-aware
+instrument (phi = 0.02 [-0.04, 0.09]; a local estimand that excludes the
+rerouting margin); and a persistence-aware
 reclassification halves the apparent algorithmic punish-and-revert rate
 (83% -> 42%), a caution for collusion screens on posted-price panels.
 
@@ -135,10 +136,13 @@ as a reproducible statistic computable by any key-holder.
 simultaneity biases upward, so the rejection of 0.5/0.33 benchmarks is
 conservative. The long-memory correction k* ~ n^{(2-2H)/2} matches at the
 count-method Hurst (0.165 predicted vs 0.161 measured) but is presented as
-a **remark**: the estimator-horizon question is open (deseasonalized
-30-minute demand is anti-persistent), and the registered within-market
-discriminator is underpowered at this panel length (interaction -0.10
-[-0.31, 0.16]).
+a **remark**. Horizon discipline (referee C2): the paper uses ONE H per
+application — the multi-scale count H (0.835) for entry (the entry-relevant
+horizon is weeks: capacity decisions contest persistent demand), and makes
+no quantitative use of intraday H elsewhere; the deseasonalized 30-minute
+estimate (anti-persistent, 0.36) is reported to show the horizon dependence
+that keeps this a remark. The registered within-market discriminator is
+underpowered at this panel length (interaction -0.10 [-0.31, 0.16]).
 
 **Retry amplification.** OLS with demand-growth controls: +0.167 forward
 with a -0.126 backward placebo (sign asymmetry inconsistent with pure
