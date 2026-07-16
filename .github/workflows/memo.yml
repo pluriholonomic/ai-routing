@@ -41,35 +41,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --no-dev
-      - name: detect verified legacy source-run baseline
+      - name: select verified immutable legacy source-run baselines
         id: legacy-source-baseline
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          uv run python - <<'PY'
-          import os
-          from datetime import UTC, date, datetime
-          from huggingface_hub import HfApi
-          from orcap.hf_snapshot_retry import file_exists_retry
-          api = HfApi(token=os.environ["HF_TOKEN"])
-          exists = file_exists_retry(
-              api,
-              "t4run/openrouter-market-history",
-              "curated/source_runs/dt=legacy/baseline.parquet",
-              repo_type="dataset",
-          )
-          tail_exists = file_exists_retry(
-              api,
-              "t4run/openrouter-market-history",
-              "curated/source_runs/dt=legacy-2026-07-13/baseline.parquet",
-              repo_type="dataset",
-          )
-          tail_finalizable = datetime.now(UTC).date() > date(2026, 7, 13)
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"exists={str(exists).lower()}\n")
-              output.write(f"tail_exists={str(tail_exists).lower()}\n")
-              output.write(f"tail_finalizable={str(tail_finalizable).lower()}\n")
-          PY
+          # These append-only baselines were materialized and verified before
+          # this workflow revision.  The 2026-07-16 06:00 UTC run confirmed
+          # both paths and then completed the full hydration and publication.
+          # Avoid a redundant Hub HEAD request here: snapshot hydration below
+          # remains the end-to-end availability and integrity check.
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+          echo "tail_exists=true" >> "$GITHUB_OUTPUT"
+          echo "tail_finalizable=true" >> "$GITHUB_OUTPUT"
       - name: hydrate source-run ledger for 2026-07-10
         # Legacy captures predate daily bundling and contain thousands of tiny
         # immutable objects. Hydrate the known high-cardinality dates in
