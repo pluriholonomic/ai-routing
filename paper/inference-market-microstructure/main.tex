@@ -36,6 +36,7 @@
 \newcommand{\pp}{\text{pp}}
 \newcommand{\dd}{\mathrm{d}}
 \newtheorem{proposition}{Proposition}
+\newtheorem{corollary}[proposition]{Corollary}
 
 \title{Administered Menus and Focal Anchors:\\
 The Microstructure of the Market for Machine Intelligence}
@@ -74,7 +75,8 @@ observed rule does not reward past undercutting in the manner proposed to
 discipline pricing algorithms.  We also establish a nonparametric
 observational-equivalence result: five-minute quote snapshots cannot distinguish
 scheduled menu revision from a within-bin rival response or recover the latent
-leader.  The combined evidence supports a dealer-and-
+leader.  The resulting sharp identified set for the share of events caused by a
+unique prior named rival is $[0,68.6\%]$.  The combined evidence supports a dealer-and-
 dispatcher analogy rather than an automated-market-maker analogy: money prices
 are sticky, quantity and eligibility clear at request time, and the platform's
 substitution and prominence rules are first-order market-design instruments.
@@ -513,8 +515,9 @@ intervals in \cref{fig:core} are descriptive.  Random order balances clock
 position, but treatment-specific carryover can still affect later positions.
 
 The carryover-robust first-position analysis is outcome-masked until every arm
-reaches 500 assignment-verified observations.  At the 2026-07-16 outcome-free
-audit, the four counts are 15, 20, 19, and 22, with 100\% seed-replay success.
+reaches 500 assignment-verified observations.  At the 2026-07-16 09:30 UTC
+outcome-free audit, the four counts are 22, 24, 25, and 25, with 100\%
+seed-replay success.
 The eventual release uses the earliest chronological prefix satisfying the gate,
 Holm-adjusted default-pinned randomization tests, and a prespecified rank-gradient
 test.  Until then, the defensible interim conclusion is narrower: the approximately
@@ -609,7 +612,9 @@ association, not evidence that slow firms initiate and fast firms respond.
 \includegraphics[width=0.98\linewidth]{figures/brown_mackay_audit.pdf}
 \caption{Frozen Brown--MacKay audit.  Negative cadence coefficients survive
 public-quality adjustment, while the slow-initiator support and incremental
-reaction-rule evidence do not identify the mechanism.}
+reaction-rule evidence do not identify the mechanism.  The 188 uniquely ordered
+candidates among 274 events imply a sharp named-rival response-share set of
+$[0,68.6\%]$.}
 \label{fig:bmaudit}
 \end{figure}
 
@@ -631,7 +636,20 @@ produces the same sampled quotes.  Hence neither within-bin leader identity nor
 rival-triggered response is point identified from the snapshot panel.
 \end{proposition}
 
-The proof is constructive and appears in \cref{app:coarsening-proof}.  The result
+\begin{corollary}[Sharp named-rival response bounds]
+\label{cor:named-rival-bound}
+For each of $N$ sampled price events, let $U_e=1$ when the event has a unique
+most-recent strictly prior rival move inside a declared lookback window, and let
+$R_e=1$ when that named move caused the event.  The sample response share
+$\theta=N^{-1}\sum_e U_eR_e$ satisfies
+\begin{equation}
+  0\leq\theta\leq \frac{1}{N}\sum_e U_e.
+  \label{eq:named-rival-bound}
+\end{equation}
+Without restrictions beyond \cref{prop:coarsening}, both endpoints are attainable.
+\end{corollary}
+
+The proofs are constructive and appear in \cref{app:coarsening-proof}.  The result
 allows unrestricted latent state and response maps, so restrictions on either can
 restore identification.  Without such restrictions, however, more five-minute
 snapshots improve frequency estimates but do not resolve ordering inside a
@@ -639,6 +657,10 @@ snapshot.  Excluding same-snapshot batches therefore prevents invented order;
 the uniquely and strictly earlier links used above identify temporal candidates,
 not causal triggers.  Literal quote-surface front-running requires finer update
 timestamps, an exclusion restriction on common shocks, or randomized visibility.
+In the frozen nine-day panel, 188 of 274 price events have a unique most-recent
+strictly prior rival inside 72 hours.  Consequently, the share of all price events
+caused by that named rival is sharply bounded by $[0,188/274]=[0,68.6\%]$: candidate
+abundance narrows the upper endpoint but supplies no positive lower bound.
 
 \subsection{Entry and long-memory demand}
 
@@ -772,7 +794,7 @@ Five limitations define the claim boundary.  First, the main pricing panel is ni
 days, so dynamic hazard and cadence results await the registered 30-day
 both-vintage re-estimation; the outcome-free collection status is currently
 10/30 dates.  Second, the randomized crossover's all-position block screen is
-secondary, and its carryover-robust first-position counts are only 15--22 of 500
+secondary, and its carryover-robust first-position counts are only 22--25 of 500
 per arm.  Third, owned probes identify one
 account, region, prompt family, and time window; they do not identify market-wide
 provider shares.  Fourth, public operational fields are router-published
@@ -864,6 +886,16 @@ again matches the data.  Repeating the construction with another $j$ reverses
 the latent leader without changing either sampled endpoint.  Providers outside
 $S$ remain constant.  Applying the construction interval by interval establishes
 the result for the full sampled panel.
+\end{proof}
+
+\begin{proof}[Proof of Corollary~\ref{cor:named-rival-bound}]
+An event with $U_e=0$ cannot contribute to the named-rival estimand, and
+$R_e\in\{0,1\}$, which gives \cref{eq:named-rival-bound}.  The lower endpoint is
+attained by the scheduled construction in \cref{prop:coarsening}.  For the upper
+endpoint, use the reactive construction for every $U_e=1$ event, assigning its
+unique strictly prior rival as the trigger; unrestricted response maps preserve
+all sampled terminal quotes.  Thus neither endpoint can be tightened from the
+snapshot panel alone.
 \end{proof}
 
 The proposition is intentionally nonparametric.  It does not say scheduled and
@@ -967,7 +999,7 @@ Manufactured firmness & Secondary randomized-order block level, flat rank gradie
 Negative steering memory & Rank-conditioned audit, same-sign eligibility subset & Complete eligibility or visibility instrument & Eligibility-complete panel \\
 Brown--MacKay mechanism & Cadence premium; reaction rules predictively indistinguishable & Slow-initiator/fast-responder exposure & Earliest 30-day vintage with fixed paired test \\
 Retry externality & Forward/backward asymmetry, small IV estimate & Cross-provider retry and user value & Incident instrument plus attempt logs \\
-Literal front-running & Proposition~\ref{prop:coarsening} rules out public point identification & Cross-user order and quote-update sequence & Negotiated router/provider event logs \\
+Literal front-running & Proposition~\ref{prop:coarsening}; named-rival response share in $[0,68.6\%]$ & Cross-user order and quote-update sequence & Negotiated router/provider event logs \\
 Global welfare loss & None & Values, quality, costs, transfers, capacity response & Structural measurement contract \\
 \bottomrule
 \end{tabular}

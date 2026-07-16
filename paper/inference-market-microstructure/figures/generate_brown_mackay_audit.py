@@ -81,6 +81,18 @@ def render() -> None:
     axes[1, 0].set_ylim(0, max(support_values) * 1.18)
     axes[1, 0].set_title("C. Identification support after coarsening")
     axes[1, 0].set_ylabel("Count")
+    timing = DATA["timing_identification"]
+    _, upper = timing["sharp_named_rival_response_share_bounds"]
+    axes[1, 0].text(
+        0.02,
+        0.95,
+        f"Named-rival response share\nsharp set: [0, {upper:.1%}]",
+        transform=axes[1, 0].transAxes,
+        ha="left",
+        va="top",
+        fontsize=8.5,
+        color="#444444",
+    )
 
     predictive = DATA["predictive_test"]
     point = predictive["mse_improvement"]

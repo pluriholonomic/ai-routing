@@ -6,7 +6,11 @@ import pytest
 
 from orcap.analysis.bm2_fast_slow_reactions import build_reaction_panel
 from orcap.analysis.bm3_quality_adjusted_premium import fit_within
-from orcap.analysis.bm4_reaction_rules import link_reactions, paired_predictive_test
+from orcap.analysis.bm4_reaction_rules import (
+    link_reactions,
+    paired_predictive_test,
+    timing_identification_audit,
+)
 from orcap.analysis.bm_common import (
     classify_cadence,
     independent_waves,
@@ -133,6 +137,23 @@ def test_simultaneous_updates_have_no_invented_initiator_or_reaction_order() -> 
         {"provider_name": "d", "rival_provider": "c"}
     ]
     assert (linked["lag_hours"] > 0).all()
+
+    audit = timing_identification_audit(events)
+    assert audit["n_capture_batches"] == 3
+    assert audit["n_multi_provider_batches"] == 1
+    assert audit["event_rows_in_multi_provider_batches"] == 2
+    assert audit["ambiguous_within_bin_provider_pairs"] == 1
+    assert audit["events_without_prior_rival"] == 2
+    assert audit["events_with_tied_latest_prior"] == 1
+    assert audit["events_with_unique_strict_prior_candidate"] == 1
+    assert audit["sharp_named_rival_response_share_bounds"] == [0.0, 0.25]
+
+
+def test_timing_identification_audit_empty_panel_fails_closed() -> None:
+    audit = timing_identification_audit(pd.DataFrame())
+    assert audit["n_event_rows"] == 0
+    assert audit["unique_prior_candidate_share"] is None
+    assert audit["sharp_named_rival_response_share_bounds"] == [0.0, None]
 
 
 def test_paired_predictive_test_clusters_temporal_holdout_by_model() -> None:

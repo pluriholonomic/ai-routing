@@ -29,6 +29,12 @@
     "Linked reactions": 188,
     "Temporal holdout": 46
   },
+  "timing_identification": {
+    "total_price_events": 274,
+    "unique_strict_prior_candidates": 188,
+    "sharp_named_rival_response_share_bounds": [0.0, 0.6861313868613139],
+    "estimand": "share of price events causally responding to their unique most-recent strictly prior named rival within 72 hours"
+  },
   "predictive_test": {
     "mse_improvement": 0.000354950594,
     "model_cluster_bootstrap_ci95": [-0.000971777804, 0.008032695597],

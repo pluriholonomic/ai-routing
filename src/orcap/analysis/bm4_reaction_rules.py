@@ -23,6 +23,105 @@ PAIRED_BOOTSTRAP_DRAWS = 5_000
 PAIRED_BOOTSTRAP_SEED = 20260716
 
 
+def timing_identification_audit(
+    events: pd.DataFrame,
+    *,
+    lookback_hours: float = 72,
+) -> dict:
+    """Sharp nonparametric bounds induced by the public observation clock.
+
+    Define the named-rival response share as the fraction of price events that
+    causally respond to their unique most-recent strictly prior rival event in
+    the lookback window.  A named rival is impossible when the latest rival
+    timestamp is tied.  Without restrictions on latent state or response maps,
+    every unique-prior candidate may be causal and none need be, so [0, U/N] is
+    the sharp identified set.  No outcome or predictive model enters the bound.
+    """
+    empty = {
+        "lookback_hours": float(lookback_hours),
+        "n_event_rows": 0,
+        "n_capture_batches": 0,
+        "n_multi_provider_batches": 0,
+        "event_rows_in_multi_provider_batches": 0,
+        "ambiguous_within_bin_provider_pairs": 0,
+        "events_with_unique_strict_prior_candidate": 0,
+        "events_with_tied_latest_prior": 0,
+        "events_without_prior_rival": 0,
+        "unique_prior_candidate_share": None,
+        "sharp_named_rival_response_share_bounds": [0.0, None],
+    }
+    if events.empty:
+        return {
+            **empty,
+            "estimand": (
+                "Share of observed repricing events causally responding to their unique "
+                "most-recent strictly prior named rival within the lookback window."
+            ),
+            "interpretation": "No price events are available.",
+        }
+
+    ordered = events.sort_values(
+        ["model_id", "ts", "provider_name"], kind="mergesort"
+    )
+    batches = (
+        ordered.groupby(["model_id", "ts"], sort=True)["provider_name"]
+        .nunique()
+        .rename("providers")
+    )
+    multi = batches[batches > 1]
+    rows_in_multi = int(multi.sum())
+    ambiguous_pairs = int(sum(count * (count - 1) // 2 for count in multi))
+
+    unique_prior = tied_prior = no_prior = 0
+    horizon = pd.to_timedelta(float(lookback_hours) * 3600, unit="s")
+    for _, group in ordered.groupby("model_id", sort=True):
+        history: list[pd.Series] = []
+        for _, batch in group.groupby("ts", sort=True):
+            for _, event in batch.iterrows():
+                candidates = [
+                    prior
+                    for prior in history
+                    if prior["provider_name"] != event["provider_name"]
+                    and event["ts"] - prior["ts"] <= horizon
+                ]
+                if not candidates:
+                    no_prior += 1
+                    continue
+                latest_ts = max(prior["ts"] for prior in candidates)
+                latest = [prior for prior in candidates if prior["ts"] == latest_ts]
+                if len(latest) == 1:
+                    unique_prior += 1
+                else:
+                    tied_prior += 1
+            history.extend(row for _, row in batch.iterrows())
+
+    n_events = int(len(ordered))
+    upper = float(unique_prior / n_events)
+    return {
+        "lookback_hours": float(lookback_hours),
+        "n_event_rows": n_events,
+        "n_capture_batches": int(len(batches)),
+        "n_multi_provider_batches": int(len(multi)),
+        "event_rows_in_multi_provider_batches": rows_in_multi,
+        "ambiguous_within_bin_provider_pairs": ambiguous_pairs,
+        "events_with_unique_strict_prior_candidate": int(unique_prior),
+        "events_with_tied_latest_prior": int(tied_prior),
+        "events_without_prior_rival": int(no_prior),
+        "unique_prior_candidate_share": upper,
+        "sharp_named_rival_response_share_bounds": [0.0, upper],
+        "estimand": (
+            "Share of observed repricing events causally responding to their unique "
+            "most-recent strictly prior named rival within the lookback window."
+        ),
+        "interpretation": (
+            "The lower endpoint schedules every candidate from latent state; the upper "
+            "endpoint makes every uniquely ordered candidate reactive. Both reproduce the "
+            "same snapshots under Proposition 1, so the interval is sharp without added "
+            "timing or exclusion restrictions."
+        ),
+    }
+
+
 def link_reactions(
     events: pd.DataFrame,
     cadence: pd.DataFrame,
@@ -232,6 +331,9 @@ def run(
         exposure_days=quote_exposure_by_provider(training_quotes),
     )
     panel = link_reactions(events, cadence)
+    timing_audit = timing_identification_audit(events)
+    if timing_audit["events_with_unique_strict_prior_candidate"] != len(panel):
+        raise AssertionError("timing audit and linked-reaction candidate set diverged")
     save(panel, out_dir, "bm4_reaction_rules")
     if cutoff is None:
         train, test = panel.iloc[:0], panel
@@ -271,6 +373,7 @@ def run(
         ),
         "n_linked_reactions": int(len(panel)),
         "min_linked_reactions": min_linked,
+        "timing_identification_audit": timing_audit,
         "state_only_holdout": baseline,
         "brown_mackay_holdout": brown_mackay,
         "paired_predictive_test": paired,
