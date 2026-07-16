@@ -1,6 +1,8 @@
 """PM-9 — Author-price anchoring: active focal-following or launch-and-forget?
 
-PM-5 found 90% of exact ties sit at the model author's first-party price.
+PM-5 found an all-market atom of third-party quotes at the model author's
+first-party price. Its older selected-tie match statistic was demoted because a
+conditional random-label benchmark reproduces it mechanically.
 Two explanations with opposite readings:
   active anchoring     third parties track the author's price; when the
                        author repricies, ties re-form at the new level fast
@@ -26,6 +28,7 @@ import pandas as pd
 
 from . import data
 from .common import DEFAULT_OUT, save_json
+from .h19_provider_types import provider_family, serves_own
 
 log = logging.getLogger(__name__)
 
@@ -47,14 +50,15 @@ def all_changes() -> pd.DataFrame:
 
 
 def is_author_provider(model_id: str, provider: str) -> bool:
-    author = model_id.split("/")[0].lower().replace("-", "")
-    return author in provider.lower().replace(" ", "").replace("-", "")
+    author = model_id.split("/")[0].lower()
+    return serves_own(provider_family(provider), author)
 
 
 def run(out_dir: Path = DEFAULT_OUT) -> dict:
     ch = all_changes()
     ch["author_move"] = [
-        is_author_provider(m, p) for m, p in zip(ch["model_id"], ch["provider_name"])
+        is_author_provider(m, p)
+        for m, p in zip(ch["model_id"], ch["provider_name"], strict=True)
     ]
     author_moves = ch[ch["author_move"]]
     panel_end = ch["ts"].max()
@@ -118,7 +122,8 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             "algorithmic nightly resetting; symmetric entropy = no resetting",
         },
         "claim_boundary": (
-            "Author identification by name heuristic; exact-price matching at "
+            "Author identification uses the shared provider-family alias crosswalk; "
+            "exact-price matching at "
             "rtol 1e-6; base rate is a crude per-window activity level, not a "
             "matched counterfactual — the DiD version gates on more author moves."
         ),

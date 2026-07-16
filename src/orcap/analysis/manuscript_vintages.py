@@ -1,6 +1,6 @@
 """Execute the manuscript's frozen nine-day and earliest 30-day vintages.
 
-The promotion gate names five analyses whose short-panel and confirmatory
+The promotion gate names six analyses whose short-panel and confirmatory
 estimates must be released side by side.  This module makes that contract
 executable.  It selects date prefixes without reading an outcome, runs the
 same code at both cutoffs, copies versioned artifacts into the publishable
@@ -27,6 +27,8 @@ from .bm_common import completion_events
 from .common import DEFAULT_OUT, save, save_json
 from .h68_competition import daily_quotes
 from .pm1_hazard_baseline import run as run_pm1
+from .pm5_tie_microstructure import quote_ticks as pm5_quote_ticks
+from .pm5_tie_microstructure import run as run_pm5
 from .vintage import observed_dates
 
 FROZEN_DAYS = 9
@@ -38,6 +40,7 @@ SIGN_METRICS = {
     "bm3_quality_beta_fast": "negative",
     "bm4_paired_mse_improvement": "positive",
     "bm4_brown_mackay_rmse_gain": "positive",
+    "pm5_author_atom_excess": "positive",
 }
 
 
@@ -89,6 +92,7 @@ def precommitted_metrics(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
     bm2 = results["bm2_fast_slow_reactions"]
     bm3 = results["bm3_quality_adjusted_premium"]
     bm4 = results["bm4_reaction_rules"]
+    pm5 = results["pm5_tie_microstructure"]
     pm1_l3 = ((pm1.get("ladder") or {}).get("L3") or {}).get("key_coefs") or {}
     bm2_focal = bm2.get("fast_response_after_slow_initiator") or {}
     bm3_cadence = bm3.get("cadence_only") or {}
@@ -102,6 +106,9 @@ def precommitted_metrics(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
         else None
     )
     cadence = bm1.get("cadence_counts") or {}
+    identity = ((pm5.get("focality") or {}).get("author_identity_audit") or {})
+    atom = identity.get("all_market_author_price_atom") or {}
+    selected_tie = identity.get("selected_tie_random_label_benchmark") or {}
     active = sum(int(cadence.get(name, 0)) for name in ("intraday", "daily", "weekly", "episodic"))
     fast = int(cadence.get("intraday", 0)) + int(cadence.get("daily", 0))
     return {
@@ -132,6 +139,21 @@ def precommitted_metrics(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
         "bm4_state_only_rmse": state_rmse,
         "bm4_brown_mackay_rmse": brown_rmse,
         "bm4_brown_mackay_rmse_gain": rmse_gain,
+        "pm5_author_atom_models": int(atom.get("n_models", 0)),
+        "pm5_author_clusters": int(atom.get("n_author_clusters", 0)),
+        "pm5_author_exact_match_share": _number(atom.get("exact_match_share")),
+        "pm5_author_placebo_match_share": _number(atom.get("placebo_match_share")),
+        "pm5_author_atom_excess": _number(atom.get("exact_minus_placebo")),
+        "pm5_author_atom_ci95": _number_list(
+            atom.get("author_cluster_bootstrap_ci95")
+        ),
+        "pm5_selected_tie_observed_share": _number(selected_tie.get("observed_share")),
+        "pm5_selected_tie_random_label_share": _number(
+            selected_tie.get("random_label_expected_share")
+        ),
+        "pm5_selected_tie_upper_tail_p": _number(
+            selected_tie.get("poisson_binomial_upper_tail_p")
+        ),
     }
 
 
@@ -233,6 +255,7 @@ def _run_vintage(
     *,
     events: pd.DataFrame,
     quotes: pd.DataFrame,
+    pm5_quotes: pd.DataFrame,
 ) -> dict[str, Any]:
     label = str(spec["label"])
     start_date = str(spec["start_date"])
@@ -270,6 +293,12 @@ def _run_vintage(
             events=events,
             quotes=quotes,
         ),
+        "pm5_tie_microstructure": run_pm5(
+            run_dir,
+            q=pm5_quotes,
+            start_date=start_date,
+            end_date=end_date,
+        ),
     }
     return {
         **spec,
@@ -290,10 +319,17 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     specs = registered_vintage_specs(endpoint_dates)
     events = completion_events()
     quotes = daily_quotes()
+    focal_quotes = pm5_quote_ticks()
     completed: dict[str, Any] = {}
     for label, spec in specs.items():
         completed[label] = (
-            _run_vintage(out_dir, spec, events=events, quotes=quotes)
+            _run_vintage(
+                out_dir,
+                spec,
+                events=events,
+                quotes=quotes,
+                pm5_quotes=focal_quotes,
+            )
             if spec["ready"]
             else spec
         )
@@ -315,7 +351,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
         "comparison": comparison,
         "registered_sign_metrics": SIGN_METRICS,
         "selection_rule": (
-            "Run the same five analysis programs on the earliest nine observed quote dates and "
+            "Run the same six analysis programs on the earliest nine observed quote dates and "
             "the earliest 30 observed quote dates. Later dates are continuation data."
         ),
         "claim_boundary": (

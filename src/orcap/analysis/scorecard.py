@@ -28,7 +28,6 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     h70 = _load(out_dir, "cbh1_summary")
     h71 = _load(out_dir, "cbh2_summary")
     h72 = _load(out_dir, "cbh3_summary")
-    h73 = _load(out_dir, "cbh4_summary")
     h74 = _load(out_dir, "cbh5_summary")
     h76 = _load(out_dir, "cbh7_summary")
     h13 = _load(out_dir, "h13_summary")
@@ -63,7 +62,11 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             h72.get("share_endpoints_price_ever_moved"),
             h72.get("share_endpoints_rate_limit_ever_moved"),
         )
-        status = "consistent" if pm is not None and rm is not None and pm < 0.2 < rm else "accumulating"
+        status = (
+            "consistent"
+            if pm is not None and rm is not None and pm < 0.2 < rm
+            else "accumulating"
+        )
         add(
             "invariant-ii quantity clears / price administers",
             status,
@@ -88,7 +91,8 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             "Q2 algorithmic saturation vs margins (Assad)",
             "accumulating",
             f"{h70.get('n_algorithmic_v0')}/{h70.get('n_providers_scored')} active repricers; "
-            f"rank beta {h70.get('rank_beta_algo_share_on_markup')} (v0 census, no all-algo markets yet)",
+            f"rank beta {h70.get('rank_beta_algo_share_on_markup')} "
+            "(v0 census, no all-algo markets yet)",
             "cbh1",
         )
     # Q3 dispersion floor
@@ -98,7 +102,8 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         add(
             "Q3 dispersion floor >=3% at high N",
             status,
-            f"median gap at N>=10: {hi_gap:.1f}%; exact-tie share {h71.get('share_exact_tie_at_min'):.0%}"
+            f"median gap at N>=10: {hi_gap:.1f}%; exact-tie share "
+            f"{h71.get('share_exact_tie_at_min'):.0%}"
             if hi_gap is not None
             else "insufficient",
             "cbh2",
@@ -138,13 +143,25 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         )
     if pm5.get("focality"):
         f = pm5["focality"]
-        add(
-            "Tie focal point = author's first-party price",
-            "consistent" if (f.get("share_ties_at_first_party_price") or 0) > 0.7 else "accumulating",
-            f"{f.get('share_ties_at_first_party_price'):.0%} of ties at first-party price; "
-            f"gap-density atom {pm5['gap_density']['share_ticks_at_exact_min_excl_holder']:.0%}",
-            "pm5",
-        )
+        identity = f.get("author_identity_audit", {})
+        atom = identity.get("all_market_author_price_atom", {})
+        excess = atom.get("exact_minus_placebo")
+        if excess is not None:
+            add(
+                "Author-price atom beyond adjacent placebo levels",
+                "accumulating" if excess > 0 else "inconsistent",
+                f"all-market exact-minus-placebo {excess:.0%}; "
+                f"selected-tie statistic is {f.get('selected_tie_identity_status')}; "
+                f"30-date replication pending",
+                "pm5",
+            )
+        else:
+            add(
+                "Author-price atom beyond adjacent placebo levels",
+                "accumulating",
+                "legacy selected-tie statistic only; corrected all-market audit missing",
+                "pm5",
+            )
     if pm6.get("by_initiator_sign"):
         cut = pm6["by_initiator_sign"].get("cut", {})
         add(
@@ -152,7 +169,8 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
             "accumulating",
             f"true punish-and-revert {cut.get('punish_and_revert', 0):.0%} vs "
             f"initiator-withdrawn {cut.get('cut_withdrawn', 0):.0%} of cut events; "
-            f"raises followed {pm6['by_initiator_sign'].get('raise', {}).get('followed_leadership', 0):.0%}",
+            f"raises followed "
+            f"{pm6['by_initiator_sign'].get('raise', {}).get('followed_leadership', 0):.0%}",
             "pm6",
         )
     if pm9.get("share_author_moves_matched_within_96h") is not None:
@@ -177,7 +195,8 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         add(
             "C2/JRW: router steering memory (rewards past undercutting?)",
             "accumulating",
-            f"cheapest w/ recent cut selected {wf2['mean_selection_share_by_cell'].get('(True, True)')}"
+            "cheapest w/ recent cut selected "
+            f"{wf2['mean_selection_share_by_cell'].get('(True, True)')}"
             f" vs w/o {wf2['mean_selection_share_by_cell'].get('(True, False)')} — "
             "past cuts penalized, not rewarded (collusion-neutral static steering or worse)",
             "wf2",

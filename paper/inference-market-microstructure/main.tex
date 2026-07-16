@@ -57,10 +57,14 @@ routing probes.  Two market facts and one power-gated operational design
 characterize this market.  First, prices are
 administered menus.  Only 2.8\% of provider-model-days reprice, changes are large,
 93\% of quotes lie on cent grids, and state-dependent price gaps predict changes
-out of sample while congestion does not.  Second, prices coordinate on a focal
-anchor.  The two cheapest quotes tie on 45.9\% of multi-provider model-days,
-versus 13.4\% in an independent grid-constrained null.  Where the model author
-operates an endpoint, 65 of 72 tied minima equal the author's first-party price.
+out of sample while congestion does not.  Second, prices exhibit focal atoms.
+The two cheapest quotes tie on 45.9\% of multi-provider model-days, versus 13.4\%
+in an independent grid-constrained null.  A selected-tie author match is
+non-discriminating: a post-freeze audit finds 88.9\% observed versus 88.8\% under
+a conditional random-label benchmark.  Across all 95 author-observable markets,
+however, 54.7\% have a third-party quote exactly at the author price versus 1.4\%
+at adjacent dime-grid placebo levels; the 53.3-point excess has author-cluster
+bootstrap interval [31.0,80.4].
 Third, a randomized-order crossover provides interim evidence that the router
 manufactures firmness from revocable quotes.  In 76 complete four-policy blocks,
 all-position default routing succeeds on 75 requests while three pinned
@@ -110,9 +114,10 @@ published operational aggregates measure congestion and enforcement; and owned
 probes measure the realized policy for one account and workload.  None alone
 identifies market-wide flow, private capacity, or provider cost.
 
-The paper's contribution is two promoted empirical facts, a preregistered
-firmness design with an interim block screen, one mechanism audit, and a timing-
-coarsening identification result.
+The paper's contribution is two promoted price-surface facts, a frozen
+post-freeze author-identity audit awaiting its registered replication, a
+preregistered firmness design with an interim block screen, one mechanism audit,
+and a timing-coarsening identification result.
 
 \begin{enumerate}
   \item \textbf{Administered menus.} Prices move infrequently and by large
@@ -123,14 +128,16 @@ coarsening identification result.
   variables do not improve the hazard.  The money price is therefore a sticky
   menu, not the fast-clearing state variable.
 
-  \item \textbf{Focal anchoring.} Minimum-price ties are too common to be a
+  \item \textbf{Focal price atoms.} Minimum-price ties are too common to be a
   rounding artifact.  An independent grid-resampling null reproduces the observed
   price grid and heterogeneity but yields only a 13.4\% tie rate, compared with
-  45.9\% in the data.  The focal level is economically interpretable: among tied
-  models with an author-operated endpoint, 90.3\% tie at the author's first-party
-  price.  This adapts the nonbinding-focal-point design of
-  \citet{knittelstango2003} to a platform-defined reference price while stopping
-  short of a collusion claim.
+  45.9\% in the data.  Conditioning on a tie makes the old 90.3\% author-match
+  statistic mechanical.  The corrected all-market audit instead compares exact
+  third-party matches at the author price with adjacent equally spaced placebo
+  levels.  Its 53.3-point author-clustered excess adapts the nonbinding-focal-point
+  design of \citet{knittelstango2003} to a platform-defined reference price while
+  stopping short of a causal or collusion claim; because the correction is
+  post-freeze, it awaits the registered 30-date replication.
 
   \item \textbf{Power-gated manufactured firmness.} The money quote barely moves while
   operational state changes frequently.  A prospective crossover randomizes the
@@ -385,7 +392,7 @@ administered menus because the money quote is set periodically while the physica
 state clears elsewhere.  Whether rival reactions reflect common costs,
 algorithmic competition, or coordinated behavior remains unresolved.
 
-\section{Fact 2: minimum prices coordinate on an author anchor}
+\section{Fact 2: minimum prices exhibit focal atoms}
 \label{sec:anchors}
 
 \subsection{The tie atom and its null}
@@ -440,19 +447,65 @@ dependence.}
 
 \subsection{Identifying the focal level}
 
-The latest snapshot contains 146 tied models.  For 72, the model author also
-operates a first-party endpoint.  In 65 of those 72 cases, or 90.3\%, the tied
-minimum equals the author's price to machine precision.  Sixty-one percent of tie
-levels are round to a tenth of a dollar per million tokens, but roundness is not an
-independent explanation: first-party author prices are themselves round.  Direct
-provider APIs and router quotes are at exact parity in 99.6\% of matched cases;
-we see almost no systematic direct-channel undercut.
+The selected-tie identity statistic needs its own null.  If a model has $n$
+providers, $t$ are tied at the minimum, and $r$ author-operated labels are placed
+exchangeably among provider slots, then the conditional probability that an
+author label lies in the tied set is
+\begin{equation}
+  1-\frac{\binom{n-t}{r}}{\binom{n}{r}}.
+  \label{eq:author-random-label}
+\end{equation}
+It equals one when all providers tie.  Thus conditioning on a tied model can make
+an author match nearly automatic.  In the post-freeze audit of the frozen panel's
+final snapshot, the robust author-family crosswalk produces 48 matches among 54
+selected tied models,
+or 88.9\%.  Summing \cref{eq:author-random-label} across those markets predicts
+47.95 matches, or 88.8\%; the exact Poisson-binomial upper-tail probability is
+0.625.  The previously emphasized 65-of-72 frozen statistic is therefore demoted:
+its high level does not identify the author's price as focal.
+
+The corrected estimand avoids selecting on a tie.  It starts from all
+multi-provider models with an author-operated and a third-party endpoint, and
+records whether any third party quotes exactly at the author's lowest
+first-party price.  The placebo is the average match indicator at 40 symmetric
+price levels around that quote.  At the primary dime-per-million-token spacing,
+52 of 95 models, or 54.7\%, match the author exactly, versus 1.4\% at placebo
+levels.  The 53.3-point paired excess has a 20,000-draw author-cluster bootstrap
+interval of [31.0,80.4] points.  Ten of twelve author clusters have positive mean
+excess (one-sided sign test $p=0.019$), the leave-one-author-out range is
+[47.8,64.8] points, and the excess remains 53.3--54.4 points on cent, dime,
+fifty-cent, and dollar grids.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Identity statistic & Estimate & Benchmark \\
+\midrule
+Selected-tie author match & 88.9\% & 88.8\% random label \\
+All-market exact author-price match & 54.7\% & 1.4\% adjacent placebo \\
+Exact-minus-placebo excess & 53.3 pp & [31.0,80.4] cluster interval \\
+Author-cluster sign & 10 of 12 & one-sided $p=0.019$ \\
+\bottomrule
+\end{tabular}
+\caption{Author-price identity audit.  The first row shows why selecting tied
+markets is non-discriminating.  The remaining rows use all author-observable
+markets.  This post-freeze specification is fixed for the 30-date release.}
+\label{tab:authoratom}
+\end{table}
+
+The cross-sectional atom identifies the author price as a special displayed
+level relative to adjacent equally spaced focal prices, not why it is special.
+First-party prices are themselves round, and a shared cost convention can also
+generate the atom.  Direct provider APIs and router quotes are at exact parity in
+99.6\% of matched cases; we see almost no systematic direct-channel undercut.
 
 The event directions complicate a collusion story.  Of 28 isolated tie formations,
 71.4\% are formed by a downward move.  Of 38 isolated tie breaks, 86.8\% are broken
 by a downward move.  Those directions are competitive.  The evidence therefore
-supports an \emph{anchor}--a salient level on which independent providers cluster--
-but does not identify why they anchor.  The author price may signal cost, quality,
+supports a cross-sectional \emph{anchor}--a level on which independent providers
+cluster--but does not identify why they cluster.  The author price may signal cost, quality,
 or a voluntary most-favored-nation convention; it may also act as a Schelling-like
 coordination device in the sense of \citet{knittelstango2003}.
 
@@ -792,8 +845,9 @@ captured interfaces rather than generalized to undocumented behavior.
 
 Five limitations define the claim boundary.  First, the main pricing panel is nine
 days, so dynamic hazard and cadence results await the registered 30-day
-both-vintage re-estimation; the outcome-free collection status is currently
-10/30 dates.  Second, the randomized crossover's all-position block screen is
+both-vintage re-estimation; the corrected author-price atom is post-freeze and
+awaits the same replication, while the outcome-free collection status is
+currently 10/30 dates.  Second, the randomized crossover's all-position block screen is
 secondary, and its carryover-robust first-position counts are only 22--25 of 500
 per arm.  Third, owned probes identify one
 account, region, prompt family, and time window; they do not identify market-wide
@@ -804,7 +858,8 @@ do not claim literal front-running, collusion, private cost, or a welfare loss.
 
 Within those limits, the evidence changes the economic description of inference
 markets.  Prices are not the rapidly clearing state variable.  Providers post
-sticky administered menus and minimum quotes coordinate around the model author's
+sticky administered menus, minimum-price ties exceed independent grid benchmarks,
+and third-party quotes have excess cross-sectional mass at the model author's
 price.  The secondary block screen is consistent with the platform manufacturing
 a firm service by substituting across revocable quotes, but that statement awaits
 the first-position gate.  The platform's allocation memory does not reward recent
@@ -994,7 +1049,7 @@ identifiable when bids, acceptance, and termination are public.
 Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
 Administered menus & Frequency, size, grid, clock, day-split gap AUC & Long-run frailty and strategic response & 30 panel days, both vintages \\
-Author focal anchor & Grid null and 65/72 author-price matches & Exogenous author move & First qualifying author repricing \\
+Author focal atom & Grid null; selected-tie null failure; 53.3-point all-market excess & Causal author salience and active following & 30-date both-vintage atom; first author repricing \\
 Manufactured firmness & Secondary randomized-order block level, flat rank gradient & Carryover-robust first-position estimate and transport & 500 first-position assignments per arm \\
 Negative steering memory & Rank-conditioned audit, same-sign eligibility subset & Complete eligibility or visibility instrument & Eligibility-complete panel \\
 Brown--MacKay mechanism & Cadence premium; reaction rules predictively indistinguishable & Slow-initiator/fast-responder exposure & Earliest 30-day vintage with fixed paired test \\
@@ -1021,7 +1076,7 @@ pre-randomization legacy H80 summary.  The outcome-free
 \texttt{manuscript\_promotion\_gate\_summary.json} freezes the nine-day and
 earliest 30-day vintages and masks H80 outcomes until 500 first-position
 assignments per arm.  The companion \texttt{manuscript\_vintages} program runs
-PM1 and BM1--BM4 under both calendar cutoffs, canonicalizes every table, records
+PM1, PM5, and BM1--BM4 under both calendar cutoffs, canonicalizes every table, records
 SHA-256 hashes, and compares only the metrics fixed before the 30-day data exist.
 Each gate release updates estimates, source manifest, and PDF in one commit.
 

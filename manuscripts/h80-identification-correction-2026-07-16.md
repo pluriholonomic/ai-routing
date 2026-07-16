@@ -51,7 +51,9 @@ The correction is enforced in code rather than documentation alone:
 
 ## Claim consequence
 
-The paper now has two promoted market facts—administered menus and focal author
-anchors—and a power-gated router-firmness design. Router-manufactured firmness is
+The paper now has two promoted price-surface facts—administered menus and an
+excess minimum-price tie atom—and a power-gated router-firmness design. The later
+author-identity correction demotes the selected-tie anchor statistic and freezes
+an all-market adjacent-level audit for the 30-date release. Router-manufactured firmness is
 an interim mechanism hypothesis, not a promoted causal fact, until the registered
 first-position release.

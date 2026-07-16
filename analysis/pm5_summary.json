@@ -1,15 +1,15 @@
 {
   "evidence_status": "provisional_descriptive",
   "gap_density": {
-    "share_ticks_at_exact_min_excl_holder": 0.47427131031152686,
+    "share_ticks_at_exact_min_excl_holder": 0.474260195318251,
     "gap_bins_pct": {
-      "0_to_0.5": 0.006125026432190208,
-      "0.5_to_2": 0.019293326342682847,
-      "2_to_5": 0.015251011664923831,
-      "5_to_15": 0.13770519345466553,
-      "gt_15": 0.8216254421055376
+      "0_to_0.5": 0.006127163613940926,
+      "0.5_to_2": 0.01929340038039655,
+      "2_to_5": 0.015254943852426981,
+      "5_to_15": 0.13770268275101397,
+      "gt_15": 0.8216218094022216
     },
-    "n_nonmin_obs": 690446
+    "n_nonmin_obs": 690858
   },
   "tie_formation": {
     "n": 28,
@@ -22,12 +22,81 @@
   "focality": {
     "n_tied_models_latest_tick": 146,
     "share_tie_levels_round_tenth_mtok": 0.6095890410958904,
-    "n_tied_models_with_first_party_quote": 72,
-    "share_ties_at_first_party_price": 0.9027777777777778
+    "n_tied_models_with_first_party_quote": 54,
+    "share_ties_at_first_party_price": 0.8888888888888888,
+    "selected_tie_identity_status": "non_discriminating_against_random_label",
+    "author_identity_audit": {
+      "evidence_status": "post_freeze_exploratory_confirmatory_gate_registered",
+      "latest_run_ts": "20260715T040226Z",
+      "primary_placebo_tick_usd_per_million_tokens": 0.1,
+      "max_offset_ticks_each_direction": 20,
+      "all_market_author_price_atom": {
+        "n_models": 95,
+        "n_author_clusters": 12,
+        "exact_match_share": 0.5473684210526316,
+        "placebo_match_share": 0.014262409856140594,
+        "exact_minus_placebo": 0.533106011196491,
+        "author_cluster_bootstrap_draws": 20000,
+        "author_cluster_bootstrap_seed": 20260716,
+        "author_cluster_bootstrap_ci95": [
+          0.3098243926630539,
+          0.8035490590633249
+        ],
+        "positive_author_clusters": 10,
+        "negative_author_clusters": 2,
+        "zero_author_clusters": 0,
+        "author_sign_test_p_one_sided": 0.019287109375,
+        "leave_one_author_out_excess_range": [
+          0.47817730663137226,
+          0.6476515678601329
+        ]
+      },
+      "placebo_grid_sensitivity": {
+        "0.01": {
+          "placebo_tick_usd_per_million_tokens": 0.01,
+          "n_models": 95,
+          "exact_match_share": 0.5473684210526316,
+          "placebo_match_share": 0.009509598618171269,
+          "exact_minus_placebo": 0.5378588224344604
+        },
+        "0.1": {
+          "placebo_tick_usd_per_million_tokens": 0.1,
+          "n_models": 95,
+          "exact_match_share": 0.5473684210526316,
+          "placebo_match_share": 0.014262409856140594,
+          "exact_minus_placebo": 0.533106011196491
+        },
+        "0.5": {
+          "placebo_tick_usd_per_million_tokens": 0.5,
+          "n_models": 95,
+          "exact_match_share": 0.5473684210526316,
+          "placebo_match_share": 0.007124933545986177,
+          "exact_minus_placebo": 0.5402434875066454
+        },
+        "1": {
+          "placebo_tick_usd_per_million_tokens": 1.0,
+          "n_models": 95,
+          "exact_match_share": 0.5473684210526316,
+          "placebo_match_share": 0.003689889058310111,
+          "exact_minus_placebo": 0.5436785319943215
+        }
+      },
+      "selected_tie_random_label_benchmark": {
+        "n_selected_tied_models": 54,
+        "observed_author_at_tied_min": 48,
+        "observed_share": 0.8888888888888888,
+        "random_label_expected_count": 47.94984126984127,
+        "random_label_expected_share": 0.8879600235155791,
+        "poisson_binomial_upper_tail_p": 0.6245238464768624,
+        "interpretation": "A high selected-tie match rate is non-discriminating when the random-label expectation is also high; it does not by itself identify an author focal point."
+      },
+      "confirmatory_gate": "Recompute without specification changes on the earliest 30-date prefixes of both frozen quote vintages; cluster by author and retain all four grids.",
+      "claim_boundary": "The all-market atom rejects adjacent equally spaced focal levels for the observed author families. It does not identify why third parties match, whether the author caused the match, or effects outside those families."
+    }
   },
   "signatures": {
     "coordination": "atom at 0 + missing mass at small undercuts; ties formed by upward moves; ties at first-party focal price; breaks upward",
     "competition": "smooth small-undercut mass; ties formed downward; breaks downward"
   },
-  "claim_boundary": "Single-mover tie events only (multi-mover ticks skipped); first-party matching by author-name heuristic; 5-min grid means sub-tick sequencing within a tie tick is unobserved."
+  "claim_boundary": "Single-mover tie events only (multi-mover ticks skipped); author identity uses the shared provider-family alias crosswalk; selected-tie identity is non-discriminating under its random-label benchmark; the 5-min grid leaves sub-tick sequencing unobserved."
 }

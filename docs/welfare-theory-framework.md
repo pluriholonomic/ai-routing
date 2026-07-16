@@ -34,8 +34,10 @@ capacity μ_i (cost k(μ_i)), marginal cost c_i, hidden fidelity a_i (quality),
 sticky posted price p_i (adjustable at attention-cost dates ψ), tier menu
 (priority/standard/batch/free), rationing rate r_i. Router: allocation x,
 admission/deferral A, fee τ, rebates b, monitoring M, disclosure D, derank
-state (reputation weight). Author: anchor price p0 (measured: 90% of ties sit
-exactly at p0).
+state (reputation weight). Author: candidate anchor price p0 (the selected-tie
+match is mechanically non-discriminating; across all author-observable markets,
+third-party exact matches at p0 exceed adjacent dime-grid placebos by 53.3 points,
+pending the frozen 30-date replication).
 
 ## 3. The planner problem
 

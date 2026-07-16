@@ -20,12 +20,15 @@ Administered menus:** 2.8% of provider-model-days reprice, median jumps of
 within-provider standardized kurtosis (3.5) sits in the CalvoPlus region,
 and a nested hazard model attributes repricing to price *gaps* (p = 1e-5)
 and rival moves (p = 2e-3) but not congestion (p = 0.17) — out-of-sample,
-only the gap channel survives (day-split AUC 0.64). **(2) Focal anchoring:**
+only the gap channel survives (day-split AUC 0.64). **(2) Focal price atoms:**
 the two cheapest quotes tie exactly on 46% of multi-provider model-days —
-3.4 times the rate under an independent grid-constrained pricing null — and
-among tied markets where the model's author operates an endpoint (72 of
-146), 90% of tie levels equal the author's first-party price exactly. The
-author's price is the market's Knittel-Stango focal point. Providers never
+3.4 times the rate under an independent grid-constrained pricing null. The
+old selected-tie author-match rate is non-discriminating (88.9% observed,
+88.8% under its conditional random-label benchmark). Across all 95
+author-observable models, however, 54.7% have an exact third-party match at
+the author price versus 1.4% at adjacent dime-grid placebo levels, a
+53.3-point excess with author-cluster interval [31.0, 80.4]. This corrected
+post-freeze estimand is fixed for the 30-date replication. Providers almost never
 undercut their own direct channel (99.6% parity). **(3) Quantity clearing
 with manufactured firmness:** over nine days, 12% of endpoints ever changed
 price while 86% experienced rate-limit variation; in a randomized-crossover
@@ -73,7 +76,7 @@ is established in- and out-of-sample; the strategic channel is established
 in-sample on the current panel and re-estimated nightly under
 pre-registration.
 
-## 4. Fact 2: focal anchoring, with its null
+## 4. Fact 2: focal price atoms, with their nulls
 
 **The null model (new).** Ties could be a grid artifact. Under a null in
 which each provider draws its log price independently as (model-day median +
@@ -87,11 +90,17 @@ one respect: the deviation pool retains the tie atom, so the null itself
 re-manufactures some ties). The atom is coordination on levels, not
 coarseness.
 
-**The anchor's identity.** Among the 146 currently-tied models, 72 have an
-author-operated endpoint; in 65 of those 72 (90%), the tie level equals the
-author's first-party price to machine precision. Round-number focality
-(61%) is subsumed: the author's prices are themselves round. Formation and
-breaking directions (71% down-to-tie, 87% down-to-break) are competitive;
+**The anchor's identity.** Selecting tied markets makes author identity almost
+mechanical. With `n` providers, `t` tied minima, and `r` author labels, a random
+label hits the tied set with probability
+`1 - choose(n-t,r)/choose(n,r)`. The robust crosswalk observes 48/54 matches
+(88.9%) and this benchmark expects 47.95 (88.8%, upper-tail p=0.625). The old
+65/72 statistic is demoted. The corrected all-market design finds exact
+third-party matches at the author price in 52/95 models (54.7%) versus 1.4% at
+adjacent dime-grid placebos. The 53.3-point excess has author-cluster interval
+[31.0, 80.4], is positive in 10/12 author families (sign p=0.019), and survives
+all fixed grid and leave-one-author-out sensitivities. Formation and breaking
+directions (71% down-to-tie, 87% down-to-break) are competitive;
 the anchor-following-vs-fossil discriminator (does the tie track author
 repricings?) is registered and unfired — authors did not reprice in-window,
 itself evidence the anchor is stable. Cross-channel: providers price their
@@ -189,8 +198,9 @@ fixed 2026-08-15 release.
 
 - M1: retry claim demoted from headline; controls + backward placebo + IV
   added; abstract rewritten accordingly.
-- M2: independent grid-pricing null added (13.4% vs 45.9%; 3.4x); author-
-  price denominator (65/72) in main text.
+- M2: independent grid-pricing null added (13.4% vs 45.9%; 3.4x). The later v9
+  identification correction demotes the selected-tie 65/72 statistic and
+  replaces it with the all-market adjacent-level audit.
 - M3: entry conjecture demoted to remark with the horizon caveat explicit.
 - M4: restructured — three facts + steering audit are the paper; secondary
   results bounded in one section; welfare condensed; conduct extras to

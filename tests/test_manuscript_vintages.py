@@ -100,6 +100,25 @@ def _results(*, uplift: float, state_rmse: float, brown_rmse: float):
             "state_only_holdout": {"rmse": state_rmse},
             "brown_mackay_holdout": {"rmse": brown_rmse},
         },
+        "pm5_tie_microstructure": {
+            "focality": {
+                "author_identity_audit": {
+                    "all_market_author_price_atom": {
+                        "n_models": 95,
+                        "n_author_clusters": 12,
+                        "exact_match_share": 0.55,
+                        "placebo_match_share": 0.02,
+                        "exact_minus_placebo": 0.53,
+                        "author_cluster_bootstrap_ci95": [0.31, 0.80],
+                    },
+                    "selected_tie_random_label_benchmark": {
+                        "observed_share": 0.89,
+                        "random_label_expected_share": 0.89,
+                        "poisson_binomial_upper_tail_p": 0.62,
+                    },
+                }
+            }
+        },
     }
 
 
@@ -119,5 +138,7 @@ def test_precommitted_metric_set_and_sign_comparison_are_fixed():
     assert frozen["bm4_brown_mackay_rmse_gain"] == pytest.approx(0.1)
     assert frozen["bm4_paired_mse_improvement"] == pytest.approx(0.01)
     assert frozen["bm4_exact_sign_flip_p_positive"] == pytest.approx(0.25)
+    assert frozen["pm5_author_atom_excess"] == pytest.approx(0.53)
+    assert frozen["pm5_selected_tie_observed_share"] == pytest.approx(0.89)
     assert comparison["bm2_fast_after_slow_uplift"]["sign_preserved"] is False
     assert comparison["bm4_brown_mackay_rmse_gain"]["sign_preserved"] is True

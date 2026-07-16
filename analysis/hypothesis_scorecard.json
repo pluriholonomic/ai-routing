@@ -49,9 +49,9 @@
       "source": "pm2"
     },
     {
-      "prediction": "Tie focal point = author's first-party price",
-      "status": "consistent",
-      "evidence": "90% of ties at first-party price; gap-density atom 47%",
+      "prediction": "Author-price atom beyond adjacent placebo levels",
+      "status": "accumulating",
+      "evidence": "all-market exact-minus-placebo 53%; selected-tie statistic is non_discriminating_against_random_label; 30-date replication pending",
       "source": "pm5"
     },
     {

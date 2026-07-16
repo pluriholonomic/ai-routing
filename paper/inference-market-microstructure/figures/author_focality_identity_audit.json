@@ -1,0 +1,63 @@
+{
+  "evidence_status": "post_freeze_exploratory_confirmatory_gate_registered",
+  "source": {
+    "manuscript_vintage": "frozen nine-date endpoint quote panel",
+    "latest_run_ts": "20260715T040226Z",
+    "source_scope": "public endpoint quote snapshot at the frozen panel endpoint",
+    "outcomes_or_private_routes_loaded": false
+  },
+  "specification": {
+    "author_mapping": "provider_family plus explicit author aliases in h19_provider_types.py",
+    "primary_placebo_tick_usd_per_million_tokens": 0.1,
+    "max_offset_ticks_each_direction": 20,
+    "inference_cluster": "model author",
+    "bootstrap_draws": 20000,
+    "bootstrap_seed": 20260716
+  },
+  "selected_tie_random_label_benchmark": {
+    "n_selected_tied_models": 54,
+    "observed_author_at_tied_min": 48,
+    "observed_share": 0.8888888888888888,
+    "random_label_expected_count": 47.94984126984127,
+    "random_label_expected_share": 0.8879600235155791,
+    "poisson_binomial_upper_tail_p": 0.6245238464768624
+  },
+  "all_market_author_price_atom": {
+    "n_models": 95,
+    "n_author_clusters": 12,
+    "exact_third_party_match_share": 0.5473684210526316,
+    "adjacent_dime_grid_placebo_match_share": 0.014262409856140594,
+    "exact_minus_placebo": 0.533106011196491,
+    "author_cluster_bootstrap_ci95": [
+      0.3098243926630539,
+      0.8035490590633249
+    ],
+    "positive_author_clusters": 10,
+    "negative_author_clusters": 2,
+    "author_sign_test_p_one_sided": 0.019287109375,
+    "leave_one_author_out_excess_range": [
+      0.47817730663137226,
+      0.6476515678601329
+    ]
+  },
+  "placebo_grid_sensitivity": {
+    "0.01": {
+      "placebo_match_share": 0.009509598618171269,
+      "exact_minus_placebo": 0.5378588224344604
+    },
+    "0.1": {
+      "placebo_match_share": 0.014262409856140594,
+      "exact_minus_placebo": 0.533106011196491
+    },
+    "0.5": {
+      "placebo_match_share": 0.007124933545986177,
+      "exact_minus_placebo": 0.5402434875066454
+    },
+    "1.0": {
+      "placebo_match_share": 0.003689889058310111,
+      "exact_minus_placebo": 0.5436785319943215
+    }
+  },
+  "confirmatory_gate": "Recompute without specification changes on the earliest 30-date prefixes of both frozen quote vintages; cluster by author and retain all four placebo grids.",
+  "claim_boundary": "The all-market atom rejects adjacent equally spaced focal levels for the observed author families. It does not identify why third parties match, whether the author caused the match, or effects outside those families."
+}
