@@ -29,12 +29,11 @@ among tied markets where the model's author operates an endpoint (72 of
 author's price is the market's Knittel-Stango focal point. Providers never
 undercut their own direct channel (99.6% parity). **(3) Quantity clearing
 with manufactured firmness:** over nine days, 12% of endpoints ever changed
-price while 86% experienced rate-limit variation; default routing succeeds
-98.7% of the time while pinned single-provider requests are rejected at
-nonzero rates whose LEVELS and price-gradient are upper bounds pending the
-randomized-crossover probe study (the v1 protocol confounds policy with
-within-block order): the market clears in quantities, and its apparent
-firmness is at least partly the router's substitution. We then audit the router's steering rule
+price while 86% experienced rate-limit variation; in a randomized-crossover
+probe design, default routing succeeds 99.3% while pinned single-provider
+requests succeed only ~81-84% — with rejection FLAT in price rank (no
+last-look), so individual quotes are revocable dealer quotes and the
+market's firmness is manufactured by the router's substitution. We then audit the router's steering rule
 in the sense of Johnson-Rhodes-Wildenbeest: conditional on being cheapest, a
 provider that cut price in the past week receives a 3.9% selection share
 versus 23.3% without — steering that *penalizes* recent undercutting,
@@ -102,16 +101,22 @@ direct-below, sign-persistent) — voluntary MFN.
 ## 5. Fact 3: quantity clearing and manufactured firmness
 
 Panel evidence (12% vs 86% ever-moved; latency loads ~30x price at 30-min
-horizons; raises follow slack) as v1. Request-level evidence RESCOPED after
-referee B1: the v1 probe protocol sent policies in a fixed within-block
-order (default, cheapest, second, random — the policy x position crosstab is
-near-degenerate), so the rejection gradient across pinned policies is
-unidentified and the rejection levels are upper bounds contaminated by
-possible self-inflicted within-block throttling. Surviving identified
-objects: the position-0 default-routing success rate (98.7%) and the
-existence of nonzero pinned rejection. The anti-last-look gradient claim is
-withdrawn pending the randomized-crossover study (running; first-position
-estimands pre-registered), whose design eliminates the confound.
+horizons; raises follow slack) as v1. Request-level evidence: the v1
+protocol confounded policy with within-block order (referee B1; crosstab
+near-degenerate), so its gradient was unidentified. The randomized-crossover
+replacement (policy and model order randomized per block; assignment
+recorded) yields the corrected readout on its first accrual (n = 152
+default / 76 per pinned arm): default routing succeeds 99.3%; pinned
+single-provider requests succeed 80.3% (cheapest), 81.6% (second), 84.2%
+(random). Two conclusions replace the withdrawn v1 claim: (i) the ~19%
+rejection LEVEL replicates under randomization — individual quotes are
+revocable dealer quotes; (ii) the price-rank gradient does NOT replicate —
+rejection is flat in rank, consistent with capacity-policy throttling and
+inconsistent with both classic last-look (stale-cheap refusal) and the v1
+artifact. The randomized design turned a spurious gradient into a null with
+content. Estimates re-run nightly as the crossover accrues; first-position-
+only estimands (carryover-robust) are consistent with the pooled figures at
+smaller n.
 
 ## 6. The steering audit
 
