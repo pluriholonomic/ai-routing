@@ -51,18 +51,22 @@ providers post sticky token-price menus, a router privately clears each request,
 and displayed quotes can be refused when selected.  We construct a purpose-built
 panel of provider-model quotes at five-minute frequency, router-published
 operational aggregates, historical quote records, and randomized one-token
-routing probes.  Three facts characterize this market.  First, prices are
+routing probes.  Two market facts and one power-gated operational design
+characterize this market.  First, prices are
 administered menus.  Only 2.8\% of provider-model-days reprice, changes are large,
 93\% of quotes lie on cent grids, and state-dependent price gaps predict changes
 out of sample while congestion does not.  Second, prices coordinate on a focal
 anchor.  The two cheapest quotes tie on 45.9\% of multi-provider model-days,
 versus 13.4\% in an independent grid-constrained null.  Where the model author
 operates an endpoint, 65 of 72 tied minima equal the author's first-party price.
-Third, the router manufactures firmness from revocable quotes.  In a
-randomized-crossover release, default routing succeeds on 151 of 152 requests,
-while three pinned single-provider policies succeed on 61--64 of 76; rejection
-is flat in price rank, refuting the stale-cheap last-look pattern suggested by an
-earlier fixed-order pilot.  A steering audit provides the mechanism link:
+Third, a randomized-order crossover provides interim evidence that the router
+manufactures firmness from revocable quotes.  In 76 complete four-policy blocks,
+all-position default routing succeeds on 75 requests while three pinned
+single-provider policies succeed on 61--64; 76 additional default-only monitoring
+requests on different models are excluded.  These matched block rates are
+secondary because earlier probes can affect later probes.  Carryover-robust
+first-position outcomes remain masked until every arm reaches 500.  A steering
+audit provides the mechanism link:
 conditional on currently being cheapest, providers that cut price in the prior
 week receive 3.9\% default selection share versus 23.3\% otherwise.  Thus the
 observed rule does not reward past undercutting in the manner proposed to
@@ -100,7 +104,8 @@ published operational aggregates measure congestion and enforcement; and owned
 probes measure the realized policy for one account and workload.  None alone
 identifies market-wide flow, private capacity, or provider cost.
 
-The paper's contribution is three empirical facts and one mechanism audit.
+The paper's contribution is two promoted empirical facts, a preregistered
+firmness design with an interim block screen, and one mechanism audit.
 
 \begin{enumerate}
   \item \textbf{Administered menus.} Prices move infrequently and by large
@@ -120,13 +125,15 @@ The paper's contribution is three empirical facts and one mechanism audit.
   \citet{knittelstango2003} to a platform-defined reference price while stopping
   short of a collusion claim.
 
-  \item \textbf{Manufactured firmness.} The money quote barely moves while
+  \item \textbf{Power-gated manufactured firmness.} The money quote barely moves while
   operational state changes frequently.  A prospective crossover randomizes the
   order of default routing and three pinned-provider policies within model-time
-  blocks.  Default routing succeeds at 99.3\%; pinned routes succeed at
-  80.3--84.2\%.  The common rejection level survives randomization, but an earlier
-  apparent price-rank gradient does not.  Individual quotes are revocable for the
-  studied account, and the router's fallback option creates the delivered product.
+  blocks.  In the 76 complete blocks, all-position default success is 98.7\%
+  while pinned success is 80.3--84.2\%.  The common rejection level survives
+  randomization of order, but an earlier apparent price-rank gradient does not.
+  These are secondary matched-block rates: the primary first-position outcomes
+  remain masked until 500 assignments per arm.  The design therefore suggests,
+  but does not yet promote, router-manufactured firmness.
 
   \item \textbf{Steering memory.} \citet{johnsonrhodeswildenbeest2023} show
   that prominence rules which reward
@@ -263,7 +270,7 @@ All-field price events & 3,212 & 9 days & Repricing incidence and event construc
 Completion-price events & 278 & 7.53 days & Pricing-technology cadence screen \\
 Public allocation proxy & 562,550 & 6 days & Mechanical share-price comparative statics \\
 Legacy owned attempts & 716 & 65 runs & Descriptive provider-selection audit \\
-Randomized crossover & 380 & prospective & Quote firmness and policy-order correction \\
+Randomized crossover & 304 + 76 & prospective & 76 matched four-policy blocks plus default-only monitoring \\
 Historical quote registry & multi-year & 3 years & Lifecycle and duration sensitivity \\
 \bottomrule
 \end{tabular}
@@ -448,7 +455,7 @@ the tie is a launch fossil.  No author repricing occurs in the current nine-day
 window, so the registered event study has zero treated events.  We report that
 support failure rather than treating a stable anchor as evidence for either model.
 
-\section{Fact 3: the router manufactures quote firmness}
+\section{Interim design: does the router manufacture quote firmness?}
 \label{sec:firmness}
 
 \subsection{Price state and operational state}
@@ -491,30 +498,32 @@ controlled by randomized order and is not policy-specific after conditioning on
 position.  We therefore report both and make the first-position estimator the
 carryover-robust estimand at the promotion gate.
 
-The first released accrual has 152 default attempts and 76 attempts in each pinned
-arm.  Default succeeds on 151 of 152 requests, or 99.3\%.  Pinned-cheapest succeeds
-on 61 of 76 (80.3\%), pinned-second on 62 of 76 (81.6\%), and pinned-random on 64 of
-76 (84.2\%).  Marginal Wilson intervals are shown in \cref{fig:core}; repeated
-model-time blocks mean these intervals are descriptive, not the final
-randomization inference.  The registered promotion gate requires 500 attempts per
-pinned arm, Holm-adjusted default-pinned contrasts, seed replay, and the
-first-position sensitivity.
+The frozen interim screen contains 76 complete four-policy blocks.  Every policy
+therefore has 76 matched, randomized-order attempts: default succeeds on 75
+(98.7\%), pinned-cheapest on 61 (80.3\%), pinned-second on 62 (81.6\%), and
+pinned-random on 64 (84.2\%).  The collector also made 76 default-only monitoring
+requests on four additional models.  Pooling those rows would produce 151/152,
+but it would confound policy with model support; we exclude them.  Marginal Wilson
+intervals in \cref{fig:core} are descriptive.  Random order balances clock
+position, but treatment-specific carryover can still affect later positions.
 
-The economically important result is the combination of a level and a null.  The
-approximately 19\% pinned rejection level survives randomization.  The ranking
-gradient does not: the cheapest, second-cheapest, and random pinned endpoints have
-similar success.  The pilot's apparent stale-cheap ``last look'' was an order
-artifact.  The surviving fact is provider-level revocability plus platform-level
-firmness.  A visible quote is an eligibility advertisement rather than a firm
-commitment for this account, and the router assembles a reliable product by
-substituting among individually unreliable sources.
+The carryover-robust first-position analysis is outcome-masked until every arm
+reaches 500 assignment-verified observations.  At the 2026-07-16 outcome-free
+audit, the four counts are 15, 20, 19, and 22, with 100\% seed-replay success.
+The eventual release uses the earliest chronological prefix satisfying the gate,
+Holm-adjusted default-pinned randomization tests, and a prespecified rank-gradient
+test.  Until then, the defensible interim conclusion is narrower: the approximately
+19\% all-position pinned rejection level survives randomization of order and the
+cheapest/second/random gradient is flat, but router-manufactured firmness is not
+yet a promoted causal fact.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/core_facts.pdf}
-\caption{Four frozen v3 facts.  Panel C shows marginal Wilson 95\% intervals;
-the registered policy contrasts use block randomization inference at the
-500-per-pinned-arm gate.  Panels A, B, and D are descriptive panel statistics.}
+\caption{Frozen evidence and audits.  Panel C shows secondary all-position rates
+from 76 complete randomized-order blocks with marginal Wilson 95\% intervals;
+the carryover-robust first-position outcomes remain masked until 500 assignments
+per arm.  Panels A, B, and D are descriptive panel statistics.}
 \label{fig:core}
 \end{figure}
 
@@ -656,7 +665,8 @@ The evidence isolates four possible failures of decentralization.
   The important unmeasured margin is rerouting across providers.
 \end{enumerate}
 
-The central market-design implication follows directly from Fact 3.  A price-only
+The central market-design implication follows from observed quote revocability and
+the platform's documented substitution role, not from a promoted causal effect.  A price-only
 best-execution standard is incomplete when the quote is revocable.  A meaningful
 score must combine expected money cost with success probability, latency, and
 fidelity for a declared workload.  Capacity certificates, explicit fallback
@@ -708,8 +718,10 @@ captured interfaces rather than generalized to undocumented behavior.
 
 Five limitations define the claim boundary.  First, the main pricing panel is nine
 days, so dynamic hazard and cadence results await the registered 30-day
-both-vintage re-estimation.  Second, the randomized crossover is an interim release
-and has not reached 500 attempts per pinned arm.  Third, owned probes identify one
+both-vintage re-estimation; the outcome-free collection status is currently
+10/30 dates.  Second, the randomized crossover's all-position block screen is
+secondary, and its carryover-robust first-position counts are only 15--22 of 500
+per arm.  Third, owned probes identify one
 account, region, prompt family, and time window; they do not identify market-wide
 provider shares.  Fourth, public operational fields are router-published
 aggregates with missingness, not raw attempt logs.  Fifth, provider cost, private
@@ -718,12 +730,13 @@ do not claim literal front-running, collusion, private cost, or a welfare loss.
 
 Within those limits, the evidence changes the economic description of inference
 markets.  Prices are not the rapidly clearing state variable.  Providers post
-sticky administered menus, minimum quotes coordinate around the model author's
-price, and the platform manufactures a firm service by substituting across
-revocable provider quotes.  The platform's allocation memory does not reward
-recent undercutting in the observed panel.  These facts make the inference router
-a market designer: its admission, fallback, and steering rules determine the
-delivered product as much as the visible price surface does.
+sticky administered menus and minimum quotes coordinate around the model author's
+price.  The secondary block screen is consistent with the platform manufacturing
+a firm service by substituting across revocable quotes, but that statement awaits
+the first-position gate.  The platform's allocation memory does not reward recent
+undercutting in the observed panel.  Even within these boundaries, the inference
+router is a market designer: its admission, fallback, and steering rules determine
+the delivered product as much as the visible price surface does.
 
 The resulting research agenda is concrete.  Longer panels test whether gap-driven
 repricing and author anchors survive new vintages.  The randomized promotion gate
@@ -852,7 +865,7 @@ escrow, or non-owner close.  This is zero-event support, not evidence of no effe
 
 The prospective cohort uses a second-snapshot inception rule, masks confirmatory
 outcomes, and has a fixed release of 2026-08-15.  The comparator is excluded from
-the paper's three facts because its market object is a compute lease rather than a
+the paper's promoted facts because its market object is a compute lease rather than a
 token-priced inference request.  Its role is methodological: it shows what becomes
 identifiable when bids, acceptance, and termination are public.
 
@@ -877,7 +890,7 @@ Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
 Administered menus & Frequency, size, grid, clock, day-split gap AUC & Long-run frailty and strategic response & 30 panel days, both vintages \\
 Author focal anchor & Grid null and 65/72 author-price matches & Exogenous author move & First qualifying author repricing \\
-Manufactured firmness & Randomized level, flat rank gradient & Full randomization precision and transport & 500 attempts per pinned arm \\
+Manufactured firmness & Secondary randomized-order block level, flat rank gradient & Carryover-robust first-position estimate and transport & 500 first-position assignments per arm \\
 Negative steering memory & Rank-conditioned audit, same-sign eligibility subset & Complete eligibility or visibility instrument & Eligibility-complete panel \\
 Brown--MacKay mechanism & Cadence premium & Slow-initiator/fast-responder exposure & 30 risk pairs after frozen cadence \\
 Retry externality & Forward/backward asymmetry, small IV estimate & Cross-provider retry and user value & Incident instrument plus attempt logs \\
@@ -893,15 +906,16 @@ mechanism or welfare claim it may motivate.}
 \section{Reproducibility}
 \label{app:repro}
 
-All tables are generated from versioned Parquet and JSON artifacts.  Capture rows
-carry source timestamps, retrieval timestamps, and source-run identifiers.  Probe
-assignments include a study identifier, block identifier, seed, intended policy,
-position, and quote-snapshot key.  Prompt payloads and secrets are excluded.  The
-repository contains the analyzers, preregistrations, claim-boundary documents, and
-machine-readable summaries.  The four-panel figure reads only the frozen
-\texttt{paper\_estimates.json}; it intentionally refuses the local legacy H80
-summary because that file predates the randomized release.  At each registered
-gate, the paper estimates, source manifest, and rendered PDF must be updated in the
-same commit.
+All tables come from versioned Parquet and JSON artifacts carrying source and
+retrieval timestamps and run identifiers.  Probe assignments record study and
+block identifiers, seed, intended policy, position, and quote-snapshot key;
+prompts and secrets are excluded.  The repository includes analyzers,
+preregistrations, claim boundaries, and machine-readable summaries.  The
+four-panel figure reads only frozen \texttt{paper\_estimates.json}, not the
+pre-randomization legacy H80 summary.  The outcome-free
+\texttt{manuscript\_promotion\_gate\_summary.json} freezes the nine-day and
+earliest 30-day vintages and masks H80 outcomes until 500 first-position
+assignments per arm.  Each gate release updates estimates, source manifest, and
+PDF in one commit.
 
 \end{document}

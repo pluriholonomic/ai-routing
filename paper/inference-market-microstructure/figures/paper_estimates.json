@@ -1,5 +1,5 @@
 {
-  "freeze": "2026-07-16 manuscript v3",
+  "freeze": "2026-07-16 manuscript v4 identification correction",
   "claim_boundary": "Values are paper-level frozen summaries. Regenerate from the machine-readable analysis artifacts at each registered promotion gate before updating this file.",
   "panels": {
     "pricing_state": [
@@ -12,7 +12,7 @@
       {"label": "Dime-grid null", "value_pct": 27.6}
     ],
     "probe_success": [
-      {"label": "Default", "success": 151, "attempts": 152},
+      {"label": "Default", "success": 75, "attempts": 76},
       {"label": "Cheapest", "success": 61, "attempts": 76},
       {"label": "Second", "success": 62, "attempts": 76},
       {"label": "Random", "success": 64, "attempts": 76}
@@ -26,7 +26,7 @@
     "pricing_state": "manuscripts/inference-market-microstructure.md, v3 panel freeze",
     "tie_observed": "analysis/cbh2_summary.json",
     "tie_null": "registered independent grid-resampling null reported in manuscript v3",
-    "probe_success": "randomized crossover release reported in manuscript v3; local analysis/h80_summary.json is an older fixed-order freeze and is intentionally not used",
+    "probe_success": "76 complete randomized-order four-policy blocks in the authoritative H80 v2 panel. The 76 additional default-only monitoring requests are excluded because they cover a different model set. These all-position rates are secondary; first-position outcomes are masked until 500 per arm.",
     "steering": "analysis/wf2_summary.json"
   }
 }

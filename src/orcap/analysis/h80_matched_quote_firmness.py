@@ -48,7 +48,11 @@ POLICIES = (
 LEGACY_STUDY_ID = "openrouter-default-probes-v1"
 RANDOMIZED_STUDY_ID = "openrouter-routing-crossover-v2"
 MAX_LEGACY_BLOCK_SECONDS = 120
-MIN_FIRST_POSITION_PER_POLICY = 40
+# The 40-per-arm v2 readout was an explicitly interim diagnostic.  The reviewed
+# manuscript promotes the carryover-robust estimand only at 500 valid
+# first-position assignments per arm.  Keep that gate in code so nightly output
+# cannot silently reuse the earlier, lower threshold.
+MIN_FIRST_POSITION_PER_POLICY = 500
 RANDOMIZATION_DRAWS = 100_000
 
 
@@ -64,8 +68,8 @@ def _metadata(value: Any) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
-    """Deduplicate attempts and expose the payload-free assignment metadata."""
+def prepare_assignment_attempts(frame: pd.DataFrame) -> pd.DataFrame:
+    """Deduplicate attempts and expose assignment metadata without outcomes."""
     if frame.empty:
         return frame.copy()
     out = frame.copy()
@@ -99,14 +103,6 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
             out[key] = pd.Series(values, index=out.index, dtype="string")
         else:
             out[key] = pd.Series(values, index=out.index)
-    out["success"] = out["outcome"].astype(str).eq("succeeded")
-    out["rejected_429"] = (~out["success"]) & out.get(
-        "retry_reason", pd.Series("", index=out.index)
-    ).fillna("").astype(str).str.contains("429")
-    cost = pd.to_numeric(out.get("cost_usd"), errors="coerce")
-    # Failed 429s have no generation and no observed charge.  Successful rows
-    # with missing generation accounting stay missing rather than being imputed.
-    out["observed_spend_usd"] = cost.where(out["success"], 0.0)
     out["policy_order"] = pd.to_numeric(out["policy_order"], errors="coerce")
     out["quoted_rank"] = pd.to_numeric(out["quoted_rank"], errors="coerce")
     for column in (
@@ -116,6 +112,22 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
     ):
         out[column] = pd.to_numeric(out[column], errors="coerce")
     return out.dropna(subset=["observed_ts", "model_id"])
+
+
+def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
+    """Add outcome fields to the deduplicated assignment frame."""
+    out = prepare_assignment_attempts(frame)
+    if out.empty:
+        return out
+    out["success"] = out["outcome"].astype(str).eq("succeeded")
+    out["rejected_429"] = (~out["success"]) & out.get(
+        "retry_reason", pd.Series("", index=out.index)
+    ).fillna("").astype(str).str.contains("429")
+    cost = pd.to_numeric(out.get("cost_usd"), errors="coerce")
+    # Failed 429s have no generation and no observed charge.  Successful rows
+    # with missing generation accounting stay missing rather than being imputed.
+    out["observed_spend_usd"] = cost.where(out["success"], 0.0)
+    return out
 
 
 def _explicit_blocks(rows: pd.DataFrame, *, source: str) -> pd.DataFrame:
@@ -195,6 +207,19 @@ def _verify_first_assignment(block: pd.DataFrame) -> bool:
     return str(first["policy"].iloc[0]) == expected[0]
 
 
+def construct_randomized_assignment_blocks(attempts: pd.DataFrame) -> pd.DataFrame:
+    """Construct v2 assignment blocks without touching response or cost fields."""
+    frame = prepare_assignment_attempts(attempts)
+    if frame.empty:
+        return frame
+    explicit = frame[
+        frame["block_id"].notna()
+        & frame["block_id"].astype(bool)
+        & frame["study_id"].astype(str).eq(RANDOMIZED_STUDY_ID)
+    ].copy()
+    return _explicit_blocks(explicit, source="explicit_assignment")
+
+
 def construct_probe_blocks(
     attempts: pd.DataFrame, max_legacy_seconds: int = MAX_LEGACY_BLOCK_SECONDS
 ) -> pd.DataFrame:
@@ -203,7 +228,11 @@ def construct_probe_blocks(
     if frame.empty:
         return frame
 
-    explicit = frame[frame["block_id"].notna() & frame["block_id"].astype(bool)].copy()
+    explicit = frame[
+        frame["block_id"].notna()
+        & frame["block_id"].astype(bool)
+        & frame["study_id"].astype(str).eq(RANDOMIZED_STUDY_ID)
+    ].copy()
     explicit = _explicit_blocks(explicit, source="explicit_assignment")
 
     legacy_rows: list[pd.DataFrame] = []
@@ -548,8 +577,331 @@ def randomized_support_diagnostics(first_positions: pd.DataFrame) -> dict[str, A
     }
 
 
+def randomized_first_position_frame(blocks: pd.DataFrame) -> pd.DataFrame:
+    """Return assignment-verified v2 position-zero rows without reading outcomes."""
+    if blocks.empty:
+        return blocks.copy()
+    verification_column = (
+        "first_assignment_verified"
+        if "first_assignment_verified" in blocks
+        else "assignment_verified"
+    )
+    valid = blocks[
+        blocks["block_source"].eq("explicit_assignment")
+        & blocks["study_id"].astype(str).eq(RANDOMIZED_STUDY_ID)
+        & blocks[verification_column].astype(bool)
+        & pd.to_numeric(blocks["policy_order"], errors="coerce").eq(0)
+        & blocks["randomized_order"].astype(bool)
+    ].copy()
+    return valid.sort_values("block_id").drop_duplicates("block_id", keep="first")
+
+
+def _accrual_projection(
+    frame: pd.DataFrame,
+    counts: pd.Series,
+    *,
+    target_per_policy: int,
+) -> dict[str, Any]:
+    """Outcome-free completion forecast from the observed assignment cadence."""
+    support = randomized_support_diagnostics(frame)
+    span_hours = float(support["span_hours"])
+    n_blocks = int(len(frame))
+    average_arm_rate = (
+        n_blocks / span_hours / len(POLICIES) if span_hours > 0 and n_blocks else None
+    )
+    min_count = int(counts.min()) if len(counts) else 0
+    min_arm_rate = min_count / span_hours if span_hours > 0 and min_count else None
+    remaining = {
+        policy: max(0, int(target_per_policy - int(counts.get(policy, 0))))
+        for policy in POLICIES
+    }
+    max_remaining = max(remaining.values()) if remaining else target_per_policy
+    timestamps = pd.to_datetime(
+        frame.get(
+            "observed_ts",
+            frame.get("observed_at", pd.Series(pd.NaT, index=frame.index)),
+        ),
+        errors="coerce",
+        utc=True,
+    )
+    return {
+        "remaining_by_policy": remaining,
+        "completion_fraction_min_arm": min_count / target_per_policy,
+        "observed_first_position_blocks_per_hour": (
+            n_blocks / span_hours if span_hours > 0 and n_blocks else None
+        ),
+        "expected_hours_to_gate_at_pooled_rate": (
+            max_remaining / average_arm_rate if average_arm_rate else None
+        ),
+        "conservative_hours_to_gate_at_slowest_observed_arm_rate": (
+            max_remaining / min_arm_rate if min_arm_rate else None
+        ),
+        "first_assignment_at": (
+            timestamps.min().isoformat() if timestamps.notna().any() else None
+        ),
+        "latest_assignment_at": (
+            timestamps.max().isoformat() if timestamps.notna().any() else None
+        ),
+        "forecast_boundary": (
+            "Assignment-cadence extrapolation only; GitHub scheduling, model eligibility, "
+            "and random arm imbalance can delay the gate. No outcomes enter this forecast."
+        ),
+    }
+
+
+def _randomized_gate_state(
+    blocks: pd.DataFrame,
+    *,
+    min_per_policy: int,
+    randomization_draws: int,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    """Build the outcome-free collection and frozen-prefix gate state."""
+    collection_valid = randomized_first_position_frame(blocks)
+    prefix, release_ready, confirmatory_cutoff = first_balanced_prefix(
+        collection_valid, POLICIES, min_per_policy
+    )
+    collection_counts = collection_valid["policy"].value_counts().reindex(POLICIES, fill_value=0)
+    prefix_counts = prefix["policy"].value_counts().reindex(POLICIES, fill_value=0)
+
+    candidate = blocks.iloc[0:0].copy()
+    if not blocks.empty:
+        candidate = blocks[
+            blocks["block_source"].eq("explicit_assignment")
+            & blocks["study_id"].astype(str).eq(RANDOMIZED_STUDY_ID)
+            & pd.to_numeric(blocks["policy_order"], errors="coerce").eq(0)
+            & blocks["randomized_order"].astype(bool)
+        ].copy()
+    candidate_unique = candidate.drop_duplicates("block_id", keep="first")
+    verification_column = (
+        "first_assignment_verified"
+        if "first_assignment_verified" in candidate_unique
+        else "assignment_verified"
+    )
+    replay_passes = int(candidate_unique[verification_column].astype(bool).sum())
+    min_count = int(collection_counts.min()) if len(collection_counts) else 0
+    audit = {
+        "study_id": RANDOMIZED_STUDY_ID,
+        "valid_position_zero_blocks": int(len(collection_valid)),
+        "candidate_position_zero_blocks": int(len(candidate_unique)),
+        "assignment_replay_passes": replay_passes,
+        "assignment_replay_rate": (
+            replay_passes / len(candidate_unique) if len(candidate_unique) else None
+        ),
+        "first_position_counts": {
+            key: int(value) for key, value in collection_counts.items()
+        },
+        "confirmatory_prefix_counts": (
+            {key: int(value) for key, value in prefix_counts.items()}
+            if release_ready
+            else {policy: 0 for policy in POLICIES}
+        ),
+        "confirmatory_prefix_blocks": int(len(prefix)) if release_ready else 0,
+        "confirmatory_cutoff": confirmatory_cutoff,
+        "outcomes_released": release_ready,
+        "outcome_access": (
+            "released_confirmatory_prefix" if release_ready else "masked_by_500_per_arm_gate"
+        ),
+        "models_represented": (
+            int(collection_valid["model_id"].nunique()) if len(collection_valid) else 0
+        ),
+        "model_ids": (
+            sorted(collection_valid["model_id"].astype(str).unique().tolist())
+            if len(collection_valid) and "model_id" in collection_valid
+            else []
+        ),
+        "support_diagnostics": randomized_support_diagnostics(collection_valid),
+        "min_first_position_per_policy": min_count,
+        "target_per_policy": int(min_per_policy),
+        "accrual_projection": _accrual_projection(
+            collection_valid,
+            collection_counts,
+            target_per_policy=min_per_policy,
+        ),
+        "randomization_draws": int(randomization_draws),
+        "primary_multiplicity": "Holm adjustment over three one-sided default-greater contrasts",
+        "evidence_status": (
+            "randomized_first_position_ready"
+            if release_ready
+            else "randomized_first_position_power_gated"
+        ),
+        "identification": (
+            "First-position HT differences are design-unbiased before within-block probe "
+            "exposure. Hajek differences and Newcombe intervals are companion estimates; "
+            "later-position crossover comparisons require carryover controls."
+        ),
+    }
+    return collection_valid, prefix, audit
+
+
+def randomized_gate_audit(
+    blocks: pd.DataFrame,
+    *,
+    min_per_policy: int = MIN_FIRST_POSITION_PER_POLICY,
+) -> dict[str, Any]:
+    """Public outcome-free H80 accrual and assignment audit."""
+    _, _, audit = _randomized_gate_state(
+        blocks,
+        min_per_policy=min_per_policy,
+        randomization_draws=RANDOMIZATION_DRAWS,
+    )
+    return audit
+
+
+RANDOMIZED_OUTCOME_COLUMNS = (
+    "outcome",
+    "retry_reason",
+    "selected_provider",
+    "request_ref",
+    "cost_usd",
+    "latency_ms",
+    "input_tokens",
+    "output_tokens",
+    "fallback_triggered",
+    "success",
+    "rejected_429",
+    "observed_spend_usd",
+)
+
+
+def publication_safe_blocks(
+    blocks: pd.DataFrame,
+    audit: dict[str, Any],
+    *,
+    min_per_policy: int = MIN_FIRST_POSITION_PER_POLICY,
+) -> pd.DataFrame:
+    """Mask v2 outcomes outside the frozen confirmatory prefix."""
+    if blocks.empty:
+        return blocks.copy()
+    safe = blocks.copy()
+    explicit = safe["block_source"].eq("explicit_assignment") & safe["study_id"].astype(
+        str
+    ).eq(RANDOMIZED_STUDY_ID)
+    allowed_block_ids: set[str] = set()
+    if audit.get("outcomes_released"):
+        first_positions = randomized_first_position_frame(blocks)
+        prefix, ready, _ = first_balanced_prefix(
+            first_positions,
+            POLICIES,
+            min_per_policy,
+        )
+        if ready:
+            allowed_block_ids = set(prefix["block_id"].astype(str))
+    masked = explicit & ~safe["block_id"].astype(str).isin(allowed_block_ids)
+    safe["outcomes_released"] = ~masked
+    for column in RANDOMIZED_OUTCOME_COLUMNS:
+        if column in safe:
+            if pd.api.types.is_bool_dtype(safe[column].dtype):
+                safe[column] = safe[column].astype("boolean")
+            safe.loc[masked, column] = pd.NA
+    if "metadata_json" in safe:
+        safe.loc[masked, "metadata_json"] = "{}"
+    return safe
+
+
+def _blinded_randomized_outputs(
+    collection_valid: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Schema-stable assignment counts that never inspect an outcome column."""
+    counts = collection_valid["policy"].value_counts().reindex(POLICIES, fill_value=0)
+    panel_rows = []
+    for policy in POLICIES:
+        panel_rows.append(
+            {
+                "policy": policy,
+                "first_position_attempts": int(counts[policy]),
+                "successes": np.nan,
+                "success_rate": np.nan,
+                "success_ci_low": np.nan,
+                "success_ci_high": np.nan,
+                "ht_success_mean": np.nan,
+                "rate_429": np.nan,
+                "spend_observed": np.nan,
+                "spend_missing": np.nan,
+                "spend_mean_lower_bound_usd": np.nan,
+                "spend_mean_upper_bound_usd": np.nan,
+                "ht_spend_mean_lower_bound_usd": np.nan,
+                "ht_spend_mean_upper_bound_usd": np.nan,
+                "spend_upper_support_complete_for_missing": np.nan,
+                "spend_observed_upper_support_violations": np.nan,
+                "successful_latency_observed": np.nan,
+                "successful_latency_missing": np.nan,
+                "successful_latency_mean_lower_bound_ms": np.nan,
+                "successful_latency_mean_upper_bound_ms": np.nan,
+                "selected_provider_observed_successes": np.nan,
+                "selected_provider_missing_successes": np.nan,
+                "selected_provider_observation_rate_success": np.nan,
+                "mean_observed_spend_usd": np.nan,
+            }
+        )
+    panel = pd.DataFrame(panel_rows)
+
+    model_columns = [
+        "model_id",
+        "policy",
+        "model_blocks",
+        "first_position_attempts",
+        "successes",
+        "success_rate",
+        "ht_success_mean_within_model",
+        "rate_429",
+        "spend_missing",
+    ]
+    model_rows = []
+    if len(collection_valid):
+        for (model_id, policy), arm in collection_valid.groupby(
+            ["model_id", "policy"], sort=True
+        ):
+            model_rows.append(
+                {
+                    "model_id": model_id,
+                    "policy": policy,
+                    "model_blocks": int(collection_valid["model_id"].eq(model_id).sum()),
+                    "first_position_attempts": int(len(arm)),
+                    "successes": np.nan,
+                    "success_rate": np.nan,
+                    "ht_success_mean_within_model": np.nan,
+                    "rate_429": np.nan,
+                    "spend_missing": np.nan,
+                }
+            )
+    model_panel = pd.DataFrame(model_rows, columns=model_columns)
+
+    contrast_rows = []
+    default_n = int(counts["openrouter_default"])
+    for policy in POLICIES[1:]:
+        contrast_rows.append(
+            {
+                "comparison": f"openrouter_default_minus_{policy}",
+                "n_blocks": int(len(collection_valid)),
+                "default_n": default_n,
+                "pinned_n": int(counts[policy]),
+                "success_difference_hajek": np.nan,
+                "success_difference_ci_low": np.nan,
+                "success_difference_ci_high": np.nan,
+                "success_difference_ht": np.nan,
+                "randomization_p_greater": np.nan,
+                "randomization_p_two_sided": np.nan,
+                "spend_complete_both_arms": np.nan,
+                "observed_spend_difference_usd": np.nan,
+                "spend_difference_lower_bound_usd": np.nan,
+                "spend_difference_upper_bound_usd": np.nan,
+                "ht_spend_difference_lower_bound_usd": np.nan,
+                "ht_spend_difference_upper_bound_usd": np.nan,
+                "successful_latency_difference_lower_bound_ms": np.nan,
+                "successful_latency_difference_upper_bound_ms": np.nan,
+                "selected_provider_observation_rate_difference": np.nan,
+                "break_even_value_per_success_usd": np.nan,
+                "holm_p_greater": np.nan,
+            }
+        )
+    return panel, model_panel, pd.DataFrame(contrast_rows)
+
+
 def randomized_first_position_analysis(
-    blocks: pd.DataFrame, *, simulations: int = RANDOMIZATION_DRAWS
+    blocks: pd.DataFrame,
+    *,
+    simulations: int = RANDOMIZATION_DRAWS,
+    min_per_policy: int = MIN_FIRST_POSITION_PER_POLICY,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """Design-based v2 ITT estimates using only audited position-zero rows.
 
@@ -558,26 +910,14 @@ def randomized_first_position_analysis(
     conditions on the full vector of outcomes and does not require independent
     outcome shocks across models in the same hourly run.
     """
-    if blocks.empty:
-        valid = blocks.copy()
-    else:
-        verification_column = (
-            "first_assignment_verified"
-            if "first_assignment_verified" in blocks
-            else "assignment_verified"
-        )
-        valid = blocks[
-            blocks["block_source"].eq("explicit_assignment")
-            & blocks["study_id"].astype(str).eq(RANDOMIZED_STUDY_ID)
-            & blocks[verification_column].astype(bool)
-            & pd.to_numeric(blocks["policy_order"], errors="coerce").eq(0)
-            & blocks["randomized_order"].astype(bool)
-        ].copy()
-    valid = valid.sort_values("block_id").drop_duplicates("block_id", keep="first")
-    collection_valid = valid.copy()
-    valid, release_ready, confirmatory_cutoff = first_balanced_prefix(
-        collection_valid, POLICIES, MIN_FIRST_POSITION_PER_POLICY
+    collection_valid, valid, audit = _randomized_gate_state(
+        blocks,
+        min_per_policy=min_per_policy,
+        randomization_draws=simulations,
     )
+    if not audit["outcomes_released"]:
+        panel, model_panel, contrasts = _blinded_randomized_outputs(collection_valid)
+        return panel, model_panel, contrasts, audit
     n_blocks = len(valid)
 
     panel_rows = []
@@ -774,78 +1114,6 @@ def randomized_first_position_analysis(
     if len(contrasts):
         contrasts["holm_p_greater"] = holm_adjust(contrasts["randomization_p_greater"].tolist())
 
-    analysis_counts = panel.set_index("policy")["first_position_attempts"].reindex(
-        POLICIES, fill_value=0
-    )
-    collection_counts = collection_valid["policy"].value_counts().reindex(POLICIES, fill_value=0)
-    min_count = int(collection_counts.min()) if len(collection_counts) else 0
-    candidate = blocks.iloc[0:0].copy()
-    if not blocks.empty:
-        candidate = blocks[
-            blocks["block_source"].eq("explicit_assignment")
-            & blocks["study_id"].astype(str).eq(RANDOMIZED_STUDY_ID)
-            & pd.to_numeric(blocks["policy_order"], errors="coerce").eq(0)
-            & blocks["randomized_order"].astype(bool)
-        ].copy()
-    candidate_unique = candidate.drop_duplicates("block_id", keep="first")
-    verification_column = (
-        "first_assignment_verified"
-        if "first_assignment_verified" in candidate_unique
-        else "assignment_verified"
-    )
-    replay_passes = int(candidate_unique[verification_column].astype(bool).sum())
-    audit = {
-        "study_id": RANDOMIZED_STUDY_ID,
-        "valid_position_zero_blocks": n_blocks,
-        "candidate_position_zero_blocks": int(len(candidate_unique)),
-        "assignment_replay_passes": replay_passes,
-        "assignment_replay_rate": (
-            replay_passes / len(candidate_unique) if len(candidate_unique) else None
-        ),
-        "first_position_counts": {key: int(value) for key, value in collection_counts.items()},
-        "confirmatory_prefix_counts": {key: int(value) for key, value in analysis_counts.items()},
-        "confirmatory_prefix_blocks": n_blocks if release_ready else 0,
-        "confirmatory_cutoff": confirmatory_cutoff,
-        "outcomes_released": release_ready,
-        "models_represented": (
-            int(collection_valid["model_id"].nunique()) if len(collection_valid) else 0
-        ),
-        "model_ids": (
-            sorted(collection_valid["model_id"].astype(str).unique().tolist())
-            if len(collection_valid) and "model_id" in collection_valid
-            else []
-        ),
-        "support_diagnostics": randomized_support_diagnostics(collection_valid),
-        "min_first_position_per_policy": min_count,
-        "target_per_policy": MIN_FIRST_POSITION_PER_POLICY,
-        "randomization_draws": simulations,
-        "primary_multiplicity": "Holm adjustment over three one-sided default-greater contrasts",
-        "evidence_status": (
-            "randomized_first_position_ready"
-            if release_ready
-            else "randomized_first_position_power_gated"
-        ),
-        "identification": (
-            "First-position HT differences are design-unbiased before within-block probe "
-            "exposure. Hajek differences and Newcombe intervals are companion estimates; "
-            "later-position crossover comparisons require carryover controls."
-        ),
-    }
-    if not release_ready:
-        for column in panel.columns:
-            if column not in {"policy", "first_position_attempts"}:
-                panel[column] = np.nan
-        for column in model_panel.columns:
-            if column not in {
-                "model_id",
-                "policy",
-                "model_blocks",
-                "first_position_attempts",
-            }:
-                model_panel[column] = np.nan
-        for column in contrasts.columns:
-            if column not in {"comparison", "n_blocks", "default_n", "pinned_n"}:
-                contrasts[column] = np.nan
     return panel, model_panel, contrasts, audit
 
 
@@ -892,16 +1160,23 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
         from read_parquet('{data.table_glob("router_route_attempts")}', union_by_name=true)
         """
     ).df()
+    prepared_attempts = prepare_attempts(attempts)
+    study_attempts = prepared_attempts[
+        prepared_attempts["study_id"].astype(str).isin(
+            {LEGACY_STUDY_ID, RANDOMIZED_STUDY_ID}
+        )
+    ]
     blocks = construct_probe_blocks(attempts)
-    panel = policy_panel(blocks)
     legacy = blocks[blocks["block_source"].eq("legacy_time_match")]
     contrasts = paired_contrasts(legacy)
-    save(blocks, out_dir, "h80_probe_blocks")
-    save(panel, out_dir, "h80_policy_panel")
-    save(contrasts, out_dir, "h80_pairwise_contrasts")
     randomized_panel, randomized_model_panel, randomized_contrasts, randomized = (
         randomized_first_position_analysis(blocks)
     )
+    published_blocks = publication_safe_blocks(blocks, randomized)
+    panel = policy_panel(published_blocks[published_blocks["outcomes_released"].astype(bool)])
+    save(published_blocks, out_dir, "h80_probe_blocks")
+    save(panel, out_dir, "h80_policy_panel")
+    save(contrasts, out_dir, "h80_pairwise_contrasts")
     save(randomized_panel, out_dir, "h80_randomized_first_position")
     save(randomized_model_panel, out_dir, "h80_randomized_model_policy")
     save(randomized_contrasts, out_dir, "h80_randomized_contrasts")
@@ -933,7 +1208,10 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
             if randomized["evidence_status"] == "randomized_first_position_ready"
             else "matched_descriptive_fixed_order"
         ),
-        "attempts_read": int(len(prepare_attempts(attempts))),
+        "attempts_read": int(len(study_attempts)),
+        "foreign_policy_attempts_excluded": int(
+            len(prepared_attempts) - len(study_attempts)
+        ),
         "complete_legacy_blocks": int(legacy["block_id"].nunique()) if len(legacy) else 0,
         "legacy_models": int(legacy["model_id"].nunique()) if len(legacy) else 0,
         "legacy_median_block_span_seconds": (

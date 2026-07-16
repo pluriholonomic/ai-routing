@@ -4,12 +4,16 @@ import random
 import pandas as pd
 
 from orcap.analysis.h80_matched_quote_firmness import (
+    MIN_FIRST_POSITION_PER_POLICY,
     POLICIES,
     construct_probe_blocks,
+    construct_randomized_assignment_blocks,
     holm_adjust,
     normalized_order_entropy,
     paired_contrasts,
+    publication_safe_blocks,
     randomized_first_position_analysis,
+    randomized_gate_audit,
 )
 
 
@@ -78,6 +82,57 @@ def test_explicit_randomized_block_uses_published_assignment():
     assert first == "openrouter_default"
     assert blocks["assignment_verified"].all()
     assert blocks["first_assignment_verified"].all()
+
+
+def test_assignment_only_constructor_and_publication_mask_never_need_outcomes():
+    order = ["openrouter_default", "pinned_second", "pinned_cheapest", "pinned_random"]
+    rows = [
+        _row("assignment-only", policy, i, True, explicit=True, position=i)
+        for i, policy in enumerate(order)
+    ]
+    raw = pd.DataFrame(rows)
+    assignment_only = construct_randomized_assignment_blocks(
+        raw.drop(
+            columns=[
+                "outcome",
+                "retry_reason",
+                "selected_provider",
+                "cost_usd",
+                "latency_ms",
+            ]
+        )
+    )
+    blocks = construct_probe_blocks(raw)
+    audit = randomized_gate_audit(blocks)
+    published = publication_safe_blocks(blocks, audit)
+
+    assert assignment_only["assignment_verified"].all()
+    assert assignment_only["first_assignment_verified"].all()
+    assert audit["outcomes_released"] is False
+    assert not published["outcomes_released"].any()
+    assert published["success"].isna().all()
+    assert published["selected_provider"].isna().all()
+    assert published["metadata_json"].eq("{}").all()
+    assert published["policy_order"].notna().all()
+
+
+def test_h80_block_constructor_excludes_foreign_explicit_studies():
+    order = ["openrouter_default", "pinned_second", "pinned_cheapest", "pinned_random"]
+    h80 = [
+        _row("h80", policy, i, True, explicit=True, position=i)
+        for i, policy in enumerate(order)
+    ]
+    foreign = [
+        _row("foreign", policy, i + 10, True, explicit=True, position=i)
+        for i, policy in enumerate(order)
+    ]
+    for row in foreign:
+        row["study_id"] = "openrouter-enforcement-policy-v1"
+
+    blocks = construct_probe_blocks(pd.DataFrame(h80 + foreign))
+
+    assert blocks["block_id"].unique().tolist() == ["h80"]
+    assert blocks["study_id"].unique().tolist() == ["openrouter-routing-crossover-v2"]
 
 
 def test_incomplete_explicit_block_retains_auditable_first_position_itt():
@@ -181,7 +236,7 @@ def test_randomized_first_position_emits_ipw_model_panel_and_gate():
             }
         )
     panel, model_panel, contrasts, audit = randomized_first_position_analysis(
-        pd.DataFrame(rows), simulations=2_000
+        pd.DataFrame(rows), simulations=2_000, min_per_policy=40
     )
     assert panel.set_index("policy").loc["openrouter_default", "ht_success_mean"] == 1.0
     assert panel["spend_mean_lower_bound_usd"].eq(0.000004).all()
@@ -202,6 +257,7 @@ def test_randomized_first_position_emits_ipw_model_panel_and_gate():
     assert audit["support_diagnostics"]["effective_model_count"] == 2.0
     assert audit["outcomes_released"] is True
     assert audit["confirmatory_prefix_blocks"] == 160
+    assert audit["target_per_policy"] == 40
     assert audit["evidence_status"] == "randomized_first_position_ready"
 
 
@@ -228,5 +284,44 @@ def test_randomized_first_position_blinds_outcomes_before_gate():
         pd.DataFrame(rows), simulations=100
     )
     assert audit["outcomes_released"] is False
+    assert audit["target_per_policy"] == 500
     assert panel["success_rate"].isna().all()
     assert contrasts["randomization_p_greater"].isna().all()
+
+
+def test_default_gate_is_500_and_pre_gate_analysis_never_requires_outcomes():
+    rows = []
+    for block_number, policy in enumerate(POLICIES):
+        rows.append(
+            {
+                "block_id": f"assignment-only-{block_number}",
+                "block_source": "explicit_assignment",
+                "study_id": "openrouter-routing-crossover-v2",
+                "assignment_verified": True,
+                "policy_order": 0,
+                "randomized_order": True,
+                "policy": policy,
+                "model_id": "model/a",
+                "assignment_probability_first": 0.25,
+                "observed_ts": pd.Timestamp("2026-07-16", tz="UTC")
+                + pd.to_timedelta(block_number, unit="h"),
+            }
+        )
+    assignments = pd.DataFrame(rows)
+    panel, model_panel, contrasts, audit = randomized_first_position_analysis(
+        assignments, simulations=100
+    )
+    public_audit = randomized_gate_audit(assignments)
+
+    assert MIN_FIRST_POSITION_PER_POLICY == 500
+    expected_audit = {**public_audit, "randomization_draws": 100}
+    assert audit == expected_audit
+    assert audit["outcomes_released"] is False
+    assert audit["outcome_access"] == "masked_by_500_per_arm_gate"
+    assert audit["confirmatory_prefix_counts"] == {policy: 0 for policy in POLICIES}
+    assert audit["accrual_projection"]["remaining_by_policy"] == {
+        policy: 499 for policy in POLICIES
+    }
+    assert panel["success_rate"].isna().all()
+    assert model_panel["success_rate"].isna().all()
+    assert contrasts["success_difference_hajek"].isna().all()

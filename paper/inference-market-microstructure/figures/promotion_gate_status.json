@@ -1,0 +1,34 @@
+{
+  "snapshot": "2026-07-16 authoritative remote refresh",
+  "evidence_status": "accruing",
+  "all_promotion_gates_ready": false,
+  "quote_panel_gate": {
+    "ready": false,
+    "observed_distinct_days": 10,
+    "target_distinct_days": 30,
+    "remaining_distinct_days": 20,
+    "first_observed_date": "2026-07-07",
+    "latest_observed_date": "2026-07-16",
+    "frozen_vintage_start": "2026-07-07",
+    "frozen_vintage_end": "2026-07-15",
+    "confirmatory_vintage": null
+  },
+  "h80_first_position_gate": {
+    "ready": false,
+    "counts": {
+      "openrouter_default": 15,
+      "pinned_cheapest": 20,
+      "pinned_second": 19,
+      "pinned_random": 22
+    },
+    "target_per_policy": 500,
+    "min_count": 15,
+    "assignment_replay_rate": 1.0,
+    "outcome_access": "masked_by_500_per_arm_gate",
+    "expected_hours_to_gate_at_pooled_rate": 458.6440789473684,
+    "conservative_hours_to_gate_at_slowest_observed_arm_rate": 580.9491666666667,
+    "first_assignment_at": "2026-07-15T09:49:02+00:00",
+    "latest_assignment_at": "2026-07-16T03:47:05+00:00"
+  },
+  "claim_boundary": "Outcome-free collection status only. The H80 first-position response, cost, latency, and provider-selection fields remain masked until every arm reaches 500."
+}

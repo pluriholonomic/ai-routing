@@ -1,9 +1,9 @@
 """Render the four-panel paper summary from the frozen paper estimates.
 
 The script deliberately refuses to read ``analysis/h80_summary.json`` because
-the local copy is the superseded fixed-order pilot.  The current randomized
-crossover release is frozen in ``paper_estimates.json`` until the registered
-500-per-arm promotion gate is reached.
+the local copy is the superseded fixed-order pilot.  The all-position randomized-
+order block screen is frozen in ``paper_estimates.json``; carryover-robust
+first-position outcomes remain masked until the registered 500-per-arm gate.
 """
 
 from __future__ import annotations
@@ -89,7 +89,11 @@ def main() -> None:
     axes[1, 0].set_xticks(x, labels, rotation=18, ha="right")
     axes[1, 0].set_ylim(60, 106)
     axes[1, 0].set_ylabel("Success rate (%)")
-    axes[1, 0].set_title("C. Router substitution manufactures firmness", loc="left", fontweight="bold")
+    axes[1, 0].set_title(
+        "C. Randomized-order block success (secondary)",
+        loc="left",
+        fontweight="bold",
+    )
     axes[1, 0].grid(axis="y", alpha=0.22)
     for bar, success, attempts_i, rate in zip(bars, successes, attempts, rates, strict=True):
         axes[1, 0].text(
@@ -110,7 +114,7 @@ def main() -> None:
     )
 
     fig.suptitle(
-        "Inference-market microstructure: four frozen v3 facts",
+        "Inference-market microstructure: frozen evidence and audits",
         fontsize=14,
         fontweight="bold",
     )
