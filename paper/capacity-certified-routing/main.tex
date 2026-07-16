@@ -76,6 +76,13 @@ finds no eligible pair because the public capacity fields are null. A
 separately preregistered enforcement-stress trial does enroll: three remote
 runs yield 23 valid hot-model assignments across low-stress, high-stress, and
 default routing. Those arm outcomes remain masked.
+To test whether the delegation frontier transports across routers, we also
+preregister and launch an independent Hugging Face policy trial. It randomizes
+documented fastest and cheapest routing against a pinned public cost-caliper
+frontier. The first published audit has 44 valid assignments across 11 models
+and eight public candidate providers, with exact seed replay and treatment
+compliance; its cost, latency, success, and selected-provider outcomes remain
+masked until a fixed 72-hour gate.
 In a fixed-order pilot of 96
 matched four-policy blocks, default routing succeeded 17.7 percentage points
 more often than pinning the cheapest displayed quote (hour-cluster 95\% CI
@@ -96,7 +103,7 @@ mechanism design is not an automated market maker. It is the distinction
 between displayed and delivered RFQ liquidity: a quote can be visible without
 being a deliverable commitment.
 
-This paper isolates that distinction. It makes eight contributions.
+This paper isolates that distinction. It makes nine contributions.
 \begin{enumerate}
   \item We formalize a capacity-certified score-routing mechanism. It is the
   unique entropy-regularized allocation with reliability-weighted
@@ -138,6 +145,12 @@ This paper isolates that distinction. It makes eight contributions.
   bridge then documents zero capacity-complete matches. We preserve that
   failed capacity trial and launch a separately preregistered, outcome-masked
   randomized enforcement-stress policy trial.
+  \item We give an independent cross-router randomization on Hugging Face's
+  documented fastest, cheapest, and explicit-provider interfaces. The third
+  arm chooses the highest-throughput public provider within a 25\% total-quote
+  caliper. This trial separately tests whether the measured delegation frontier
+  is an OpenRouter-specific artifact; its first 44 valid assignments remain
+  outcome-masked under a frozen 72-hour release rule.
 \end{enumerate}
 
 The point is deliberately conditional. A certified capacity cap is an
@@ -174,6 +187,11 @@ The contemporaneous theory of AI-platform self-preferencing studies routing
 between an owned model and an outside expert with learning-by-serving
 \cite{zhang2026}; our provider-level mechanism has no vertically integrated
 model and instead centers latent execution eligibility.
+Hugging Face's documented inference-provider interface exposes server-side
+fastest and cheapest suffixes and an explicit-provider suffix
+\cite{hfinferenceproviders2026}. We use those controls only in a separate
+owned-request randomization; the interface remains a proxy and billing layer,
+not a direct capacity contract.
 
 \section{Information structure and timing}
 \label{sec:timing}
@@ -717,8 +735,9 @@ Router enforcement & 503,321 endpoint snapshots; 231 complete isolated high onse
 Pre-onset quote state & 1,227 same-model next-onset choice sets; 1,144 backward placebos & predictive mechanism rejection and diagnostics only \\
 Execution-state bridge & 281 exact legacy request/quote matches; zero capacity-complete states & public-capacity support failure only \\
 Randomized enforcement policy & 23 valid hot-model blocks; 14 providers; outcomes masked & feasibility and assignment support only \\
+Randomized HF policy frontier & 44 valid blocks; 11 models; eight public candidate providers; outcomes masked & independent cross-router assignment support only \\
 Simulated share $\hat s_i$ & documented public price proxy & mechanical comparative static only \\
-Selection / retries & 716 legacy attempts plus 98 outcome-gated prospective rows & account/workload policy calibration only \\
+Selection / retries & 716 legacy attempts plus 98 OpenRouter and 44 HF outcome-gated prospective rows & account/workload policy calibration only \\
 Capacity / cost / value & no controlled commitment panel & theorem primitives and protocol fields only \\
 Joint outage support & no joint-outage observations & declared synthetic support only \\
 \bottomrule
@@ -950,6 +969,59 @@ rejection state. It cannot identify physical capacity, provider cost or
 intent, literal front-running, other-user flow, or the welfare effect of the
 capacity-certified mechanism.
 
+\subsection{Independent Hugging Face policy-frontier trial}
+
+H89 asks whether the cost--speed--reliability delegation problem transports to
+a second router with a different documented policy interface. Hugging Face
+documents server-side \texttt{:fastest} and \texttt{:cheapest} suffixes and an
+explicit provider suffix \cite{hfinferenceproviders2026}. Its response exposes
+the realized provider in the \texttt{x-inference-provider} header for the owned
+request. This is stronger execution telemetry than a public routing simulation,
+but Hugging Face remains in the request and billing path.
+
+Before confirmatory enrollment we froze twelve literal chat-model IDs and a
+one-token, temperature-zero workload. A model-run is eligible only when at
+least two live providers report nonnegative input and output prices plus
+positive throughput, and the public cheapest and fastest providers differ.
+Each eligible model-run receives one arm with probability $1/3$:
+\texttt{:fastest}, \texttt{:cheapest}, or an explicit provider selected by
+\[
+ i_{\delta}\in\arg\max_i\{t_i:c_i\leq(1+\delta)c_{\min}\},
+ \qquad \delta=0.25,
+\]
+where $c_i$ is the public 64-input/one-output quote cap and $t_i$ is reported
+throughput. Thus the experimental arm is the public throughput maximizer within
+a fixed cost caliper; this is a declared policy optimization, not an estimate
+of provider cost or private queue state.
+
+The published outcome-free audit through 2026-07-15 21:12:56 UTC contains 48
+candidate model-runs, 44 eligible and valid assignments, and eleven distinct
+models. Arm counts are 10 fastest, 16 cheapest, and 18 cost-caliper. Eight
+public candidate providers enter; the largest public predicted provider share
+is 54.5\%. Treatment compliance and seed replay are both 100\%. The panel spans
+three elapsed hours. The release rule requires 72 elapsed hours, 120 valid
+assignments per arm, eight models, five candidate providers, at most 75\%
+public predicted-provider dominance, at least 95\% compliance, and exact seed
+replay. It releases the earliest qualifying chronological prefix regardless of
+sign. No arm success, failure, latency, estimated cost, or realized-provider
+aggregate is reported before that cut.
+
+At release, four two-sided randomization tests compare fastest versus cheapest
+failure-penalized latency, cheapest versus fastest cost, and the cost-caliper
+arm versus each server policy under a frozen generalized loss. Model-day
+cluster intervals accompany Holm-adjusted randomization $p$-values. The
+generalized loss fixes a value of time and failure penalty; it is an owner
+objective, not social welfare or willingness to pay.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/h89_hf_policy_support.pdf}
+\caption{Outcome-free H89 enrollment support. The left panel reports randomized
+assignment counts. The right panel reports the public predicted provider used
+to audit support and concentration; it is not the realized provider outcome.}
+\label{fig:h89support}
+\end{figure}
+
 \subsection{Randomized micro-probe protocol}
 
 The fixed-order pilot sent four near-simultaneous one-token requests per hot
@@ -1081,7 +1153,10 @@ has no current public-field support. The separately frozen H88 trial can test
 an observable admission-risk policy without relabeling that missing capacity
 state. The running H80/H81/H88 randomizations and outcome-masked H83/H85 future
 holdouts make the unresolved claims falsifiable without pooling discovery and
-confirmation data.
+confirmation data. H89 adds an independent router and a directly auditable
+policy assignment, but it still cannot create provider commitment, collateral,
+or collectable shortfall liability. Its outcome gate therefore strengthens the
+delegation evidence without filling the paper's L4 capacity primitive.
 
 \bibliographystyle{plain}
 \bibliography{../references}
