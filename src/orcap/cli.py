@@ -570,6 +570,7 @@ def main() -> None:
             "h87": "h87_capacity_policy_trial",
             "h88": "h88_enforcement_policy_trial",
             "h89": "h89_hf_policy_trial",
+            "h90": "h90_akash_contract_termination",
             # Compute Brokerage Hypothesis modules are part of the full screen,
             # not static memo artifacts. Keep the scorecard last so it reads
             # summaries produced by this same invocation.

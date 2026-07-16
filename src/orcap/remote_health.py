@@ -12,6 +12,7 @@ from typing import Any
 from huggingface_hub import HfApi
 
 WORKFLOWS = {
+    "akash-close-events.yml": 1800,
     "capacity-policy-probes.yml": 180,
     "enforcement-policy-probes.yml": 180,
     "capture.yml": 150,

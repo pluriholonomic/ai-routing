@@ -1,0 +1,34 @@
+name: akash-close-events
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: akash-close-events
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: backfill exact public lease-close reasons
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_AKASH_CLOSE_BACKFILL_MAX_BLOCKS: "5000"
+          ORCAP_AKASH_CLOSE_BACKFILL_RPS: "8"
+        run: uv run python -m orcap.backfill_akash_close_events
+      - name: push closure events and source ledger
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "akash close events ${{ github.run_id }}" --delete-local

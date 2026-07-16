@@ -64,6 +64,9 @@ AKASH_CHOICE_MAX_ORDERS = max(
 AKASH_BID_EVENT_LOOKBACK_BLOCKS = max(
     100, int(os.environ.get("ORCAP_AKASH_BID_EVENT_LOOKBACK_BLOCKS", "1000"))
 )
+AKASH_CLOSE_EVENT_LOOKBACK_BLOCKS = max(
+    100, int(os.environ.get("ORCAP_AKASH_CLOSE_EVENT_LOOKBACK_BLOCKS", "1000"))
+)
 AKASH_BID_EVENT_PAGE_SIZE = 100
 AKASH_BID_EVENT_MAX_PAGES = 10
 GECKOTERMINAL_POOL_URL = "https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_id}"
@@ -2447,6 +2450,104 @@ async def capture_akash_bid_events(
     }
 
 
+def _akash_closed_lease_blocks(
+    lease_records: list[dict[str, Any]], start_height: int, end_height: int
+) -> tuple[dict[int, set[str]], int]:
+    """Return exact recent close blocks and lease IDs from the source lease list."""
+    by_block: dict[int, set[str]] = {}
+    closed_records = 0
+    for item in lease_records:
+        lease = (
+            item.get("lease")
+            if isinstance(item, dict) and isinstance(item.get("lease"), dict)
+            else item
+        )
+        if not isinstance(lease, dict) or lease.get("state") != "closed":
+            continue
+        closed_records += 1
+        lease_id = _lease_id(lease)
+        block = _lease_block(lease)
+        if lease_id is None or block is None or not start_height < block <= end_height:
+            continue
+        by_block.setdefault(block, set()).add(lease_id)
+    return by_block, closed_records
+
+
+async def capture_akash_lease_close_events(
+    fetcher: Fetcher,
+    lease_records: list[dict[str, Any]],
+    end_height: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Fetch exact block results for recent closed leases in a bounded window.
+
+    The source lease list gives the immutable close height but not the actor or
+    close reason. CometBFT block results contain the source-defined
+    ``EventLeaseClosed`` reason. Every requested block must return a matching
+    height and a well-formed result; otherwise the canonical event set fails
+    closed for the run.
+    """
+    start_height = max(0, end_height - AKASH_CLOSE_EVENT_LOOKBACK_BLOCKS)
+    expected, closed_records = _akash_closed_lease_blocks(
+        lease_records, start_height, end_height
+    )
+    if not expected:
+        return [], {
+            "coverage_complete": True,
+            "reason": None,
+            "start_height_exclusive": start_height,
+            "end_height_inclusive": end_height,
+            "closed_lease_records_seen": closed_records,
+            "expected_recent_closed_leases": 0,
+            "close_blocks_requested": 0,
+        }
+
+    async def fetch_block(height: int) -> tuple[int, Any]:
+        rpc_url = _configured_url("ORCAP_AKASH_RPC_URL", AKASH_RPC_URL).rstrip("/")
+        return height, await fetcher.get_json(f"{rpc_url}/block_results?height={height}")
+
+    results = await asyncio.gather(*(fetch_block(height) for height in sorted(expected)))
+    malformed = []
+    payloads = []
+    for height, body in results:
+        result = body.get("result") if isinstance(body, dict) else None
+        try:
+            returned_height = int(result.get("height")) if isinstance(result, dict) else None
+        except (TypeError, ValueError):
+            returned_height = None
+        txs = result.get("txs_results") if isinstance(result, dict) else None
+        if returned_height != height or (txs is not None and not isinstance(txs, list)):
+            malformed.append(height)
+            continue
+        payloads.append(
+            {
+                "block_height": height,
+                "expected_lease_ids": sorted(expected[height]),
+                "body": body,
+            }
+        )
+    if malformed:
+        return [], {
+            "coverage_complete": False,
+            "reason": "malformed_close_block_results",
+            "start_height_exclusive": start_height,
+            "end_height_inclusive": end_height,
+            "closed_lease_records_seen": closed_records,
+            "expected_recent_closed_leases": sum(len(ids) for ids in expected.values()),
+            "close_blocks_requested": len(expected),
+            "malformed_block_heights": malformed,
+        }
+    return payloads, {
+        "coverage_complete": True,
+        "reason": None,
+        "start_height_exclusive": start_height,
+        "end_height_inclusive": end_height,
+        "closed_lease_records_seen": closed_records,
+        "expected_recent_closed_leases": sum(len(ids) for ids in expected.values()),
+        "close_blocks_requested": len(expected),
+        "close_blocks_fetched": len(payloads),
+    }
+
+
 async def capture_akash_open_market(
     fetcher: Fetcher, provider_ids: list[str]
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -3062,6 +3163,125 @@ def akash_bid_event_rows(
     return rows
 
 
+def _akash_event_value(value: Any) -> Any:
+    """Decode CometBFT event values that may themselves be JSON strings."""
+    current = value
+    for _ in range(2):
+        if not isinstance(current, str):
+            break
+        try:
+            current = json.loads(current)
+        except json.JSONDecodeError:
+            break
+    return current
+
+
+def _akash_close_actor(reason: str) -> str:
+    normalized = reason.lower()
+    if "provider" in normalized:
+        return "provider"
+    if "owner" in normalized or "tenant" in normalized:
+        return "owner"
+    if "insufficient" in normalized or "escrow" in normalized:
+        return "escrow"
+    return "other"
+
+
+def akash_lease_close_event_rows(
+    payloads: list[dict[str, Any]],
+    detail: dict[str, Any],
+    run_ts: str,
+    dt: str,
+) -> list[dict[str, Any]]:
+    """Normalize exact source-defined close reasons for expected public leases."""
+    if detail.get("coverage_complete") is not True:
+        return []
+    rows = []
+    seen: set[tuple[int, str]] = set()
+    raw_payload_source = str(detail.get("raw_payload_source") or "market_sources")
+    raw_payload_path = f"raw/{raw_payload_source}/dt={dt}/{run_ts}.jsonl.gz"
+    for payload in payloads:
+        if not isinstance(payload, dict):
+            continue
+        expected = set(payload.get("expected_lease_ids") or [])
+        body = payload.get("body")
+        result = body.get("result") if isinstance(body, dict) else None
+        height = _integer(result.get("height")) if isinstance(result, dict) else None
+        txs = result.get("txs_results") if isinstance(result, dict) else None
+        if height is None or (txs is not None and not isinstance(txs, list)):
+            continue
+        event_groups: list[tuple[str, int | None, list[Any]]] = []
+        for tx_index, tx in enumerate(txs or []):
+            if isinstance(tx, dict) and int(tx.get("code") or 0) == 0:
+                event_groups.append(("transaction", tx_index, tx.get("events") or []))
+        for field in ("finalize_block_events", "end_block_events", "begin_block_events"):
+            events = result.get(field) if isinstance(result, dict) else None
+            if isinstance(events, list):
+                event_groups.append((field, None, events))
+        for event_scope, tx_index, events in event_groups:
+            for event in events:
+                if (
+                    not isinstance(event, dict)
+                    or event.get("type") != "akash.market.v1.EventLeaseClosed"
+                ):
+                    continue
+                attributes = {
+                    item.get("key"): item.get("value")
+                    for item in event.get("attributes") or []
+                    if isinstance(item, dict)
+                }
+                identifier = _akash_event_value(attributes.get("id"))
+                reason = _akash_event_value(attributes.get("reason"))
+                lease_id = (
+                    _lease_id({"id": identifier}) if isinstance(identifier, dict) else None
+                )
+                if lease_id is None or lease_id not in expected or not isinstance(reason, str):
+                    continue
+                identity = (height, lease_id)
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                rows.append(
+                    {
+                        "run_ts": run_ts,
+                        "dt": dt,
+                        "source": "akash",
+                        "venue": "akash-network",
+                        "execution_id": lease_id,
+                        "close_block_height": height,
+                        "transaction_index": tx_index,
+                        "event_scope": event_scope,
+                        "message_index": _integer(attributes.get("msg_index")),
+                        "close_reason": reason,
+                        "close_actor_class": _akash_close_actor(reason),
+                        "owner": identifier.get("owner"),
+                        "provider": identifier.get("provider"),
+                        "dseq": str(identifier.get("dseq")),
+                        "gseq": _integer(identifier.get("gseq")),
+                        "oseq": _integer(identifier.get("oseq")),
+                        "bseq": _integer(identifier.get("bseq")),
+                        "event_window_start_height_exclusive": detail.get(
+                            "start_height_exclusive"
+                        ),
+                        "event_window_end_height_inclusive": detail.get(
+                            "end_height_inclusive"
+                        ),
+                        "event_window_complete": True,
+                        "raw_payload_path": raw_payload_path,
+                        "raw_block_height": height,
+                        "metric_definition": (
+                            "Exact public Akash EventLeaseClosed reason for a lease returned "
+                            "by the source lease list in the bounded close-block window. It "
+                            "identifies the on-chain termination path, not workload delivery, "
+                            "failure, default, "
+                            "or actor intent."
+                        ),
+                        "record_json": _json(event),
+                    }
+                )
+    return rows
+
+
 def akash_capacity_rows(body: Any, run_ts: str, dt: str) -> list[dict[str, Any]]:
     """Return live, version-valid *GPU* capacity observations from Akash.
 
@@ -3254,7 +3474,13 @@ def _lease_block(lease: dict[str, Any]) -> int | None:
 
 
 def akash_lease_execution_rows(
-    body: Any, block_times: dict[int, str | None], run_ts: str, dt: str
+    body: Any,
+    block_times: dict[int, str | None],
+    run_ts: str,
+    dt: str,
+    *,
+    snapshot_height: int | str | None = None,
+    snapshot_time: str | None = None,
 ) -> list[dict[str, Any]]:
     """Normalize on-chain lease lifecycle events without calling them workloads.
 
@@ -3270,6 +3496,8 @@ def akash_lease_execution_rows(
         execution_id = _lease_id(lease)
         if not execution_id:
             continue
+        created_at_block = _integer(lease.get("created_at"))
+        closed_on_block = _integer(lease.get("closed_on"))
         block_height = _lease_block(lease)
         payment = item.get("escrow_payment") or {}
         payment_state = payment.get("state") or {}
@@ -3283,6 +3511,10 @@ def akash_lease_execution_rows(
                 "venue": "akash-network",
                 "execution_id": execution_id,
                 "instrument_id": "akash:lease-contract",
+                "snapshot_height": _integer(snapshot_height),
+                "snapshot_time": snapshot_time,
+                "created_at_block": created_at_block,
+                "closed_on_block": closed_on_block,
                 "executed_at": block_times.get(block_height),
                 "event_block_height": block_height,
                 "lease_state": lease.get("state"),
@@ -4343,6 +4575,7 @@ async def capture_markets(
         akash_open_bids: list[dict[str, Any]] = []
         akash_choice_payloads: list[dict[str, Any]] = []
         akash_bid_event_pages: list[dict[str, Any]] = []
+        akash_close_event_payloads: list[dict[str, Any]] = []
         akash_market_detail: dict[str, Any] = {
             "coverage_complete": False,
             "reason": "flag_not_set",
@@ -4356,6 +4589,10 @@ async def capture_markets(
             "snapshot_time": None,
         }
         akash_bid_event_detail: dict[str, Any] = {
+            "coverage_complete": False,
+            "reason": "flag_not_set",
+        }
+        akash_close_event_detail: dict[str, Any] = {
             "coverage_complete": False,
             "reason": "flag_not_set",
         }
@@ -4414,6 +4651,13 @@ async def capture_markets(
                 akash_bid_event_pages, akash_bid_event_detail = await capture_akash_bid_events(
                     fetcher, choice_snapshot_height
                 )
+                (
+                    akash_close_event_payloads,
+                    akash_close_event_detail,
+                ) = await capture_akash_lease_close_events(
+                    fetcher, lease_records, choice_snapshot_height
+                )
+                akash_close_event_detail["raw_payload_source"] = "market_sources"
             heights = sorted(
                 {
                     block
@@ -4483,7 +4727,27 @@ async def capture_markets(
     akash_capacity = akash_capacity_rows(akash, run_ts, dt)
     akash_coverage = akash_registry_summary(akash)
     akash_quotes = akash_gpu_quote_rows(akash_gpu_prices, run_ts, dt)
-    akash_leases_rows = akash_lease_execution_rows(akash_leases, akash_block_times, run_ts, dt)
+    akash_leases_rows = akash_lease_execution_rows(
+        akash_leases,
+        akash_block_times,
+        run_ts,
+        dt,
+        snapshot_height=akash_choice_detail.get("snapshot_height"),
+        snapshot_time=akash_choice_detail.get("snapshot_time"),
+    )
+    akash_close_events = akash_lease_close_event_rows(
+        akash_close_event_payloads,
+        akash_close_event_detail,
+        run_ts,
+        dt,
+    )
+    expected_recent_closes = int(
+        akash_close_event_detail.get("expected_recent_closed_leases") or 0
+    )
+    akash_close_event_detail["close_event_rows"] = len(akash_close_events)
+    akash_close_event_detail["exact_event_match_rate"] = (
+        len(akash_close_events) / expected_recent_closes if expected_recent_closes else 1.0
+    )
     akash_dashboard = akash_dashboard_rows(
         akash_dashboard_body, akash_network_capacity_body, run_ts, dt
     )
@@ -4597,6 +4861,13 @@ async def capture_markets(
     _write(
         akash_bid_events,
         "akash_market_bid_events",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+    _write(
+        akash_close_events,
+        "akash_market_lease_close_events",
         run_ts,
         dt,
         curated_dir,
@@ -4910,6 +5181,29 @@ async def capture_markets(
             },
             curated_dir=curated_dir,
         )
+        write_source_run(
+            "akash_lease_close_events",
+            status=(
+                "success"
+                if akash_close_event_detail.get("coverage_complete")
+                and akash_close_event_detail.get("exact_event_match_rate") == 1.0
+                else "degraded"
+            ),
+            rows=len(akash_close_events),
+            watermark=str(akash_close_event_detail.get("end_height_inclusive") or run_ts),
+            run_ts=run_ts,
+            dt=dt,
+            detail={
+                "url": f"{AKASH_RPC_URL}/block_results",
+                "metric_boundary": (
+                    "exact public lease-close reason for source-returned recent leases; actor "
+                    "class identifies the on-chain termination path, not workload delivery, "
+                    "failure, default, or intent"
+                ),
+                **akash_close_event_detail,
+            },
+            curated_dir=curated_dir,
+        )
 
     else:
         write_source_run(
@@ -4938,6 +5232,14 @@ async def capture_markets(
         )
         write_source_run(
             "akash_bid_events",
+            status="skipped",
+            run_ts=run_ts,
+            dt=dt,
+            detail={"reason": "flag not set"},
+            curated_dir=curated_dir,
+        )
+        write_source_run(
+            "akash_lease_close_events",
             status="skipped",
             run_ts=run_ts,
             dt=dt,
@@ -5071,6 +5373,8 @@ async def capture_markets(
         "akash_choice_sets": akash_choice_detail,
         "akash_bid_event_rows": len(akash_bid_events),
         "akash_bid_events": akash_bid_event_detail,
+        "akash_lease_close_event_rows": len(akash_close_events),
+        "akash_lease_close_events": akash_close_event_detail,
         "nosana_node_registry_rows": len(nosana_nodes),
         "nosana_node_registry": nosana_detail,
         "nosana_job_activity_rows": len(nosana_job_activity),

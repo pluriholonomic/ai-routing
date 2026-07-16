@@ -30,6 +30,7 @@ from orcap.capture_markets import (
     akash_dashboard_rows,
     akash_gpu_quote_rows,
     akash_lease_choice_bid_rows,
+    akash_lease_close_event_rows,
     akash_lease_execution_rows,
     akash_live_gpu_provider_ids,
     akash_market_list_url,
@@ -39,6 +40,7 @@ from orcap.capture_markets import (
     akash_provider_aggregate_rows,
     akash_registry_summary,
     capture_aethir_dashboard,
+    capture_akash_lease_close_events,
     capture_akash_open_market,
     capture_akash_provider_aggregates,
     capture_nosana_job_activity,
@@ -1150,15 +1152,115 @@ def test_akash_lease_lifecycle_preserves_native_rate_without_claiming_workload_s
         {99: "2026-07-10T00:00:00Z"},
         "20260710T000000Z",
         "2026-07-10",
+        snapshot_height="100",
+        snapshot_time="2026-07-10T00:00:06Z",
     )
     assert rows[0]["execution_id"] == "owner/1/2/3/provider/4"
     assert rows[0]["executed_at"] == "2026-07-10T00:00:00Z"
     assert rows[0]["rate_denom"] == "uakt"
     assert rows[0]["rate_amount_native"] == 12.5
+    assert rows[0]["snapshot_height"] == 100
+    assert rows[0]["created_at_block"] is None
+    assert rows[0]["closed_on_block"] == 99
     assert rows[0]["success"] is None
     assert _block_time({"result": {"header": {"time": "2026-07-10T00:00:00Z"}}}) == (
         "2026-07-10T00:00:00Z"
     )
+
+
+def test_akash_close_event_rows_preserve_exact_reason_without_calling_it_failure():
+    identifier = {
+        "owner": "tenant",
+        "dseq": "1",
+        "gseq": 2,
+        "oseq": 3,
+        "provider": "provider",
+        "bseq": 4,
+    }
+    event = {
+        "type": "akash.market.v1.EventLeaseClosed",
+        "attributes": [
+            {"key": "id", "value": json.dumps(identifier)},
+            {"key": "reason", "value": json.dumps("lease_closed_provider")},
+            {"key": "msg_index", "value": "0"},
+        ],
+    }
+    payloads = [
+        {
+            "block_height": 99,
+            "expected_lease_ids": ["tenant/1/2/3/provider/4"],
+            "body": {
+                "result": {
+                    "height": "99",
+                    "txs_results": [{"code": 0, "events": [event]}],
+                }
+            },
+        }
+    ]
+    rows = akash_lease_close_event_rows(
+        payloads,
+        {
+            "coverage_complete": True,
+            "start_height_exclusive": 50,
+            "end_height_inclusive": 100,
+        },
+        "20260710T000000Z",
+        "2026-07-10",
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["execution_id"] == "tenant/1/2/3/provider/4"
+    assert rows[0]["close_reason"] == "lease_closed_provider"
+    assert rows[0]["close_actor_class"] == "provider"
+    assert rows[0]["close_block_height"] == 99
+    assert rows[0]["raw_payload_path"] == (
+        "raw/market_sources/dt=2026-07-10/20260710T000000Z.jsonl.gz"
+    )
+    assert rows[0]["raw_block_height"] == 99
+    assert "not workload delivery" in rows[0]["metric_definition"]
+
+
+def test_akash_close_event_capture_is_bounded_and_fails_closed_on_bad_block():
+    leases = [
+        {
+            "lease": {
+                "id": {
+                    "owner": "tenant",
+                    "dseq": "1",
+                    "gseq": 2,
+                    "oseq": 3,
+                    "provider": "provider",
+                    "bseq": 4,
+                },
+                "state": "closed",
+                "created_at": "80",
+                "closed_on": "99",
+            }
+        }
+    ]
+
+    class GoodFetcher:
+        async def get_json(self, url, headers=None):
+            assert url.endswith("/block_results?height=99")
+            return {"result": {"height": "99", "txs_results": []}}
+
+    payloads, detail = asyncio.run(
+        capture_akash_lease_close_events(GoodFetcher(), leases, 100)
+    )
+    assert len(payloads) == 1
+    assert detail["coverage_complete"] is True
+    assert detail["expected_recent_closed_leases"] == 1
+
+    class BadFetcher:
+        async def get_json(self, url, headers=None):
+            return {"result": {"height": "98", "txs_results": []}}
+
+    payloads, detail = asyncio.run(
+        capture_akash_lease_close_events(BadFetcher(), leases, 100)
+    )
+    assert payloads == []
+    assert detail["coverage_complete"] is False
+    assert detail["reason"] == "malformed_close_block_results"
 
 
 def test_akash_gpu_quotes_preserve_exact_model_and_hourly_quote_unit():
