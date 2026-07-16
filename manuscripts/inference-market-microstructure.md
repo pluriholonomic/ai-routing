@@ -1,6 +1,12 @@
 # Administered Menus and Focal Anchors: The Microstructure of the Market for Machine Intelligence
 
-*Manuscript v2 — 2026-07-16. Revision under review-v1; change log at end.*
+*Manuscript v3-pending — 2026-07-16. Status: v2 'accept' SET ASIDE by referee
+panel (reviews-v2-panel.md): the v1 probe design confounds policy with
+within-block order, so Fact 3's request-level gradient is unidentified and
+its levels are upper bounds. Resubmission gated on the randomized-crossover
+probe study (running) and >=60-day panel re-estimation. Surviving core:
+Facts 1-2, aggregate quantity-clearing, and the steering audit (position-0
+probes only).*
 
 ## Abstract
 
