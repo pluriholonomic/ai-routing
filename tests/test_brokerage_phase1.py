@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from orcap.analysis.cbh2_gap_curve import gaps
+from orcap.analysis.cbh2_gap_curve import gaps, grid_null_tie_inference
 from orcap.analysis.cbh4_reaction_typing import type_event
 from orcap.analysis.cbh6_price_forensics import _round_share
 from orcap.analysis.cbh12_cold_start import _latest_common_day
@@ -19,6 +19,33 @@ def test_gap_curve_computes_two_lowest_gap():
     assert len(g) == 1
     assert np.isclose(g["gap_pct"].iloc[0], 10.0)
     assert np.isclose(g["range_pct"].iloc[0], 200.0)
+
+
+def test_grid_null_reports_model_cluster_interval_reproducibly():
+    quotes = pd.DataFrame(
+        [
+            {"dt": "d1", "model_id": "m1", "provider_name": "a", "price": 1.0},
+            {"dt": "d1", "model_id": "m1", "provider_name": "b", "price": 1.0},
+            {"dt": "d2", "model_id": "m1", "provider_name": "a", "price": 1.0},
+            {"dt": "d2", "model_id": "m1", "provider_name": "b", "price": 1.2},
+            {"dt": "d1", "model_id": "m2", "provider_name": "a", "price": 2.0},
+            {"dt": "d1", "model_id": "m2", "provider_name": "b", "price": 2.0},
+            {"dt": "d2", "model_id": "m2", "provider_name": "a", "price": 2.0},
+            {"dt": "d2", "model_id": "m2", "provider_name": "b", "price": 2.4},
+        ]
+    )
+    first = grid_null_tie_inference(
+        quotes, grid=0.1, null_reps=25, bootstrap_reps=40, seed=7
+    )
+    second = grid_null_tie_inference(
+        quotes, grid=0.1, null_reps=25, bootstrap_reps=40, seed=7
+    )
+
+    assert first == second
+    assert first["n_model_days"] == 4
+    assert first["n_model_clusters"] == 2
+    assert first["observed_tie_rate"] == 0.5
+    assert len(first["cluster_bootstrap_ci95"]) == 2
 
 
 def _changes(rows):

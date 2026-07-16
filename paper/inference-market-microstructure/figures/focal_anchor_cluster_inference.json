@@ -1,0 +1,30 @@
+{
+  "artifact": "post-freeze model-cluster inference for the independent grid null",
+  "source": "authoritative Hugging Face endpoint quote panel after successful 2026-07-16 remote capture",
+  "estimator": "src/orcap/analysis/cbh2_gap_curve.py:grid_null_tie_inference",
+  "bootstrap_unit": "model; all model-days move together",
+  "outer_bootstrap_reps": 2000,
+  "null_simulation_reps": 1000,
+  "cent_grid": {
+    "seed": 20260716,
+    "n_model_days": 1456,
+    "n_model_clusters": 148,
+    "observed_tie_rate": 0.45123626373626374,
+    "null_tie_rate_mean": 0.12895741758241758,
+    "null_tie_rate_sd": 0.008591641563591839,
+    "observed_minus_null": 0.32227884615384617,
+    "cluster_bootstrap_ci95": [0.25768527830380716, 0.3778372828680836]
+  },
+  "dime_grid": {
+    "seed": 20260717,
+    "n_model_days": 1456,
+    "n_model_clusters": 148,
+    "observed_tie_rate": 0.45123626373626374,
+    "null_tie_rate_mean": 0.2715652472527472,
+    "null_tie_rate_sd": 0.010589927572996193,
+    "observed_minus_null": 0.17967101648351652,
+    "cluster_bootstrap_ci95": [0.09725197531441394, 0.2505233674196235]
+  },
+  "interval_note": "Each outer model-cluster resample re-simulates the null once. This retains null Monte Carlo noise and is conservative relative to integrating it out.",
+  "claim_boundary": "Post-freeze robustness refresh; the preregistered frozen v3 point estimates remain the primary manuscript vintage."
+}

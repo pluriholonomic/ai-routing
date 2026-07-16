@@ -1,10 +1,13 @@
 # LaTeX manuscripts
 
-This directory contains two non-concurrent manuscripts built from the reviewed
+This directory contains three non-concurrent manuscripts built from the reviewed
 research drafts:
 
 - `capacity-certified-routing/main.tex`: a theory-first EC/WINE-style paper.
 - `routescope/main.tex`: a NeurIPS-style evaluation-methodology/protocol paper.
+- `inference-market-microstructure/main.tex`: an empirical EC/IO/OR-style paper
+  on administered provider menus, focal price anchors, and router-manufactured
+  quote firmness.
 
 They intentionally remain separate. The first proves restricted mechanism
 results under explicit assumptions; the second specifies the empirical
@@ -23,6 +26,7 @@ The verified rendered PDFs are written to `output/pdf/` at the repository root:
 
 - `output/pdf/capacity-certified-routing.pdf`
 - `output/pdf/routescope.pdf`
+- `output/pdf/inference-market-microstructure.pdf`
 
 Both manuscripts share `../references.bib`. Run `latexmk -C` inside either
 source directory to remove only LaTeX build intermediates; do not remove the
