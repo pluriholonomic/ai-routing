@@ -49,9 +49,15 @@
       "source": "pm2"
     },
     {
-      "prediction": "Author-price atom beyond adjacent placebo levels",
-      "status": "accumulating",
-      "evidence": "all-market exact-minus-placebo 53%; selected-tie statistic is non_discriminating_against_random_label; 30-date replication pending",
+      "prediction": "Exact price atoms are author-specific",
+      "status": "inconsistent",
+      "evidence": "adjacent-grid excess 53%, but author-minus-random-anchor 1.1% (exact upper-tail p=0.429); identity status non_discriminating_against_random_endpoint_anchor",
+      "source": "pm5"
+    },
+    {
+      "prediction": "Lagged rival-price landing exceeds a matched common-menu null",
+      "status": "inconsistent",
+      "evidence": "exact share 19.3%; matched-menu excess 6.6%; model-cluster CI [-0.22039684529330011, 0.11470759734346579]; past-only same-model excess 13.6%; n=207",
       "source": "pm5"
     },
     {

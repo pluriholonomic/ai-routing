@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from orcap.analysis import data
 from orcap.analysis.bm_common import provider_cadence
 from orcap.analysis.manuscript_vintages import (
     compare_precommitted_metrics,
@@ -10,6 +11,21 @@ from orcap.analysis.manuscript_vintages import (
     registered_vintage_specs,
 )
 from orcap.analysis.vintage import clip_date_range
+
+
+def test_hf_analysis_source_can_be_pinned_without_changing_table_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    revision = "a" * 40
+    monkeypatch.setenv("ORCAP_ANALYSIS_SOURCE", "hf")
+    monkeypatch.setenv("ORCAP_HF_REVISION", revision)
+    expected = f"hf://datasets/{data.HF_DATASET_REPO}@{revision}"
+    assert data.table_glob("endpoints_snapshots").startswith(expected)
+    with data.pinned_analysis_source() as snapshot:
+        assert snapshot["revision"] == revision
+        assert snapshot["resolution"] == "environment"
+        assert snapshot["path"] == expected
+    assert data.table_glob("endpoints_snapshots").startswith(expected)
 
 
 def test_registered_vintages_freeze_prefixes_without_partial_confirmatory_run():
@@ -111,13 +127,40 @@ def _results(*, uplift: float, state_rmse: float, brown_rmse: float):
                         "exact_minus_placebo": 0.53,
                         "author_cluster_bootstrap_ci95": [0.31, 0.80],
                     },
+                    "author_anchor_randomization_benchmark": {
+                        "poisson_binomial_upper_tail_p": 0.62,
+                        "author_minus_random_anchor": {
+                            "mean": 0.01,
+                            "cluster_bootstrap_ci95": [-0.2, 0.2],
+                        },
+                    },
                     "selected_tie_random_label_benchmark": {
                         "observed_share": 0.89,
                         "random_label_expected_share": 0.89,
                         "poisson_binomial_upper_tail_p": 0.62,
                     },
                 }
-            }
+            },
+            "reference_price_landing": {
+                "primary": {
+                    "n_events": 129,
+                    "exact_lagged_rival_match_share": 0.29,
+                    "global_menu_match_probability": 0.20,
+                    "exact_minus_global_menu": 0.09,
+                    "historical_menu_match_probability": 0.10,
+                    "exact_minus_historical_menu": 0.19,
+                    "model_cluster_global_menu": {
+                        "cluster_bootstrap_ci95": [-0.25, 0.18],
+                        "leave_one_cluster_out_range": [-0.11, 0.13],
+                    },
+                    "provider_cluster_global_menu": {
+                        "cluster_bootstrap_ci95": [-0.24, 0.29],
+                    },
+                    "model_cluster_historical_menu": {
+                        "cluster_bootstrap_ci95": [-0.001, 0.26],
+                    },
+                }
+            },
         },
     }
 
@@ -139,6 +182,9 @@ def test_precommitted_metric_set_and_sign_comparison_are_fixed():
     assert frozen["bm4_paired_mse_improvement"] == pytest.approx(0.01)
     assert frozen["bm4_exact_sign_flip_p_positive"] == pytest.approx(0.25)
     assert frozen["pm5_author_atom_excess"] == pytest.approx(0.53)
+    assert frozen["pm5_author_random_anchor_excess"] == pytest.approx(0.01)
     assert frozen["pm5_selected_tie_observed_share"] == pytest.approx(0.89)
+    assert frozen["pm5_lagged_landing_global_menu_excess"] == pytest.approx(0.09)
+    assert frozen["pm5_lagged_landing_historical_menu_excess"] == pytest.approx(0.19)
     assert comparison["bm2_fast_after_slow_uplift"]["sign_preserved"] is False
     assert comparison["bm4_brown_mackay_rmse_gain"]["sign_preserved"] is True

@@ -7,6 +7,9 @@ ORCAP_ANALYSIS_SOURCE=local.
 
 import functools
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
+from pathlib import Path
 
 import duckdb
 
@@ -14,7 +17,57 @@ from ..config import DATA_DIR, HF_DATASET_REPO
 
 
 def _hf_base() -> str:
-    return f"hf://datasets/{HF_DATASET_REPO}"
+    revision = os.environ.get("ORCAP_HF_REVISION", "").strip()
+    suffix = f"@{revision}" if revision else ""
+    return f"hf://datasets/{HF_DATASET_REPO}{suffix}"
+
+
+@contextmanager
+def pinned_analysis_source() -> Iterator[dict[str, str | None]]:
+    """Freeze a multi-query release run to one immutable input revision.
+
+    Ordinary live analyses intentionally read the dataset head. Manuscript
+    releases instead use this context so a concurrent capture upload or late
+    backfill cannot mix two dataset states or silently mutate a dated vintage.
+    """
+    source = os.environ.get("ORCAP_ANALYSIS_SOURCE", "hf")
+    if source == "local":
+        yield {
+            "source": "local",
+            "repo_id": None,
+            "revision": None,
+            "path": str(Path(DATA_DIR).resolve()),
+            "resolution": "caller_managed_local_snapshot",
+        }
+        return
+
+    previous = os.environ.get("ORCAP_HF_REVISION")
+    revision = (previous or "").strip()
+    resolution = "environment"
+    if not revision:
+        from huggingface_hub import HfApi
+
+        revision = str(HfApi().dataset_info(HF_DATASET_REPO).sha or "").strip()
+        resolution = "dataset_head_at_run_start"
+    if not revision:
+        raise RuntimeError("could not resolve an immutable Hugging Face dataset revision")
+
+    os.environ["ORCAP_HF_REVISION"] = revision
+    reset_connection()
+    try:
+        yield {
+            "source": "huggingface",
+            "repo_id": HF_DATASET_REPO,
+            "revision": revision,
+            "path": _hf_base(),
+            "resolution": resolution,
+        }
+    finally:
+        reset_connection()
+        if previous is None:
+            os.environ.pop("ORCAP_HF_REVISION", None)
+        else:
+            os.environ["ORCAP_HF_REVISION"] = previous
 
 
 @functools.lru_cache(maxsize=1)

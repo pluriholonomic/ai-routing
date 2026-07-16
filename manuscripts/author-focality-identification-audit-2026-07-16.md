@@ -1,5 +1,12 @@
 # Author-focality identification audit — 2026-07-16
 
+> **Superseded later on 2026-07-16.** The adjacent-grid comparison below proves
+> an exact price atom but is not an identity null. The price-multiplicity-preserving
+> endpoint-label audit finds 54.3% observed versus 53.5% for a random endpoint
+> (`p=0.466`) and an author excess of 0.79 points with interval [-9.0, 16.1].
+> Do not cite the 53.3-point adjacent-grid contrast as author-specific evidence;
+> use `price-atom-hard-null-audit-2026-07-16.md`.
+
 ## Why the old statistic was insufficient
 
 The manuscript previously emphasized that 65 of 72 selected tied models with an

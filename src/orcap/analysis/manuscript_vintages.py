@@ -40,7 +40,9 @@ SIGN_METRICS = {
     "bm3_quality_beta_fast": "negative",
     "bm4_paired_mse_improvement": "positive",
     "bm4_brown_mackay_rmse_gain": "positive",
-    "pm5_author_atom_excess": "positive",
+    "pm5_author_random_anchor_excess": "positive",
+    "pm5_lagged_landing_global_menu_excess": "positive",
+    "pm5_lagged_landing_historical_menu_excess": "positive",
 }
 
 
@@ -108,7 +110,13 @@ def precommitted_metrics(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
     cadence = bm1.get("cadence_counts") or {}
     identity = ((pm5.get("focality") or {}).get("author_identity_audit") or {})
     atom = identity.get("all_market_author_price_atom") or {}
+    anchor = identity.get("author_anchor_randomization_benchmark") or {}
+    anchor_difference = anchor.get("author_minus_random_anchor") or {}
     selected_tie = identity.get("selected_tie_random_label_benchmark") or {}
+    landing = (pm5.get("reference_price_landing") or {}).get("primary") or {}
+    landing_model = landing.get("model_cluster_global_menu") or {}
+    landing_provider = landing.get("provider_cluster_global_menu") or {}
+    landing_historical_model = landing.get("model_cluster_historical_menu") or {}
     active = sum(int(cadence.get(name, 0)) for name in ("intraday", "daily", "weekly", "episodic"))
     fast = int(cadence.get("intraday", 0)) + int(cadence.get("daily", 0))
     return {
@@ -147,12 +155,47 @@ def precommitted_metrics(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
         "pm5_author_atom_ci95": _number_list(
             atom.get("author_cluster_bootstrap_ci95")
         ),
+        "pm5_author_random_anchor_excess": _number(anchor_difference.get("mean")),
+        "pm5_author_random_anchor_ci95": _number_list(
+            anchor_difference.get("cluster_bootstrap_ci95")
+        ),
+        "pm5_author_random_anchor_upper_tail_p": _number(
+            anchor.get("poisson_binomial_upper_tail_p")
+        ),
         "pm5_selected_tie_observed_share": _number(selected_tie.get("observed_share")),
         "pm5_selected_tie_random_label_share": _number(
             selected_tie.get("random_label_expected_share")
         ),
         "pm5_selected_tie_upper_tail_p": _number(
             selected_tie.get("poisson_binomial_upper_tail_p")
+        ),
+        "pm5_lagged_landing_events": int(landing.get("n_events", 0)),
+        "pm5_lagged_landing_exact_share": _number(
+            landing.get("exact_lagged_rival_match_share")
+        ),
+        "pm5_lagged_landing_global_menu_probability": _number(
+            landing.get("global_menu_match_probability")
+        ),
+        "pm5_lagged_landing_global_menu_excess": _number(
+            landing.get("exact_minus_global_menu")
+        ),
+        "pm5_lagged_landing_model_ci95": _number_list(
+            landing_model.get("cluster_bootstrap_ci95")
+        ),
+        "pm5_lagged_landing_provider_ci95": _number_list(
+            landing_provider.get("cluster_bootstrap_ci95")
+        ),
+        "pm5_lagged_landing_model_loo_range": _number_list(
+            landing_model.get("leave_one_cluster_out_range")
+        ),
+        "pm5_lagged_landing_historical_menu_probability": _number(
+            landing.get("historical_menu_match_probability")
+        ),
+        "pm5_lagged_landing_historical_menu_excess": _number(
+            landing.get("exact_minus_historical_menu")
+        ),
+        "pm5_lagged_landing_historical_model_ci95": _number_list(
+            landing_historical_model.get("cluster_bootstrap_ci95")
         ),
     }
 
@@ -309,56 +352,59 @@ def _run_vintage(
 
 def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
-    endpoint_dates = data.q(
-        f"""
-        select distinct cast(dt as varchar) as dt
-        from read_parquet('{data.table_glob("endpoints_snapshots")}', union_by_name=true)
-        order by 1
-        """
-    ).df()["dt"].tolist()
-    specs = registered_vintage_specs(endpoint_dates)
-    events = completion_events()
-    quotes = daily_quotes()
-    focal_quotes = pm5_quote_ticks()
-    completed: dict[str, Any] = {}
-    for label, spec in specs.items():
-        completed[label] = (
-            _run_vintage(
-                out_dir,
-                spec,
-                events=events,
-                quotes=quotes,
-                pm5_quotes=focal_quotes,
+    with data.pinned_analysis_source() as source_snapshot:
+        endpoint_dates = data.q(
+            f"""
+            select distinct cast(dt as varchar) as dt
+            from read_parquet('{data.table_glob("endpoints_snapshots")}', union_by_name=true)
+            order by 1
+            """
+        ).df()["dt"].tolist()
+        specs = registered_vintage_specs(endpoint_dates)
+        events = completion_events()
+        quotes = daily_quotes()
+        focal_quotes = pm5_quote_ticks()
+        completed: dict[str, Any] = {}
+        for label, spec in specs.items():
+            completed[label] = (
+                _run_vintage(
+                    out_dir,
+                    spec,
+                    events=events,
+                    quotes=quotes,
+                    pm5_quotes=focal_quotes,
+                )
+                if spec["ready"]
+                else spec
             )
-            if spec["ready"]
-            else spec
-        )
 
-    comparison: list[dict[str, Any]] = []
-    if completed["frozen_9d"].get("metrics") and completed["confirmatory_30d"].get(
-        "metrics"
-    ):
-        comparison = compare_precommitted_metrics(
-            completed["frozen_9d"]["metrics"],
-            completed["confirmatory_30d"]["metrics"],
-        )
-    save(pd.DataFrame(comparison), out_dir, "manuscript_vintage_comparison")
-    summary = {
-        "evidence_status": (
-            "side_by_side_ready" if comparison else "frozen_vintage_only"
-        ),
-        "vintages": completed,
-        "comparison": comparison,
-        "registered_sign_metrics": SIGN_METRICS,
-        "selection_rule": (
-            "Run the same six analysis programs on the earliest nine observed quote dates and "
-            "the earliest 30 observed quote dates. Later dates are continuation data."
-        ),
-        "claim_boundary": (
-            "The nine-day vintage is descriptive. No 30-day estimate is computed before the "
-            "calendar gate, and the fixed comparison table cannot add metrics after seeing the "
-            "confirmatory vintage."
-        ),
-    }
-    save_json(summary, out_dir, "manuscript_vintage_summary")
-    return summary
+        comparison: list[dict[str, Any]] = []
+        if completed["frozen_9d"].get("metrics") and completed[
+            "confirmatory_30d"
+        ].get("metrics"):
+            comparison = compare_precommitted_metrics(
+                completed["frozen_9d"]["metrics"],
+                completed["confirmatory_30d"]["metrics"],
+            )
+        save(pd.DataFrame(comparison), out_dir, "manuscript_vintage_comparison")
+        summary = {
+            "evidence_status": (
+                "side_by_side_ready" if comparison else "frozen_vintage_only"
+            ),
+            "source_snapshot": source_snapshot,
+            "vintages": completed,
+            "comparison": comparison,
+            "registered_sign_metrics": SIGN_METRICS,
+            "selection_rule": (
+                "Run the same six analysis programs on the earliest nine observed quote dates "
+                "and the earliest 30 observed quote dates. Later dates are continuation data."
+            ),
+            "claim_boundary": (
+                "The nine-day vintage is descriptive. No 30-day estimate is computed before "
+                "the calendar gate, and the fixed comparison table cannot add metrics after "
+                "seeing the confirmatory vintage. Each release is pinned to one immutable "
+                "dataset revision before any input query runs."
+            ),
+        }
+        save_json(summary, out_dir, "manuscript_vintage_summary")
+        return summary

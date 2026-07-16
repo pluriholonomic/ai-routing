@@ -1,11 +1,10 @@
-# Administered Menus and Focal Anchors: The Microstructure of the Market for Machine Intelligence
+# Administered Menus and Hidden Clearing: The Microstructure of the Market for Machine Intelligence
 
-*Manuscript v3 — 2026-07-16. Status: CONDITIONAL ACCEPT (review-v3-panel.md)
-after the randomized-crossover readout resolved referee B1 with data
-(revocability level replicated at ~19%; v1 gradient refuted). Mechanical
-gates, no new degrees of freedom: crossover n >= 500/arm (~1 week at current
-accrual) and 30-day-panel re-estimation of dynamic tables with both vintages
-(2026-08-06); decision converts to ACCEPT automatically if signs hold.*
+*Manuscript identification revision — 2026-07-16. Status: REVISE AND RESUBMIT.
+The author-anchor and lagged-copying headlines fail price-multiplicity-preserving
+hard nulls. These failures, the exact-atoms fact, and the constructive
+asynchronous-menu equivalence result are now the contribution. Mechanical gates
+remain: crossover n >= 500/arm and the earliest 30-date re-estimation.*
 
 ## Abstract
 
@@ -20,15 +19,18 @@ Administered menus:** 2.8% of provider-model-days reprice, median jumps of
 within-provider standardized kurtosis (3.5) sits in the CalvoPlus region,
 and a nested hazard model attributes repricing to price *gaps* (p = 1e-5)
 and rival moves (p = 2e-3) but not congestion (p = 0.17) — out-of-sample,
-only the gap channel survives (day-split AUC 0.64). **(2) Focal price atoms:**
+only the gap channel survives (day-split AUC 0.64). **(2) Exact price atoms:**
 the two cheapest quotes tie exactly on 46% of multi-provider model-days —
 3.4 times the rate under an independent grid-constrained pricing null. The
-old selected-tie author-match rate is non-discriminating (88.9% observed,
-88.8% under its conditional random-label benchmark). Across all 95
-author-observable models, however, 54.7% have an exact third-party match at
-the author price versus 1.4% at adjacent dime-grid placebo levels, a
-53.3-point excess with author-cluster interval [31.0, 80.4]. This corrected
-post-freeze estimand is fixed for the 30-date replication. Providers almost never
+old selected-tie author-match rate is non-discriminating (90.0% observed,
+91.9% under its conditional random-label benchmark). The all-market statistic
+also fails: authors occupy a shared price in 54.3% of 94 markets versus 53.5%
+for a random endpoint preserving the exact price multiset (p=0.466); the
+author excess is 0.79 points [-9.0, 16.1]. Of 196 isolated revisions, 20.4%
+land exactly on a rival's prior quote, but a tightly scale-matched common-menu
+null predicts 13.4%; the 7.0-point excess has model-cluster interval
+[-23.1, 12.2]. These post-freeze hard nulls are fixed for the 30-date
+replication. Providers almost never
 undercut their own direct channel (99.6% parity). **(3) Quantity clearing
 with manufactured firmness:** over nine days, 12% of endpoints ever changed
 price while 86% experienced rate-limit variation; in a randomized-crossover
@@ -76,7 +78,7 @@ is established in- and out-of-sample; the strategic channel is established
 in-sample on the current panel and re-estimated nightly under
 pre-registration.
 
-## 4. Fact 2: focal price atoms, with their nulls
+## 4. Fact 2: exact price atoms, with their hard nulls
 
 **The null model (new).** Ties could be a grid artifact. Under a null in
 which each provider draws its log price independently as (model-day median +
@@ -87,25 +89,35 @@ over 1,311 model-days — **3.4x the grid null** (sensitivity: under a coarser
 dime-per-Mtok grid the null rises to 27.6%, ratio 1.7x — the atom exceeds
 grid coarseness under both snapping rules, and the null is conservative in
 one respect: the deviation pool retains the tie atom, so the null itself
-re-manufactures some ties). The atom is coordination on levels, not
-coarseness.
+re-manufactures some ties). The atom is dependence on shared levels, not merely
+coarseness; it does not identify a behavioral mechanism.
 
 **The anchor's identity.** Selecting tied markets makes author identity almost
 mechanical. With `n` providers, `t` tied minima, and `r` author labels, a random
 label hits the tied set with probability
-`1 - choose(n-t,r)/choose(n,r)`. The robust crosswalk observes 48/54 matches
-(88.9%) and this benchmark expects 47.95 (88.8%, upper-tail p=0.625). The old
-65/72 statistic is demoted. The corrected all-market design finds exact
-third-party matches at the author price in 52/95 models (54.7%) versus 1.4% at
-adjacent dime-grid placebos. The 53.3-point excess has author-cluster interval
-[31.0, 80.4], is positive in 10/12 author families (sign p=0.019), and survives
-all fixed grid and leave-one-author-out sensitivities. Formation and breaking
-directions (71% down-to-tie, 87% down-to-break) are competitive;
-the anchor-following-vs-fossil discriminator (does the tie track author
-repricings?) is registered and unfired — authors did not reprice in-window,
-itself evidence the anchor is stable. Cross-channel: providers price their
-own direct APIs at exact parity with their router quotes (99.6%; 0.4%
-direct-below, sign-persistent) — voluntary MFN.
+`1 - choose(n-t,r)/choose(n,r)`. The robust crosswalk observes 45/50 matches
+(90.0%) and this benchmark expects 45.97 (91.9%, upper-tail p=0.913). The old
+65/72 statistic is demoted. An adjacent-grid all-market comparison initially
+looks strong: 51/94 author-observable models have an exact match at the author
+price versus 1.5% at adjacent levels. But the correct identity null preserves
+the realized price multiset and randomizes the author endpoint. It expects
+50.26/94 shared author prices (53.5%) versus 51 observed (54.3%, p=0.466).
+Author-minus-random-anchor is 0.79 points [-9.0, 16.1], and author-vs-third-party
+pair density is -0.94 points [-8.8, 12.0]. Author identity is not special.
+
+**The temporal hard null.** Restricting to <=15-minute consecutive snapshots
+with exactly one mover yields 196 revisions. Exact landing on a strictly prior
+rival quote occurs in 40 (20.4%), versus 1.0% at adjacent grid levels. A matched
+common-menu null instead draws the same number of quotes from other models in
+the prior snapshot within a factor 1.25 of the new price; it predicts 13.4%.
+The 7.0-point residual has model-cluster interval [-23.1, 12.2], provider-cluster
+interval [-22.4, 18.2], and leave-one-model-out range [-10.4, 9.7]. One model
+supplies 73.5% of events and 85.0% of exact landings. The data therefore do not
+identify strategic copying. A constructive theorem shows that an asynchronous
+public-menu model and a rival-response model generate the same exact atoms and
+lagged landings; the strategic exact-landing share is sharply bounded only by
+[0, 40/196]. Formation and breaking directions (74% down-to-tie, 88%
+down-to-break) are competitive. Cross-channel parity remains 99.6%.
 
 ## 5. Fact 3: quantity clearing and manufactured firmness
 

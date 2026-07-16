@@ -145,21 +145,44 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         f = pm5["focality"]
         identity = f.get("author_identity_audit", {})
         atom = identity.get("all_market_author_price_atom", {})
+        anchor = identity.get("author_anchor_randomization_benchmark", {})
         excess = atom.get("exact_minus_placebo")
-        if excess is not None:
+        anchor_excess = (anchor.get("author_minus_random_anchor") or {}).get("mean")
+        anchor_p = anchor.get("poisson_binomial_upper_tail_p")
+        if excess is not None and anchor_excess is not None:
             add(
-                "Author-price atom beyond adjacent placebo levels",
-                "accumulating" if excess > 0 else "inconsistent",
-                f"all-market exact-minus-placebo {excess:.0%}; "
-                f"selected-tie statistic is {f.get('selected_tie_identity_status')}; "
-                f"30-date replication pending",
+                "Exact price atoms are author-specific",
+                "inconsistent" if anchor_p is not None and anchor_p > 0.05 else "accumulating",
+                f"adjacent-grid excess {excess:.0%}, but author-minus-random-anchor "
+                f"{anchor_excess:.1%} (exact upper-tail p={anchor_p:.3f}); "
+                f"identity status {f.get('author_identity_status')}",
                 "pm5",
             )
         else:
             add(
-                "Author-price atom beyond adjacent placebo levels",
+                "Exact price atoms are author-specific",
                 "accumulating",
-                "legacy selected-tie statistic only; corrected all-market audit missing",
+                "price-multiplicity-preserving author-anchor audit missing",
+                "pm5",
+            )
+        landing = (pm5.get("reference_price_landing") or {}).get("primary") or {}
+        landing_excess = landing.get("exact_minus_global_menu")
+        historical_excess = landing.get("exact_minus_historical_menu")
+        historical_text = (
+            f"{historical_excess:.1%}" if historical_excess is not None else "unavailable"
+        )
+        landing_ci = (landing.get("model_cluster_global_menu") or {}).get(
+            "cluster_bootstrap_ci95"
+        )
+        if landing_excess is not None:
+            supported = bool(landing_ci and landing_ci[0] > 0)
+            add(
+                "Lagged rival-price landing exceeds a matched common-menu null",
+                "accumulating" if supported else "inconsistent",
+                f"exact share {landing.get('exact_lagged_rival_match_share'):.1%}; "
+                f"matched-menu excess {landing_excess:.1%}; model-cluster CI {landing_ci}; "
+                f"past-only same-model excess {historical_text}; "
+                f"n={landing.get('n_events')}",
                 "pm5",
             )
     if pm6.get("by_initiator_sign"):

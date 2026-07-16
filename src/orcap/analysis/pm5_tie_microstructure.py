@@ -9,10 +9,9 @@ Adapts three collusion-econometrics designs to the 5-min quote panel:
     to match = competitive price-matching; a below-min provider moving UP to
     the min = coordination signature), and whether ties break by undercut
     (down) or retreat (up).
-  - Knittel-Stango focality: do third-party quotes exhibit excess mass at the
-    model author's first-party price relative to adjacent placebo levels?  A
-    conditional random-label benchmark audits the mechanically high selected-
-    tie author-match statistic.
+  - Focality falsification ladder: adjacent levels detect an exact atom; endpoint-
+    label randomization tests whether author identity is special; a matched global
+    menu tests whether lagged exact landings exceed common asynchronous price menus.
 
   pm5_summary.json
 """
@@ -21,7 +20,9 @@ from __future__ import annotations
 
 import logging
 import math
+from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -38,6 +39,11 @@ AUTHOR_PLACEBO_TICK_MTOK = 0.1
 AUTHOR_PLACEBO_MAX_OFFSET_TICKS = 20
 AUTHOR_BOOTSTRAP_DRAWS = 20_000
 AUTHOR_BOOTSTRAP_SEED = 20260716
+REFERENCE_MAX_GAP_MINUTES = 15
+REFERENCE_GLOBAL_BAND_FACTOR = 1.25
+REFERENCE_HISTORICAL_WASHOUT_HOURS = 24
+REFERENCE_BOOTSTRAP_DRAWS = 20_000
+REFERENCE_BOOTSTRAP_SEED = 20260716
 
 
 def quote_ticks() -> pd.DataFrame:
@@ -194,6 +200,181 @@ def author_price_match_panel(
     return pd.DataFrame(rows, columns=columns)
 
 
+def author_anchor_symmetry_panel(q: pd.DataFrame) -> pd.DataFrame:
+    """Compare the author endpoint with exchangeable provider anchors.
+
+    Adjacent empty grid points are not a sufficient identity null when providers
+    draw prices from a common discrete menu.  This panel preserves every model's
+    realized price multiplicities and asks whether the unique author endpoint is
+    more likely to occupy a shared price than a uniformly selected endpoint.
+    Pair-density columns additionally compare author--third-party equality with
+    equality among third parties, avoiding the reciprocal-tie artifact.
+    """
+    columns = [
+        "model_id",
+        "author",
+        "n_providers",
+        "n_third_party_endpoints",
+        "author_shared_price",
+        "shared_endpoint_count",
+        "random_anchor_shared_probability",
+        "author_minus_random_anchor",
+        "third_party_shared_share",
+        "author_minus_third_party_shared",
+        "author_third_party_pair_share",
+        "third_party_pair_share",
+        "pair_density_difference",
+    ]
+    latest = _latest_provider_quotes(q)
+    if latest.empty:
+        return pd.DataFrame(columns=columns)
+
+    rows: list[dict[str, Any]] = []
+    for model_id, group in latest.groupby("model_id", sort=True):
+        own = _author_mask(str(model_id), group["provider_name"])
+        if int(own.sum()) != 1 or own.all():
+            continue
+        prices = group["price"].to_numpy(dtype=float)
+        equal = np.isclose(
+            prices[:, None],
+            prices[None, :],
+            rtol=1e-9,
+            atol=1e-12,
+        )
+        np.fill_diagonal(equal, False)
+        shared = equal.any(axis=1)
+        author_index = int(np.flatnonzero(own)[0])
+        third_party = np.flatnonzero(~own)
+        author_pair_share = float(equal[author_index, third_party].mean())
+        third_party_pair_share = math.nan
+        if len(third_party) >= 2:
+            pairs = equal[np.ix_(third_party, third_party)]
+            third_party_pair_share = float(
+                pairs[np.triu_indices(len(third_party), 1)].mean()
+            )
+        random_probability = float(shared.mean())
+        author_shared = float(shared[author_index])
+        third_party_shared = float(shared[third_party].mean())
+        rows.append(
+            {
+                "model_id": str(model_id),
+                "author": str(model_id).split("/")[0].lower(),
+                "n_providers": int(len(group)),
+                "n_third_party_endpoints": int(len(third_party)),
+                "author_shared_price": author_shared,
+                "shared_endpoint_count": int(shared.sum()),
+                "random_anchor_shared_probability": random_probability,
+                "author_minus_random_anchor": author_shared - random_probability,
+                "third_party_shared_share": third_party_shared,
+                "author_minus_third_party_shared": author_shared - third_party_shared,
+                "author_third_party_pair_share": author_pair_share,
+                "third_party_pair_share": third_party_pair_share,
+                "pair_density_difference": (
+                    author_pair_share - third_party_pair_share
+                    if pd.notna(third_party_pair_share)
+                    else math.nan
+                ),
+            }
+        )
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _clustered_mean_inference(
+    panel: pd.DataFrame,
+    *,
+    value_column: str,
+    cluster_column: str,
+    bootstrap_draws: int = REFERENCE_BOOTSTRAP_DRAWS,
+    seed: int = REFERENCE_BOOTSTRAP_SEED,
+) -> dict[str, Any]:
+    if value_column not in panel or cluster_column not in panel:
+        return {
+            "n_observations": 0,
+            "n_clusters": 0,
+            "mean": None,
+            "cluster_bootstrap_ci95": [None, None],
+            "leave_one_cluster_out_range": [None, None],
+        }
+    usable = panel.dropna(subset=[value_column, cluster_column]).copy()
+    if usable.empty:
+        return {
+            "n_observations": 0,
+            "n_clusters": 0,
+            "mean": None,
+            "cluster_bootstrap_ci95": [None, None],
+            "leave_one_cluster_out_range": [None, None],
+        }
+    grouped = usable.groupby(cluster_column, sort=True)[value_column]
+    sums = grouped.sum().to_numpy(dtype=float)
+    counts = grouped.size().to_numpy(dtype=float)
+    n_clusters = int(len(sums))
+    rng = np.random.default_rng(seed)
+    draws = rng.integers(0, n_clusters, size=(int(bootstrap_draws), n_clusters))
+    boot = sums[draws].sum(axis=1) / counts[draws].sum(axis=1)
+    total_sum = float(sums.sum())
+    total_count = float(counts.sum())
+    leave_one_out = [
+        (total_sum - cluster_sum) / (total_count - cluster_count)
+        for cluster_sum, cluster_count in zip(sums, counts, strict=True)
+        if total_count > cluster_count
+    ]
+    return {
+        "n_observations": int(len(usable)),
+        "n_clusters": n_clusters,
+        "mean": float(usable[value_column].mean()),
+        "bootstrap_draws": int(bootstrap_draws),
+        "bootstrap_seed": int(seed),
+        "cluster_bootstrap_ci95": [
+            float(value) for value in np.quantile(boot, [0.025, 0.975])
+        ],
+        "leave_one_cluster_out_range": (
+            [float(min(leave_one_out)), float(max(leave_one_out))]
+            if leave_one_out
+            else [None, None]
+        ),
+    }
+
+
+def author_anchor_randomization_audit(q: pd.DataFrame) -> dict[str, Any]:
+    """Exact endpoint-label benchmark for the all-market author atom."""
+    panel = author_anchor_symmetry_panel(q)
+    probabilities = panel["random_anchor_shared_probability"].tolist()
+    observed = int(panel["author_shared_price"].sum()) if len(panel) else 0
+    expected = float(sum(probabilities))
+    return {
+        "n_models": int(len(panel)),
+        "observed_author_shared_count": observed,
+        "observed_author_shared_share": (
+            float(panel["author_shared_price"].mean()) if len(panel) else None
+        ),
+        "random_anchor_expected_count": expected,
+        "random_anchor_expected_share": expected / len(panel) if len(panel) else None,
+        "poisson_binomial_upper_tail_p": _poisson_binomial_upper_tail(
+            probabilities, observed
+        ),
+        "author_minus_random_anchor": _clustered_mean_inference(
+            panel,
+            value_column="author_minus_random_anchor",
+            cluster_column="author",
+        ),
+        "author_minus_third_party_anchor": _clustered_mean_inference(
+            panel,
+            value_column="author_minus_third_party_shared",
+            cluster_column="author",
+        ),
+        "pair_density_difference": _clustered_mean_inference(
+            panel,
+            value_column="pair_density_difference",
+            cluster_column="author",
+        ),
+        "interpretation": (
+            "This null preserves each model's complete realized price multiset. "
+            "Failure to beat it means exact price mass is generic provider-price "
+            "clustering, not evidence that author identity is the focal mechanism."
+        ),
+    }
+
+
 def _poisson_binomial_upper_tail(probabilities: list[float], observed: int) -> float | None:
     if not probabilities:
         return None
@@ -245,6 +426,464 @@ def selected_tie_random_label_audit(q: pd.DataFrame) -> dict:
         "interpretation": (
             "A high selected-tie match rate is non-discriminating when the random-label "
             "expectation is also high; it does not by itself identify an author focal point."
+        ),
+    }
+
+
+def _normalized_quote_snapshots(q: pd.DataFrame) -> pd.DataFrame:
+    columns = ["run_ts", "model_id", "provider_name", "price"]
+    if q.empty:
+        return pd.DataFrame(columns=columns)
+    frame = q[columns].copy()
+    frame["run_ts"] = pd.to_datetime(frame["run_ts"], utc=True, errors="coerce")
+    frame["price"] = pd.to_numeric(frame["price"], errors="coerce")
+    frame = frame.dropna(subset=["run_ts", "model_id", "provider_name", "price"])
+    frame = frame[frame["price"].gt(0)]
+    return frame.groupby(
+        ["run_ts", "model_id", "provider_name"],
+        as_index=False,
+        sort=True,
+    )["price"].min()
+
+
+def isolated_quote_change_events(
+    q: pd.DataFrame,
+    *,
+    max_gap_minutes: int = REFERENCE_MAX_GAP_MINUTES,
+    placebo_tick_mtok: float = AUTHOR_PLACEBO_TICK_MTOK,
+    max_offset_ticks: int = AUTHOR_PLACEBO_MAX_OFFSET_TICKS,
+) -> pd.DataFrame:
+    """Isolate one-provider revisions with an observed strictly prior rival set."""
+    columns = [
+        "model_id",
+        "provider_name",
+        "previous_run_ts",
+        "run_ts",
+        "gap_minutes",
+        "old_price",
+        "new_price",
+        "direction",
+        "n_rival_quotes",
+        "exact_lagged_rival_match",
+        "adjacent_placebo_match_share",
+        "exact_minus_adjacent_placebo",
+    ]
+    frame = _normalized_quote_snapshots(q)
+    if frame.empty:
+        return pd.DataFrame(columns=columns)
+    tick = float(placebo_tick_mtok) / 1_000_000
+    offsets = [
+        value
+        for value in range(-int(max_offset_ticks), int(max_offset_ticks) + 1)
+        if value != 0
+    ]
+    max_gap_seconds = int(max_gap_minutes) * 60
+    rows: list[dict[str, Any]] = []
+    for model_id, group in frame.groupby("model_id", sort=True):
+        providers = pd.Index(sorted(group["provider_name"].astype(str).unique()))
+        if len(providers) < 2:
+            continue
+        pivot = (
+            group.pivot_table(
+                index="run_ts",
+                columns="provider_name",
+                values="price",
+                aggfunc="min",
+            )
+            .sort_index()
+            .reindex(columns=providers)
+        )
+        values = pivot.to_numpy(dtype=float)
+        for position in range(1, len(pivot)):
+            gap = pivot.index[position] - pivot.index[position - 1]
+            if gap.total_seconds() > max_gap_seconds:
+                continue
+            observed_twice = np.isfinite(values[position - 1]) & np.isfinite(
+                values[position]
+            )
+            changed = observed_twice & ~np.isclose(
+                values[position],
+                values[position - 1],
+                rtol=1e-9,
+                atol=1e-12,
+            )
+            movers = np.flatnonzero(changed)
+            if len(movers) != 1:
+                continue
+            mover = int(movers[0])
+            rival_mask = np.arange(len(providers)) != mover
+            rival_prices = values[position - 1][
+                rival_mask & np.isfinite(values[position - 1])
+            ]
+            if not len(rival_prices):
+                continue
+            old_price = float(values[position - 1, mover])
+            new_price = float(values[position, mover])
+            exact = bool(
+                np.isclose(
+                    rival_prices,
+                    new_price,
+                    rtol=1e-9,
+                    atol=1e-12,
+                ).any()
+            )
+            placebo = [
+                bool(
+                    np.isclose(
+                        rival_prices + offset * tick,
+                        new_price,
+                        rtol=1e-9,
+                        atol=1e-12,
+                    ).any()
+                )
+                for offset in offsets
+            ]
+            placebo_share = float(np.mean(placebo)) if placebo else 0.0
+            rows.append(
+                {
+                    "model_id": str(model_id),
+                    "provider_name": str(providers[mover]),
+                    "previous_run_ts": pivot.index[position - 1],
+                    "run_ts": pivot.index[position],
+                    "gap_minutes": float(gap.total_seconds() / 60),
+                    "old_price": old_price,
+                    "new_price": new_price,
+                    "direction": "down" if new_price < old_price else "up",
+                    "n_rival_quotes": int(len(rival_prices)),
+                    "exact_lagged_rival_match": float(exact),
+                    "adjacent_placebo_match_share": placebo_share,
+                    "exact_minus_adjacent_placebo": float(exact) - placebo_share,
+                }
+            )
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _hypergeometric_any_hit_probability(*, population: int, hits: int, draws: int) -> float:
+    if population <= 0 or draws <= 0 or hits <= 0:
+        return 0.0
+    draws = min(int(draws), int(population))
+    misses = int(population) - int(hits)
+    no_hit = math.comb(misses, draws) / math.comb(population, draws) if misses >= draws else 0.0
+    return float(1 - no_hit)
+
+
+def attach_global_price_menu_null(
+    events: pd.DataFrame,
+    q: pd.DataFrame,
+    *,
+    band_factor: float = REFERENCE_GLOBAL_BAND_FACTOR,
+) -> pd.DataFrame:
+    """Attach a matched common-menu probability to each isolated revision.
+
+    The control pool contains quotes on other models at the immediately prior
+    snapshot, restricted to a symmetric multiplicative band around the mover's
+    new price.  Drawing the same number of prices as observed rivals preserves
+    local scale, risk-set size, and the global frequency of exact menu points.
+    """
+    out = events.copy()
+    if out.empty:
+        out["global_menu_band_factor"] = pd.Series(dtype=float)
+        out["global_menu_pool_size"] = pd.Series(dtype="Int64")
+        out["global_menu_exact_hits"] = pd.Series(dtype="Int64")
+        out["global_menu_match_probability"] = pd.Series(dtype=float)
+        out["exact_minus_global_menu"] = pd.Series(dtype=float)
+        return out
+    snapshots = _normalized_quote_snapshots(q)
+    cache = {timestamp: group for timestamp, group in snapshots.groupby("run_ts")}
+    probabilities: list[float] = []
+    pool_sizes: list[int] = []
+    hit_counts: list[int] = []
+    factor = float(band_factor)
+    for row in out.itertuples(index=False):
+        snapshot = cache.get(row.previous_run_ts)
+        if snapshot is None:
+            probabilities.append(math.nan)
+            pool_sizes.append(0)
+            hit_counts.append(0)
+            continue
+        control = snapshot[
+            snapshot["model_id"].astype(str).ne(str(row.model_id))
+            & snapshot["price"].between(
+                float(row.new_price) / factor,
+                float(row.new_price) * factor,
+                inclusive="both",
+            )
+        ]["price"].to_numpy(dtype=float)
+        population = int(len(control))
+        draws = int(row.n_rival_quotes)
+        hits = int(
+            np.isclose(
+                control,
+                float(row.new_price),
+                rtol=1e-9,
+                atol=1e-12,
+            ).sum()
+        )
+        probability = (
+            _hypergeometric_any_hit_probability(
+                population=population,
+                hits=hits,
+                draws=draws,
+            )
+            if population >= draws and draws > 0
+            else math.nan
+        )
+        probabilities.append(probability)
+        pool_sizes.append(population)
+        hit_counts.append(hits)
+    out["global_menu_band_factor"] = factor
+    out["global_menu_pool_size"] = pool_sizes
+    out["global_menu_exact_hits"] = hit_counts
+    out["global_menu_match_probability"] = probabilities
+    out["exact_minus_global_menu"] = (
+        out["exact_lagged_rival_match"] - out["global_menu_match_probability"]
+    )
+    return out
+
+
+def attach_historical_model_menu_null(
+    events: pd.DataFrame,
+    q: pd.DataFrame,
+    *,
+    washout_hours: int = REFERENCE_HISTORICAL_WASHOUT_HOURS,
+) -> pd.DataFrame:
+    """Attach a past-only, same-model menu-frequency benchmark.
+
+    Each eligible historical snapshot is separated from the event by the declared
+    washout.  Within a snapshot, the mover is excluded and the null draws the same
+    number of endpoints as the event's lagged rival set.  Averaging exact
+    hypergeometric hit probabilities preserves model-specific menu conventions
+    without using continuation or future quotes.
+    """
+    out = events.copy()
+    if out.empty:
+        out["historical_menu_washout_hours"] = pd.Series(dtype="Int64")
+        out["historical_menu_snapshots"] = pd.Series(dtype="Int64")
+        out["historical_menu_match_probability"] = pd.Series(dtype=float)
+        out["exact_minus_historical_menu"] = pd.Series(dtype=float)
+        return out
+    snapshots = _normalized_quote_snapshots(q)
+    cache = {model: group for model, group in snapshots.groupby("model_id")}
+    washout = timedelta(hours=int(washout_hours))
+    probabilities: list[float] = []
+    snapshot_counts: list[int] = []
+    for row in out.itertuples(index=False):
+        history = cache.get(str(row.model_id))
+        if history is None:
+            probabilities.append(math.nan)
+            snapshot_counts.append(0)
+            continue
+        history = history[
+            history["run_ts"].le(row.previous_run_ts - washout)
+            & history["provider_name"].astype(str).ne(str(row.provider_name))
+        ]
+        per_snapshot: list[float] = []
+        for _, snapshot in history.groupby("run_ts", sort=False):
+            prices = snapshot["price"].to_numpy(dtype=float)
+            population = int(len(prices))
+            draws = int(row.n_rival_quotes)
+            if population < draws or draws <= 0:
+                continue
+            hits = int(
+                np.isclose(
+                    prices,
+                    float(row.new_price),
+                    rtol=1e-9,
+                    atol=1e-12,
+                ).sum()
+            )
+            per_snapshot.append(
+                _hypergeometric_any_hit_probability(
+                    population=population,
+                    hits=hits,
+                    draws=draws,
+                )
+            )
+        probabilities.append(float(np.mean(per_snapshot)) if per_snapshot else math.nan)
+        snapshot_counts.append(int(len(per_snapshot)))
+    out["historical_menu_washout_hours"] = int(washout_hours)
+    out["historical_menu_snapshots"] = snapshot_counts
+    out["historical_menu_match_probability"] = probabilities
+    out["exact_minus_historical_menu"] = (
+        out["exact_lagged_rival_match"] - out["historical_menu_match_probability"]
+    )
+    return out
+
+
+def reference_price_landing_panel(
+    q: pd.DataFrame,
+    *,
+    max_gap_minutes: int = REFERENCE_MAX_GAP_MINUTES,
+    band_factor: float = REFERENCE_GLOBAL_BAND_FACTOR,
+) -> pd.DataFrame:
+    events = isolated_quote_change_events(q, max_gap_minutes=max_gap_minutes)
+    panel = attach_global_price_menu_null(events, q, band_factor=band_factor)
+    return attach_historical_model_menu_null(panel, q)
+
+
+def reference_price_landing_inference(panel: pd.DataFrame) -> dict[str, Any]:
+    if panel.empty:
+        return {
+            "n_events": 0,
+            "n_models": 0,
+            "n_providers": 0,
+            "exact_lagged_rival_match_share": None,
+            "adjacent_placebo_match_share": None,
+            "global_menu_match_probability": None,
+            "exact_minus_adjacent_placebo": None,
+            "exact_minus_global_menu": None,
+        }
+    usable = panel.dropna(subset=["global_menu_match_probability"]).copy()
+    historical = (
+        panel.dropna(subset=["historical_menu_match_probability"]).copy()
+        if "historical_menu_match_probability" in panel
+        else panel.iloc[0:0].copy()
+    )
+    copies = panel[panel["exact_lagged_rival_match"].eq(1)]
+
+    def largest_share(frame: pd.DataFrame, column: str) -> float | None:
+        if frame.empty:
+            return None
+        return float(frame.groupby(column).size().max() / len(frame))
+
+    return {
+        "n_events": int(len(panel)),
+        "n_global_menu_comparable_events": int(len(usable)),
+        "n_models": int(panel["model_id"].nunique()),
+        "n_providers": int(panel["provider_name"].nunique()),
+        "exact_lagged_rival_matches": int(panel["exact_lagged_rival_match"].sum()),
+        "exact_lagged_rival_match_share": float(
+            panel["exact_lagged_rival_match"].mean()
+        ),
+        "adjacent_placebo_match_share": float(
+            panel["adjacent_placebo_match_share"].mean()
+        ),
+        "global_menu_match_probability": (
+            float(usable["global_menu_match_probability"].mean()) if len(usable) else None
+        ),
+        "exact_minus_adjacent_placebo": float(
+            panel["exact_minus_adjacent_placebo"].mean()
+        ),
+        "exact_minus_global_menu": (
+            float(usable["exact_minus_global_menu"].mean()) if len(usable) else None
+        ),
+        "n_historical_menu_comparable_events": int(len(historical)),
+        "historical_menu_match_probability": (
+            float(historical["historical_menu_match_probability"].mean())
+            if len(historical)
+            else None
+        ),
+        "exact_minus_historical_menu": (
+            float(historical["exact_minus_historical_menu"].mean())
+            if len(historical)
+            else None
+        ),
+        "model_cluster_adjacent_placebo": _clustered_mean_inference(
+            panel,
+            value_column="exact_minus_adjacent_placebo",
+            cluster_column="model_id",
+        ),
+        "model_cluster_global_menu": _clustered_mean_inference(
+            usable,
+            value_column="exact_minus_global_menu",
+            cluster_column="model_id",
+        ),
+        "provider_cluster_global_menu": _clustered_mean_inference(
+            usable,
+            value_column="exact_minus_global_menu",
+            cluster_column="provider_name",
+        ),
+        "model_cluster_historical_menu": _clustered_mean_inference(
+            historical,
+            value_column="exact_minus_historical_menu",
+            cluster_column="model_id",
+        ),
+        "provider_cluster_historical_menu": _clustered_mean_inference(
+            historical,
+            value_column="exact_minus_historical_menu",
+            cluster_column="provider_name",
+        ),
+        "downward_share_of_exact_landings": (
+            float(copies["direction"].eq("down").mean()) if len(copies) else None
+        ),
+        "largest_model_event_share": largest_share(panel, "model_id"),
+        "largest_provider_event_share": largest_share(panel, "provider_name"),
+        "largest_model_copy_share": largest_share(copies, "model_id"),
+        "largest_provider_copy_share": largest_share(copies, "provider_name"),
+    }
+
+
+def reference_price_landing_audit(
+    q: pd.DataFrame,
+    *,
+    primary_panel: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    if primary_panel is None:
+        primary_events = isolated_quote_change_events(
+            q,
+            max_gap_minutes=REFERENCE_MAX_GAP_MINUTES,
+        )
+        primary = attach_global_price_menu_null(
+            primary_events,
+            q,
+            band_factor=REFERENCE_GLOBAL_BAND_FACTOR,
+        )
+        primary = attach_historical_model_menu_null(primary, q)
+    else:
+        primary = primary_panel.copy()
+        primary_events = primary_panel.copy()
+    band_sensitivity = {}
+    for factor in (1.25, 1.5, 2.0, 4.0, 10.0):
+        panel = attach_global_price_menu_null(primary_events, q, band_factor=factor)
+        inference = reference_price_landing_inference(panel)
+        band_sensitivity[f"{factor:g}"] = {
+            "band_factor": factor,
+            "n_events": inference["n_global_menu_comparable_events"],
+            "global_menu_match_probability": inference[
+                "global_menu_match_probability"
+            ],
+            "exact_minus_global_menu": inference["exact_minus_global_menu"],
+            "model_cluster_ci95": (
+                inference.get("model_cluster_global_menu") or {}
+            ).get("cluster_bootstrap_ci95"),
+        }
+    continuity_sensitivity = {}
+    for minutes in (10, 15, 30):
+        events = isolated_quote_change_events(q, max_gap_minutes=minutes)
+        panel = attach_global_price_menu_null(
+            events,
+            q,
+            band_factor=REFERENCE_GLOBAL_BAND_FACTOR,
+        )
+        inference = reference_price_landing_inference(panel)
+        continuity_sensitivity[str(minutes)] = {
+            "max_gap_minutes": minutes,
+            "n_events": inference["n_events"],
+            "exact_lagged_rival_match_share": inference[
+                "exact_lagged_rival_match_share"
+            ],
+            "exact_minus_global_menu": inference["exact_minus_global_menu"],
+            "model_cluster_ci95": (
+                inference.get("model_cluster_global_menu") or {}
+            ).get("cluster_bootstrap_ci95"),
+        }
+    return {
+        "evidence_status": "post_freeze_exploratory_hard_null_registered",
+        "primary_max_gap_minutes": REFERENCE_MAX_GAP_MINUTES,
+        "primary_global_menu_band_factor": REFERENCE_GLOBAL_BAND_FACTOR,
+        "historical_model_menu_washout_hours": REFERENCE_HISTORICAL_WASHOUT_HOURS,
+        "primary": reference_price_landing_inference(primary),
+        "global_menu_band_sensitivity": band_sensitivity,
+        "continuity_sensitivity": continuity_sensitivity,
+        "confirmatory_gate": (
+            "Recompute unchanged on the earliest 30-date vintage. Promote a "
+            "lagged-price-landing claim only if the 1.25-band model-cluster "
+            "interval excludes zero and leave-one-model-out estimates stay positive."
+        ),
+        "claim_boundary": (
+            "An adjacent-grid atom alone cannot distinguish strategic following from "
+            "a common discrete price menu updated asynchronously. The matched global-menu "
+            "null preserves price scale, exact menu frequency, and rival-set size."
         ),
     }
 
@@ -315,6 +954,7 @@ def author_cluster_inference(
 
 def author_focality_audit(q: pd.DataFrame) -> dict:
     primary = author_price_match_panel(q)
+    anchor_randomization = author_anchor_randomization_audit(q)
     sensitivity = {}
     for tick in (0.01, 0.1, 0.5, 1.0):
         panel = author_price_match_panel(q, placebo_tick_mtok=tick)
@@ -332,21 +972,24 @@ def author_focality_audit(q: pd.DataFrame) -> dict:
             ),
         }
     return {
-        "evidence_status": "post_freeze_exploratory_confirmatory_gate_registered",
+        "evidence_status": "post_freeze_exploratory_hard_null_registered",
         "latest_run_ts": str(q["run_ts"].max()) if len(q) else None,
         "primary_placebo_tick_usd_per_million_tokens": AUTHOR_PLACEBO_TICK_MTOK,
         "max_offset_ticks_each_direction": AUTHOR_PLACEBO_MAX_OFFSET_TICKS,
         "all_market_author_price_atom": author_cluster_inference(primary),
+        "author_anchor_randomization_benchmark": anchor_randomization,
         "placebo_grid_sensitivity": sensitivity,
         "selected_tie_random_label_benchmark": selected_tie_random_label_audit(q),
         "confirmatory_gate": (
             "Recompute without specification changes on the earliest 30-date prefixes "
-            "of both frozen quote vintages; cluster by author and retain all four grids."
+            "of both frozen quote vintages; retain the exact endpoint-label null, "
+            "author clustering, pair-density comparison, and all four grids."
         ),
         "claim_boundary": (
-            "The all-market atom rejects adjacent equally spaced focal levels for the "
-            "observed author families. It does not identify why third parties match, "
-            "whether the author caused the match, or effects outside those families."
+            "The all-market atom rejects adjacent equally spaced levels, but the exact "
+            "endpoint-label benchmark determines whether author identity is special. "
+            "Failure against that harder null reclassifies the fact as generic provider "
+            "price clustering rather than author focality."
         ),
     }
 
@@ -360,6 +1003,7 @@ def focality(q: pd.DataFrame) -> dict:
     per_mtok = tie_levels * 1e6
     identity = author_focality_audit(q)
     selected = identity["selected_tie_random_label_benchmark"]
+    anchor = identity["author_anchor_randomization_benchmark"]
     return {
         "n_tied_models_latest_tick": int(len(tie_levels)),
         "share_tie_levels_round_tenth_mtok": float(
@@ -370,6 +1014,11 @@ def focality(q: pd.DataFrame) -> dict:
         "n_tied_models_with_first_party_quote": selected["n_selected_tied_models"],
         "share_ties_at_first_party_price": selected["observed_share"],
         "selected_tie_identity_status": "non_discriminating_against_random_label",
+        "author_identity_status": (
+            "non_discriminating_against_random_endpoint_anchor"
+            if (anchor.get("poisson_binomial_upper_tail_p") or 0) > 0.05
+            else "author_specific_against_random_endpoint_anchor"
+        ),
         "author_identity_audit": identity,
     }
 
@@ -392,6 +1041,9 @@ def run(
         if end_date is not None:
             q = q[dates.le(str(end_date))].copy()
     save(author_price_match_panel(q), out_dir, "pm5_author_price_atom")
+    save(author_anchor_symmetry_panel(q), out_dir, "pm5_author_anchor_symmetry")
+    reference_panel = reference_price_landing_panel(q)
+    save(reference_panel, out_dir, "pm5_reference_price_landing")
     ties = tie_events(q)
     formation = ties[ties["kind"] == "formation"] if len(ties) else pd.DataFrame()
     brk = ties[ties["kind"] == "break"] if len(ties) else pd.DataFrame()
@@ -411,16 +1063,20 @@ def run(
             else None,
         },
         "focality": focality(q),
+        "reference_price_landing": reference_price_landing_audit(
+            q,
+            primary_panel=reference_panel,
+        ),
         "signatures": {
             "coordination": "atom at 0 + missing mass at small undercuts; ties formed by "
-            "upward moves; ties at first-party focal price; breaks upward",
+            "upward moves; strategic landing beyond the hard common-menu null; breaks upward",
             "competition": "smooth small-undercut mass; ties formed downward; breaks downward",
         },
         "claim_boundary": (
             "Single-mover tie events only (multi-mover ticks skipped); author identity "
-            "uses the shared provider-family alias crosswalk; selected-tie identity is "
-            "non-discriminating under its random-label benchmark; the 5-min grid leaves "
-            "sub-tick sequencing unobserved."
+            "uses the shared provider-family alias crosswalk; both selected-tie and "
+            "all-market author identity are tested against price-multiplicity-preserving "
+            "label nulls; the 5-min grid leaves sub-tick sequencing unobserved."
         ),
     }
     save_json(summary, out_dir, "pm5_summary")

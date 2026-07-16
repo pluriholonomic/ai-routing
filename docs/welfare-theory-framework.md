@@ -34,10 +34,12 @@ capacity μ_i (cost k(μ_i)), marginal cost c_i, hidden fidelity a_i (quality),
 sticky posted price p_i (adjustable at attention-cost dates ψ), tier menu
 (priority/standard/batch/free), rationing rate r_i. Router: allocation x,
 admission/deferral A, fee τ, rebates b, monitoring M, disclosure D, derank
-state (reputation weight). Author: candidate anchor price p0 (the selected-tie
-match is mechanically non-discriminating; across all author-observable markets,
-third-party exact matches at p0 exceed adjacent dime-grid placebos by 53.3 points,
-pending the frozen 30-date replication).
+state (reputation weight). Author: candidate anchor price p0. Both identity tests
+are non-discriminating: the selected-tie match is mechanical, and the all-market
+author shared-price rate is 54.3% versus 53.5% for a random endpoint preserving
+the realized price multiset (p=0.466). The adjacent-grid atom is therefore a
+generic discrete-menu fact, not identified author salience; the hard null is fixed
+for the 30-date replication.
 
 ## 3. The planner problem
 

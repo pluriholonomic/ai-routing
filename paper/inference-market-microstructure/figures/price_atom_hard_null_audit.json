@@ -1,0 +1,95 @@
+{
+  "evidence_status": "post_freeze_exploratory_hard_null_registered",
+  "source_snapshot": {
+    "repo_id": "t4run/openrouter-market-history",
+    "revision": "600bb41fd15189c70f8f78fce8cf0a519fb8dd61",
+    "replayed_artifacts_identical": 16,
+    "replayed_artifacts_total": 16
+  },
+  "frozen_vintage": {
+    "start_date": "2026-07-07",
+    "end_date": "2026-07-15",
+    "observed_dates": 9
+  },
+  "author_endpoint_label_null": {
+    "models": 94,
+    "author_clusters": 12,
+    "observed_author_shared_count": 51,
+    "observed_author_shared_share": 0.542553191489,
+    "random_anchor_expected_count": 50.261645299145,
+    "random_anchor_expected_share": 0.534698354246,
+    "poisson_binomial_upper_tail_p": 0.465697809685,
+    "author_minus_random_anchor": 0.007854837243,
+    "author_cluster_ci95": [
+      -0.090462836015,
+      0.160769000752
+    ],
+    "leave_one_author_out_range": [
+      -0.018703857512,
+      0.065154081079
+    ],
+    "pair_density_difference": -0.00940380977,
+    "pair_density_author_cluster_ci95": [
+      -0.088341696178,
+      0.120042816926
+    ]
+  },
+  "lagged_price_landing_null": {
+    "maximum_continuity_gap_minutes": 15,
+    "events": 196,
+    "models": 18,
+    "providers": 15,
+    "exact_lagged_rival_matches": 40,
+    "exact_lagged_rival_match_share": 0.204081632653,
+    "adjacent_placebo_match_share": 0.009566326531,
+    "exact_minus_adjacent_placebo": 0.194515306122,
+    "matched_global_menu_band_factor": 1.25,
+    "matched_global_menu_probability": 0.134064861864,
+    "exact_minus_matched_global_menu": 0.070016770789,
+    "model_cluster_ci95": [
+      -0.231452838756,
+      0.122291257508
+    ],
+    "provider_cluster_ci95": [
+      -0.224169030729,
+      0.182422093262
+    ],
+    "leave_one_model_out_range": [
+      -0.104160915098,
+      0.096673277082
+    ],
+    "past_only_same_model_menu": {
+      "washout_hours": 24,
+      "comparable_events": 189,
+      "menu_match_probability": 0.067775772509,
+      "exact_minus_menu": 0.143864439131,
+      "model_cluster_ci95": [
+        -0.000672058821,
+        0.175181963717
+      ],
+      "provider_cluster_ci95": [
+        0.018960322396,
+        0.229696856872
+      ],
+      "leave_one_model_out_range": [
+        0.011085019904,
+        0.155478531061
+      ]
+    },
+    "largest_model_event_share": 0.734693877551,
+    "largest_model_copy_share": 0.85,
+    "downward_share_of_exact_landings": 0.8
+  },
+  "identified_sets": {
+    "exact_strategic_landing_share": [
+      0.0,
+      0.204081632653
+    ],
+    "named_prior_rival_caused_event_share": [
+      0.0,
+      0.686
+    ]
+  },
+  "confirmatory_gate": "Recompute unchanged on the earliest 30-date vintage. Author identity requires the endpoint-label upper-tail test and author-cluster interval to support a positive effect. Strategic lagged landing requires the factor-1.25 model-cluster interval to exclude zero and every leave-one-model-out estimate to remain positive.",
+  "claim_boundary": "Exact price atoms are supported. Author salience and strategic following are not supported by the frozen hard-null audit. A common discrete price menu with asynchronous refreshes remains observationally equivalent."
+}
