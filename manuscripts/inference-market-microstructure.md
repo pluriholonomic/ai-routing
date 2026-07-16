@@ -136,6 +136,17 @@ robustness addendum gives exact model-cluster sign-flip p-values 0.425 (full) an
 diagnostics outside SIM2's 5--95% null range, so SIM2 is a stress-test
 counterexample rather than a calibrated model of this market.
 
+**Future held-out calibration.** Commit `7709446` freezes a separate earliest-
+30-date test before those data exist. Dates 1--15 standardize five whole-market
+state features and fit one excess-landing parameter; dates 16--30 evaluate a
+nearest-20-market hypergeometric menu benchmark and the frozen response model out
+of time. The analyzer reads only distinct date support before the gate and cannot
+load prices or emit an event table. Promotion additionally requires at least 100
+holdout events, 10 model clusters, no model above 50% of events, positive clustered
+residual and log-score-gain intervals, positive leave-one-model-out estimates, and
+one-sided sign-flip p-values at most 0.05. This can reject matched-market
+exchangeability, not identify intent or literal front-running.
+
 ## 5. Fact 3: quantity clearing and manufactured firmness
 
 Panel evidence (12% vs 86% ever-moved; latency loads ~30x price at 30-min

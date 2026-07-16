@@ -140,3 +140,13 @@ At the earliest 30-date release:
 Current verdict: **exact price atoms supported; author salience unsupported;
 strategic following unsupported; common-menu observational equivalence not
 rejected.**
+
+## Future-gated whole-market validation
+
+The remaining calibration experiment was frozen in commit `7709446` before the
+30-date panel exists. It uses dates 1--15 to standardize whole-market state
+features and fit a single persistent landing increment, then evaluates dates
+16--30 without refitting. Its analyzer is outcome-guarded: with the current 10
+dates it reports `outcomes_loaded=false`, does not load price quotes, and emits no
+event panel. This future result is separate from, and cannot replace, the unchanged
+factor-1.25 confirmatory PM5 result.

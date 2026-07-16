@@ -647,6 +647,18 @@ values---196, 20.4\%, 13.4\%, and $+7.0$ points---fall outside all four ranges.
 Accordingly SIM2 is a stress-test construction showing possible benchmark
 dominance, not a fitted data-generating process or an estimate of $\rho$.
 
+The failed calibration is informative about the next test rather than a reason to
+retune SIM2.  Before the 30-date panel exists, we preregistered a 15-date training
+and 15-date holdout comparison that matches whole contemporaneous markets on
+endpoint count, price scale, dispersion, duplicate-price mass, and minimum ties.
+It fits a single excess-landing parameter on training events and evaluates both
+the matched-market residual and out-of-sample log-score gain on the untouched
+holdout.  The analyzer cannot load prices or construct events before the calendar
+gate.  Its support and promotion rules appear in
+\cref{app:heldout-matched-market}.  This design can reject a declared
+market-exchangeability benchmark; it still cannot identify intent or private
+request order.
+
 \begin{table}[H]
 \centering
 \small
@@ -1028,7 +1040,8 @@ conditional simulation but has only 43.4\% power at the observed effect and can 
 far more conservative in known-clock panels; its nonrejection is not evidence of
 zero response.  Exact cluster sign-flip p-values are 0.425 and 0.214, and every
 registered empirical calibration diagnostic rejects the known-clock family as a
-fitted description.  Second, the randomized crossover's all-position block screen is
+fitted description.  A separately preregistered 15/15-date whole-market holdout
+test remains unopened until the 30-date gate.  Second, the randomized crossover's all-position block screen is
 secondary, and its carryover-robust first-position counts are only 33--37 of 500
 per arm.  Third, owned probes identify one
 account, region, prompt family, and time window; they do not identify market-wide
@@ -1172,6 +1185,42 @@ a parametric reaction map, a lower bound on response latency, or continuous
 update timestamps.  It says those restrictions are additional identifying data
 or assumptions; they are not supplied by a longer panel at the same observation
 frequency.
+
+\section{Held-out whole-market menu protocol}
+\label{app:heldout-matched-market}
+
+The held-out analyzer resolves the earliest 30 quote dates at one immutable data
+revision.  Dates 1--15 estimate feature means, feature scales, and one persistent
+landing increment; dates 16--30 are never used for fitting.  Before all 30 dates
+exist, the code reads only the distinct-date ledger and emits no price or event
+table.
+
+For event $e$ at prior timestamp $t^-$, every other model observed at exactly
+$t^-$ is a candidate decoy market if it has at least as many endpoints as the
+focal rival set.  Markets are matched by Euclidean distance after training-period
+standardization of five pre-event features: log endpoint count, log median price,
+log relative interquartile range, shared-price endpoint share, and an indicator
+for a tied minimum.  The primary retains the nearest 20 markets, requires at least
+five, and uses fixed 10- and 50-market sensitivities.  Within decoy market $j$,
+$N_j$ is endpoint count, $H_j$ counts endpoints exactly at the mover's realized
+new price, and $r_e$ is focal rival-set size.  The conditional chance match is
+\begin{equation}
+ q_{ej}=1-\frac{\binom{N_j-H_j}{r_e}}{\binom{N_j}{r_e}},
+ \qquad q_e^{\mathrm{MM}}=\frac{1}{K_e}\sum_{j=1}^{K_e}q_{ej}.
+\end{equation}
+This preserves whole-market multiplicity rather than pooling endpoints.
+
+The nonreactive benchmark is $M_0:Y_e\sim\mathrm{Bernoulli}(q_e^{\mathrm{MM}})$.
+The nested persistent-increment model is
+$M_1:Y_e\sim\mathrm{Bernoulli}(q_e^{\mathrm{MM}}+\rho(1-q_e^{\mathrm{MM}}))$,
+with $\rho\in[0,1]$ fit only on dates 1--15.  Promotion requires at least 100
+holdout events, ten model clusters, no model above 50\% of events, positive
+model-cluster lower bounds and leave-one-model-out estimates for both the residual
+$Y-q^{\mathrm{MM}}$ and holdout log-score gain, and one-sided cluster sign-flip
+$p\leq0.05$ for each.  Even promotion establishes only persistent same-model
+landing beyond this exchangeability class.  The procedure conditions on the
+realized event and new price, so it is not a full refresh-clock or equilibrium
+model and cannot identify strategic response, collusion, or front-running.
 
 \section{Independent grid-null algorithm}
 \label{app:gridnull}

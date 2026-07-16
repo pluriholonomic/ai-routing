@@ -1,0 +1,27 @@
+{
+  "evidence_status": "future_30_date_gate_not_ready",
+  "preregistration_commit": "7709446",
+  "source_snapshot": {
+    "source": "huggingface",
+    "repo_id": "t4run/openrouter-market-history",
+    "revision": "6e987d68fb5aff3a664c41503d8fba08018f01e6",
+    "path": "hf://datasets/t4run/openrouter-market-history@6e987d68fb5aff3a664c41503d8fba08018f01e6",
+    "resolution": "dataset_head_at_run_start"
+  },
+  "split": {
+    "ready": false,
+    "observed_days": 10,
+    "target_days": 30,
+    "remaining_days": 20,
+    "selected_dates": [],
+    "training_dates": [],
+    "holdout_dates": [],
+    "training_start": null,
+    "training_end": null,
+    "holdout_start": null,
+    "holdout_end": null
+  },
+  "outcomes_loaded": false,
+  "outcome_tables_emitted": false,
+  "claim_boundary": "Only outcome-free date support was read. Quote prices, PM5 events, holdout outcomes, and H80 outcomes were not loaded."
+}

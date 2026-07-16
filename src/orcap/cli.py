@@ -595,6 +595,7 @@ def main() -> None:
             "pm1": "pm1_hazard_baseline",
             "pm2": "pm2_sufficient_stats",
             "pm5": "pm5_tie_microstructure",
+            "pm5_heldout": "pm5_heldout_matched_market",
             "pm6": "pm6_event_reclassification",
             "pm9": "pm9_author_anchor",
             "bm1": "bm1_pricing_technology",

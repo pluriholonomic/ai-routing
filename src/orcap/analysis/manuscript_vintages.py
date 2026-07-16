@@ -27,6 +27,10 @@ from .bm_common import completion_events
 from .common import DEFAULT_OUT, save, save_json
 from .h68_competition import daily_quotes
 from .pm1_hazard_baseline import run as run_pm1
+from .pm5_heldout_matched_market import (
+    heldout_experiment as run_pm5_heldout_experiment,
+)
+from .pm5_heldout_matched_market import registered_split as pm5_heldout_split
 from .pm5_tie_microstructure import quote_ticks as pm5_quote_ticks
 from .pm5_tie_microstructure import run as run_pm5
 from .vintage import observed_dates
@@ -372,6 +376,22 @@ def _run_vintage(
             end_date=end_date,
         ),
     }
+    if label == "confirmatory_30d":
+        split = pm5_heldout_split(list(spec["dates"]))
+        heldout_panel, heldout_calibration, heldout_summary = (
+            run_pm5_heldout_experiment(pm5_quotes, split)
+        )
+        save(heldout_panel, run_dir, "pm5_heldout_matched_market_panel")
+        save(
+            heldout_calibration,
+            run_dir,
+            "pm5_heldout_matched_market_calibration",
+        )
+        save_json(
+            heldout_summary,
+            run_dir,
+            "pm5_heldout_matched_market_summary",
+        )
     return {
         **spec,
         "metrics": precommitted_metrics(results),
