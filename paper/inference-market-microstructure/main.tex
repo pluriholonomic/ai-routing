@@ -35,6 +35,7 @@
 \newcommand{\HF}{\textsc{Hugging Face}}
 \newcommand{\pp}{\text{pp}}
 \newcommand{\dd}{\mathrm{d}}
+\newtheorem{proposition}{Proposition}
 
 \title{Administered Menus and Focal Anchors:\\
 The Microstructure of the Market for Machine Intelligence}
@@ -70,7 +71,10 @@ audit provides the mechanism link:
 conditional on currently being cheapest, providers that cut price in the prior
 week receive 3.9\% default selection share versus 23.3\% otherwise.  Thus the
 observed rule does not reward past undercutting in the manner proposed to
-discipline pricing algorithms.  The combined evidence supports a dealer-and-
+discipline pricing algorithms.  We also establish a nonparametric
+observational-equivalence result: five-minute quote snapshots cannot distinguish
+scheduled menu revision from a within-bin rival response or recover the latent
+leader.  The combined evidence supports a dealer-and-
 dispatcher analogy rather than an automated-market-maker analogy: money prices
 are sticky, quantity and eligibility clear at request time, and the platform's
 substitution and prominence rules are first-order market-design instruments.
@@ -105,7 +109,8 @@ probes measure the realized policy for one account and workload.  None alone
 identifies market-wide flow, private capacity, or provider cost.
 
 The paper's contribution is two promoted empirical facts, a preregistered
-firmness design with an interim block screen, and one mechanism audit.
+firmness design with an interim block screen, one mechanism audit, and a timing-
+coarsening identification result.
 
 \begin{enumerate}
   \item \textbf{Administered menus.} Prices move infrequently and by large
@@ -608,6 +613,33 @@ reaction-rule evidence do not identify the mechanism.}
 \label{fig:bmaudit}
 \end{figure}
 
+\Needspace{16\baselineskip}
+The negative reaction result is not merely a small-sample qualification.  The
+observation clock imposes a nonparametric identification limit even with an
+arbitrarily long panel.
+
+\begin{proposition}[Coarsened-timing observational equivalence]
+\label{prop:coarsening}
+Let latent provider quotes be right-continuous paths observed only at grid times
+$t_k=k\Delta$.  Consider an interval in which at least two providers change
+between $t_{k-1}$ and $t_k$.  If an administered-menu model permits
+provider-specific scheduled updates driven by latent public state, and a reactive
+model permits a provider to update within less than $\Delta$ after observing a
+rival move, then the sampled transition is compatible with both models.  Moreover,
+every changed provider can be made the latent first mover in a reactive path that
+produces the same sampled quotes.  Hence neither within-bin leader identity nor
+rival-triggered response is point identified from the snapshot panel.
+\end{proposition}
+
+The proof is constructive and appears in \cref{app:coarsening-proof}.  The result
+allows unrestricted latent state and response maps, so restrictions on either can
+restore identification.  Without such restrictions, however, more five-minute
+snapshots improve frequency estimates but do not resolve ordering inside a
+snapshot.  Excluding same-snapshot batches therefore prevents invented order;
+the uniquely and strictly earlier links used above identify temporal candidates,
+not causal triggers.  Literal quote-surface front-running requires finer update
+timestamps, an exclusion restriction on common shocks, or randomized visibility.
+
 \subsection{Entry and long-memory demand}
 
 Across 304 models, the elasticity of quoting-provider count with respect to token
@@ -811,6 +843,36 @@ not contractual commitments, and missing ceilings are not coded as infinite.
 Derank transitions and rate-limit onsets are router enforcement events; they do not
 reveal which user's request caused the event.
 
+\section{Proof of the coarsened-timing result}
+\label{app:coarsening-proof}
+
+\begin{proof}[Proof of \cref{prop:coarsening}]
+Fix an observed transition and let $S$ be the providers whose sampled quotes
+change.  Choose $\epsilon>0$ with $(|S|+1)\epsilon<\Delta$.  For a nonreactive
+path, order the providers in $S$ arbitrarily and let provider $i$ replace its old
+quote with its observed terminal quote at time $t_{k-1}+r_i\epsilon$.  Declare
+these provider-specific update times and terminal quotes to be functions of the
+latent public state at the start of the interval.  No rule uses a rival quote, and
+the sampled endpoints match the data.
+
+For a reactive path, choose any provider $j\in S$ and any ordering of $S$ with
+$j$ first.  Let $j$ move at $t_{k-1}+\epsilon$.  After the $r$th move, let the
+next provider observe that move and update at $t_{k-1}+(r+1)\epsilon$; define its
+response map at this realized history to equal its sampled terminal quote.
+Every delay is strictly positive and less than $\Delta$, and the terminal vector
+again matches the data.  Repeating the construction with another $j$ reverses
+the latent leader without changing either sampled endpoint.  Providers outside
+$S$ remain constant.  Applying the construction interval by interval establishes
+the result for the full sampled panel.
+\end{proof}
+
+The proposition is intentionally nonparametric.  It does not say scheduled and
+reactive models remain equivalent after imposing a known common-state process,
+a parametric reaction map, a lower bound on response latency, or continuous
+update timestamps.  It says those restrictions are additional identifying data
+or assumptions; they are not supplied by a longer panel at the same observation
+frequency.
+
 \section{Independent grid-null algorithm}
 \label{app:gridnull}
 
@@ -905,7 +967,7 @@ Manufactured firmness & Secondary randomized-order block level, flat rank gradie
 Negative steering memory & Rank-conditioned audit, same-sign eligibility subset & Complete eligibility or visibility instrument & Eligibility-complete panel \\
 Brown--MacKay mechanism & Cadence premium; reaction rules predictively indistinguishable & Slow-initiator/fast-responder exposure & Earliest 30-day vintage with fixed paired test \\
 Retry externality & Forward/backward asymmetry, small IV estimate & Cross-provider retry and user value & Incident instrument plus attempt logs \\
-Literal front-running & None & Cross-user order and quote-update sequence & Negotiated router/provider event logs \\
+Literal front-running & Proposition~\ref{prop:coarsening} rules out public point identification & Cross-user order and quote-update sequence & Negotiated router/provider event logs \\
 Global welfare loss & None & Values, quality, costs, transfers, capacity response & Structural measurement contract \\
 \bottomrule
 \end{tabular}
@@ -930,5 +992,20 @@ assignments per arm.  The companion \texttt{manuscript\_vintages} program runs
 PM1 and BM1--BM4 under both calendar cutoffs, canonicalizes every table, records
 SHA-256 hashes, and compares only the metrics fixed before the 30-day data exist.
 Each gate release updates estimates, source manifest, and PDF in one commit.
+
+\paragraph{Privacy and platform load.}
+Capture records exclude prompts and completions.  The owned experiments use a
+fixed minimal prompt, cap output at one token, serialize potentially interfering
+studies, and keep spend bounded by construction.  Public quote requests and
+router-published counters are rate limited; failed captures create missing
+intervals rather than immediate retry storms.
+
+\paragraph{Release tiers.}
+The public replication tier contains code, public-source manifests, quote-derived
+tables, randomized assignment fields, and aggregated confirmatory statistics.
+Account-specific generation references and raw route attempts remain in the
+restricted evidence store.  The release exposes the seeds and fields needed to
+replay assignment and hashes every restricted-input aggregate, without exposing
+request payloads or credentials.
 
 \end{document}
