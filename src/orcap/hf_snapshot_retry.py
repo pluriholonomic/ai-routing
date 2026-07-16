@@ -48,15 +48,17 @@ def file_exists_retry(
 
 def snapshot_download_retry(
     *args: Any,
-    attempts: int = 4,
+    attempts: int = 8,
+    stale_if_error: bool = False,
     sleep: Callable[[float], None] = time.sleep,
     **kwargs: Any,
 ) -> str:
     """Download a snapshot, refreshing transient signed URLs between attempts.
 
     Completed files remain in the shared Hub cache, so a retry only has to
-    recover missing objects. Error text is not logged here because Hub errors
-    can contain long signed URLs.
+    recover missing objects. When ``stale_if_error`` is set, an exhausted
+    remote lookup may reuse a previously completed cached snapshot. Error text
+    is not logged here because Hub errors can contain long signed URLs.
     """
     if attempts < 1:
         raise ValueError("attempts must be positive")
@@ -66,8 +68,16 @@ def snapshot_download_retry(
             return _snapshot_download(*args, **kwargs)
         except RETRYABLE_ERRORS as exc:
             if attempt == attempts:
-                raise
-            delay = min(2 ** (attempt - 1), 8)
+                if not stale_if_error:
+                    raise
+                print(
+                    "Hub snapshot retries exhausted; trying the last complete local snapshot",
+                    flush=True,
+                )
+                local_kwargs = dict(kwargs)
+                local_kwargs["local_files_only"] = True
+                return _snapshot_download(*args, **local_kwargs)
+            delay = min(2 ** (attempt - 1), 30)
             print(
                 f"Hub snapshot attempt {attempt}/{attempts} failed "
                 f"({type(exc).__name__}); retrying in {delay}s",

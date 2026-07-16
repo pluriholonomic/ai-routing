@@ -89,6 +89,33 @@ def test_snapshot_download_retry_raises_after_bounded_attempts(monkeypatch):
     assert calls == 2
 
 
+def test_snapshot_download_retry_falls_back_to_completed_local_snapshot(monkeypatch):
+    calls = []
+    sleeps = []
+
+    def fake_download(*args, **kwargs):
+        calls.append((args, kwargs))
+        if kwargs.get("local_files_only"):
+            return "/cache/stale-snapshot"
+        raise OSError("Hub CDN unavailable")
+
+    monkeypatch.setattr(retry, "_snapshot_download", fake_download)
+    result = retry.snapshot_download_retry(
+        "owner/repo",
+        repo_type="dataset",
+        cache_dir=".hf-cache",
+        attempts=2,
+        stale_if_error=True,
+        sleep=sleeps.append,
+    )
+
+    assert result == "/cache/stale-snapshot"
+    assert len(calls) == 3
+    assert calls[-1][1]["local_files_only"] is True
+    assert calls[-1][1]["cache_dir"] == ".hf-cache"
+    assert sleeps == [1]
+
+
 def test_snapshot_download_retry_rejects_nonpositive_attempts():
     with pytest.raises(ValueError, match="positive"):
         retry.snapshot_download_retry("owner/repo", attempts=0)

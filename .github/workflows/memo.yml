@@ -41,6 +41,13 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --no-dev
+      - name: restore last complete Hub snapshot cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .hf-cache
+          key: memo-hf-cache-v1-${{ github.run_id }}
+          restore-keys: |
+            memo-hf-cache-v1-
       - name: select verified immutable legacy source-run baselines
         id: legacy-source-baseline
         run: |
@@ -70,6 +77,7 @@ jobs:
               cache_dir=".hf-cache",
               allow_patterns=["curated/source_runs/dt=2026-07-10/*"],
               max_workers=32,
+              stale_if_error=True,
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -92,6 +100,7 @@ jobs:
                       f"curated/source_runs/dt=2026-07-11/20260711T{hour:02d}*",
                   ],
                   max_workers=16,
+                  stale_if_error=True,
               )
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -117,6 +126,7 @@ jobs:
                       f"curated/source_runs/dt=2026-07-12/20260712T{hour:02d}*",
                   ],
                   max_workers=16,
+                  stale_if_error=True,
               )
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -139,6 +149,7 @@ jobs:
                       f"curated/source_runs/dt=2026-07-12/20260712T{hour:02d}*",
                   ],
                   max_workers=16,
+                  stale_if_error=True,
               )
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -163,6 +174,7 @@ jobs:
                       f"curated/source_runs/dt=2026-07-12/20260712T{hour:02d}*",
                   ],
                   max_workers=16,
+                  stale_if_error=True,
               )
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -185,6 +197,7 @@ jobs:
                       f"curated/source_runs/dt=2026-07-12/20260712T{hour:02d}*",
                   ],
                   max_workers=16,
+                  stale_if_error=True,
               )
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -207,6 +220,7 @@ jobs:
                       f"curated/source_runs/dt=2026-07-13/20260713T{hour:02d}*",
                   ],
                   max_workers=16,
+                  stale_if_error=True,
               )
               shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -233,6 +247,7 @@ jobs:
                   "curated/source_runs/dt=2026-07-13/*",
               ],
               max_workers=32,
+              stale_if_error=True,
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -268,6 +283,7 @@ jobs:
               allow_patterns=["curated/*"],
               ignore_patterns=["curated/source_runs/*"],
               max_workers=16,
+              stale_if_error=True,
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -285,6 +301,7 @@ jobs:
               cache_dir=".hf-cache",
               allow_patterns=["derived/*"],
               max_workers=16,
+              stale_if_error=True,
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
@@ -302,9 +319,15 @@ jobs:
               cache_dir=".hf-cache",
               allow_patterns=["external/*", "backfill/*"],
               max_workers=16,
+              stale_if_error=True,
           )
           shutil.copytree(snapshot, "data", dirs_exist_ok=True)
           PY
+      - name: save complete Hub snapshot cache
+        uses: actions/cache/save@v4
+        with:
+          path: .hf-cache
+          key: memo-hf-cache-v1-${{ github.run_id }}
       - name: overlay fresh intraday buffers
         env:
           GH_TOKEN: ${{ github.token }}
