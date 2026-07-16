@@ -29,11 +29,12 @@ among tied markets where the model's author operates an endpoint (72 of
 author's price is the market's Knittel-Stango focal point. Providers never
 undercut their own direct channel (99.6% parity). **(3) Quantity clearing
 with manufactured firmness:** over nine days, 12% of endpoints ever changed
-price while 86% experienced rate-limit variation; pinned probes show an
-individual quote admits our requests only 67-80% of the time (rejections
-~all rate limits, falling in price — the anti-last-look pattern), while
-default routing succeeds 98.7%: the market is firm only in aggregate,
-through the router's substitution. We then audit the router's steering rule
+price while 86% experienced rate-limit variation; default routing succeeds
+98.7% of the time while pinned single-provider requests are rejected at
+nonzero rates whose LEVELS and price-gradient are upper bounds pending the
+randomized-crossover probe study (the v1 protocol confounds policy with
+within-block order): the market clears in quantities, and its apparent
+firmness is at least partly the router's substitution. We then audit the router's steering rule
 in the sense of Johnson-Rhodes-Wildenbeest: conditional on being cheapest, a
 provider that cut price in the past week receives a 3.9% selection share
 versus 23.3% without — steering that *penalizes* recent undercutting,
@@ -80,8 +81,12 @@ which each provider draws its log price independently as (model-day median +
 deviation), deviations resampled from the pooled within-model-day deviation
 distribution, snapped to the observed cent-per-million-token grid, the
 tie-at-minimum rate is 13.4% (SD 1.0% across replications). Observed: 45.9%
-over 1,311 model-days — **3.4x the grid null**. The atom is coordination on
-levels, not coarseness.
+over 1,311 model-days — **3.4x the grid null** (sensitivity: under a coarser
+dime-per-Mtok grid the null rises to 27.6%, ratio 1.7x — the atom exceeds
+grid coarseness under both snapping rules, and the null is conservative in
+one respect: the deviation pool retains the tie atom, so the null itself
+re-manufactures some ties). The atom is coordination on levels, not
+coarseness.
 
 **The anchor's identity.** Among the 146 currently-tied models, 72 have an
 author-operated endpoint; in 65 of those 72 (90%), the tie level equals the
@@ -96,13 +101,17 @@ direct-below, sign-persistent) — voluntary MFN.
 
 ## 5. Fact 3: quantity clearing and manufactured firmness
 
-As v1, with the key-specificity caveat moved into the text: pinned-probe
-admission rates measure this buyer's treatment, not market fill rates; the
-anti-last-look gradient (cheapest 80%, second 67%, random 76%) and the
-98.7% default-routing success are the identified objects, and they suffice
-for the structural point — individual quotes are revocable dealer quotes;
-aggregate firmness is the router's substitution service, which we measure
-directly.
+Panel evidence (12% vs 86% ever-moved; latency loads ~30x price at 30-min
+horizons; raises follow slack) as v1. Request-level evidence RESCOPED after
+referee B1: the v1 probe protocol sent policies in a fixed within-block
+order (default, cheapest, second, random — the policy x position crosstab is
+near-degenerate), so the rejection gradient across pinned policies is
+unidentified and the rejection levels are upper bounds contaminated by
+possible self-inflicted within-block throttling. Surviving identified
+objects: the position-0 default-routing success rate (98.7%) and the
+existence of nonzero pinned rejection. The anti-last-look gradient claim is
+withdrawn pending the randomized-crossover study (running; first-position
+estimands pre-registered), whose design eliminates the confound.
 
 ## 6. The steering audit
 
