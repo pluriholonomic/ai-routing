@@ -8,49 +8,27 @@ remain: crossover n >= 500/arm and the earliest 30-date re-estimation.*
 
 ## Abstract
 
-Open-weight AI models turned inference into a commodity that ~70 firms sell
-under identical labels through a routing marketplace. Using a purpose-built
-high-frequency dataset — per-provider quotes at 5-minute resolution across
-~300 models, a repricing-event ledger, congestion telemetry, a three-year
-backfill, and realized-routing probes — we characterize how this market
-prices, clears, and steers. Three facts constitute the core. **(1)
-Administered menus:** 2.8% of provider-model-days reprice, median jumps of
-13-26%, 93% of quotes on cent grids, 26% of cuts at the midnight cron;
-within-provider standardized kurtosis (3.5) sits in the CalvoPlus region,
-and a nested hazard model attributes repricing to price *gaps* (p = 1e-5)
-and rival moves (p = 2e-3) but not congestion (p = 0.17) — out-of-sample,
-only the gap channel survives (day-split AUC 0.64). **(2) Exact price atoms:**
-the two cheapest quotes tie exactly on 46% of multi-provider model-days —
-3.4 times the rate under an independent grid-constrained pricing null. The
-old selected-tie author-match rate is non-discriminating (90.0% observed,
-91.9% under its conditional random-label benchmark). The all-market statistic
-also fails: authors occupy a shared price in 54.3% of 94 markets versus 53.5%
-for a random endpoint preserving the exact price multiset (p=0.466); the
-author excess is 0.79 points [-9.0, 16.1]. Of 196 isolated revisions, 20.4%
-land exactly on a rival's prior quote, but a tightly scale-matched common-menu
-null predicts 13.4%; the 7.0-point excess has model-cluster interval
-[-23.1, 12.2]. These post-freeze hard nulls are fixed for the 30-date
-replication. Providers almost never
-undercut their own direct channel (99.6% parity). **(3) Quantity clearing
-with manufactured firmness:** over nine days, 12% of endpoints ever changed
-price while 86% experienced rate-limit variation; in a randomized-crossover
-probe design, default routing succeeds 99.3% while pinned single-provider
-requests succeed only ~81-84% — with rejection FLAT in price rank (no
-last-look), so individual quotes are revocable dealer quotes and the
-market's firmness is manufactured by the router's substitution. We then audit the router's steering rule
-in the sense of Johnson-Rhodes-Wildenbeest: conditional on being cheapest, a
-provider that cut price in the past week receives a 3.9% selection share
-versus 23.3% without — steering that *penalizes* recent undercutting,
-which JRW theory classifies as collusion-neutral and which independently
-taxes price competition. Secondary results, stated with their bounds: entry
-scales as demand^0.16 (rejecting sqrt-law free entry; a long-memory
-correction matches point estimates but awaits its registered discriminator);
-retry amplification of rationed demand is positive in asymmetric
-OLS (+0.17 forward vs -0.13 placebo) but small under a capacity-spillover
-instrument (phi = 0.02 [-0.04, 0.09]; a local estimand that excludes the
-rerouting margin); and a persistence-aware
-reclassification halves the apparent algorithmic punish-and-revert rate
-(83% -> 42%), a caution for collusion screens on posted-price panels.
+Open-weight models create a real-time market for partially substitutable
+inference. Multiple providers can run the same model, but tools, sampling,
+latency, and capacity make executions imperfectly fungible. Harnesses shape
+demand; routers aggregate requests and privately buy execution from providers.
+We ask which pricing and allocation rules promote welfare and whether familiar
+marketplace distortions appear. Using five-minute quotes, router operating
+aggregates, historical records, and randomized micro-purchases, we find sticky
+administered menus rather than firm spot quotes. Only 2.8% of provider-model-days
+reprice; slow repricers charge 10.1% more, echoing the Brown–MacKay pattern in
+algorithmic retail; and minimum prices tie on 45.9% of multi-provider model-days
+versus 13.4% under a grid-constrained null. Harder tests do not attribute these
+atoms to author anchoring or rival response, and public data cannot identify
+literal front-running. Interim crossover evidence suggests router substitution
+turns revocable quotes into a firmer service, resembling dealer/RFQ liquidity and
+reusable-capacity dispatch rather than an automated market maker. A benchmark
+shows that marginal-cost-plus-scarcity pricing implements the first best only
+when coupled to verifiable delay, failure, and quality scores. Provider
+redundancy has diminishing reliability value: for finite demand and positive
+setup cost, efficient and zero-profit entry are finite; business stealing can
+cause overentry and weak rent capture underentry. Thus router scoring, fallback,
+and quote firmness—not token price alone—are central welfare instruments.
 
 ## 1. Introduction
 
@@ -211,10 +189,40 @@ the Hawkes layer are registered with explicit triggers.
 
 ## 8. Welfare discussion
 
-[Condensed to two pages: the four measured wedges — admission objective,
-quality verification, steering design, rationing feedback — each tied to a
-fact and an instrument; the C1-C10 apparatus and remaining conditions moved
-to the companion pre-registration.]
+The planner values completed tasks net of compute, delay, failure, and fidelity
+loss. Providers maximize routed margin net of capacity and menu costs; the router
+maximizes fees and retained demand through admission, scoring, and fallback; the
+harness maximizes application value net of spend; and the user consumes the
+resulting price-quality-delay bundle. These objectives coincide only under
+restrictive observability, transfer, and congestion conditions.
+
+Holding installed capacity and congestion fixed, the first-best score adds
+expected marginal resource cost, capacity scarcity, marginal congestion, expected
+delay, failure cost (foregone completion value plus rejection loss), and fidelity
+loss. It admits a request only when its value exceeds the minimum generalized
+cost. Marginal-cost-plus-scarcity pricing implements this benchmark only when the
+router also adds the nonprice terms; raw token-price ranking works only if those
+terms are common across providers or encoded in enforceable contingent prices.
+
+A deliberately simple free-entry benchmark isolates the reliability wedge. With
+`D` jobs, `n` symmetric providers independently deliverable with probability
+`a`, completion probability is `S_n = 1-(1-a)^n`. If a completion creates net
+social value `v-c` and entry costs `F`, welfare is
+`W_n = D(v-c)S_n - nF`; the social gain from entrant `n` is
+`D(v-c)a(1-a)^(n-1)`, which decreases geometrically. If the successful price is
+`p`, symmetric provider profit is `(p-c)D S_n/n - F`. Thus both efficient and
+zero-profit entry are finite for fixed demand, with free entry bounded by
+`(p-c)D/F`. The entrant's private return includes jobs stolen from incumbents,
+whereas its social return includes only completions created when all incumbents
+are unavailable. Equal private margin and social surplus therefore produce the
+standard excessive-entry bias; low private capture can instead produce
+underentry. This is a mechanism benchmark, not a structural interpretation of
+the observed 0.16 entry elasticity. It holds demand and the successful-service
+price fixed and therefore does not solve the endogenous administered-menu game.
+
+The four empirical wedges remain admission, quality verification, steering, and
+retry feedback. The C1-C10 apparatus and remaining mechanism conditions stay in
+the companion preregistration.
 
 ## 9-10. Related work; limitations
 
@@ -241,7 +249,9 @@ fixed 2026-08-15 release.
 - M2: independent grid-pricing null added (13.4% vs 45.9%; 3.4x). The later v9
   identification correction demotes the selected-tie 65/72 statistic and
   replaces it with the all-market adjacent-level audit.
-- M3: entry conjecture demoted to remark with the horizon caveat explicit.
+- M3: the observed entry elasticity remains a remark with the horizon caveat
+  explicit; a separate analytic reliability/business-stealing benchmark is not
+  treated as an empirical estimate.
 - M4: restructured — three facts + steering audit are the paper; secondary
   results bounded in one section; welfare condensed; conduct extras to
   registered agenda.

@@ -47,66 +47,55 @@ The Microstructure of the Market for Machine Intelligence}
 \maketitle
 
 \begin{abstract}
-Open-weight models make it possible for many firms to sell inference under the
-same model label.  Yet the resulting market is not a conventional spot market:
-providers post sticky token-price menus, a router privately clears each request,
-and displayed quotes can be refused when selected.  We construct a purpose-built
-panel of provider-model quotes at five-minute frequency, router-published
-operational aggregates, historical quote records, and randomized one-token
-routing probes.  Two market facts and one power-gated operational design
-characterize this market.  First, prices are
-administered menus.  Only 2.8\% of provider-model-days reprice, changes are large,
-93\% of quotes lie on cent grids, and state-dependent price gaps predict changes
-out of sample while congestion does not.  Second, prices exhibit exact atoms.
-The two cheapest quotes tie on 45.9\% of multi-provider model-days, versus 13.4\%
-in an independent grid-constrained null.  A selected-tie author match is
-non-discriminating: a post-freeze audit finds 90.0\% observed versus 91.9\% under
-a conditional random-label benchmark.  The harder all-market identity null is
-also negative.  Authors occupy a shared price in 54.3\% of 94 markets versus
-53.5\% for a random endpoint preserving each market's exact price multiset
-($p=0.466$); the author excess is 0.79 points with author-cluster interval
-[-9.0,16.1].  Among 196 isolated revisions, 20.4\% land exactly on a rival's
-strictly prior quote, but a scale- and menu-frequency-matched common-menu null
-predicts 13.4\%; the 7.0-point excess has model-cluster interval [-23.1,12.2].
-An independently timestamped same-provider control removes own cross-model menu
-reuse: the residual rises to 13.4 points but its cluster interval still crosses
-zero.  In 6,250 preregistered simulations, the conditional-design test has 3.5\%
-one-sided size but only 43\% interpolated power at the observed effect; under a
-known-clock asynchronous menu it is conservative enough to have zero power even
-at 50\% reactive replacement.  All four empirical calibration diagnostics lie
-outside that mechanism's registered 5th--95th percentile ranges, so it is a
-stress-test counterexample rather than a fitted model of the market.
-Third, a randomized-order crossover provides interim evidence that the router
-manufactures firmness from revocable quotes.  In 76 complete four-policy blocks,
-all-position default routing succeeds on 75 requests while three pinned
-single-provider policies succeed on 61--64; 76 additional default-only monitoring
-requests on different models are excluded.  These matched block rates are
-secondary because earlier probes can affect later probes.  Carryover-robust
-first-position outcomes remain masked until every arm reaches 500.  A steering
-audit provides the mechanism link:
-conditional on currently being cheapest, providers that cut price in the prior
-week receive 3.9\% default selection share versus 23.3\% otherwise.  Thus the
-observed rule does not reward past undercutting in the manner proposed to
-discipline pricing algorithms.  We also establish a nonparametric
-observational-equivalence result: neither within-bin sequencing nor exact landing
-on a strictly prior quote distinguishes scheduled asynchronous menu revision from
-rival response without restrictions on the common menu.  The resulting sharp
-identified sets are $[0,68.6\%]$ for events caused by a unique named prior rival
-and $[0,20.4\%]$ for exact strategic landings.  The combined evidence supports a dealer-and-
-dispatcher analogy rather than an automated-market-maker analogy: money prices
-are sticky, quantity and eligibility clear at request time, and the platform's
-substitution and prominence rules are first-order market-design instruments.
+Open-weight models create a real-time market for partially substitutable
+inference.  Multiple providers can run the same model, but tools, sampling,
+latency, and capacity make executions imperfectly fungible.  Harnesses shape
+demand; routers aggregate requests and privately buy execution from providers.
+We ask which pricing and allocation rules promote welfare and whether familiar
+marketplace distortions appear.  Using five-minute quotes, router operating
+aggregates, historical records, and randomized micro-purchases, we find sticky
+administered menus rather than firm spot quotes.  Only 2.8\% of provider-model-days
+reprice; slow repricers charge 10.1\% more, echoing the Brown--MacKay pattern in
+algorithmic retail; and minimum prices tie on 45.9\% of multi-provider model-days
+versus 13.4\% under a grid-constrained null.  Harder tests do not attribute these
+atoms to author anchoring or rival response, and public data cannot identify
+literal front-running.  Interim crossover evidence suggests router substitution
+turns revocable quotes into a firmer service, resembling dealer/RFQ liquidity and
+reusable-capacity dispatch rather than an automated market maker.  A benchmark
+shows that marginal-cost-plus-scarcity pricing implements the first best only
+when coupled to verifiable delay, failure, and quality scores.  Provider
+redundancy has diminishing reliability value: for finite demand and positive
+setup cost, efficient and zero-profit entry are finite; business stealing can
+cause overentry and weak rent capture underentry.  Thus router scoring, fallback,
+and quote firmness---not token price alone---are central welfare instruments.
 \end{abstract}
 
 \section{Introduction}
 
-The supply of machine intelligence has separated from model ownership.  A model
-author releases weights or an API-compatible specification, independent inference
-providers host the same model, and a routing platform presents those providers as
-substitutable sources.  A user or application chooses the model label; the router
-then chooses a provider, retries, or falls back.  This vertical separation creates
-a market whose economic object is not simply ``which model is best?'' but ``how
-does a platform clear multiple suppliers of the same model?''
+Open weights separate a model's production technology from the firm that executes
+it.  The traded object is a completion of a declared model on a particular task.
+It is partly commodity-like---multiple providers can run the same weights---but
+not perfectly fungible: sampling, tool calls, serving stacks, latency, and hidden
+capacity can change whether and how the task completes.
+
+The resulting market has a distinct vertical stack.  An end user delegates to a
+harness or agent runtime, such as Hermes, which can transform the task, choose a
+model, call tools, set a budget, and retry.  A router such as \OR\ aggregates
+purchase requests across harnesses and privately dispatches each request to an
+eligible inference provider.  Providers supply GPU-backed, perishable service
+capacity under a common model label.  The model is therefore a compatibility
+standard and production technology; the harness is a demand-side broker and
+order-flow originator; the router is a two-sided dispatcher and procurement
+platform; and the provider is a capacity-constrained service seller.
+
+This organization creates two linked questions.  Which combination of prices,
+admission, scoring, fallback, and provider entry maximizes the value of completed
+tasks net of compute, delay, and failure?  And do the platform-specific conduct
+problems seen elsewhere---stale or revocable quotes in dealer markets, inventory
+withholding in travel, prominence manipulation in online platforms, or
+order-information rents in blockchain markets---appear here?  The answer cannot
+come from token prices alone because the router, rather than the public quote
+surface, clears eligibility and quantity.
 
 That question is difficult to answer from posted prices alone.  The price surface
 is public, but the allocation rule and capacity state are private.  The same cheap
@@ -126,10 +115,12 @@ published operational aggregates measure congestion and enforcement; and owned
 probes measure the realized policy for one account and workload.  None alone
 identifies market-wide flow, private capacity, or provider cost.
 
-The paper's contribution is two promoted price-surface facts, a falsification
-ladder that separates exact atoms from author identity and strategic following, a
-preregistered firmness design with an interim block screen, one mechanism audit,
-and two observational-equivalence results.
+The paper combines an empirical microstructure description with a minimal
+market-design benchmark.  Its contributions are two promoted price-surface facts,
+a falsification ladder that separates exact atoms from author identity and
+strategic following, a preregistered firmness design with an interim block screen,
+one mechanism audit, two observational-equivalence results, and a free-entry
+welfare wedge.
 
 \begin{enumerate}
   \item \textbf{Administered menus.} Prices move infrequently and by large
@@ -174,6 +165,19 @@ and two observational-equivalence results.
   cut.  They receive less.  This is not proof of collusion--eligibility remains
   partly hidden--but it rejects the sign of the proposed pro-competitive
   implementation in the observed sample.
+
+  \item \textbf{Welfare scoring and finite entry.} Conditional on installed
+  capacity, the first-best routing score combines marginal resource and scarcity
+  costs with expected delay, rejection, and fidelity losses; raw token-price
+  ranking works only when those nonprice terms are equal or contractible.  In a
+  benchmark where independent providers supply redundancy for the same model,
+  the reliability value of an additional provider declines geometrically.
+  Positive setup cost therefore makes both the welfare-maximizing and zero-profit
+  counts finite for fixed demand.  Free entry need not select the welfare count:
+  an entrant can steal routed volume from incumbents without creating a
+  completion, while a low provider margin can leave the social value of
+  redundancy uncaptured.  The observed entry elasticity is not a structural
+  estimate of this wedge.
 \end{enumerate}
 
 These facts jointly imply a sharper market analogy.  The model is a product
@@ -958,6 +962,85 @@ harness chooses model, retry, and fallback policies to maximize application
 retention net of spend.  A user sees the harness's delivered price-quality-delay
 bundle, not the provider market directly.
 
+Holding installed capacity and the congestion state fixed makes the pricing
+implication transparent.  Let $\bar c_{i\theta}$ be the expected marginal compute
+cost of assigning type $\theta$ to provider $i$, let $\lambda_i$ be the capacity
+shadow cost, and let $\chi_{i\theta}$ collect the marginal congestion externality.
+The generalized social cost of the assignment is
+\begin{equation}
+ G_{i\theta}=\bar c_{i\theta}+\lambda_i+\chi_{i\theta}
+ +d_\theta W_i+(v_\theta+\ell_\theta)r_i+q_\theta(1-a_i).
+ \label{eq:generalized-social-cost}
+\end{equation}
+The conditional first best admits the request when
+$v_\theta\geq\min_i G_{i\theta}$ and routes it to an eligible minimizer.  A
+decentralized score implements this rule if the money component equals marginal
+resource cost plus scarcity cost and the router adds the measured nonprice terms.
+A raw token-price ranking implements it only when those terms are common across
+providers or are already encoded in enforceable contingent prices.  This is why a
+price menu by itself is not a welfare mechanism in the observed market.
+
+A parsimonious entry benchmark makes one decentralization wedge exact.  Fix a
+single model and deliberately abstract from task differentiation; this is the
+polar case in which provider execution is substitutable conditional on delivery.
+
+\begin{proposition}[Finite entry and the reliability/business-stealing wedge]
+\label{prop:free-entry}
+An epoch contains $D>0$ jobs.  Each of $n$ symmetric providers is independently
+deliverable with probability $a\in(0,1)$, has no binding capacity conditional on
+delivery, incurs marginal cost $c$, and pays setup cost $F>0$.  A successful job
+has social value $v>c$ and is paid a platform-set price $p$; the router shares
+completed jobs symmetrically among deliverable providers.  Let
+$S_n=1-(1-a)^n$ and $S_0=0$.
+
+The welfare function and a provider's expected profit are
+\begin{equation}
+ W_n=D(v-c)S_n-nF,
+ \qquad
+ \pi_n=(p-c)D\frac{S_n}{n}-F.
+ \label{eq:entry-welfare-profit}
+\end{equation}
+The gross social value of the $n$th entrant is
+$R_n^W=D(v-c)a(1-a)^{n-1}$, which is strictly decreasing, so a greatest
+welfare-maximizing count $n^W$ is finite.  With $n^E=0$ when no provider can
+break even, the greatest symmetric free-entry count is also finite and, for
+$p>c$, satisfies
+\begin{equation}
+ n^E\leq \left\lfloor\frac{(p-c)D}{F}\right\rfloor.
+ \label{eq:entry-ceiling}
+\end{equation}
+The entrant's gross private return is
+$R_n^E=(p-c)DS_n/n$.  At $n\geq2$, if $p-c=v-c$, then
+$R_n^E>R_n^W$ and hence $n^E\geq n^W$, giving the usual weak bias toward
+excessive entry.  More
+generally, there is underentry when $R_n^E<F<R_n^W$ and overentry when
+$R_n^W<F<R_n^E$.
+\end{proposition}
+
+\begin{proof}
+Since $S_n-S_{n-1}=a(1-a)^{n-1}$,
+$W_n-W_{n-1}=R_n^W-F$ decreases strictly in $n$ and is eventually negative.
+Free entry requires $(p-c)DS_n/n\geq F$; because $S_n\leq1$, this implies
+\cref{eq:entry-ceiling}.  Finally,
+$S_n/n=(a/n)\sum_{k=0}^{n-1}(1-a)^k>a(1-a)^{n-1}$ for $n\geq2$.
+Comparing each gross return with $F$ yields the two directional wedges.
+\end{proof}
+
+The proposition adapts the business-stealing logic of
+\citet{mankiw1986freeentry} to reliability created by router substitution.  It
+answers the ``maximal entry'' question narrowly: for fixed demand and positive
+setup cost, neither zero-profit entry nor efficient redundancy is unbounded.
+It is a partial-equilibrium result conditional on $(D,p)$, not a solution of the
+endogenous administered-menu game.
+The platform can in principle align the margin by charging or subsidizing the
+difference $R_n^E-R_n^W$, but doing so requires demand value, cost, and
+deliverability primitives that our public panel does not identify.  Tool use,
+quality differentiation, correlated outages, and capacity constraints add
+variety and congestion terms; they do not restore a generic first welfare
+theorem.  The router's ability to allocate fees across harness and provider
+sides makes this a two-sided-platform design problem in the sense of
+\citet{rochettirole2003}.
+
 The evidence isolates four possible failures of decentralization.
 
 \begin{enumerate}
@@ -1020,6 +1103,17 @@ stochastic rewards provides the OR analogue for provider selection
 \cite{brubach2025}, but the inference setting adds sticky provider menus and hidden
 eligibility.
 
+\paragraph{Two-sided procurement and entry.}
+The router brings harness demand and provider capacity onto the platform, but it
+also evaluates price jointly with latent service attributes.  This combines the
+price-allocation problem of two-sided platforms \citep{rochettirole2003} with the
+multi-attribute scoring logic of procurement \citep{che1993}.  Our entry
+proposition specializes \citet{mankiw1986freeentry}: an entrant both adds a
+redundant delivery path and captures jobs that incumbents would have served.
+Unlike a standard homogeneous-product application, the positive social margin is
+the probability that the entrant is available exactly when every incumbent is
+not.
+
 \paragraph{Emerging AI-platform evidence.}
 Recent work studies quality-adjusted AI prices and platform self-preferencing
 \cite{wang2026,zhang2026}.  We complement these studies with provider-level
@@ -1049,6 +1143,9 @@ provider shares.  Fourth, public operational fields are router-published
 aggregates with missingness, not raw attempt logs.  Fifth, provider cost, private
 rebates, task fidelity, and cross-user request order are unobserved.  We therefore
 do not claim literal front-running, collusion, private cost, or a welfare loss.
+The generalized-cost score and free-entry proposition are conditional mechanism
+benchmarks, not calibrated estimates: their value, cost, setup-cost, and
+deliverability primitives are precisely among the missing objects.
 
 Within those limits, the evidence changes the economic description of inference
 markets.  Prices are not the rapidly clearing state variable.  Providers post
@@ -1316,6 +1413,7 @@ Manufactured firmness & Secondary randomized-order block level, flat rank gradie
 Negative steering memory & Rank-conditioned audit, same-sign eligibility subset & Complete eligibility or visibility instrument & Eligibility-complete panel \\
 Brown--MacKay mechanism & Cadence premium; reaction rules predictively indistinguishable & Slow-initiator/fast-responder exposure & Earliest 30-day vintage with fixed paired test \\
 Retry externality & Forward/backward asymmetry, small IV estimate & Cross-provider retry and user value & Incident instrument plus attempt logs \\
+Free-entry efficiency & Conditional reliability/business-stealing proposition; observed elasticity remains descriptive & Demand value, provider margin, setup cost, and deliverability law & Calibrated entry model or randomized admission fee \\
 Literal front-running & Proposition~\ref{prop:coarsening}; named-rival response share in $[0,68.6\%]$ & Cross-user order and quote-update sequence & Negotiated router/provider event logs \\
 Global welfare loss & None & Values, quality, costs, transfers, capacity response & Structural measurement contract \\
 \bottomrule
