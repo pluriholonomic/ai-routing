@@ -48,26 +48,17 @@ The Microstructure of the Market for Machine Intelligence}
 
 \begin{abstract}
 Open-weight models create a real-time market for partially substitutable
-inference.  Multiple providers can run the same model, but tools, sampling,
-latency, and capacity make executions imperfectly fungible.  Harnesses shape
-demand; routers aggregate requests and privately buy execution from providers.
-We ask which pricing and allocation rules promote welfare and whether familiar
-marketplace distortions appear.  Using five-minute quotes, router operating
-aggregates, historical records, and randomized micro-purchases, we find sticky
-administered menus rather than firm spot quotes.  Only 2.8\% of provider-model-days
-reprice; slow repricers charge 10.1\% more, echoing the Brown--MacKay pattern in
-algorithmic retail; and minimum prices tie on 45.9\% of multi-provider model-days
-versus 13.4\% under a grid-constrained null.  Harder tests do not attribute these
-atoms to author anchoring or rival response, and public data cannot identify
-literal front-running.  Interim crossover evidence suggests router substitution
-turns revocable quotes into a firmer service, resembling dealer/RFQ liquidity and
-reusable-capacity dispatch rather than an automated market maker.  A benchmark
-shows that marginal-cost-plus-scarcity pricing implements the first best only
-when coupled to verifiable delay, failure, and quality scores.  Provider
-redundancy has diminishing reliability value: for finite demand and positive
-setup cost, efficient and zero-profit entry are finite; business stealing can
-cause overentry and weak rent capture underentry.  Thus router scoring, fallback,
-and quote firmness---not token price alone---are central welfare instruments.
+inference.  Harnesses such as Hermes shape demand, routers such as \OR\ aggregate
+requests and privately dispatch execution, and providers sell capacity under
+common model labels.  Using five-minute quotes and randomized micro-purchases, we
+find sticky administered menus, frequent exact price ties, and revocable quotes
+whose delivery is strengthened by router substitution.  Slow repricers charge
+more, echoing Brown--MacKay, but hard tests do not identify rival response or
+front-running.  The market therefore resembles dealer/RFQ liquidity combined
+with reusable-capacity dispatch, not an automated market maker.  A benchmark
+shows that efficient routing requires prices augmented by reliability, delay,
+quality, and scarcity, and that free entry is finite but can be excessive through
+business stealing or insufficient when providers cannot capture redundancy value.
 \end{abstract}
 
 \section{Introduction}
