@@ -1,0 +1,283 @@
+{
+  "evidence_status": "bounded_revenue_proxy_sensitivity",
+  "price_multiple_grid": [
+    0.25,
+    4.0
+  ],
+  "routing_elasticity_scenarios": [
+    {
+      "name": "h4_point",
+      "value": -1.0268679879053755
+    },
+    {
+      "name": "h4_ci_more_elastic",
+      "value": -1.2096590573873025
+    },
+    {
+      "name": "h4_ci_less_elastic",
+      "value": -0.8440769184234486
+    },
+    {
+      "name": "h4_drop_sub1pct",
+      "value": -0.8447554133619943
+    }
+  ],
+  "demand_elasticity_scenarios": [
+    -0.05,
+    -0.07
+  ],
+  "point_estimate_scenarios": [
+    {
+      "routing_elasticity_scenario": "h4_point",
+      "routing_elasticity": -1.0268679879053755,
+      "demand_elasticity": -0.07,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 0.4970641637202178,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9986262933533254,
+      "observed_proxy_weighted_revenue_gap_pct": 0.13737066466745773,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.9985469043543393,
+        0.998727240646822
+      ],
+      "pooled_unilateral_capture_ratio": 0.9986164643185816,
+      "pooled_unilateral_gap_pct": 0.13835356814183575,
+      "share_within_5pct_of_grid_optimum": 1.0,
+      "share_optimum_at_grid_boundary": 0.20546583850931677,
+      "share_with_raise_price_direction": 0.0,
+      "share_with_lower_price_direction": 0.9458385093167702,
+      "median_local_revenue_elasticity": -0.033257547788765315,
+      "median_optimal_price_multiple_within_grid": 0.7578582832551991
+    },
+    {
+      "routing_elasticity_scenario": "h4_point",
+      "routing_elasticity": -1.0268679879053755,
+      "demand_elasticity": -0.05,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 0.43505311413225556,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9988845493248046,
+      "observed_proxy_weighted_revenue_gap_pct": 0.11154506751953619,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.9988132622357268,
+        0.9989626679559311
+      ],
+      "pooled_unilateral_capture_ratio": 0.9988754075894872,
+      "pooled_unilateral_gap_pct": 0.11245924105127703,
+      "share_within_5pct_of_grid_optimum": 1.0,
+      "share_optimum_at_grid_boundary": 0.2027329192546584,
+      "share_with_raise_price_direction": 0.0,
+      "share_with_lower_price_direction": 0.9368944099378882,
+      "median_local_revenue_elasticity": -0.031431959200637856,
+      "median_optimal_price_multiple_within_grid": 0.7711054127039705
+    }
+  ],
+  "conditional_elasticity_uncertainty_envelope": {
+    "weighted_revenue_gap_pct_range": [
+      0.11154506751953619,
+      2.0149439643994294
+    ],
+    "day_bootstrap_and_elasticity_endpoint_gap_pct_range": [
+      0.10373320440688616,
+      2.1690923729780986
+    ],
+    "interpretation": "This envelope combines the H4 point and clustered 95% endpoints with the registered demand-elasticity scenarios. It remains conditional on H4 being a causal own-price response and on the bounded logit counterfactual."
+  },
+  "all_scenarios": [
+    {
+      "routing_elasticity_scenario": "h4_ci_less_elastic",
+      "routing_elasticity": -0.8440769184234486,
+      "demand_elasticity": -0.07,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 14.726119829048356,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9810441228442103,
+      "observed_proxy_weighted_revenue_gap_pct": 1.8955877155789724,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.9789983917269172,
+        0.9833255254140822
+      ],
+      "pooled_unilateral_capture_ratio": 0.9786845037584003,
+      "pooled_unilateral_gap_pct": 2.1315496241599674,
+      "share_within_5pct_of_grid_optimum": 0.3311801242236025,
+      "share_optimum_at_grid_boundary": 0.6305590062111801,
+      "share_with_raise_price_direction": 0.9450931677018634,
+      "share_with_lower_price_direction": 0.0004968944099378882,
+      "median_local_revenue_elasticity": 0.14924891430200266,
+      "median_optimal_price_multiple_within_grid": 4.0
+    },
+    {
+      "routing_elasticity_scenario": "h4_ci_less_elastic",
+      "routing_elasticity": -0.8440769184234486,
+      "demand_elasticity": -0.05,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 14.864127066457499,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9803742631301782,
+      "observed_proxy_weighted_revenue_gap_pct": 1.962573686982183,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.978309076270219,
+        0.982714968659956
+      ],
+      "pooled_unilateral_capture_ratio": 0.9779826432065595,
+      "pooled_unilateral_gap_pct": 2.2017356793440523,
+      "share_within_5pct_of_grid_optimum": 0.3274534161490683,
+      "share_optimum_at_grid_boundary": 0.6313043478260869,
+      "share_with_raise_price_direction": 0.9490683229813665,
+      "share_with_lower_price_direction": 0.0,
+      "median_local_revenue_elasticity": 0.15115581926306387,
+      "median_optimal_price_multiple_within_grid": 4.0
+    },
+    {
+      "routing_elasticity_scenario": "h4_ci_more_elastic",
+      "routing_elasticity": -1.2096590573873025,
+      "demand_elasticity": -0.07,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 10.86405322212377,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9798505603560057,
+      "observed_proxy_weighted_revenue_gap_pct": 2.0149439643994294,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.9783559185062969,
+        0.9814675535153634
+      ],
+      "pooled_unilateral_capture_ratio": 0.9777699650062802,
+      "pooled_unilateral_gap_pct": 2.2230034993719783,
+      "share_within_5pct_of_grid_optimum": 0.33291925465838507,
+      "share_optimum_at_grid_boundary": 0.4017391304347826,
+      "share_with_raise_price_direction": 0.0,
+      "share_with_lower_price_direction": 0.9634782608695652,
+      "median_local_revenue_elasticity": -0.2156827408290712,
+      "median_optimal_price_multiple_within_grid": 0.3922920489483754
+    },
+    {
+      "routing_elasticity_scenario": "h4_ci_more_elastic",
+      "routing_elasticity": -1.2096590573873025,
+      "demand_elasticity": -0.05,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 10.555859487062913,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9807957602872546,
+      "observed_proxy_weighted_revenue_gap_pct": 1.920423971274543,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.979337371042215,
+        0.9823805700666086
+      ],
+      "pooled_unilateral_capture_ratio": 0.978770914320192,
+      "pooled_unilateral_gap_pct": 2.122908567980797,
+      "share_within_5pct_of_grid_optimum": 0.3450931677018634,
+      "share_optimum_at_grid_boundary": 0.39627329192546584,
+      "share_with_raise_price_direction": 0.0,
+      "share_with_lower_price_direction": 0.9622360248447205,
+      "median_local_revenue_elasticity": -0.21396168834885132,
+      "median_optimal_price_multiple_within_grid": 0.3991491931783249
+    },
+    {
+      "routing_elasticity_scenario": "h4_drop_sub1pct",
+      "routing_elasticity": -0.8447554133619943,
+      "demand_elasticity": -0.07,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 14.64032820378086,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9811862799463925,
+      "observed_proxy_weighted_revenue_gap_pct": 1.8813720053607486,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.9792015635140752,
+        0.9836997801221291
+      ],
+      "pooled_unilateral_capture_ratio": 0.9788546756683171,
+      "pooled_unilateral_gap_pct": 2.1145324331682924,
+      "share_within_5pct_of_grid_optimum": 0.3324223602484472,
+      "share_optimum_at_grid_boundary": 0.6300621118012423,
+      "share_with_raise_price_direction": 0.9445962732919254,
+      "share_with_lower_price_direction": 0.0004968944099378882,
+      "median_local_revenue_elasticity": 0.14857081654287002,
+      "median_optimal_price_multiple_within_grid": 4.0
+    },
+    {
+      "routing_elasticity_scenario": "h4_drop_sub1pct",
+      "routing_elasticity": -0.8447554133619943,
+      "demand_elasticity": -0.05,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 14.778478751698298,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9805197467206256,
+      "observed_proxy_weighted_revenue_gap_pct": 1.9480253279374415,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.9784793582124268,
+        0.982763898508885
+      ],
+      "pooled_unilateral_capture_ratio": 0.978156455087718,
+      "pooled_unilateral_gap_pct": 2.184354491228202,
+      "share_within_5pct_of_grid_optimum": 0.32869565217391306,
+      "share_optimum_at_grid_boundary": 0.6308074534161491,
+      "share_with_raise_price_direction": 0.9488198757763975,
+      "share_with_lower_price_direction": 0.0,
+      "median_local_revenue_elasticity": 0.15047760802526022,
+      "median_optimal_price_multiple_within_grid": 4.0
+    },
+    {
+      "routing_elasticity_scenario": "h4_point",
+      "routing_elasticity": -1.0268679879053755,
+      "demand_elasticity": -0.07,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 0.4970641637202178,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9986262933533254,
+      "observed_proxy_weighted_revenue_gap_pct": 0.13737066466745773,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.9985469043543393,
+        0.998727240646822
+      ],
+      "pooled_unilateral_capture_ratio": 0.9986164643185816,
+      "pooled_unilateral_gap_pct": 0.13835356814183575,
+      "share_within_5pct_of_grid_optimum": 1.0,
+      "share_optimum_at_grid_boundary": 0.20546583850931677,
+      "share_with_raise_price_direction": 0.0,
+      "share_with_lower_price_direction": 0.9458385093167702,
+      "median_local_revenue_elasticity": -0.033257547788765315,
+      "median_optimal_price_multiple_within_grid": 0.7578582832551991
+    },
+    {
+      "routing_elasticity_scenario": "h4_point",
+      "routing_elasticity": -1.0268679879053755,
+      "demand_elasticity": -0.05,
+      "provider_market_days": 4025,
+      "market_days": 978,
+      "providers": 39,
+      "median_revenue_gap_pct": 0.43505311413225556,
+      "observed_proxy_weighted_revenue_capture_ratio": 0.9988845493248046,
+      "observed_proxy_weighted_revenue_gap_pct": 0.11154506751953619,
+      "weighted_capture_ratio_day_bootstrap_ci95": [
+        0.9988132622357268,
+        0.9989626679559311
+      ],
+      "pooled_unilateral_capture_ratio": 0.9988754075894872,
+      "pooled_unilateral_gap_pct": 0.11245924105127703,
+      "share_within_5pct_of_grid_optimum": 1.0,
+      "share_optimum_at_grid_boundary": 0.2027329192546584,
+      "share_with_raise_price_direction": 0.0,
+      "share_with_lower_price_direction": 0.9368944099378882,
+      "median_local_revenue_elasticity": -0.031431959200637856,
+      "median_optimal_price_multiple_within_grid": 0.7711054127039705
+    }
+  ],
+  "router_revenue_identification": {
+    "status": "not_point_identified",
+    "constant_take_rate_local_revenue_elasticities": [
+      0.95,
+      0.9299999999999999
+    ],
+    "reason": "The applicable take rate, end-user price schedule, and causal demand curve are not observed. Under a constant take rate and the scenario demand elasticities, router revenue is locally increasing in a common price multiplier, so no finite revenue-maximizing price or distance is identified."
+  },
+  "claim_boundary": "Each row is a bounded unilateral deviation around an observed public token share and posted completion-price proxy. It is not observed provider billing, profit, a causal demand curve, or a simultaneous equilibrium. Individual best-response revenue gains cannot be summed as an attainable market-wide revenue gain. Boundary optima mean the distance is unidentified beyond the registered grid."
+}

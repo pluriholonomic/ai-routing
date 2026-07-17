@@ -1,0 +1,119 @@
+{
+  "sources_observed": [
+    "akash",
+    "chutes",
+    "cow",
+    "defillama",
+    "geckoterminal",
+    "uniswap"
+  ],
+  "markets_observed": [
+    "decentralized_compute",
+    "defi_aggregate",
+    "defi_amm",
+    "defi_amm_indexed_control",
+    "defi_rfq"
+  ],
+  "metrics_observed": [
+    "capacity_participants",
+    "capacity_reporting_share",
+    "execution_success_rate",
+    "executions",
+    "finalized_executions",
+    "median_depth_usd",
+    "median_execution_price_usdc_per_weth",
+    "median_quote_price_usd",
+    "median_quote_price_usdc_per_weth",
+    "median_reported_value",
+    "participants",
+    "quotes",
+    "reported_available_capacity",
+    "reported_capacity",
+    "reported_used_capacity",
+    "reported_utilization"
+  ],
+  "source_coverage": {
+    "akash": {
+      "metric_rows": 12,
+      "days": 1,
+      "first_day": "2026-07-10 00:00:00",
+      "last_day": "2026-07-10 00:00:00"
+    },
+    "chutes": {
+      "metric_rows": 6,
+      "days": 1,
+      "first_day": "2026-07-10 00:00:00",
+      "last_day": "2026-07-10 00:00:00"
+    },
+    "cow": {
+      "metric_rows": 6,
+      "days": 1,
+      "first_day": "2026-07-10 00:00:00",
+      "last_day": "2026-07-10 00:00:00"
+    },
+    "defillama": {
+      "metric_rows": 2,
+      "days": 1,
+      "first_day": "2026-07-10 00:00:00",
+      "last_day": "2026-07-10 00:00:00"
+    },
+    "geckoterminal": {
+      "metric_rows": 3,
+      "days": 1,
+      "first_day": "2026-07-10 00:00:00",
+      "last_day": "2026-07-10 00:00:00"
+    },
+    "uniswap": {
+      "metric_rows": 19,
+      "days": 1,
+      "first_day": "2026-07-10 00:00:00",
+      "last_day": "2026-07-10 00:00:00"
+    }
+  },
+  "indexed_amm_controls": [
+    "geckoterminal"
+  ],
+  "finalized_uniswap_swap_observed": true,
+  "finalized_uniswap_depth_observed": false,
+  "finalized_uniswap_quote_curve_observed": true,
+  "cow_execution_observed": true,
+  "finalized_log_window_coverage": {
+    "uniswap": {
+      "source": "uniswap",
+      "window_count": 1,
+      "earliest_block": 25499805,
+      "latest_block": 25500828,
+      "covered_blocks": 1024,
+      "uncovered_blocks_between_windows": 0,
+      "contiguous_observed": null,
+      "observation_dates": [
+        "2026-07-10 00:00:00"
+      ],
+      "observation_days": 1,
+      "dynamic_panel_ready": false
+    },
+    "cow": {
+      "source": "cow",
+      "window_count": 1,
+      "earliest_block": 25499806,
+      "latest_block": 25500829,
+      "covered_blocks": 1024,
+      "uncovered_blocks_between_windows": 0,
+      "contiguous_observed": null,
+      "observation_dates": [
+        "2026-07-10 00:00:00"
+      ],
+      "observation_days": 1,
+      "dynamic_panel_ready": false
+    }
+  },
+  "finalized_log_panel_ready": false,
+  "comparison_status": "gated: finalized fixed-notional quote curves are observed, but finalized depth and/or market-wide RFQ execution panels are incomplete",
+  "required_next": [
+    "at least seven days of contiguous finalized Uniswap and CoW log windows",
+    "finalized Uniswap depth and swap events",
+    "market-wide CoW auction/settlement feed",
+    "at least seven daily Akash GPU-capacity snapshots before dynamic estimates",
+    "repeated Chutes active-deployment configuration snapshots; they remain a supply proxy, not availability, utilization, or routing outcomes"
+  ]
+}

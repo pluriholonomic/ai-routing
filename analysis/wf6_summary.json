@@ -1,11 +1,11 @@
 {
   "evidence_status": "provisional_descriptive",
-  "n_obs": 650642,
-  "n_endpoints": 318,
-  "phi_dlogreq30m_on_rlshare": 0.163,
+  "n_obs": 1354313,
+  "n_endpoints": 326,
+  "phi_dlogreq30m_on_rlshare": 0.116,
   "phi_ci95": [
-    0.128,
-    0.196
+    0.096,
+    0.14
   ],
   "read": "phi > 0 = retry amplification (C7 wedge live); phi < 0 = balking",
   "claim_boundary": "Rolling-window smoothing attenuates; rl_share is endogenous to demand level (mean reversion biases phi down within endpoint) \u2014 a positive phi is therefore conservative evidence of amplification; instrument version gates on provider-outage events."

@@ -9,13 +9,13 @@
     {
       "prediction": "invariant-ii quantity clears / price administers",
       "status": "consistent",
-      "evidence": "price ever-moved 12% vs rate-limit 86% over 9d",
+      "evidence": "price ever-moved 14% vs rate-limit 87% over 11d",
       "source": "cbh3"
     },
     {
       "prediction": "Q1 slow-over-fast price premium 10-30%",
       "status": "consistent",
-      "evidence": "premium 10.5% (Brown-MacKay band 10-30)",
+      "evidence": "premium 10.2% (Brown-MacKay band 10-30)",
       "source": "cbh5"
     },
     {
@@ -27,7 +27,7 @@
     {
       "prediction": "Q3 dispersion floor >=3% at high N",
       "status": "consistent",
-      "evidence": "median gap at N>=10: 7.7%; exact-tie share 46%",
+      "evidence": "median gap at N>=10: 7.2%; exact-tie share 45%",
       "source": "cbh2"
     },
     {
@@ -39,49 +39,49 @@
     {
       "prediction": "PM ladder: state-dependent + strategic, no congestion, not Calvo",
       "status": "consistent",
-      "evidence": "|gap| coef 1.287; congestion rung p=1.72e-01; L2 vs Calvo p=7.56e-76",
+      "evidence": "|gap| coef 1.438; congestion rung p=1.11e-01; L2 vs Calvo p=2.97e-79",
       "source": "pm1"
     },
     {
       "prediction": "PM sufficient statistic: CalvoPlus mixture (1 < Kur < 6)",
-      "status": "consistent",
-      "evidence": "within-standardized kurtosis 3.54 (menu-cost 1, Calvo 6)",
+      "status": "inconsistent",
+      "evidence": "within-standardized kurtosis 10.53 (menu-cost 1, Calvo 6)",
       "source": "pm2"
     },
     {
       "prediction": "Exact price atoms are author-specific",
       "status": "inconsistent",
-      "evidence": "adjacent-grid excess 53%, but author-minus-random-anchor 1.1% (exact upper-tail p=0.429); identity status non_discriminating_against_random_endpoint_anchor",
+      "evidence": "adjacent-grid excess 53%, but author-minus-random-anchor 0.4% (exact upper-tail p=0.522); identity status non_discriminating_against_random_endpoint_anchor",
       "source": "pm5"
     },
     {
       "prediction": "Lagged rival-price landing exceeds a matched common-menu null",
       "status": "inconsistent",
-      "evidence": "exact share 19.3%; matched-menu excess 6.6%; model-cluster CI [-0.22039684529330011, 0.11470759734346579]; past-only same-model excess 13.6%; own-menu-novel excess 0.12810266733145595; novel CI [-0.11498526501258986, 0.17889872056047015]; n=207",
+      "evidence": "exact share 13.7%; matched-menu excess 5.0%; model-cluster CI [-0.22518071885539115, 0.07808552877269323]; past-only same-model excess 9.1%; own-menu-novel excess 0.08247572464798224; novel CI [-0.12189870064106413, 0.14177819493429436]; n=335",
       "source": "pm5"
     },
     {
       "prediction": "Same-provider cross-model menu support explains lagged landings",
       "status": "inconsistent",
-      "evidence": "own-menu exact share 6.6%; landing-minus-nonlanding association -1.6%; model-cluster CI [-0.3103448275862069, 0.012369677686044972]; comparable n=183",
+      "evidence": "own-menu exact share 4.2%; landing-minus-nonlanding association 3.3%; model-cluster CI [-0.20833333333333334, 0.2874869383490073]; comparable n=313",
       "source": "pm5"
     },
     {
       "prediction": "Q reaction dynamics (reclassified)",
       "status": "accumulating",
-      "evidence": "true punish-and-revert 42% vs initiator-withdrawn 41% of cut events; raises followed 66%",
+      "evidence": "true punish-and-revert 51% vs initiator-withdrawn 31% of cut events; raises followed 53%",
       "source": "pm6"
     },
     {
       "prediction": "C7 retry externality (unpriced retries amplify demand)",
       "status": "consistent",
-      "evidence": "phi=0.163 [0.128, 0.196] \u2014 rate-limit spikes RAISE requests 30m later",
+      "evidence": "phi=0.116 [0.096, 0.14] \u2014 rate-limit spikes RAISE requests 30m later",
       "source": "wf6"
     },
     {
       "prediction": "C2/JRW: router steering memory (rewards past undercutting?)",
       "status": "accumulating",
-      "evidence": "cheapest w/ recent cut selected 0.039 vs w/o 0.233 \u2014 past cuts penalized, not rewarded (collusion-neutral static steering or worse)",
+      "evidence": "cheapest w/ recent cut selected 0.033 vs w/o 0.287 \u2014 past cuts penalized, not rewarded (collusion-neutral static steering or worse)",
       "source": "wf2"
     },
     {

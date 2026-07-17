@@ -1,33 +1,33 @@
 {
   "evidence_status": "provisional_descriptive",
-  "n_endpoints": 318,
-  "n_days": 9,
-  "share_endpoints_price_ever_moved": 0.11635220125786164,
-  "share_endpoints_rate_limit_ever_moved": 0.8647798742138365,
+  "n_endpoints": 326,
+  "n_days": 11,
+  "share_endpoints_price_ever_moved": 0.13803680981595093,
+  "share_endpoints_rate_limit_ever_moved": 0.8711656441717791,
   "share_endpoints_latency_ever_moved": 1.0,
   "shock_r2_median_by_horizon": {
     "30min": {
-      "price": 0.0014190233159721347,
-      "rate_limited": 0.0033973497971397175,
-      "p90_latency": 0.003919240021151333
+      "price": 0.0009872097846961077,
+      "rate_limited": 0.0019452647824348595,
+      "p90_latency": 0.003279403431297747
     },
     "3h": {
-      "price": 0.001859466807480367,
-      "rate_limited": 0.011648155620721388,
-      "p90_latency": 0.006087946806315205
+      "price": 0.0007332464861982647,
+      "rate_limited": 0.00635812125727328,
+      "p90_latency": 0.005675456935298124
     },
     "1d": {
-      "price": 0.04371890554483593,
-      "rate_limited": 0.01474718343393184,
-      "p90_latency": 0.013412409160830481
+      "price": 0.015557604420458195,
+      "rate_limited": 0.007784856562787339,
+      "p90_latency": 0.011119173445073715
     }
   },
   "diurnal_variance_share_median": {
-    "price": 0.047586900146225686,
-    "rate_limited": 0.038707112897799156,
-    "p90_latency": 0.06262780802493861
+    "price": 0.04405274229771061,
+    "rate_limited": 0.03437818303382506,
+    "p90_latency": 0.05848543885288676
   },
-  "queue_over_price_loading_1d": 0.3373182208051358,
+  "queue_over_price_loading_1d": 0.5003891571217919,
   "prediction": "invariant (ii): price R2 ~ 0 at <=1d while rate-limit/latency carry the shock; P2 baseline: diurnal share ~0 for price, positive for congestion",
   "claim_boundary": "Hot-model panel only; request_count_30m is a rolling window (attenuates high-frequency loadings toward zero for ALL outcomes, so the ratio, not the level, is the statistic). Demand innovations are not exogenous shocks. Loadings/diurnal shares for price are conditional on the small subset of endpoints whose price moved at all \u2014 read them jointly with the ever-moved shares."
 }

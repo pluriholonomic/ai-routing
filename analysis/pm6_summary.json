@@ -1,30 +1,31 @@
 {
   "evidence_status": "provisional_descriptive",
-  "n_events": 139,
+  "n_events": 223,
   "by_initiator_sign": {
     "cut": {
-      "punish_and_revert": 0.421,
-      "cut_withdrawn": 0.411,
-      "no_response": 0.126,
-      "reoptimize": 0.042
+      "punish_and_revert": 0.507,
+      "cut_withdrawn": 0.312,
+      "no_response": 0.174,
+      "reoptimize": 0.007
     },
     "raise": {
-      "followed_leadership": 0.659,
-      "unfollowed_raise_held": 0.182,
-      "failed_leadership": 0.159
+      "followed_leadership": 0.529,
+      "unfollowed_raise_held": 0.353,
+      "failed_leadership": 0.118
     }
   },
   "n_by_sign": {
-    "cut": 95,
-    "raise": 44
+    "cut": 138,
+    "raise": 85
   },
-  "low_volume_initiator_share": 0.439,
+  "low_volume_initiator_share": 0.493,
   "low_volume_initiator_classes": {
-    "punish_and_revert": 0.311,
-    "cut_withdrawn": 0.295,
-    "followed_leadership": 0.279,
-    "unfollowed_raise_held": 0.082,
-    "no_response": 0.033
+    "punish_and_revert": 0.336,
+    "followed_leadership": 0.273,
+    "cut_withdrawn": 0.227,
+    "unfollowed_raise_held": 0.127,
+    "no_response": 0.027,
+    "failed_leadership": 0.009
   },
   "reading_keys": {
     "punish_and_revert": "Green-Porter candidate (cut held; rivals cut then re-raise)",

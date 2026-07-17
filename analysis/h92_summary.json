@@ -1,0 +1,91 @@
+{
+  "evidence_status": "exact_accounting_decomposition_with_price_neutral_revenue_shares",
+  "identity": {
+    "formula": "log quantity share = log revenue-proxy share - log price + log market price index",
+    "max_absolute_residual": 3.552713678800501e-15,
+    "tolerance": 1e-10,
+    "passes": true,
+    "coefficient_translation_error": -3.3306690738754696e-16,
+    "standard_error_translation_error": 4.163336342344337e-17
+  },
+  "quantity_share_price_regression": {
+    "coefficient": -1.0268679879053746,
+    "standard_error": 0.09326074973567682,
+    "ci95": [
+      -1.2096590573873012,
+      -0.844076918423448
+    ],
+    "p_value_zero": 3.392819664095887e-28,
+    "n_observations": 6414,
+    "n_groups": 1411
+  },
+  "revenue_proxy_share_price_regression": {
+    "coefficient": -0.02686798790537496,
+    "standard_error": 0.09326074973567686,
+    "ci95": [
+      -0.2096590573873016,
+      0.1559230815765517
+    ],
+    "p_value_zero": 0.7732737555034255,
+    "n_observations": 6414,
+    "n_groups": 1411,
+    "equivalence_target": 0.0,
+    "equivalence_margin": 0.25,
+    "equivalence_p": 0.008365628334057755,
+    "equivalent_to_zero": true
+  },
+  "daily_stability": {
+    "days": 10,
+    "days_point_estimate_inside_zero_equivalence_band": 10,
+    "days_statistically_equivalent_to_zero": 0,
+    "coefficient_range": [
+      -0.1943829378768869,
+      0.17407381104831576
+    ]
+  },
+  "price_label_permutation": {
+    "draws": 999,
+    "seed": 20260716,
+    "observed_quantity_share_price_coefficient": -1.026867987905374,
+    "one_sided_p_quantity_slope_at_most_observed": 0.001,
+    "quantity_slope_null_ci95": [
+      -0.12068988308944181,
+      0.11714980236576657
+    ],
+    "revenue_share_slope_null_ci95": [
+      0.8793101169105583,
+      1.1171498023657667
+    ]
+  },
+  "within_between_revenue_share_translation": {
+    "status": "translated_by_exact_identity",
+    "effective_price": {
+      "between_revenue_share_price_coefficient": -0.03721516743924291,
+      "between_standard_error": 0.20334432541546907,
+      "within_revenue_share_price_coefficient": 0.6751819130201937,
+      "within_standard_error": 0.3593116869737671,
+      "identity": "revenue-share price coefficient = quantity-share price coefficient + 1"
+    },
+    "listed_prompt_open_weight": {
+      "between_revenue_share_price_coefficient": -0.6479352202039372,
+      "between_standard_error": 0.17975199120906113,
+      "within_revenue_share_price_coefficient": 1.3253704662903543,
+      "within_standard_error": 0.35609399056024765,
+      "identity": "revenue-share price coefficient = quantity-share price coefficient + 1"
+    },
+    "listed_prompt_open_weight_two_way_fe": {
+      "revenue_share_price_coefficient": 0.9803848677275797,
+      "standard_error": 0.408764296670665,
+      "ci95": [
+        0.17920684625307637,
+        1.7815628892020832
+      ],
+      "p_value_zero": 0.0164663684761163,
+      "quantity_share_price_coefficient": -0.019615132272420344,
+      "economic_interpretation": "This coefficient is the estimated local log-gradient of public gross revenue with respect to price if the fixed-effect quantity coefficient is interpreted as the provider's causal own-price elasticity.",
+      "identity": "revenue-share price coefficient = quantity-share price coefficient + 1"
+    }
+  },
+  "interpretation": "The pooled quantity-share coefficient near -1 is exactly the statement that public price-times-token revenue shares have a price coefficient near zero under the same fixed effects and controls. This is a stable cross-sectional allocation fact, not a provider residual-demand derivative or a revenue first-order condition.",
+  "claim_boundary": "The revenue object is effective output price multiplied by total tokens, not provider billing or profit. The decomposition is an accounting identity and does not by itself explain why price and quantity assort negatively. Price labels are endogenous, and the permutation test rejects exchangeable matching rather than identifying routing causality."
+}

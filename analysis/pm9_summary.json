@@ -3,22 +3,22 @@
   "n_author_moves_evaluated": 0,
   "share_author_moves_matched_within_96h": null,
   "match_lag_hours_median": null,
-  "third_party_changes_per_model_per_window_base": 4.175,
+  "third_party_changes_per_model_per_window_base": 4.366,
   "read": "matched-share >> base activity = active anchoring (third parties track the author's price); ~0 = launch-and-forget (ties are listing fossils)",
   "musolff_resetting_screen": {
     "raises": {
-      "n": 92,
-      "normalized_entropy": 0.773,
+      "n": 105,
+      "normalized_entropy": 0.816,
       "top_hour": 17,
-      "top_hour_share": 0.228
+      "top_hour_share": 0.21
     },
     "cuts": {
-      "n": 183,
-      "normalized_entropy": 0.835,
-      "top_hour": 0,
-      "top_hour_share": 0.262
+      "n": 368,
+      "normalized_entropy": 0.959,
+      "top_hour": 5,
+      "top_hour_share": 0.09
     },
     "read": "raises concentrated at one clock hour (low entropy) = algorithmic nightly resetting; symmetric entropy = no resetting"
   },
-  "claim_boundary": "Author identification by name heuristic; exact-price matching at rtol 1e-6; base rate is a crude per-window activity level, not a matched counterfactual \u2014 the DiD version gates on more author moves."
+  "claim_boundary": "Author identification uses the shared provider-family alias crosswalk; exact-price matching at rtol 1e-6; base rate is a crude per-window activity level, not a matched counterfactual \u2014 the DiD version gates on more author moves."
 }

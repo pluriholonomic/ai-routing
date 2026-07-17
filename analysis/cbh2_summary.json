@@ -1,74 +1,74 @@
 {
   "evidence_status": "provisional_descriptive",
-  "n_model_days": 1311,
+  "n_model_days": 1601,
   "n_models": 148,
   "gap_at_n2_median_pct": 0.0,
-  "gap_at_n10plus_median_pct": 7.6923076923077005,
-  "share_exact_tie_at_min": 0.4591914569031274,
+  "gap_at_n10plus_median_pct": 7.238095238095243,
+  "share_exact_tie_at_min": 0.4478450968144909,
   "curve": [
     {
       "n_bucket": 2,
-      "mean_gap_pct": 20.22809923797401,
+      "mean_gap_pct": 20.711331458703764,
       "median_gap_pct": 0.0,
-      "share_gap_lt_1pct": 0.5479041916167665,
-      "mean_range_pct": 20.22809923797401,
-      "n_model_days": 668
+      "share_gap_lt_1pct": 0.5233415233415234,
+      "mean_range_pct": 20.711331458703764,
+      "n_model_days": 814
     },
     {
       "n_bucket": 3,
-      "mean_gap_pct": 62.63627790386853,
+      "mean_gap_pct": 63.862070420950445,
       "median_gap_pct": 4.000000000000004,
-      "share_gap_lt_1pct": 0.39805825242718446,
-      "mean_range_pct": 152.5931330448361,
-      "n_model_days": 103
+      "share_gap_lt_1pct": 0.3902439024390244,
+      "mean_range_pct": 156.04879265601338,
+      "n_model_days": 123
     },
     {
       "n_bucket": 4,
-      "mean_gap_pct": 8.111817509881847,
+      "mean_gap_pct": 7.889971240555739,
       "median_gap_pct": 0.0,
-      "share_gap_lt_1pct": 0.6227544910179641,
-      "mean_range_pct": 55.362792343290394,
-      "n_model_days": 167
+      "share_gap_lt_1pct": 0.6280193236714976,
+      "mean_range_pct": 54.90384525868672,
+      "n_model_days": 207
     },
     {
       "n_bucket": 5,
-      "mean_gap_pct": 11.339534924197814,
-      "median_gap_pct": 4.9768518518518565,
-      "share_gap_lt_1pct": 0.417910447761194,
-      "mean_range_pct": 183.32845923573367,
-      "n_model_days": 134
+      "mean_gap_pct": 12.04263970204113,
+      "median_gap_pct": 6.250000000000006,
+      "share_gap_lt_1pct": 0.39622641509433965,
+      "mean_range_pct": 182.6889504922675,
+      "n_model_days": 159
     },
     {
       "n_bucket": 6,
-      "mean_gap_pct": 40.08158508158508,
-      "median_gap_pct": 50.000000000000014,
-      "share_gap_lt_1pct": 0.1,
-      "mean_range_pct": 216.20284409077516,
-      "n_model_days": 30
+      "mean_gap_pct": 35.617306669938245,
+      "median_gap_pct": 39.1025641025641,
+      "share_gap_lt_1pct": 0.15789473684210525,
+      "mean_range_pct": 211.88387728088273,
+      "n_model_days": 38
     },
     {
       "n_bucket": 7,
-      "mean_gap_pct": 0.0,
-      "median_gap_pct": 0.0,
-      "share_gap_lt_1pct": 1.0,
-      "mean_range_pct": 305.71428571428567,
-      "n_model_days": 5
+      "mean_gap_pct": 21.62004662004662,
+      "median_gap_pct": 12.500000000000005,
+      "share_gap_lt_1pct": 0.5,
+      "mean_range_pct": 366.8986568986569,
+      "n_model_days": 10
     },
     {
       "n_bucket": 8,
-      "mean_gap_pct": 13.502109704641356,
+      "mean_gap_pct": 11.047180667433837,
       "median_gap_pct": 20.253164556962034,
-      "share_gap_lt_1pct": 0.3333333333333333,
-      "mean_range_pct": 103.1090384188319,
-      "n_model_days": 9
+      "share_gap_lt_1pct": 0.45454545454545453,
+      "mean_range_pct": 98.71600751014476,
+      "n_model_days": 11
     },
     {
       "n_bucket": 9,
-      "mean_gap_pct": 5.610389610389612,
+      "mean_gap_pct": 5.489895470383278,
       "median_gap_pct": 0.5714285714285781,
-      "share_gap_lt_1pct": 0.7272727272727273,
-      "mean_range_pct": 85.97402597402598,
-      "n_model_days": 33
+      "share_gap_lt_1pct": 0.7317073170731707,
+      "mean_range_pct": 86.2020905923345,
+      "n_model_days": 41
     },
     {
       "n_bucket": 10,
@@ -76,23 +76,23 @@
       "median_gap_pct": 10.00000000000001,
       "share_gap_lt_1pct": 0.0,
       "mean_range_pct": 100.0,
-      "n_model_days": 9
+      "n_model_days": 11
     },
     {
       "n_bucket": 11,
-      "mean_gap_pct": 13.629763475719828,
+      "mean_gap_pct": 13.03249840401543,
       "median_gap_pct": 5.454545454545441,
       "share_gap_lt_1pct": 0.0,
-      "mean_range_pct": 227.81061485048969,
-      "n_model_days": 41
+      "mean_range_pct": 223.8575991217245,
+      "n_model_days": 51
     },
     {
       "n_bucket": 12,
-      "mean_gap_pct": 118.79818594104307,
+      "mean_gap_pct": 104.70848595848595,
       "median_gap_pct": 7.6923076923077005,
       "share_gap_lt_1pct": 0.0,
-      "mean_range_pct": 440.7953950811094,
-      "n_model_days": 21
+      "mean_range_pct": 410.1648351648352,
+      "n_model_days": 24
     },
     {
       "n_bucket": 13,
@@ -104,19 +104,19 @@
     },
     {
       "n_bucket": 14,
-      "mean_gap_pct": 9.262267500089857,
+      "mean_gap_pct": 8.195451873818643,
       "median_gap_pct": 8.333333333333343,
-      "share_gap_lt_1pct": 0.23809523809523808,
-      "mean_range_pct": 589.598054166464,
-      "n_model_days": 21
+      "share_gap_lt_1pct": 0.35714285714285715,
+      "mean_range_pct": 557.568453450118,
+      "n_model_days": 28
     },
     {
       "n_bucket": 15,
-      "mean_gap_pct": 17.963258246014945,
-      "median_gap_pct": 7.142857142857132,
-      "share_gap_lt_1pct": 0.19047619047619047,
-      "mean_range_pct": 211.35801679891568,
-      "n_model_days": 63
+      "mean_gap_pct": 16.973840133590084,
+      "median_gap_pct": 6.250000000000006,
+      "share_gap_lt_1pct": 0.19480519480519481,
+      "mean_range_pct": 208.47071581989476,
+      "n_model_days": 77
     }
   ],
   "benchmark_bms2004": {
@@ -124,5 +124,43 @@
     "17": 3.5
   },
   "prediction_q3": "quality-unadjusted gap floor >= ~3% at high N (clearinghouse); Bertrand alternative: gap -> 0 for N >= 3",
-  "claim_boundary": "Posted completion quotes, standard variants, not quality-adjusted; a nonzero gap can reflect quality differentiation as well as loyal-flow rents. The quality-adjusted version gates on the fingerprint probe panel."
+  "claim_boundary": "Posted completion quotes, standard variants, not quality-adjusted; a nonzero gap can reflect quality differentiation as well as loyal-flow rents. The quality-adjusted version gates on the fingerprint probe panel.",
+  "cent_grid_null_inference": {
+    "evidence_status": "cluster_inference",
+    "n_model_days": 1601,
+    "n_model_clusters": 148,
+    "grid_dollars_per_token": 1e-08,
+    "observed_tie_rate": 0.4478450968144909,
+    "null_tie_rate_mean": 0.1266039975015615,
+    "null_tie_rate_sd": 0.00817542339497345,
+    "observed_minus_null": 0.32124109931292943,
+    "cluster_bootstrap_ci95": [
+      0.25485331165871955,
+      0.37407451939968484
+    ],
+    "cluster_bootstrap_reps": 2000,
+    "null_simulation_reps": 1000,
+    "seed": 20260716,
+    "bootstrap_unit": "model; all model-days move together",
+    "interval_note": "One re-simulated null draw per outer replicate; conservative for null Monte Carlo noise."
+  },
+  "dime_grid_null_inference": {
+    "evidence_status": "cluster_inference",
+    "n_model_days": 1601,
+    "n_model_clusters": 148,
+    "grid_dollars_per_token": 1e-07,
+    "observed_tie_rate": 0.4478450968144909,
+    "null_tie_rate_mean": 0.270262336039975,
+    "null_tie_rate_sd": 0.010458439665538577,
+    "observed_minus_null": 0.1775827607745159,
+    "cluster_bootstrap_ci95": [
+      0.1017925964862105,
+      0.24498729201912117
+    ],
+    "cluster_bootstrap_reps": 2000,
+    "null_simulation_reps": 1000,
+    "seed": 20260717,
+    "bootstrap_unit": "model; all model-days move together",
+    "interval_note": "One re-simulated null draw per outer replicate; conservative for null Monte Carlo noise."
+  }
 }

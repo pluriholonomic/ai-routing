@@ -1,10 +1,88 @@
 {
-  "n_pairs": 62,
-  "n_days": 1,
+  "n_pairs": 263,
+  "n_days": 3,
   "providers": [
-    "deepinfra"
+    "cerebras",
+    "chutes",
+    "deepinfra",
+    "fireworks",
+    "novita",
+    "sambanova",
+    "together"
   ],
-  "share_exact_zero_basis": 1.0,
-  "max_abs_basis_pct": 2.220446049250313e-14,
-  "rfq_null": "basis \u2261 0 (quote passthrough); deviations = stale-quote windows"
+  "provider_pairs": {
+    "cerebras": 1,
+    "chutes": 8,
+    "deepinfra": 186,
+    "fireworks": 1,
+    "novita": 43,
+    "sambanova": 5,
+    "together": 19
+  },
+  "source_types": {
+    "cerebras": [
+      "structured_public_api"
+    ],
+    "chutes": [
+      "structured_public_api"
+    ],
+    "deepinfra": [
+      "structured_public_api"
+    ],
+    "fireworks": [
+      "published_model_page"
+    ],
+    "novita": [
+      "published_ssr_pricing_catalog"
+    ],
+    "sambanova": [
+      "structured_public_api"
+    ],
+    "together": [
+      "published_docs_table"
+    ]
+  },
+  "share_exact_zero_basis": 0.9657794676806084,
+  "max_abs_basis_pct": 90.0,
+  "rfq_null": "basis \u2261 0 (quote passthrough); deviations = stale-quote windows",
+  "temporal_boundary": "daily matched posted quotes; this panel cannot identify intraday refresh latency",
+  "power_gate": {
+    "min_days": 7,
+    "min_pairs": 50,
+    "min_providers": 3,
+    "min_pairs_per_provider": 10
+  },
+  "evidence_status": "power_gated",
+  "gate_reasons": [
+    "only 3/7 daily observations",
+    "providers below 10 pairs: cerebras, chutes, fireworks, sambanova"
+  ],
+  "claim_boundary": "posted list-price comparison only; it does not identify executable fills, routing decisions, or market-wide quote passthrough",
+  "routed_quote_sources": {
+    "cerebras": [
+      "api_endpoint_snapshot"
+    ],
+    "chutes": [
+      "api_endpoint_snapshot"
+    ],
+    "deepinfra": [
+      "api_endpoint_snapshot",
+      "frontend_endpoint_stats"
+    ],
+    "fireworks": [
+      "frontend_endpoint_stats"
+    ],
+    "novita": [
+      "api_endpoint_snapshot"
+    ],
+    "sambanova": [
+      "api_endpoint_snapshot",
+      "frontend_endpoint_stats"
+    ],
+    "together": [
+      "api_endpoint_snapshot",
+      "frontend_endpoint_stats"
+    ]
+  },
+  "max_quote_time_gap_minutes": 19.216666666666665
 }
