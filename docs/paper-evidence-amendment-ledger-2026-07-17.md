@@ -8,7 +8,7 @@ or promoted claims. It is not a substitute for the original protocols.
 
 - Dataset: private Hugging Face dataset `t4run/openrouter-market-history`.
 - Outcome-free randomized-design revision:
-  `4fd167d674f6b227b766df00505fe02da1325e63`.
+  `3efd953a98108381732684508991bab2f5ee28b4`.
 - Corrected public-input revision:
   `b389923ad7713bc230dd522f770aa306bf778806`.
 - Endpoint panel: 2,004,680 distinct provider-model listings from 2,116 capture
@@ -17,12 +17,12 @@ or promoted claims. It is not a substitute for the original protocols.
   availability-only and contain no price or capability conflict.
 - H80 outcome-free support: 156 verified first-position blocks with arm counts
   37, 43, 38, and 38; 100% assignment replay; outcomes masked.
-- H81 outcome-free support: 82 verified first-position blocks with arm counts
-  32, 23, and 27; 100% assignment replay and treatment-metadata compliance;
+- H81 outcome-free support: 84 verified first-position blocks with arm counts
+  32, 24, and 28; 100% assignment replay and treatment-metadata compliance;
   outcomes masked.
 - H81 external support: two repeated models, 74 eligibility rows, ranks five
   and six, effective model count two, and zero adjacent-run support turnover.
-- H81 has remaining arm deficits 8, 17, and 13. Calendar forecasts are omitted
+- H81 has remaining arm deficits 8, 16, and 12. Calendar forecasts are omitted
   because recent scheduling and eligibility failures make the short-run accrual
   rate nonstationary.
 - Cross-router catalog: one simultaneous cross section only. Of 29 HF-linked
@@ -32,11 +32,13 @@ or promoted claims. It is not a substitute for the original protocols.
 - H94 prospective support: zero snapshots after the 04:30:20 UTC activation
   cutoff and therefore zero eligible transitions, common shocks, or simulated
   route switches.
-- H95 outcome-free support: four planned triplets, 12 first-position blocks,
-  eight distinct models, effective model count 7.20, and perfect plan compliance
-  and replay. All 12 first requests are recorded; the first four triplets predate
-  the new row-level provider-order length fields and are explicitly
-  legacy-unverified. Three of four triplets fall in the largest six-hour bin, so
+- H95 outcome-free support: five planned triplets, 15 first-position blocks,
+  nine distinct models, effective model count 7.76, and perfect plan compliance
+  and replay. All 15 first requests are recorded; the first four triplets predate
+  the new row-level provider-order length fields and their 12 rows are explicitly
+  legacy-unverified. The newest triplet's three records are auditable and all
+  pass, giving 20% coverage and a 100% conditional pass rate. Three of five
+  triplets fall in the largest six-hour bin, so
   the early support does not pass the registered time-transport gate. No outcome
   was queried. Model blocks are sequential; policy-position randomization handles
   position-only drift, while direct-policy interpretation additionally requires
@@ -80,11 +82,12 @@ authoritative evidence for the rewrite.
   steps. New-head preflight `29563312069` then checked out `f2fd115`, pinned
   revision `4fd167d6`, reproduced H81 counts 32/23/27 and H95 support 4/120,
   and again reported `outcomes_queried=false` for both studies.
-- Four H95 workflow runs existed in the pinned dataset. The first hardened
-  scheduled run, `29564165459`, checked out `f170d89` and completed successfully
-  at 07:49 UTC. Its artifact had not yet been compacted into revision `4fd167d6`,
-  so the authoritative gate remains 4/120 rather than inferring a fifth valid
-  plan from workflow success alone. Subsequent clean checkouts record the
+- The first hardened scheduled H95 run, `29564165459`, checked out `f170d89`
+  and completed successfully at 07:49 UTC. New-head compaction `29564756681`
+  passed preparation, the 551-test suite, dataset publication, and all eight
+  table shards. Automatically triggered release audit `29565268475` checked out
+  `14ba8c6`, pinned revision `3efd953a`, proved a fifth valid triplet, and kept
+  both outcome-query flags false. Subsequent clean checkouts continue to record
   expanded treatment metadata without depending on the local computer.
 
 These workflows run on GitHub-hosted runners and do not depend on the local
@@ -117,6 +120,7 @@ computer remaining online.
 | 2026-07-17 07:31 / run `29563312069` | H81/H95 deployment | Verify the exact-inference manuscript/code head on the live remote release path | Both gates closed; `outcomes_queried=false` | Head `f2fd115` pinned revision `4fd167d6`; H81 remained 32/23/27 and H95 remained 4/120. This is deployment evidence, not an effect estimate. |
 | 2026-07-17 / `f170d89` | H95 | Prerelease audit found silent unknown-to-failure coercion, simulation-only tails despite a finite exact law, missing row-level provider-control lengths, marginal normal intervals, and unimplemented time/leave-one-model-out transport gates | H95 remained 4/120; the outcome-blind preflight selected assignment metadata only and reported `outcomes_queried=false` | Structural missing/noncompliant requests remain ITT zeros, but unknown compliant outcomes now suppress complete-data inference and enter `[0,1]` bounds. Fisher tails convolve the six assignments per triplet exactly, with a fail-closed 100,000-draw audit. Future rows carry provider-control lengths; the 12 legacy rows remain flagged in the horizon. Paired-t familywise intervals, distinct-triplet time concentration, whole-triplet LOMO, row-level outcome audit, and adversarial tests are implemented; the full suite has 551 passes. |
 | 2026-07-17 07:49 / run `29564165459` | H95 deployment | First scheduled collector run on the hardened metadata commit | Workflow succeeded on head `f170d89`; artifact not yet in the pinned revision; no outcome log inspected | Verifies remote deployment only. The manuscript retains 4/120 until compaction and an assignment-only gate audit prove another valid plan. |
+| 2026-07-17 08:06 / compaction `29564756681`, audit `29565268475` | H81/H95 | Fold the first hardened H95 artifact and verify the paper head remotely | Both gates closed; `outcomes_queried=false` | Head `14ba8c6` pinned revision `3efd953a`. H81 advanced to 84 blocks (32/24/28). H95 advanced to 5/120 with 15/15 first records, perfect replay/compliance, 12 legacy rows, and 3/3 newly auditable rows passing. This is assignment and deployment evidence only. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
 
 ## H81 stopping-time correction
@@ -138,7 +142,7 @@ standard error 0.49 percentage points).
 ## Claim consequences for the rewrite
 
 1. H81 is the focal randomized design, but no causal outcome is yet reportable;
-   the current outcome-free counts are 32, 23, and 27.
+   the current outcome-free counts are 32, 24, and 28.
 2. H80 is a separate replication and must retain both its original 40-per-arm
    history and its later 500-per-arm promotion rule.
 3. H82 is descriptive because its frozen pretrends fail.
@@ -147,7 +151,7 @@ standard error 0.49 percentage points).
 5. H93 is a cross-sectional equality fact only; no pass-through or reaction
    result exists yet.
 6. H94 is active only for post-04:30:20 UTC snapshots and has no prospective
-   result yet. H95 has four of 120 planned triplets and no released outcome.
+   result yet. H95 has five of 120 planned triplets and no released outcome.
    Its exact inference and transport implementation are frozen, but its first
    12 rows remain transparently legacy-unverified for the newly added provider-
    control length fields.

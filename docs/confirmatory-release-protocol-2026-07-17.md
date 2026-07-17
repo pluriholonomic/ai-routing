@@ -162,7 +162,7 @@ provider intent, collusion, or social welfare.
 - the remote workflow is compaction-triggered, non-cancelling, publishing, and
   artifact-retaining.
 
-The latest post-amendment preflight, workflow `29563312069`, ran code commit
+An earlier post-amendment preflight, workflow `29563312069`, ran code commit
 `f2fd115`, pinned dataset revision
 `4fd167d674f6b227b766df00505fe02da1325e63`, reported H81 counts 32/23/27 and
 four of 120 H95 triplets, and queried no outcome field. The preceding compact
@@ -172,9 +172,14 @@ repository suite after the H95 prerelease audit reports 551 passes. An
 outcome-blind local preflight using commit `f170d89` against the same pinned
 revision again found 4/120 H95 triplets, perfect plan compliance and replay,
 zero missing first records, 12 legacy-unverified metadata rows, and no outcome
-query.
+query. This records the pre-hardening baseline.
 
 Scheduled H95 workflow `29564165459` checked out `f170d89` and completed
-successfully at 07:49 UTC. Its artifact was not yet part of revision `4fd167d6`,
-so this is deployment evidence only; the paper and gate remain at 4/120 until a
-later compaction and assignment-only audit establish another valid plan.
+successfully at 07:49 UTC. New-head compaction `29564756681` then passed
+preparation, the 551-test suite, publication, and all eight table shards.
+Automatically triggered audit `29565268475` checked out paper/code head
+`14ba8c6`, pinned revision
+`3efd953a98108381732684508991bab2f5ee28b4`, and reported H81 counts 32/24/28
+and H95 support 5/120. H95 has 15/15 first records, perfect plan compliance and
+replay, 12 legacy-unverified rows, and 3/3 newly auditable rows passing. Both
+outcome-query flags remain false.

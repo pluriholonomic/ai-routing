@@ -61,6 +61,13 @@ The outcome-blind preflight at dataset revision
 recorded first requests, perfect plan compliance and assignment replay, zero
 missing first records, and 0/12 rows with the newly added order-length fields.
 
+Post-deployment assignment-only audit `29565268475` pinned revision
+`3efd953a98108381732684508991bab2f5ee28b4` after the first hardened collector
+run. The fixed horizon advanced to 5/120 with 15/15 first records, perfect replay
+and plan compliance, the same 12 legacy rows, and 3/3 newly auditable rows
+passing. Metadata coverage therefore rose to 20% exactly as intended; no outcome
+field was queried.
+
 ## Descriptive uncertainty and transport
 
 The paired normal intervals named in the original protocol are replaced by

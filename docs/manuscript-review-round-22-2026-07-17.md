@@ -36,11 +36,12 @@ result required for an EC/TEAC empirical acceptance.
   position-by-policy diagnostic, whole-triplet leave-one-model-out code, and
   adversarial tests.
 - The full 551-test repository suite and focused lint/format checks.
-- Outcome-blind preflight at dataset revision `4fd167d674f6b227b766df00505fe02da1325e63`:
-  four valid triplets, 12 recorded first requests, perfect plan compliance and
-  replay, zero missing first records, 12 legacy-unverified treatment-metadata
-  rows, and no outcome query.
-- The rebuilt 33-page PDF. The H95 main-text discussion, proposition, proof,
+- New-head outcome-blind audit `29565268475` at dataset revision
+  `3efd953a98108381732684508991bab2f5ee28b4`: five valid triplets, 15 recorded
+  first requests, perfect plan compliance and replay, zero missing first
+  records, 12 legacy-unverified rows, 3/3 newly auditable rows passing, and no
+  outcome query. H81 concurrently reports 84 blocks with counts 32/24/28.
+- The rebuilt 34-page PDF. The H95 main-text discussion, proposition, proof,
   claim ledger, and reproducibility pages render without clipping, undefined
   references, or overfull boxes.
 
@@ -91,7 +92,7 @@ or dropping the early rows would be worse.
 
 Six-hour concentration is computed from distinct triplets, not three replicated
 block rows. Leave-one-model-out drops every triplet containing the model, thereby
-preserving the randomized three-policy block. The current 4/120 sample already
+preserving the randomized three-policy block. The current 5/120 sample already
 passes model-count, effective-count, and dominance screens but fails the time
 gate because three triplets lie in one six-hour bin. The paper correctly treats
 this as early-accrual support, not an effect or a permanent failure.
@@ -109,13 +110,13 @@ paper stronger and prevents H95 from being oversold as automatic transport.
 
 ### 1. H81 still has no released outcome
 
-The authoritative counts remain 32 delegated-default, 23 no-fallback, and 27
+The authoritative counts are 32 delegated-default, 24 no-fallback, and 28
 explicit-price-order-with-fallback assignments. The 40-per-arm gate is closed.
 There is still no focal effect magnitude, interval, exact p-value, realized
 missingness pattern, or provider-selection result. The paper cannot be accepted
 for its proposed central empirical contribution before this object exists.
 
-### 2. H95 is not a substitute for H81 and is only 4/120
+### 2. H95 is not a substitute for H81 and is only 5/120
 
 H95 cannot be pooled with H81, stopped when its sign looks favorable, or used to
 retroactively broaden H81. Its exact inference currently validates code only.

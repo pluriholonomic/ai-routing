@@ -87,6 +87,19 @@ both HF publication steps, creating dataset head
 same H81 and H95 counts, and again reported `outcomes_queried=false` for both
 studies.
 
+After the H95 prerelease hardening, compaction `29564756681` passed preparation,
+the 551-test suite, publication, and all eight shards. Its automatically
+triggered confirmatory audit `29565268475` ran head `14ba8c6` against immutable
+revision `3efd953a98108381732684508991bab2f5ee28b4` and supersedes the accrual
+counts above:
+
+- H81: 84 verified blocks, counts 32/24/28, with 8/16/12 remaining.
+- H95: 5 valid triplets, 15/15 recorded first requests, 9 unique models,
+  effective model count 7.76, perfect replay/compliance, 12 legacy-unverified
+  treatment rows, and 3/3 newly auditable rows passing.
+- Both studies report `outcomes_queried=false`; these are assignment/support
+  updates, not effect estimates.
+
 The new `pm1_temporal_validation` module is fail-closed at 10/30 completed UTC
 dates. It excludes the represented but open July 17 date and does not query the
 pricing-event table before the gate. At 30 completed dates it will fit on the

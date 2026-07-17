@@ -140,7 +140,7 @@ they are not evidence for the focal clearing claim.
   primary contrasts isolate the option value of fallback and the additional
   value of hidden selection for the owned account.  Assignment replay and policy
   compliance are outcome-free.  At the pinned data revision the arm counts are
-  32, 23, and 27, below the original 40-per-arm release gate; no H81 outcome is
+  32, 24, and 28, below the original 40-per-arm release gate; no H81 outcome is
   reported.  The eligible support currently contains only two repeated models,
   which limits transport even after release.  We therefore froze H95 before its
   first request: an independent fixed-horizon replication over 120 three-model
@@ -279,8 +279,8 @@ provider--model listing observations from 2,116 capture runs on 11 UTC dates,
 count is 2,013,866; the difference preserves 9,186 same-listing raw variants,
 all due to availability state rather than price or capability conflicts.  The
 newest outcome-free randomized-design status is separately pinned at revision
-\texttt{4fd167d674f6}: H81 contains 82 verified first-position blocks, with arm
-counts 32, 23, and 27 and exact assignment replay.  Its earlier eligibility
+\texttt{3efd953a9810}: H81 contains 84 verified first-position blocks, with arm
+counts 32, 24, and 28 and exact assignment replay.  Its earlier eligibility
 audit contains 74 candidate rows across 37 runs; H80 remains a separate study
 with 156 verified first-position blocks over 40.7 hours.  The public cross-router
 collector has two snapshots per router over 0.054 days.  Its latest catalog has
@@ -290,9 +290,11 @@ H94 was activated as a future-only longitudinal protocol at 04:30:20 UTC.  Its
 03:30 discovery cross-section is ineligible; one later prospective snapshot per
 router is present, with zero price transitions or matched common shocks.  H95
 was frozen in commit \texttt{00351dd} at 04:44:10 UTC before its first request.
-Four written triplets are now present: all 12 first-position assignments replay
-and comply, they cover eight unique models (effective model count 7.20), and no
-outcome field was queried.  Its confirmatory horizon remains the first 120 written
+Five written triplets are now present: all 15 first-position assignments replay
+and comply, they cover nine unique models (effective model count 7.76), and no
+outcome field was queried.  The newest triplet's three provider-control records
+are auditable and all pass; the preceding 12 remain legacy-unverified.  Its
+confirmatory horizon remains the first 120 written
 triplet plans, not a balance-based stopping time.
 
 The price-atom, repricing-hazard, steering, and Brown--MacKay analyses below were
@@ -314,11 +316,11 @@ Panel & Rows / attempts & Span & Primary role \\
 \midrule
 Endpoint acquisition cut & 2,004,680 listings & 11 UTC dates & Current prices and public enforcement state \\
 Frozen pricing discovery cut & 1,747,960 listings / 313 changes & 9 days & Price atoms, hazards, and cadence screens \\
-H81 first-position assignments & 82 & ongoing & Fallback/selection release-gate support \\
+H81 first-position assignments & 84 & ongoing & Fallback/selection release-gate support \\
 H81 candidate eligibility & 74 & 37 runs & External-support and exclusion funnel \\
 H80 first-position assignments & 156 & 40.7 hours & Separate four-arm replication support \\
 Cross-router public catalogs & 2 snapshots/router & 0.054 days & Coverage and exact price equality only \\
-H95 prospective replication & 4 triplets / 12 blocks (12 legacy-control rows) & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
+H95 prospective replication & 5 triplets / 15 blocks (12 legacy-control rows) & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
 Historical quote registry & multi-year & 3 years & Lifecycle and duration sensitivity \\
 \bottomrule
 \end{tabular}
@@ -923,10 +925,10 @@ assignment attrition bounds, not a per-protocol treatment effect.
 
 The original H81 protocol releases the earliest chronological prefix with at
 least 40 verified first-position assignments in every arm, regardless of sign.
-At the outcome-free release revision \texttt{4fd167d674f6} (the full immutable
+At the outcome-free release revision \texttt{3efd953a9810} (the full immutable
 hash appears in the release manifest), the arm counts
-are 32, 23, and 27.  Assignment replay and treatment-metadata checks pass for all
-82 verified blocks, so outcomes remain physically unqueried by the public
+are 32, 24, and 28.  Assignment replay and treatment-metadata checks pass for all
+84 verified blocks, so outcomes remain physically unqueried by the public
 pre-gate analysis.  When the gate opens, the analysis will exclude its terminal
 block and condition on the remaining arm counts; this correction was frozen
 before the first H81 outcome release.  Commit \texttt{4d66fda}, also before
@@ -936,7 +938,7 @@ and the full 539-test suite pass.  The candidate funnel is narrow: 74 eligibilit
 two models at ranking positions five and six; both models are eligible in every
 recorded run and adjacent eligible support never changes.  The experiment will
 therefore identify a finite-sample policy effect for those model--time blocks,
-not a market-wide average.  The remaining arm deficits are 8, 17, and 13;
+not a market-wide average.  The remaining arm deficits are 8, 16, and 12;
 calendar-time forecasts are deliberately omitted because eligibility and workflow
 failures make the short-run accrual rate nonstationary.
 
@@ -973,12 +975,13 @@ model count five, no model over 35\%, no six-hour bin over 20\%, and whole-tripl
 leave-one-model-out sign stability.  The protocol, collector, analyzer, and
 workflow were frozen in commit \texttt{00351dd} before the first request; the
 prerelease inference and telemetry audit was frozen in commit \texttt{f170d89}
-with the outcome gate still closed.  At revision \texttt{4fd167d674f6}, the
-outcome-free support is four compliant triplets, 12 blocks, eight unique models,
-effective model count 7.20, perfect plan replay, and zero missing first records.
-All 12 first-position rows predate row-level provider-order lengths, so they
-remain in the horizon as legacy-unverified rather than being silently passed or
-discarded.  Three of four triplets occupy the largest six-hour bin, so this early
+with the outcome gate still closed.  At revision \texttt{3efd953a9810}, the
+outcome-free support is five compliant triplets, 15 blocks, nine unique models,
+effective model count 7.76, perfect plan replay, and zero missing first records.
+The first 12 first-position rows predate row-level provider-order lengths and
+remain legacy-unverified; all three records in the first hardened triplet are
+auditable and pass, for current audit coverage 20\% and conditional pass rate
+100\%.  Three of five triplets occupy the largest six-hour bin, so this early
 support fails the time-transport gate.  Because the three model blocks execute
 sequentially, a direct-policy interpretation also requires no treatment-dependent
 spillover from an earlier model block; the release includes a position-by-policy
@@ -1449,7 +1452,7 @@ provider-control length, concentrate every triplet in one six-hour bin, and
 verify that leave-one-model-out analysis drops whole triplets.  The full
 repository suite has 551 passes.  These checks validate the release code and
 claim boundary.  They are not H95 outcome evidence: the fixed horizon remains
-four of 120 at the pinned outcome-free revision.
+five of 120 at the pinned outcome-free revision.
 
 \section{Companion free-entry benchmark}
 \label{app:entry-benchmark}
@@ -1881,9 +1884,9 @@ identifiable when bids, acceptance, and termination are public.
 \toprule
 Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
-H81 fallback and hidden selection & 82 verified blocks; counts 32, 23, 27; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm gate; terminal excluded; Holm tests, familywise intervals, and worst-case treatment/outcome bounds frozen \\
+H81 fallback and hidden selection & 84 verified blocks; counts 32, 24, 28; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm gate; terminal excluded; Holm tests, familywise intervals, and worst-case treatment/outcome bounds frozen \\
 H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
-H95 fixed-horizon replication & Four compliant triplets, 12 blocks, eight unique models; 12 legacy-unverified control records; no outcome released & 120 written triplets, row-level control coverage, broad audited model/time support, and cross-position robustness & Fixed 120-triplet horizon; exact within-triplet Fisher law; whole-triplet LOMO; never pooled with H81 \\
+H95 fixed-horizon replication & Five compliant triplets, 15 blocks, nine unique models; 12 legacy-unverified and three passing auditable control records; no outcome released & 120 written triplets, row-level control coverage, broad audited model/time support, and cross-position robustness & Fixed 120-triplet horizon; exact within-triplet Fisher law; whole-triplet LOMO; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
 Stale-cheap pickoff channel & H84 rejects its directional prediction; backward placebo nonzero & Prospective sample and realized fill linkage & Disjoint H85 holdout \\
 Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous discovery cross section, Wilson interval $[0.828,0.994]$; 28/29 have an observed term conflict & Repeated changes, full contract comparability, eligibility, and fills & H94 has one prospective snapshot/router after 2026-07-17 04:30:20 UTC; all dynamic event gates closed \\
@@ -1961,9 +1964,14 @@ An outcome-blind preflight using \texttt{f170d89} against the same revision agai
 found H95 support 4/120, perfect plan compliance and replay, zero missing first
 records, and 12 legacy-unverified provider-control rows; it did not select an
 outcome field.  Scheduled collector run \texttt{29564165459} then checked out
-\texttt{f170d89} and completed successfully at 07:49 UTC.  Its artifact was not
-yet compacted into the pinned revision, so this is deployment evidence rather
-than a fifth counted triplet.
+\texttt{f170d89} and completed successfully at 07:49 UTC.  New-head compaction
+\texttt{29564756681} passed preparation, the 551-test suite, publication, and all
+eight table shards.  Its automatically triggered release audit
+\texttt{29565268475} checked out \texttt{14ba8c6}, pinned revision
+\texttt{3efd953a9810}, and found H81 counts 32/24/28 and H95 support 5/120.  H95
+has 15/15 recorded first requests, perfect replay and plan compliance, 20\%
+row-level control coverage, and a 100\% pass rate among the three auditable
+records; both studies again report \texttt{outcomes\_queried=false}.
 
 \paragraph{Privacy and platform load.}
 Capture records exclude prompts and completions.  The owned experiments use a

@@ -47,8 +47,8 @@ delegation as both an estimand and estimator identity.
    - Pass rule: 100% replay and treatment compliance. Any failure invalidates
      the affected block and triggers a collector incident, not an outcome-based
      exclusion.
-   - Current result: 82/82 for both checks at revision `4fd167d6`; arm counts
-     are 32, 23, and 27 and outcomes remain unqueried.
+   - Current result: 84/84 for both checks at revision `3efd953a`; arm counts
+     are 32, 24, and 28 and outcomes remain unqueried.
 
 2. **Stopped-design Monte Carlo**
    - Fix heterogeneous, policy-specific, time-varying potential outcomes.
@@ -140,20 +140,20 @@ cells have no preceding H95 block in the triplet. This is a falsification and
 sensitivity diagnostic, not a proof of no interference.
 
 The design uses a fixed horizon rather than the H81 arm-balance stopping rule and
-is never pooled with H81. At revision `4fd167d6`, four compliant triplets have
-accrued: 12 blocks over eight unique models, effective model count 7.20, perfect
+is never pooled with H81. At revision `3efd953a`, five compliant triplets have
+accrued: 15 blocks over nine unique models, effective model count 7.76, perfect
 plan compliance and replay, no missing first record, and no outcome query. The
-12 first-position rows predate the new row-level order-length fields; they remain
-in the horizon as `legacy_treatment_metadata_unverified`. Future rows record
-`requested_order_length`, `provider_only_count`, public provider count, and
-fallback state, and the release reports coverage and pass rates rather than
-silently certifying legacy rows. No H95 outcome is queried before 120 plans
-exist. Broad
+first 12 first-position rows predate the new row-level order-length fields and
+remain `legacy_treatment_metadata_unverified`. All three rows in the first
+hardened triplet carry the full provider-control metadata and pass, giving 20%
+coverage and 100% pass among auditable rows. The release reports coverage and
+pass rates rather than silently certifying legacy rows. No H95 outcome is
+queried before 120 plans exist. Broad
 transport additionally requires at least eight audited model ids, effective
 model count five, no model above 35% of plans, no six-hour bin above 20%, and both
 primary effect directions stable when each model's containing triplets are
-dropped whole. The current four-triplet support fails the time gate because its
-largest six-hour bin contains three of four triplets; this is an early-accrual
+dropped whole. The current five-triplet support fails the time gate because its
+largest six-hour bin contains three of five triplets; this is an early-accrual
 diagnostic, not a causal-design failure. Adversarial H95 tests and the full
 551-test repository suite pass. The launch establishes prospective operation
 only; it is not an empirical effect result.
