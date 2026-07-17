@@ -27,6 +27,7 @@ from typing import Any
 
 import httpx
 import pyarrow as pa
+import pyarrow.parquet as pq
 
 from .capture_api import write_partition
 from .capture_probes import (
@@ -108,6 +109,17 @@ PLAN_SCHEMA = pa.schema(
         ("run_ts", pa.string()),
         ("dt", pa.string()),
     ]
+)
+
+PLAN_AUDIT_FORBIDDEN_FIELDS = frozenset(
+    {
+        "outcome",
+        "cost_usd",
+        "latency_ms",
+        "selected_provider",
+        "retry_reason",
+        "generation_id",
+    }
 )
 
 
@@ -202,6 +214,62 @@ def write_decomposition_plan(
     )
 
 
+def write_decomposition_plan_audit(
+    plan_paths: list[Path],
+    *,
+    run_id: str,
+    output_path: Path = Path("data/outcome_free_audit/decomposition-plan-audit.json"),
+    source_commit: str | None = None,
+    workflow_run_id: str | None = None,
+) -> Path:
+    """Write an aggregate outcome-free commitment to this run's plan rows."""
+    if not plan_paths:
+        raise ValueError("at least one decomposition plan is required")
+
+    rows: list[dict[str, Any]] = []
+    file_commitments = []
+    schema_fields: set[str] = set()
+    for path in sorted(plan_paths, key=lambda item: str(item)):
+        table = pq.ParquetFile(path).read()
+        schema_fields.update(table.column_names)
+        rows.extend(table.to_pylist())
+        file_commitments.append(hashlib.sha256(path.read_bytes()).hexdigest())
+
+    forbidden_fields = sorted(schema_fields & PLAN_AUDIT_FORBIDDEN_FIELDS)
+    run_ids = sorted({str(row.get("run_id")) for row in rows})
+    study_ids = sorted({str(row.get("study_id")) for row in rows})
+    commitment_payload = json.dumps(file_commitments, separators=(",", ":"))
+    manifest = {
+        "audit_schema_version": 1,
+        "study_id": STUDY_ID,
+        "run_id": run_id,
+        "source_commit": source_commit,
+        "workflow_run_id": workflow_run_id,
+        "plan_file_count": len(plan_paths),
+        "plan_row_count": len(rows),
+        "plan_run_ids": run_ids,
+        "plan_study_ids": study_ids,
+        "plan_schema_fields": sorted(schema_fields),
+        "plan_commitment_sha256": hashlib.sha256(commitment_payload.encode()).hexdigest(),
+        "payload_retained_all_false": all(row.get("payload_retained") is False for row in rows),
+        "randomized_order_all_true": all(row.get("randomized_order") is True for row in rows),
+        "assignment_probability_first_all_one_third": all(
+            abs(float(row.get("assignment_probability_first", 0.0)) - 1.0 / 3.0) < 1e-12
+            for row in rows
+        ),
+        "run_id_match": run_ids == [run_id],
+        "study_id_match": study_ids == [STUDY_ID],
+        "forbidden_fields_present": forbidden_fields,
+        "outcomes_included": False,
+        "request_records_included": False,
+        "plan_persisted_before_probe_call_by_program_order": True,
+        "capture_log_outcome_fields": False,
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    return output_path
+
+
 def run_decomposition_probes(
     model_ids: list[str] | None = None,
     *,
@@ -209,6 +277,7 @@ def run_decomposition_probes(
     run_id: str | None = None,
     persist_plans: bool = True,
     curated_dir: Path = CURATED_DIR,
+    plan_paths: list[Path] | None = None,
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     seed_text = os.environ.get("ORCAP_DECOMP_RANDOMIZATION_SEED")
@@ -300,7 +369,7 @@ def run_decomposition_probes(
                 continue
             planned_at = run_timestamp()
             if persist_plans:
-                write_decomposition_plan(
+                plan_path = write_decomposition_plan(
                     {
                         "plan_id": block_id,
                         "planned_at": planned_at,
@@ -320,6 +389,8 @@ def run_decomposition_probes(
                     run_ts=f"{run_id}-{evaluation_order:03d}",
                     curated_dir=curated_dir,
                 )
+                if plan_paths is not None:
+                    plan_paths.append(plan_path)
             cheapest_price = float(endpoints[0]["price"])
 
             for position, task in enumerate(tasks):
@@ -376,15 +447,11 @@ def run_decomposition_probes(
                 )
                 records.append(record)
                 log.info(
-                    "decomposition block=%s position=%d policy=%s model=%s "
-                    "requested=%s selected=%s outcome=%s",
+                    "decomposition assignment persisted block=%s position=%d policy=%s model=%s",
                     block_id,
                     position,
                     task["policy"],
                     model_id,
-                    first_provider,
-                    selected,
-                    record["outcome"],
                 )
     return records
 
@@ -394,23 +461,30 @@ def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     run_id = run_timestamp()
     eligibility_records: list[dict[str, Any]] = []
+    plan_paths: list[Path] = []
     records = run_decomposition_probes(
         eligibility_records=eligibility_records,
         run_id=run_id,
+        plan_paths=plan_paths,
     )
     out = write_attempts(records, run_ts=run_id)
     eligibility_out = write_eligibility_audit(eligibility_records, run_ts=run_id)
+    plan_audit_out = write_decomposition_plan_audit(
+        plan_paths,
+        run_id=run_id,
+        source_commit=os.environ.get("GITHUB_SHA"),
+        workflow_run_id=os.environ.get("GITHUB_RUN_ID"),
+    )
     print(
         json.dumps(
             {
                 "study_id": STUDY_ID,
                 "probes": len(records),
                 "blocks": len({record["metadata"]["block_id"] for record in records}),
-                "with_selected_provider": sum(
-                    1 for record in records if record["selected_provider"]
-                ),
-                "total_cost_usd": sum(record["cost_usd"] or 0 for record in records),
-                "path": str(out) if out else None,
+                "plan_rows": len(plan_paths),
+                "plan_audit_path": str(plan_audit_out),
+                "outcome_fields_logged": False,
+                "request_artifact_written": out is not None,
                 "eligibility_candidates": len(eligibility_records),
                 "eligibility_eligible": sum(
                     1 for record in eligibility_records if record["eligible"]

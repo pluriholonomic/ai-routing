@@ -31,6 +31,14 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: uv run python -m orcap.capture_decomposition_probes
+      - name: publish outcome-free assignment-plan audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: decomposition-plan-audit-${{ github.run_id }}
+          path: data/outcome_free_audit/decomposition-plan-audit.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
       - name: buffer output for nightly consolidated push
         uses: actions/upload-artifact@v4
         with:

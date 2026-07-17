@@ -1,3 +1,4 @@
+import json
 import os
 import random
 
@@ -7,6 +8,7 @@ from orcap.capture_decomposition_probes import (
     decomposition_tasks,
     public_provider_order,
     write_decomposition_plan,
+    write_decomposition_plan_audit,
     write_eligibility_audit,
 )
 from orcap.capture_probes import (
@@ -248,3 +250,48 @@ def test_write_decomposition_plan_is_outcome_free_and_pre_request(tmp_path):
     assert row["first_policy_planned"] == "delegated_default"
     assert row["payload_retained"] is False
     assert not {"outcome", "cost_usd", "latency_ms", "selected_provider"} & set(row)
+
+
+def test_write_decomposition_plan_audit_is_separate_and_outcome_free(tmp_path):
+    run_id = "20260715T120000Z"
+    plan_path = write_decomposition_plan(
+        {
+            "plan_id": "block-a",
+            "planned_at": "20260715T120001Z",
+            "run_id": run_id,
+            "study_id": "openrouter-fallback-selection-decomposition-v1",
+            "ranking_position": 5,
+            "evaluation_order": 0,
+            "model_id": "model/a",
+            "block_id": "block-a",
+            "block_seed": "17",
+            "first_policy_planned": "delegated_default",
+            "assignment_probability_first": 1 / 3,
+            "randomized_order": True,
+            "public_provider_count": 3,
+            "public_provider_order_sha256": "abc",
+        },
+        run_ts=f"{run_id}-000",
+        dt="2026-07-15",
+        curated_dir=tmp_path / "curated",
+    )
+    output_path = tmp_path / "audit" / "plan.json"
+
+    result = write_decomposition_plan_audit(
+        [plan_path],
+        run_id=run_id,
+        output_path=output_path,
+        source_commit="abc123",
+        workflow_run_id="42",
+    )
+
+    manifest = json.loads(result.read_text())
+    assert manifest["plan_file_count"] == 1
+    assert manifest["plan_row_count"] == 1
+    assert manifest["run_id_match"] is True
+    assert manifest["study_id_match"] is True
+    assert manifest["forbidden_fields_present"] == []
+    assert manifest["outcomes_included"] is False
+    assert manifest["request_records_included"] is False
+    assert manifest["capture_log_outcome_fields"] is False
+    assert manifest["plan_persisted_before_probe_call_by_program_order"] is True
