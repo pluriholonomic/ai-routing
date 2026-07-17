@@ -38,6 +38,7 @@ jobs:
           uv run orcap route-sim-report --out analysis
           uv run orcap analyze --hypothesis h66 --out analysis
           uv run orcap analyze --hypothesis h67 --out analysis
+          uv run python -c "from pathlib import Path; from orcap.analysis.h93_cross_router_price_policy import run; run(Path('analysis'))"
       - name: inspect the coverage gate
         id: gate
         run: |
@@ -53,6 +54,7 @@ jobs:
             analysis/h66_summary.json
             analysis/h67_quote_pulse_*
             analysis/h67_summary.json
+            analysis/h93_*
           retention-days: 14
           compression-level: 0
       - name: publish the first complete 24-hour decision
@@ -65,4 +67,5 @@ jobs:
           cp analysis/h43_routing_simulation_*.parquet analysis/h43_routing_simulation_summary.json pushdata/analysis/
           cp analysis/h66_simulated_pricing_*.parquet analysis/h66_summary.json pushdata/analysis/
           cp analysis/h67_quote_pulse_*.parquet analysis/h67_quote_pulse_dashboard.html analysis/h67_summary.json pushdata/analysis/
+          cp analysis/h93_* pushdata/analysis/
           uv run orcap push --message "route simulation monitor ${{ github.run_id }}" --delete-local

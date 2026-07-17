@@ -10,6 +10,7 @@ usage = ["huggingface_open_models", "ollama_library", "docker_hub"]
 marketplace_history = ["openrouter_rankings_daily", "openrouter_app_rankings_daily"]
 bittensor = ["bittensor_chutes"]
 router_comparator = ["openrouter_api", "huggingface_inference_providers"]
+router_catalogs = ["glama_public_catalog", "requesty_public_catalog", "nemo_public_catalog"]
 # The hourly Hugging Face collector is buffered independently and only needs to
 # validate the source it has just captured.  Keep router_comparator for analyses
 # that require both routers to be available.
@@ -136,6 +137,24 @@ owner = "Hugging Face Inference Providers"
 required = true
 cadence_minutes = 80
 min_rows = 100
+
+[sources.glama_public_catalog]
+owner = "Glama"
+required = true
+cadence_minutes = 130
+min_rows = 1
+
+[sources.requesty_public_catalog]
+owner = "Requesty"
+required = true
+cadence_minutes = 130
+min_rows = 100
+
+[sources.nemo_public_catalog]
+owner = "NemoRouter"
+required = true
+cadence_minutes = 130
+min_rows = 50
 
 [sources.livepeer_gateway]
 owner = "Livepeer"

@@ -1,0 +1,37 @@
+name: router-catalogs
+
+# Credential-free comparator panel.  This records posted public catalog quotes
+# and provider menus; it never submits inference requests.
+on:
+  schedule:
+    - cron: "47 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: router-catalogs
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: capture public Glama, Requesty, and NemoRouter quote surfaces
+        run: uv run python -m orcap.capture_router_catalogs
+      - name: validate public router catalog source health
+        run: uv run orcap quality --profile router_catalogs
+      - name: buffer output as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: router-catalogs-${{ github.run_id }}
+          path: data/
+          retention-days: 7
+          compression-level: 0

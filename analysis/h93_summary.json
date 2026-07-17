@@ -1,0 +1,91 @@
+{
+  "hypothesis": "H93 cross-router same-provider/model pricing and policy response",
+  "evidence_status": "initial_cross_sectional_coverage_only",
+  "scenario": {
+    "input_tokens": 1000,
+    "output_tokens": 500
+  },
+  "observed": {
+    "elapsed_days": 0.0,
+    "routers_with_repeated_snapshots": 0,
+    "minimum_snapshots_per_router": 1,
+    "hf_linked_exact_matched_competitive_models": 54,
+    "price_events": 0,
+    "coincident_same_provider_model_events": 0,
+    "simulated_route_switches": 0
+  },
+  "requirements": {
+    "elapsed_days": 7.0,
+    "routers_with_repeated_snapshots": 3,
+    "minimum_snapshots_per_router": 48,
+    "hf_linked_exact_matched_competitive_models": 10,
+    "price_events": 30,
+    "coincident_same_provider_model_events": 15,
+    "simulated_route_switches": 15
+  },
+  "gates": {
+    "elapsed_days": false,
+    "routers_with_repeated_snapshots": false,
+    "minimum_snapshots_per_router": false,
+    "hf_linked_exact_matched_competitive_models": true,
+    "price_events": false,
+    "coincident_same_provider_model_events": false,
+    "simulated_route_switches": false
+  },
+  "coverage": [
+    {
+      "router": "glama",
+      "latest_run_ts": "2026-07-17T03:12:30.000Z",
+      "rows": 107,
+      "priced_rows": 107,
+      "models": 101,
+      "providers": 16,
+      "multi_provider_models": 5,
+      "exact_matched_models": 40,
+      "exact_matched_competitive_models": 3,
+      "hf_linked_exact_matched_models": 26,
+      "hf_linked_exact_matched_competitive_models": 3
+    },
+    {
+      "router": "nemorouter",
+      "latest_run_ts": "2026-07-17T03:12:30.000Z",
+      "rows": 114,
+      "priced_rows": 98,
+      "models": 114,
+      "providers": 5,
+      "multi_provider_models": 0,
+      "exact_matched_models": 43,
+      "exact_matched_competitive_models": 0,
+      "hf_linked_exact_matched_models": 32,
+      "hf_linked_exact_matched_competitive_models": 0
+    },
+    {
+      "router": "requesty",
+      "latest_run_ts": "2026-07-17T03:12:30.000Z",
+      "rows": 563,
+      "priced_rows": 563,
+      "models": 403,
+      "providers": 31,
+      "multi_provider_models": 89,
+      "exact_matched_models": 121,
+      "exact_matched_competitive_models": 58,
+      "hf_linked_exact_matched_models": 100,
+      "hf_linked_exact_matched_competitive_models": 51
+    }
+  ],
+  "posted_price_basis": {
+    "simultaneous_same_provider_model_pairs": 47,
+    "median_absolute_percent_wedge": 0.0,
+    "pairs_within_one_percent": 42,
+    "hf_linked_simultaneous_pairs": 29,
+    "hf_linked_exact_input_output_matches": 28,
+    "hf_linked_exact_match_share": 0.9655172413793104,
+    "hf_linked_exact_match_share_wilson_95_ci": [
+      0.8282447812067973,
+      0.9938867857072374
+    ],
+    "hf_linked_median_absolute_percent_wedge": 0.0,
+    "claim": "cross-sectional posted-price segmentation diagnostic only; same provider labels do not prove identical contracts, capacity, or realized execution"
+  },
+  "claim_boundary": "H93 currently observes posted public catalog quotes and simulated cheapest-provider choices. It does not observe market-wide flow, private eligibility, or realized routing. A causal router-policy claim additionally requires repeated common shocks, pre-trends, and owned-route validation."
+}

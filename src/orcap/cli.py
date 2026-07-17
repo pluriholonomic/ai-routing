@@ -92,6 +92,11 @@ def main() -> None:
         "--interval-seconds", type=float, default=900.0, help="spacing between snapshots"
     )
 
+    sub.add_parser(
+        "capture-router-catalogs",
+        help="snapshot public Glama, Requesty, and NemoRouter provider/model quotes",
+    )
+
     p_livepeer = sub.add_parser(
         "capture-livepeer",
         help="capture aggregate public Livepeer Gateway routing-adjustment metrics",
@@ -394,6 +399,10 @@ def main() -> None:
                 default=str,
             )
         )
+    elif args.command == "capture-router-catalogs":
+        from .capture_router_catalogs import main as router_catalogs_main
+
+        router_catalogs_main()
     elif args.command == "capture-livepeer":
         from .capture_livepeer import main as livepeer_main
 
