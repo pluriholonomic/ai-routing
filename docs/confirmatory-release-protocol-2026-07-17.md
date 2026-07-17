@@ -87,6 +87,17 @@ missing outcomes are sent to both worst-case endpoints; an unreconstructable
 arm widens the contrast to `[-1,1]`. These are attrition bounds, not a
 per-protocol effect.
 
+Commit `55b5087`, also made while the H81 outcome gate was closed, replaces the
+published Monte Carlo tail approximation with exact fixed-count Fisher
+randomization inference. Conditional on the preterminal arm counts and total
+number of successes, the three arm-success counts follow their finite
+multivariate-hypergeometric law. The analyzer sums that support for the
+one-sided and absolute contrast tails; the configured 100,000 permutations are
+retained only as an implementation discrepancy check. A brute-force five-block
+fixture enumerates all 30 assignments and agrees to machine precision. Commit
+`5cc0a4a` makes the production check fail closed if the maximum exact-versus-
+simulated tail discrepancy exceeds one percentage point.
+
 These releases identify owned-account policy effects over their realized model
 support. They do not identify market-wide routed share, private provider cost,
 provider intent, collusion, or social welfare.
@@ -112,4 +123,4 @@ The latest post-amendment preflight, workflow `29562343314`, ran code commit
 `8ce9eb75ed6ec76733a56d03b97b21ef55933345`, reported H81 counts 32/23/27 and
 four of 120 H95 triplets, and queried no outcome field. The preceding compact
 workflow `29561825717` passed preparation and all eight table shards. The full
-repository suite after the PM1 support-gate freeze reports 540 passes.
+repository suite after the fail-closed exact-inference audit reports 542 passes.

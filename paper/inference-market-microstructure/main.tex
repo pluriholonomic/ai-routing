@@ -152,9 +152,9 @@ they are not evidence for the focal clearing claim.
   decomposition and, after removing the gate-hitting terminal block, the
   conditional design-unbiasedness of the fixed-count arm means (equivalently,
   conditional Horvitz--Thompson contrasts).  The frozen release reports
-  fixed-count randomization tests with Holm adjustment, marginal Newcombe
-  intervals, and Bonferroni--Newcombe intervals simultaneous over the two
-  registered components.  Unknown or malformed outcomes are not failures:
+  exact fixed-count Fisher randomization tests with Holm adjustment, marginal
+  Newcombe intervals, and Bonferroni--Newcombe intervals simultaneous over the
+  two registered components.  Unknown or malformed outcomes are not failures:
   they suppress point inference and enter $[0,1]$ worst-case bounds together
   with missing or noncompliant treatment records.
   We also characterize what coarsened public timing cannot identify.  The design
@@ -885,10 +885,20 @@ No monotonicity of fallback or delegation is required.
 
 Under this conditional design, the Horvitz--Thompson mean and observed arm mean
 are identical.  We report that common point estimate, use Newcombe intervals as
-descriptive companions, and obtain exact or Monte Carlo randomization $p$-values
-by permuting the observed preterminal label multiset.  Independently drawing new
-labels with probability $1/3$ would fail to condition on the stopped design.  The
-proof and a simulation-validation protocol appear in \cref{app:h81-proof}.
+descriptive companions, and compute exact Fisher randomization $p$-values from
+the finite multivariate-hypergeometric support.  If $K$ of the $B$ preterminal
+outcomes are successes and arm $p$ has fixed count $n_p$, then under the sharp
+null the arm success vector $X$ has
+\begin{equation}
+ \Pr(X=x\mid K,n)=
+ \frac{\prod_{p\in\{N,F,D\}}\binom{n_p}{x_p}}{\binom{B}{K}},
+ \qquad \sum_p x_p=K.
+ \label{eq:h81-exact-randomization}
+\end{equation}
+We sum this law over the one-sided and absolute contrast tails; a 100,000-draw
+permutation is retained only as an implementation check.  Independently drawing
+new labels with probability $1/3$ would fail to condition on the stopped design.
+The proof and validation protocol appear in \cref{app:h81-proof}.
 
 The two directional components form one family.  Their one-sided conditional
 randomization tests receive Holm adjustment, and their confidence columns also
@@ -1294,7 +1304,14 @@ disappear while the true contrast remains inside the reported bounds.  A second
 adversary corrupts one treatment-control record, accrues a valid replacement,
 and confirms that the omitted record reappears in the intended-assignment
 worst-case interval.  These tests were committed in \texttt{4d66fda} before any
-H81 outcome release.
+H81 outcome release.  Commit \texttt{55b5087}, also before release, replaces the
+published Monte Carlo tail approximation with the exact law in
+\cref{eq:h81-exact-randomization}; all 30 unique assignments in a five-block
+$2/2/1$ fixture agree with brute-force enumeration to machine precision.  The
+100,000-draw tail remains in the output solely as a discrepancy audit, and the
+release fails closed if its maximum exact-versus-simulated tail discrepancy
+exceeds one percentage point.  That guard was frozen in commit
+\texttt{5cc0a4a}; the full repository suite has 542 passes.
 
 \begin{figure}[H]
 \centering
@@ -1792,8 +1809,10 @@ fields.  A non-publishing invocation remains preflight-only even after a gate
 opens.  The H81 release analyzer at commit \texttt{4d66fda} distinguishes
 binary failures from unknown outcomes, refuses complete-data inference under
 outcome attrition, and emits both arm-specific and intended-assignment
-worst-case bounds; the full repository test run after the subsequent PM1
-support-gate freeze has 540 passes.  The remote path publishes a content-hashed
+worst-case bounds.  Commit \texttt{55b5087} adds exact finite-support Fisher
+tails; commit \texttt{5cc0a4a} makes the retained permutation audit fail closed
+at a one-percentage-point discrepancy.  The full repository test run has 542
+passes.  The remote path publishes a content-hashed
 bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
 run \texttt{29562343314} reproduced H81 counts 32/23/27 and H95 support 4/120 at

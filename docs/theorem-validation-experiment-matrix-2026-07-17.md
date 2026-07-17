@@ -63,12 +63,19 @@ delegation as both an estimand and estimator identity.
 
 3. **Sharp-null randomization size**
    - Generate a common heterogeneous outcome path under the sharp null.
-   - Preserve each realized preterminal arm-count multiset in every permutation.
+   - Preserve each realized preterminal arm-count multiset. For each binary
+     outcome vector, sum the exact multivariate-hypergeometric arm-success law;
+     use simulation only to estimate repeated-experiment rejection frequency.
    - Pass rule: the 5% rejection rate must lie inside a predeclared Monte Carlo
      tolerance of `[0.03,0.07]` with at least 2,000 experiments for the final
      release audit.
    - Current final audit: 5.05% in 2,000 experiments (Monte Carlo standard error
      0.49 percentage points), inside the declared tolerance.
+   - Exact-enumerator audit: all 30 assignments in a five-block `2/2/1` fixture
+     agree with brute-force label enumeration to machine precision. Commit
+     `55b5087` froze the exact primary tails before outcome access; 100,000-draw
+     tails remain discrepancy checks. Commit `5cc0a4a` makes the release fail
+     closed if their maximum absolute discrepancy exceeds one percentage point.
 
 4. **Missingness adversary**
    - Replace a verified binary outcome with `unknown`; delete spend, latency,
@@ -85,9 +92,9 @@ delegation as both an estimand and estimator identity.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
    - Current result: implemented before outcome access in commit `4d66fda`.
-     Both adversarial tests and the full 539-test suite pass. The two primary
+     Both adversarial tests and the full 542-test suite pass. The two primary
      intervals additionally receive Bonferroni-Newcombe familywise adjustment;
-     their conditional randomization p-values retain the registered Holm family.
+     their exact conditional Fisher p-values retain the registered Holm family.
 
 5. **External-support and leave-one-model-out audit**
    - Report model dominance, effective model count, support turnover, arm balance
