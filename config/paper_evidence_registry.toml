@@ -1,0 +1,284 @@
+[release]
+schema_version = 1
+paper_path = "paper/inference-market-microstructure/main.tex"
+paper_track = "ACM EC / TEAC"
+authoritative_dataset = "t4run/openrouter-market-history"
+authoritative_revision = "1d366685a8e82ea5936ded5d325b6aa2c988e870"
+evidence_freeze_utc = "2026-07-17T03:30:47Z"
+status = "review-driven rewrite with blinded focal outcomes"
+amendment_ledger = "docs/paper-evidence-amendment-ledger-2026-07-17.md"
+
+# Every proposition/corollary currently present in the paper must occur here.
+# `disposition` is the planned location after the review-driven rewrite.
+[[claim]]
+claim_id = "T-MENU-EQUIVALENCE"
+kind = "theorem"
+tex_label = "prop:menu-equivalence"
+title = "Asynchronous-menu observational equivalence"
+disposition = "appendix"
+identification = "logical non-identification result"
+status = "proved and checked by finite witness construction"
+source_tables = []
+analyzers = ["src/orcap/analysis/theory_validation_suite.py"]
+collectors = []
+tests = ["tests/test_theory_validation_suite.py"]
+validation_methods = ["proof audit", "finite counterexample construction", "simulation recovery failure", "60,198 constructed leader witnesses"]
+claim_boundary = "Shows non-identification from coarsened public menus; it is not an empirical statement about router intent."
+
+[[claim]]
+claim_id = "T-MENU-DETECTION"
+kind = "theorem"
+tex_label = "prop:menu-detection-threshold"
+title = "Detection threshold of a dominating menu null"
+disposition = "appendix"
+identification = "finite-sample detection bound"
+status = "proved; analytic identity and Monte Carlo calibration agree on the validation grid"
+source_tables = ["endpoint_snapshots"]
+analyzers = ["src/orcap/analysis/theory_validation_suite.py"]
+collectors = ["src/orcap/capture_api.py"]
+tests = ["tests/test_theory_validation_suite.py"]
+validation_methods = ["proof audit", "Monte Carlo size and power", "cadence coarsening stress test"]
+claim_boundary = "A detection threshold under the maintained sampling model, not a causal test of hidden provider selection."
+
+[[claim]]
+claim_id = "T-COARSENING"
+kind = "theorem"
+tex_label = "prop:coarsening"
+title = "Coarsened-timing observational equivalence"
+disposition = "appendix"
+identification = "logical partial-identification result"
+status = "proved; finite coarsening witnesses constructed without failure"
+source_tables = ["endpoint_snapshots"]
+analyzers = ["src/orcap/analysis/bm4_reaction_rules.py", "src/orcap/analysis/theory_validation_suite.py"]
+collectors = ["src/orcap/capture_api.py"]
+tests = ["tests/test_theory_validation_suite.py"]
+validation_methods = ["proof audit", "timestamp-coarsening simulation", "sharp identified-set recovery"]
+claim_boundary = "Bounds behavior compatible with interval-censored events; it does not identify literal front-running."
+
+[[claim]]
+claim_id = "C-NAMED-RIVAL"
+kind = "corollary"
+tex_label = "cor:named-rival-bound"
+title = "Sharp named-rival response bounds"
+disposition = "appendix"
+identification = "partial-identification bound"
+status = "proved; construction sharpness checked, finite-sample coverage remains unvalidated"
+source_tables = ["endpoint_snapshots"]
+analyzers = ["src/orcap/analysis/bm4_reaction_rules.py", "src/orcap/analysis/theory_validation_suite.py"]
+collectors = ["src/orcap/capture_api.py"]
+tests = ["tests/test_theory_validation_suite.py"]
+validation_methods = ["proof audit", "finite-sample coverage simulation", "adversarial tie stress test"]
+claim_boundary = "Bounds named-rival reactions under interval censoring and cannot establish intent or request ordering."
+
+[[claim]]
+claim_id = "T-REVENUE-IDENTITY"
+kind = "theorem"
+tex_label = "prop:revenue-share-identity"
+title = "Quantity-share and revenue-share equivalence"
+disposition = "companion"
+identification = "accounting identity under explicit assumptions"
+status = "proved but empirically weak and outside the revised focal question"
+source_tables = ["model_activity", "endpoint_snapshots"]
+analyzers = ["src/orcap/analysis/h92_revenue_share_identity.py", "src/orcap/analysis/theory_validation_suite.py"]
+collectors = ["src/orcap/capture_api.py"]
+tests = ["tests/test_h92_revenue_share_identity.py", "tests/test_theory_validation_suite.py"]
+validation_methods = ["proof audit", "synthetic accounting recovery", "assumption-violation simulation"]
+claim_boundary = "An identity under homogeneous unit prices; it is not evidence that observed routing maximizes revenue or welfare."
+
+[[claim]]
+claim_id = "T-FREE-ENTRY"
+kind = "theorem"
+tex_label = "prop:free-entry"
+title = "Finite entry and the reliability/business-stealing wedge"
+disposition = "companion"
+identification = "stylized equilibrium comparative static"
+status = "proved in model; primitives not identified in current data"
+source_tables = []
+analyzers = ["src/orcap/analysis/theory_validation_suite.py"]
+collectors = []
+tests = ["tests/test_mechanism.py", "tests/test_theory_validation_suite.py"]
+validation_methods = ["proof audit", "equilibrium solver cross-check", "boundary and counterexample search"]
+claim_boundary = "A model result, not an empirical estimate of entry, welfare, or the number of providers in OpenRouter."
+
+# Focal theorem matching the H81 assignment design.
+[[claim]]
+claim_id = "T-DELEGATION-DECOMPOSITION"
+kind = "theorem"
+tex_label = "prop:delegation-decomposition"
+title = "Randomized fallback and hidden-selection decomposition"
+disposition = "main"
+identification = "finite-population randomized ITT decomposition"
+status = "theorem, proof, and stopped-design simulation validation present; H81 outcomes gated"
+source_tables = ["router_route_attempts", "router_probe_eligibility"]
+analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py", "src/orcap/analysis/h81_theorem_validation.py"]
+collectors = ["src/orcap/capture_decomposition_probes.py"]
+tests = ["tests/test_h81_delegation_decomposition.py", "tests/test_h81_theorem_validation.py", "tests/test_blinded_study_isolation.py"]
+protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md"]
+validation_methods = ["randomization algebra", "Monte Carlo design recovery", "missingness bounds", "leave-one-model-out sensitivity"]
+claim_boundary = "After removing the gate-hitting block, fixed-count arm means and conditional HT contrasts identify policy effects for the owned account and preterminal eligible blocks; the design does not identify router intent or social welfare."
+
+[[claim]]
+claim_id = "E-H81"
+kind = "empirical"
+tex_label = ""
+title = "Owned randomized fallback and hidden-selection experiment"
+disposition = "main"
+identification = "randomized first-position ITT"
+status = "power-gated; 76 verified blocks and minimum arm count 22 at the pinned revision"
+source_tables = ["router_route_attempts", "router_probe_eligibility"]
+analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py"]
+collectors = ["src/orcap/capture_decomposition_probes.py"]
+tests = ["tests/test_h81_delegation_decomposition.py", "tests/test_blinded_study_isolation.py"]
+protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md"]
+validation_methods = ["seed replay", "treatment compliance", "randomization inference", "Newcombe interval", "support audit"]
+claim_boundary = "Current support is two repeatedly eligible models with no adjacent support turnover; no outcome may be promoted before the frozen 40-per-arm gate."
+
+[[claim]]
+claim_id = "E-H80"
+kind = "empirical"
+tex_label = ""
+title = "Four-arm randomized provider-order replication"
+disposition = "appendix"
+identification = "randomized first-position ITT replication"
+status = "power-gated under a post-outcome conservative 500-per-arm amendment"
+source_tables = ["router_route_attempts"]
+analyzers = ["src/orcap/analysis/h80_matched_quote_firmness.py"]
+collectors = ["src/orcap/capture_probes.py"]
+tests = ["tests/test_h80_matched_quote_firmness.py", "tests/test_blinded_study_isolation.py"]
+protocols = ["experiments/h80-randomized-crossover-v2/preregistration.md", "manuscripts/h80-identification-correction-2026-07-16.md"]
+validation_methods = ["seed replay", "randomization inference", "support audit", "cross-study directional comparison"]
+claim_boundary = "Do not pool with H81. The 500-per-arm rule is a later replication promotion rule, not the original preregistered 40-per-arm stopping rule."
+
+[[claim]]
+claim_id = "E-H82"
+kind = "empirical"
+tex_label = ""
+title = "Price-invariant router enforcement event paths"
+disposition = "main support"
+identification = "retrospectively frozen descriptive event study"
+status = "released descriptive result with failed pretrends"
+source_tables = ["endpoint_snapshots", "event_burst_snapshots", "congestion_intraday"]
+analyzers = ["src/orcap/analysis/h82_enforcement_substitution.py"]
+collectors = ["src/orcap/capture_api.py"]
+tests = ["tests/test_h82_enforcement_substitution.py"]
+protocols = ["docs/h82-enforcement-substitution-preregistration.md", "docs/h82-enforcement-substitution-results-2026-07-15.md"]
+validation_methods = ["event accounting", "pretrend", "placebo", "leave-one-provider-out"]
+claim_boundary = "Shows an operational event at unchanged displayed price; failed pretrends prohibit a causal substitution claim."
+
+[[claim]]
+claim_id = "E-H84"
+kind = "empirical"
+tex_label = ""
+title = "Stale-cheap quote hazard falsification"
+disposition = "main support"
+identification = "retrospectively preregistered discovery association"
+status = "released negative directional result with nonzero backward placebo"
+source_tables = ["endpoint_snapshots"]
+analyzers = ["src/orcap/analysis/h84_stale_quote_hazard.py"]
+collectors = ["src/orcap/capture_api.py"]
+tests = ["tests/test_h84_h85_stale_quote_hazard.py"]
+protocols = ["docs/h84-h85-stale-quote-adverse-selection-preregistration.md", "docs/h84-stale-quote-hazard-results-2026-07-15.md"]
+validation_methods = ["conditional logit", "backward placebo", "cadence freeze", "directional falsification"]
+claim_boundary = "Rejects the specified stale-cheap prediction in the discovery cut; it does not rule out adverse selection generally."
+
+[[claim]]
+claim_id = "E-H93"
+kind = "empirical"
+tex_label = ""
+title = "Cross-router displayed-price equality"
+disposition = "main support if longitudinal gate opens"
+identification = "cross-sectional public catalog comparison"
+status = "one cross section only; 28 of 29 HF-linked pairs exactly match at the pinned revision"
+source_tables = ["router_public_quote_snapshots", "model_snapshots"]
+analyzers = ["src/orcap/analysis/h93_cross_router_price_policy.py"]
+collectors = ["src/orcap/capture_router_catalogs.py"]
+tests = ["tests/test_h93_cross_router_price_policy.py"]
+protocols = ["docs/cross-router-law-of-one-price-2026-07-16.md"]
+validation_methods = ["exact provider-model linkage", "Wilson interval", "longitudinal pass-through gate"]
+claim_boundary = "The current 28/29 comparison is cross-sectional coverage only; zero repeated snapshots means no pass-through, reaction, or routing claim is identified."
+
+[[claim]]
+claim_id = "E-H94"
+kind = "empirical"
+tex_label = ""
+title = "Cross-router quote pass-through holdout"
+disposition = "future holdout"
+identification = "prospective event-time panel"
+status = "draft only; not active or preregistered"
+source_tables = ["router_public_quote_snapshots"]
+analyzers = ["src/orcap/analysis/h94_cross_router_pass_through.py"]
+collectors = ["src/orcap/capture_router_catalogs.py"]
+tests = ["tests/test_h94_cross_router_pass_through.py"]
+protocols = ["docs/h94-cross-router-pass-through-preregistration-2026-07-17.md"]
+validation_methods = ["source-specific price events", "distributed lags", "negative controls", "simulated route switching"]
+claim_boundary = "No result exists. Activation requires a recorded freeze before additional longitudinal outcomes are inspected."
+
+[[gate_event]]
+study_id = "H80"
+effective_utc = "2026-07-15T09:47:52Z"
+commit = "8835d6f"
+gate_version = "v1"
+target_per_arm = 40
+event = "original prospective protocol and collector introduced"
+outcome_visibility = "v2 outcomes not yet collected"
+classification = "original preregistration"
+
+[[gate_event]]
+study_id = "H80"
+effective_utc = "2026-07-15T10:34:14Z"
+commit = "d187440"
+gate_version = "v1-frozen-prefix"
+target_per_arm = 40
+event = "earliest balanced prefix and public masking frozen"
+outcome_visibility = "before public confirmatory release"
+classification = "pre-release hardening"
+
+[[gate_event]]
+study_id = "H80"
+effective_utc = "2026-07-16T07:14:41Z"
+commit = "d96012a"
+gate_version = "v2-replication-promotion"
+target_per_arm = 500
+event = "promotion target raised after all-position aggregates were known but before the original first-position gate opened"
+outcome_visibility = "aggregate all-position outcomes visible; gated first-position outcomes unreleased"
+classification = "post-outcome conservative amendment"
+
+[[gate_event]]
+study_id = "H81"
+effective_utc = "2026-07-15T10:25:52Z"
+commit = "3bd2d03"
+gate_version = "v1"
+target_per_arm = 40
+event = "protocol, collector, and original stopping rule introduced"
+outcome_visibility = "before first H81 request"
+classification = "original preregistration"
+
+[[gate_event]]
+study_id = "H81"
+effective_utc = "2026-07-15T10:34:14Z"
+commit = "d187440"
+gate_version = "v1-frozen-prefix"
+target_per_arm = 40
+event = "earliest balanced prefix and output masking frozen"
+outcome_visibility = "before public confirmatory release"
+classification = "pre-release hardening"
+
+[[gate_event]]
+study_id = "H81"
+effective_utc = "2026-07-17T03:30:47Z"
+commit = "1d366685a8e82ea5936ded5d325b6aa2c988e870"
+gate_version = "v1-current-support"
+target_per_arm = 40
+event = "pinned support audit: 29, 22, and 25 assignments across three arms"
+outcome_visibility = "masked"
+classification = "outcome-free accrual audit"
+
+[[gate_event]]
+study_id = "H81"
+effective_utc = "2026-07-17T04:06:21Z"
+commit = "working-tree"
+gate_version = "v1-preterminal-conditional"
+target_per_arm = 40
+event = "exclude the gate-hitting terminal block and condition randomization inference on the preterminal arm counts"
+outcome_visibility = "dedicated analyzer remained gated; raw-source analyst blinding is not guaranteed"
+classification = "post-collection pre-release identification correction"

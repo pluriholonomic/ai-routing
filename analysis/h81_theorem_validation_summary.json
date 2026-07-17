@@ -1,0 +1,40 @@
+{
+  "hypothesis": "H81 stopped-design estimator validation",
+  "bias_draws": 20000,
+  "size_experiments": 500,
+  "mean_stopping_blocks": 136.26365,
+  "p95_stopping_blocks": 156.0,
+  "contrast_validation": [
+    {
+      "estimand": "fallback_option",
+      "corrected_bias": -0.00010399616849798759,
+      "corrected_monte_carlo_se": 0.00012396411092515866,
+      "corrected_rmse": 0.01753104286833974,
+      "terminal_inclusive_bias": -0.000394683329554969,
+      "terminal_inclusive_monte_carlo_se": 0.00012337860900814984,
+      "terminal_inclusive_rmse": 0.01745239742457139
+    },
+    {
+      "estimand": "hidden_selection",
+      "corrected_bias": -5.107166780510503e-06,
+      "corrected_monte_carlo_se": 0.00010943968987464033,
+      "corrected_rmse": 0.015476723278348741,
+      "terminal_inclusive_bias": 7.767158078007549e-05,
+      "terminal_inclusive_monte_carlo_se": 0.00010904606394914729,
+      "terminal_inclusive_rmse": 0.015421252319005369
+    },
+    {
+      "estimand": "total_delegation",
+      "corrected_bias": -0.0001091033352784981,
+      "corrected_monte_carlo_se": 0.00015223594514598347,
+      "corrected_rmse": 0.021529152041931243,
+      "terminal_inclusive_bias": -0.0003170117487748935,
+      "terminal_inclusive_monte_carlo_se": 0.00015133031996873345,
+      "terminal_inclusive_rmse": 0.021403151880503596
+    }
+  ],
+  "randomization_test_rejection_rate_5pct": 0.054,
+  "randomization_test_rejection_rate_mc_se": 0.010107818755794942,
+  "evidence_status": "simulation_validation_not_empirical_evidence",
+  "claim_boundary": "This validates the stopped-design estimator under a synthetic fixed potential-outcome schedule. It does not validate H81 transport, outcomes, or market welfare."
+}

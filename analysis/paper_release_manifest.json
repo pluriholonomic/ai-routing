@@ -1,0 +1,229 @@
+{
+  "authoritative_dataset": "t4run/openrouter-market-history",
+  "authoritative_revision": "1d366685a8e82ea5936ded5d325b6aa2c988e870",
+  "evidence_freeze_utc": "2026-07-17T03:30:47Z",
+  "files": [
+    {
+      "bytes": 14180,
+      "path": "config/paper_evidence_registry.toml",
+      "sha256": "4146ac955f8f2c9a84ed0697149ac1acf593bc2ff7aed3bbfb295e4835ec2c3f"
+    },
+    {
+      "bytes": 3183,
+      "path": "docs/cross-router-law-of-one-price-2026-07-16.md",
+      "sha256": "6b12ee4deb662821bc9ea350f89bdb334ad721221d817bc2054f2e617d878433"
+    },
+    {
+      "bytes": 7924,
+      "path": "docs/h82-enforcement-substitution-preregistration.md",
+      "sha256": "0e7614ee423bc3ae94931e9148db673c423538dc13c973e21aac90f84ef0ef3a"
+    },
+    {
+      "bytes": 5318,
+      "path": "docs/h82-enforcement-substitution-results-2026-07-15.md",
+      "sha256": "da7c55ddf74e5b15af7ce0d7c1c7b02780981e4c1afcb4f355f482a322390f24"
+    },
+    {
+      "bytes": 11653,
+      "path": "docs/h84-h85-stale-quote-adverse-selection-preregistration.md",
+      "sha256": "7a3013092e617cd1f3106c05549fd7df381504b151900a21fa792acfc54be455"
+    },
+    {
+      "bytes": 6806,
+      "path": "docs/h84-stale-quote-hazard-results-2026-07-15.md",
+      "sha256": "19166ac97a9f4bc4ef9f26500a1f7d0bca3650e73858bd4354bfdcfe759d755d"
+    },
+    {
+      "bytes": 4274,
+      "path": "docs/h94-cross-router-pass-through-preregistration-2026-07-17.md",
+      "sha256": "75e4b5842c79b9d6a75eb1d27098a7ec3f5bfba8f00e9a879f4d15815e41238f"
+    },
+    {
+      "bytes": 6998,
+      "path": "docs/paper-evidence-amendment-ledger-2026-07-17.md",
+      "sha256": "570267e4428a0d0a9af8cb72719b9e62d0c45bbf4648bd16c6d3adfe3bc51c3e"
+    },
+    {
+      "bytes": 7347,
+      "path": "experiments/h80-randomized-crossover-v2/preregistration.md",
+      "sha256": "17063308cdd3e49ecb5a8191b61e39381b95b69372d6e2244839ec0911657391"
+    },
+    {
+      "bytes": 9496,
+      "path": "experiments/h81-delegation-decomposition-v1/preregistration.md",
+      "sha256": "df7eb68091ac3b7304e57af675d245704abb33e1a12a05cd474c10ab979a85d9"
+    },
+    {
+      "bytes": 2715,
+      "path": "manuscripts/h80-identification-correction-2026-07-16.md",
+      "sha256": "9243fe6aca70f1d47a8a70e4199bdb07b3d64594018f1f986839473e194bf7ed"
+    },
+    {
+      "bytes": 42336,
+      "path": "paper/inference-market-microstructure/figures/brown_mackay_audit.pdf",
+      "sha256": "5709371eac108da35f7fd608dd6c03b956e9bdb94eae33ffdfaf2f194207f899"
+    },
+    {
+      "bytes": 22155,
+      "path": "paper/inference-market-microstructure/figures/h81_theorem_validation.pdf",
+      "sha256": "3ca4d4e8025dd5ffd2c5981223b0d4d40434b1b996402397a6abfc96ad1d8593"
+    },
+    {
+      "bytes": 31090,
+      "path": "paper/inference-market-microstructure/figures/h93_cross_router_price_policy_panel.pdf",
+      "sha256": "4dfed0db2dee16b53ac9d9ed9dd2eaf15656daf089b812b6c315118f4b0e43ae"
+    },
+    {
+      "bytes": 24551,
+      "path": "paper/inference-market-microstructure/figures/menu_control_simulation.pdf",
+      "sha256": "f0ae8787009cda61fdc3967bdb18a98c865154a8b4711cf4508f38cd3d313a0a"
+    },
+    {
+      "bytes": 23846,
+      "path": "paper/inference-market-microstructure/figures/theory_validation_suite.pdf",
+      "sha256": "199ea7b6288b525db3dcfdefe4f1a7398b928397ac8adc3bcb11fd4b9b216643"
+    },
+    {
+      "bytes": 95197,
+      "path": "paper/inference-market-microstructure/main.tex",
+      "sha256": "b7063b1d81e1dee54ac65511af1546c407bd8eace84480aa91154394ac20086c"
+    },
+    {
+      "bytes": 8244,
+      "path": "paper/references.bib",
+      "sha256": "51e59d43c1a754834ceeb375d93f9d22b9aa2fe76b20c2a7c79d36dc0e18efd2"
+    },
+    {
+      "bytes": 15892,
+      "path": "src/orcap/analysis/bm4_reaction_rules.py",
+      "sha256": "08cdb66ebdfd11f6959cfeb61aa326a793655f22c94d96ca7f417630ea078c24"
+    },
+    {
+      "bytes": 52458,
+      "path": "src/orcap/analysis/h80_matched_quote_firmness.py",
+      "sha256": "e9b9179a526ae2e5ce747214fef1a286e394d49dc9d3a4b4d941db8efd9aa183"
+    },
+    {
+      "bytes": 43126,
+      "path": "src/orcap/analysis/h81_delegation_decomposition.py",
+      "sha256": "e58249bee5da397b074ab411ec979d1a3bd8bcca7ec4d603a08ca6b0adf943ca"
+    },
+    {
+      "bytes": 10058,
+      "path": "src/orcap/analysis/h81_theorem_validation.py",
+      "sha256": "5f143da2eed9f7df74ff1305818c050f447b708358dda30e929673f2f61c98e6"
+    },
+    {
+      "bytes": 37585,
+      "path": "src/orcap/analysis/h82_enforcement_substitution.py",
+      "sha256": "cb5c69499181f1e4637deac0c7e15a26b6ed6be1ae9b3d1db3743bab32e81a9d"
+    },
+    {
+      "bytes": 38246,
+      "path": "src/orcap/analysis/h84_stale_quote_hazard.py",
+      "sha256": "cf78c67e8f71e3bef931830d14608c6c4c3e315565c2823efa4498490a0d529a"
+    },
+    {
+      "bytes": 14467,
+      "path": "src/orcap/analysis/h92_revenue_share_identity.py",
+      "sha256": "636d8627c2cd6b1c5c3ab541c9423b80f48d99ea5aec4b9297e22d956b9c0337"
+    },
+    {
+      "bytes": 31003,
+      "path": "src/orcap/analysis/h93_cross_router_price_policy.py",
+      "sha256": "0ed758268055ae7c21708b3df9d60de9ad31d3d6cc8fe3b56a6a9556e8e5a530"
+    },
+    {
+      "bytes": 40712,
+      "path": "src/orcap/analysis/h94_cross_router_pass_through.py",
+      "sha256": "2fee87c554a70b4d6ff73cb1250c58c74b72fcc3b20b5471f754b4c42cf40081"
+    },
+    {
+      "bytes": 11108,
+      "path": "src/orcap/analysis/theory_validation_suite.py",
+      "sha256": "94e8a558e0a4e7a9bb1e74978971b3bd3037c3a72168b6de5c8f0690b97af09b"
+    },
+    {
+      "bytes": 19805,
+      "path": "src/orcap/capture_api.py",
+      "sha256": "dda7a5959affe47ffe3c31c10ccc7be519145e95e0a9e3016de779fd17c2ac3a"
+    },
+    {
+      "bytes": 13337,
+      "path": "src/orcap/capture_decomposition_probes.py",
+      "sha256": "e817d8b1905f764d5c98fb2ea0170f894dc3b6b8a78c68c091b3f25283269ce0"
+    },
+    {
+      "bytes": 15264,
+      "path": "src/orcap/capture_probes.py",
+      "sha256": "dcc8b8072f685270897cde32961ebafa9881347ab4e1f115e87b38a9aaad70ec"
+    },
+    {
+      "bytes": 19037,
+      "path": "src/orcap/capture_router_catalogs.py",
+      "sha256": "90859a66006d1c3d0830af22af5c08570d360d8631fa3885cd4ac97ce79f747c"
+    },
+    {
+      "bytes": 3157,
+      "path": "tests/test_blinded_study_isolation.py",
+      "sha256": "f910ce5ef9018a1ddcfca03c0656350d07e518d3b0b86ef6b2f1176ed2255d76"
+    },
+    {
+      "bytes": 12951,
+      "path": "tests/test_h80_matched_quote_firmness.py",
+      "sha256": "63524e8f2b14489cc0e2a83f243b2d7beacd3f47de19bf867d26f22232b9137c"
+    },
+    {
+      "bytes": 9531,
+      "path": "tests/test_h81_delegation_decomposition.py",
+      "sha256": "283cfd76bd9b8418c356331bab9abe87192ec1876baa470f991c4dcdf11258e7"
+    },
+    {
+      "bytes": 1186,
+      "path": "tests/test_h81_theorem_validation.py",
+      "sha256": "d283706622438d2990b033fa09adbef011719c9a5e56e1a9a7989e66e6f1e897"
+    },
+    {
+      "bytes": 6720,
+      "path": "tests/test_h82_enforcement_substitution.py",
+      "sha256": "d2a476de3cc541db6407e8f5bf8fd6b48aab741ef9c493cfe3e4de6099d023d2"
+    },
+    {
+      "bytes": 5095,
+      "path": "tests/test_h84_h85_stale_quote_hazard.py",
+      "sha256": "53a9fad3499462f23d2374908d8651cc302e89675124c814e51964e755219e63"
+    },
+    {
+      "bytes": 2566,
+      "path": "tests/test_h92_revenue_share_identity.py",
+      "sha256": "a1ff14f47318d063d02d86ac1c904488b023f9a834638da60f484adce6388484"
+    },
+    {
+      "bytes": 5147,
+      "path": "tests/test_h93_cross_router_price_policy.py",
+      "sha256": "7a9511104937bcbef5248d1c30ec229233c60e76e74f00c2cb40f16b88964d4d"
+    },
+    {
+      "bytes": 2403,
+      "path": "tests/test_h94_cross_router_pass_through.py",
+      "sha256": "a2a6d79b73c857940a6f824a8391fd804716626e954c1dd8b23ccd6109ddfcc0"
+    },
+    {
+      "bytes": 38762,
+      "path": "tests/test_mechanism.py",
+      "sha256": "15be7e5736852b2afbb1e35dc94e5b29a35ea75affd9dcaf3d424d558f5c823d"
+    },
+    {
+      "bytes": 1220,
+      "path": "tests/test_theory_validation_suite.py",
+      "sha256": "28fe964519ae7d4dec1ac3c2c191d3f518b5fab567a4a2af591d610686da580e"
+    }
+  ],
+  "gate_event_count": 7,
+  "generated_at_utc": "2026-07-17T04:29:29.370885+00:00",
+  "paper_theorem_count": 7,
+  "paper_track": "ACM EC / TEAC",
+  "registered_claim_count": 13,
+  "schema_version": 1,
+  "status": "review-driven rewrite with blinded focal outcomes"
+}

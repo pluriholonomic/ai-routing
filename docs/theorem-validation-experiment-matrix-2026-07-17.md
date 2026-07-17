@@ -1,0 +1,359 @@
+# Theorem and empirical-claim validation matrix
+
+Status: execution matrix updated after the 2026-07-17 evidence audit. This plan
+separates logical theorem validation, estimator validation, empirical tests, and
+data acquisition. A simulation can validate code or demonstrate identification;
+it cannot turn a theorem into an empirical market fact.
+
+## Priority order
+
+1. H81 stopped-design correction and theorem validation.
+2. H81 release and independent fixed-horizon replication with broader support.
+3. H93/H94 longitudinal cross-router price collection.
+4. H82/H84 prospective holdouts with realized owned-traffic linkage.
+5. Counterexample and coverage suites for the public-timing theorems.
+6. Companion-only revenue and free-entry validations.
+
+The first item is implemented. The H81 analyzer now queries only assignment and
+support fields before its gate, excludes the gate-hitting terminal block after
+release, and uses fixed-count conditional randomization. The 20,000-draw theorem
+validation and 500-experiment size audit are in
+`src/orcap/analysis/h81_theorem_validation.py`.
+
+The companion logical/numerical suite is also implemented in
+`src/orcap/analysis/theory_validation_suite.py`. It validates the detection
+identity over 20 cells (maximum absolute simulation error 2.23 Monte Carlo
+standard errors), the quantity/revenue coefficient identity to `1e-14`, the
+free-entry ceiling and equal-margin overentry result over 144 grid cells, and
+60,198 finite coarsening witnesses with zero construction failures. These are
+implementation and theorem checks, not empirical calibration.
+
+## T1. Randomized fallback and hidden-selection decomposition
+
+### Logical claim
+
+Conditional on the balance stopping time, terminal arm, and preterminal counts,
+the first `T-1` treatment labels are a uniform fixed-count permutation. Their
+arm means equal conditional Horvitz-Thompson means and unbiasedly estimate the
+finite-population policy means. Fallback plus hidden selection equals total
+delegation as both an estimand and estimator identity.
+
+### Validation experiments
+
+1. **Seed replay and treatment compliance**
+   - Input: outcome-free H81 assignment rows and candidate telemetry.
+   - Test: reproduce the first policy from every 64-bit seed; verify provider
+     `order`, `only`, and `allow_fallbacks` fields against the policy label.
+   - Pass rule: 100% replay and treatment compliance. Any failure invalidates
+     the affected block and triggers a collector incident, not an outcome-based
+     exclusion.
+   - Current result: 76/76 for both checks.
+
+2. **Stopped-design Monte Carlo**
+   - Fix heterogeneous, policy-specific, time-varying potential outcomes.
+   - Draw production labels until all arm counts reach 40.
+   - Compare the old terminal-inclusive estimator with the corrected conditional
+     preterminal estimator.
+   - Pass rule: corrected bias no larger than 3.5 Monte Carlo standard errors in
+     every primary contrast; the identity must hold to machine precision.
+   - Current result: corrected biases are approximately `-1.04e-4`, `-0.05e-4`,
+     and `-1.09e-4`, all within Monte Carlo error. The old terminal-inclusive
+     fallback estimator has detectable bias under the deliberately trending DGP.
+
+3. **Sharp-null randomization size**
+   - Generate a common heterogeneous outcome path under the sharp null.
+   - Preserve each realized preterminal arm-count multiset in every permutation.
+   - Pass rule: the 5% rejection rate must lie inside a predeclared Monte Carlo
+     tolerance of `[0.03,0.07]` with at least 2,000 experiments for the final
+     release audit.
+   - Current screen: 5.4% in 500 experiments; increase to 2,000 before submission.
+
+4. **Missingness adversary**
+   - Delete spend, latency, and selected-provider fields by treatment, success,
+     and quote level under worst-case patterns.
+   - Verify that request success is never conditioned on accounting completion;
+     explicit-order spend bounds use only protocol-valid quote caps; delegated
+     default receives no invalid public-set upper cap.
+   - Pass rule: reported bound coverage is 100% over generated schedules and no
+     point estimate appears when its completeness rule fails.
+
+5. **External-support and leave-one-model-out audit**
+   - Report model dominance, effective model count, support turnover, arm balance
+     by model, and leave-one-model-out contrasts after release.
+   - Pass rule for a broad claim: at least eight models, effective model count at
+     least five, no model above 35% of blocks, and both primary directions stable
+     under leave-one-model-out. These are transport gates, not causal-validity
+     gates.
+   - Current result: fails transport decisively; only two models recur and support
+     turnover is zero.
+
+### Independent replication design
+
+The next H81-style experiment must use a fixed chronological horizon rather than
+an arm-balance stopping time. Freeze `B=360` eligible first-position blocks, use
+stratified randomization within model and UTC six-hour bin, and assign 120 slots
+per arm by permuted blocks. Expand candidate support from ranks five and six to a
+predeclared rotating sample across the eligible model frontier. Report the
+original H81 cut unchanged and never pool the two experiments. This replication
+can improve transport and precision without rewriting the original study.
+
+## T2. Asynchronous-menu observational equivalence
+
+### Logical claim
+
+An exact cross-sectional price match or landing on a strictly prior rival price
+can be generated by both a nonreactive latent-menu model and a rival-reactive
+model. The strategic share is sharply bounded by `[0,L/N]` without additional
+restrictions.
+
+### Validation experiments
+
+1. **Constructive witness generator**
+   - For every discrete observed panel in an exhaustive small state space
+     (three providers, three price atoms, four snapshots), construct both a
+     nonreactive provider-clock witness and a reactive rival-trigger witness.
+   - Pass rule: both witnesses reproduce every observed panel and every exact
+     landing bit-for-bit; otherwise produce a counterexample and narrow the
+     theorem.
+
+2. **Sharpness endpoints**
+   - For each observed event set, assign zero events and then all `L` exact
+     events to the strategic mechanism while preserving observables.
+   - Pass rule: both endpoint constructions satisfy the model assumptions; this
+     proves attainability rather than merely reporting an outer bound.
+
+3. **Assumption-ablation search**
+   - Remove latent public state, restrict refresh clocks, impose monotone best
+     responses, and cap reaction delay.
+   - Enumerate when equivalence breaks. The output should be a map from added
+   contract/log fields to the identified object, not another market estimate.
+
+Current execution: the shared finite construction suite generated 60,198
+changed-provider leader witnesses over 20,000 sampled transitions with zero
+construction failures. Exhaustive small-state enumeration and assumption
+ablation remain open.
+
+### Missing data that would restore identification
+
+- provider quote-update timestamps finer than the five-minute capture bin;
+- a public or shared provider refresh schedule;
+- exogenous provider visibility/adoption shocks;
+- router or provider logs linking a displayed quote update to request arrival.
+
+## T3. Detection threshold of a dominating menu null
+
+### Logical claim
+
+For nonreactive landing probability `p`, benchmark probability `q`, and reactive
+replacement probability `rho`, the residual expectation is
+`p-q+rho(1-p)` and changes sign only above `(q-p)/(1-p)` when `q>=p`.
+
+### Validation experiments
+
+1. **Algebra grid**
+   - Sweep `p` and `q` on `[0.01,0.99]`, and `rho` on `[0,1]`.
+   - Simulate at least 100,000 events per cell near the analytic threshold.
+   - Pass rule: empirical residual differs from the formula by no more than four
+     Monte Carlo standard errors and the sign transition occurs in the containing
+     grid interval.
+
+2. **Finite-panel size and power**
+   - Preserve the empirical event-specific `(p_e,q_e)` vector and model clusters.
+   - Compare independent-event, cluster-shock, and provider-clock DGPs.
+   - Report size, power, and calibration distance separately. A well-sized test
+     on a DGP that cannot reproduce the empirical event count is not validated.
+
+3. **Benchmark dominance diagnostic**
+   - Plot the distribution of event-level thresholds and identify which public
+     menu construction dominates each event.
+   - Pass rule for empirical use: the fitted null must reproduce event count,
+   exact-landing mass, menu probability, and tie mass on held-out dates.
+
+Current execution: the analytic expectation and simulated residual agree over
+20 validation cells, every sign away from the threshold matches, and the maximum
+absolute discrepancy is 2.23 Monte Carlo standard errors. The empirical-vector
+size/power and held-out benchmark-dominance checks remain open.
+
+## T4. Coarsened-timing equivalence and named-rival bounds
+
+### Logical claim
+
+When multiple providers change within one observation interval, any changed
+provider can be made the latent first mover under an admissible reactive path.
+Without additional restrictions, a named-rival response share lies between zero
+and the fraction of events with a unique eligible named rival.
+
+### Validation experiments
+
+1. **Path-construction property test**
+   - Randomly generate sampled transitions with two to six changed providers.
+   - For each provider, construct a right-continuous latent path that makes it the
+     first mover while matching both sampled endpoints.
+   - Pass rule: construction succeeds for 100,000 generated transitions and an
+     exhaustive small price grid.
+
+2. **Bound sharpness test**
+   - For every unique-rival indicator vector, construct compatible histories at
+     the zero and upper endpoints.
+   - Pass rule: sampled quotes and strict-prior-rival identities remain unchanged.
+
+3. **Cadence sensitivity**
+   - Coarsen sub-minute synthetic event logs to one, five, fifteen, and sixty
+     minutes.
+   - Plot the identified-set width against cadence and simultaneous-change mass.
+   - This quantifies the value of new timestamp data without pretending more
+     five-minute observations resolve within-bin order.
+
+## T5. Quantity-share and revenue-share identity
+
+### Logical claim
+
+With a common sample, weights, controls, and market effects, the log quantity-
+share price coefficient is exactly the log revenue-share coefficient minus one;
+residuals and residual-based standard errors are identical.
+
+### Validation experiments
+
+1. Generate panels with arbitrary prices, quantities, weights, fixed effects,
+   heteroskedasticity, and clustered errors. Verify coefficient difference one,
+   residual equality, and covariance equality to `1e-10`.
+2. Introduce zeros, winsorization, inconsistent samples, inconsistent weights,
+   and approximate fixed-effect solvers one at a time. Record exactly which data
+   transformations break the identity.
+3. Re-run H92 with an explicit row-hash proving both regressions use the identical
+   sample. Treat any near-minus-one elasticity as accounting, not a first-order
+   condition.
+
+Current execution: on a synthetic panel with common rows, weights, and fixed
+effects, the coefficient identity error is `-9.99e-15`, the maximum residual
+difference is `2.66e-14`, and the HC1 standard-error difference is `2.78e-17`.
+The transformation-ablation matrix and empirical row-hash audit remain open.
+
+Disposition: companion paper. Even perfect validation does not estimate causal
+demand or revenue maximization.
+
+## T6. Finite entry and reliability/business-stealing wedge
+
+### Logical claim
+
+In the independent symmetric benchmark, marginal reliability value declines
+geometrically, positive setup cost makes efficient entry finite, and private
+entry can exceed or fall short of efficient entry.
+
+### Validation experiments
+
+1. Exhaustively solve integer welfare and zero-profit entry for a grid over
+   `(D,v,p,c,F,a)` and compare with the proposition's inequalities.
+2. Search boundaries `a -> 0`, `a -> 1`, `F -> 0`, `p -> c`, and `v -> c` for
+   undefined or discontinuous cases. Verify the stated domain excludes them.
+3. Add correlated deliverability through a beta-binomial common shock and binding
+   capacity. Identify which conclusions survive and label those as conjectures,
+   not extensions of the proved proposition.
+
+Current execution: all 144 independent-deliverability grid cells satisfy the
+analytic entry ceiling and equal-margin overentry implication, and none hits the
+integer search boundary. Correlated delivery and capacity extensions remain
+unproved conjectures.
+
+### Missing empirical primitives
+
+Demand value, provider marginal cost, setup cost, provider margin, correlated
+deliverability, capacity, and entry/exit are not jointly observed. No public-data
+pipeline can estimate the welfare count without additional assumptions. A
+provider or router partnership, randomized admission fee, or capacity auction is
+required. The theorem stays in the companion appendix.
+
+## E1. H82/H84 public operational mechanisms
+
+### H82 future-only holdout
+
+- Keep the frozen discovery specification and failed pretrends visible.
+- Run H83 only on timestamps strictly after the H82 cutoff.
+- Require at least 28 calendar days, the prespecified event count, and passing
+  placebo/pretrend gates before causal language.
+- Link events to owned attempts only prospectively and by predeclared time window.
+
+### H84/H85 stale-quote mechanism
+
+- Preserve H84 as a negative directional discovery result.
+- H85 uses no H84 observations for feature fitting or threshold selection.
+- Primary result: stale-cheap score versus next capacity event and realized fill.
+- Negative controls: backward event, future price staleness, random provider
+  permutation, and same-provider other-model event.
+
+### Data improvement
+
+Increase router-side event resolution by retaining the published 5m/30m counters,
+derank transitions, capacity ceilings, and owned attempt timestamps. Only a router
+partnership can provide request ordering or full cross-user flow.
+
+## E2. H93/H94 longitudinal cross-router pricing
+
+### Current state
+
+The pinned revision contains exactly one catalog snapshot. The 28/29 equality
+result is a cross-sectional coverage fact with Wilson interval `[0.8282,0.9939]`.
+There are zero price events, common shocks, or simulated switches.
+
+### Acquisition
+
+- `router-catalogs.yml` runs hourly on a GitHub-hosted runner and buffers Glama,
+  Requesty, and NemoRouter public catalogs.
+- `compact.yml` includes those artifacts in the nightly Hugging Face push.
+- Add a source-health alert if any router has fewer than 18 successful snapshots
+  in a rolling 24 hours; distinguish source failure from a legitimately empty
+  catalog.
+- Retain raw source timestamps, retrieval hashes, exact provider/model strings,
+  component prices, and normalization decisions.
+
+### H93 gates
+
+Seven elapsed days, all three routers repeated, at least 48 snapshots per router,
+at least 10 linked competitive models, 30 source-specific price events, 15 common
+provider-model shocks, and 15 simulated route switches. Equality is reported at
+every cut; pass-through is reported only after all longitudinal gates pass.
+
+### H94 design
+
+H94 must be activated by a freeze commit before eligible future observations.
+Use source-specific price events, distributed lead/lag coefficients, provider-
+model fixed effects, matched no-change controls, and simulated routing switches.
+Decoy events and impossible leads are falsification tests. The outcome is public
+quote pass-through, not realized allocation or markup.
+
+## Additional public data acquisition
+
+1. **Router catalogs:** Glama, Requesty, NemoRouter, TokenRouter, and any public
+   TrueFoundry or Portkey catalog endpoints. Qualify sources before inclusion;
+   documentation without provider-level prices is institutional evidence only.
+2. **Transparent allocation comparators:** Akash accepted bids and terminations,
+   Livepeer orchestrator selection, Bittensor/Chutes miner assignment, and Nosana
+   job allocation. These validate measurement methods where allocation is public;
+   they are not pooled with token-priced inference.
+3. **Quality and workload:** public benchmark/eval leaderboards with exact model
+   versions, plus owned prompt-class metadata that stores no payload. Quality must
+   be lagged or externally measured to avoid post-routing conditioning.
+4. **GPU input costs:** Ornn and other qualified GPU price panels, joined only at
+   region, accelerator, and time resolutions they actually support. They test a
+   cost channel; they do not identify provider marginal cost by themselves.
+5. **Harness allocation:** public app/model token panels and, if available,
+   Hermes aggregate model-choice logs. App token shares explain model demand, not
+   within-model provider routing unless a provider identifier is present.
+
+## Submission gates
+
+The focal paper is not submission-ready until all of the following hold:
+
+1. H81 releases its original gate without changing sign-dependent rules.
+2. The corrected stopped-design inference passes at least 2,000 size experiments.
+3. The main table reports H81 support, missingness, both primary contrasts, the
+   decomposition identity, and leave-one-model-out sensitivity.
+4. H93 is either still labeled one-cross-section coverage or passes every
+   longitudinal gate; there is no intermediate pass-through language.
+5. Every theorem in the LaTeX is present in the machine-readable evidence
+   registry and has a proof plus a validation artifact or a disclosed missing
+   validation.
+6. The release manifest hashes the paper, bibliography, every included figure,
+   protocols, analyzers, tests, and amendment ledger.
+7. A fresh reviewer can reproduce the paper from the pinned dataset revision
+   without accessing prompts, completions, or secrets.

@@ -759,8 +759,10 @@ def _load_latest_openrouter_models() -> pd.DataFrame:
     return data.q(
         f"""
         with latest as (select max(run_ts) run_ts from read_parquet('{glob}'))
-        select distinct id, hugging_face_id from read_parquet('{glob}'), latest
-        where run_ts = latest.run_ts and id is not null
+        select distinct models.id, models.hugging_face_id
+        from read_parquet('{glob}') as models
+        cross join latest
+        where models.run_ts = latest.run_ts and models.id is not null
         """
     ).df()
 

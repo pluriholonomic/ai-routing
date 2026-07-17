@@ -1,5 +1,7 @@
 import pandas as pd
 
+from orcap.analysis import data
+from orcap.analysis import h93_cross_router_price_policy as h93
 from orcap.analysis.h93_cross_router_price_policy import (
     attach_exact_model_matches,
     evidence_summary,
@@ -108,3 +110,24 @@ def test_latest_coverage_counts_competitive_exact_models_without_calling_it_flow
 def test_wilson_interval_is_bounded_and_contains_the_observed_share():
     lower, upper = wilson_interval(28, 29)
     assert 0 < lower < 28 / 29 < upper < 1
+
+
+def test_latest_model_loader_qualifies_run_ts_after_join(tmp_path, monkeypatch):
+    path = tmp_path / "models.parquet"
+    pd.DataFrame(
+        {
+            "run_ts": ["20260716T000000Z", "20260716T010000Z"],
+            "id": ["org/old", "org/new"],
+            "hugging_face_id": ["org/old", "org/new"],
+        }
+    ).to_parquet(path, index=False)
+    monkeypatch.setenv("ORCAP_ANALYSIS_SOURCE", "local")
+    monkeypatch.setattr(h93.data, "table_glob", lambda name: str(path))
+    data.reset_connection()
+    try:
+        latest = h93._load_latest_openrouter_models()
+    finally:
+        data.reset_connection()
+    assert latest.to_dict("records") == [
+        {"id": "org/new", "hugging_face_id": "org/new"}
+    ]

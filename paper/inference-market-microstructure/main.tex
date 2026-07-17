@@ -13,12 +13,13 @@
 \usepackage{flafter}
 \usepackage{float}
 \usepackage{needspace}
+\usepackage[section]{placeins}
 \usepackage{xcolor}
 \usepackage{natbib}
 \usepackage[hidelinks]{hyperref}
 \usepackage[nameinlink,noabbrev]{cleveref}
 \hypersetup{
-  pdftitle={Administered Menus and Hidden Clearing: The Microstructure of the Market for Machine Intelligence},
+  pdftitle={Displayed Price, Hidden Clearing: Fallback and Selection in AI Inference Markets},
   pdfauthor={Anonymous Authors}
 }
 
@@ -38,8 +39,8 @@
 \newtheorem{proposition}{Proposition}
 \newtheorem{corollary}[proposition]{Corollary}
 
-\title{Administered Menus and Hidden Clearing:\\
-The Microstructure of the Market for Machine Intelligence}
+\title{Displayed Price, Hidden Clearing:\\
+Fallback and Selection in AI Inference Markets}
 \author{Anonymous Authors}
 \date{}
 
@@ -48,17 +49,16 @@ The Microstructure of the Market for Machine Intelligence}
 
 \begin{abstract}
 Open-weight models create a real-time market for partially substitutable
-inference.  Harnesses such as Hermes shape demand, routers such as \OR\ aggregate
-requests and privately dispatch execution, and providers sell capacity under
-common model labels.  Using five-minute quotes and randomized micro-purchases, we
-find sticky administered menus, frequent exact price ties, and revocable quotes
-whose delivery is strengthened by router substitution.  Slow repricers charge
-more, echoing Brown--MacKay, but hard tests do not identify rival response or
-front-running.  The market therefore resembles dealer/RFQ liquidity combined
-with reusable-capacity dispatch, not an automated market maker.  A benchmark
-shows that efficient routing requires prices augmented by reliability, delay,
-quality, and scarcity, and that free entry is finite but can be excessive through
-business stealing or insufficient when providers cannot capture redundancy value.
+inference: harnesses originate token demand, routers choose where to buy
+execution, and providers sell capacity under common model labels.  We separate
+the displayed price menu from the hidden clearing process using five-minute
+quotes, public enforcement state, cross-router catalogs, and randomized owned
+requests.  Prices are sticky and often common across routers while eligibility
+and enforcement move at unchanged prices.  We introduce a randomized
+decomposition of fallback and delegated selection, with outcomes released only
+at its frozen gate.  The evidence supports a two-layer procurement market, not a
+public order book; it does not yet identify market-wide welfare or provider
+intent.
 \end{abstract}
 
 \section{Introduction}
@@ -79,14 +79,14 @@ standard and production technology; the harness is a demand-side broker and
 order-flow originator; the router is a two-sided dispatcher and procurement
 platform; and the provider is a capacity-constrained service seller.
 
-This organization creates two linked questions.  Which combination of prices,
-admission, scoring, fallback, and provider entry maximizes the value of completed
-tasks net of compute, delay, and failure?  And do the platform-specific conduct
-problems seen elsewhere---stale or revocable quotes in dealer markets, inventory
-withholding in travel, prominence manipulation in online platforms, or
-order-information rents in blockchain markets---appear here?  The answer cannot
-come from token prices alone because the router, rather than the public quote
-surface, clears eligibility and quantity.
+This organization creates a prior measurement question: when providers display a
+price for the same model, which part of execution is cleared by that price and
+which part by hidden eligibility, provider scoring, and fallback?  Welfare and
+conduct questions come afterward.  Without observing the clearing margin, a
+cheap quote can be mistaken for firm supply and a high aggregate fill rate can be
+mistaken for provider reliability.  The answer cannot come from token prices
+alone because the router, rather than the public quote surface, clears eligibility
+and quantity.
 
 That question is difficult to answer from posted prices alone.  The price surface
 is public, but the allocation rule and capacity state are private.  The same cheap
@@ -106,69 +106,53 @@ published operational aggregates measure congestion and enforcement; and owned
 probes measure the realized policy for one account and workload.  None alone
 identifies market-wide flow, private capacity, or provider cost.
 
-The paper combines an empirical microstructure description with a minimal
-market-design benchmark.  Its contributions are two promoted price-surface facts,
-a falsification ladder that separates exact atoms from author identity and
-strategic following, a preregistered firmness design with an interim block screen,
-one mechanism audit, two observational-equivalence results, and a free-entry
-welfare wedge.
+The paper asks one narrow question: how much of market clearing occurs through
+the displayed price and how much occurs through hidden eligibility, provider
+selection, and fallback?  We organize the answer around a two-layer market.  The
+display layer contains public provider--model menus.  The clearing layer maps a
+request into an eligible provider and, if necessary, a sequence of fallback
+attempts.  This organization replaces an earlier accretive version of the paper
+that treated price atoms, revenue elasticities, entry, and steering as coequal
+results.  Those analyses remain useful diagnostics or companion results, but
+they are not evidence for the focal clearing claim.
 
 \begin{enumerate}
-  \item \textbf{Administered menus.} Prices move infrequently and by large
-  increments.  A nested discrete-time hazard rejects a constant-hazard benchmark
-  \citep{calvo1983}: duration and calendar effects matter, and the provider's
-  price gap predicts repricing both in sample and on later days.  Rival changes
-  improve the in-sample fit but not yet out-of-sample discrimination; congestion
-  variables do not improve the hazard.  The money price is therefore a sticky
-  menu, not the fast-clearing state variable.
+  \item \textbf{A market and measurement framework.}  Open-weight execution is
+  a procurement market for a partially substitutable service.  The model is a
+  compatibility standard; providers sell perishable execution; the router is a
+  dispatcher and delegated buyer; and the harness is a demand-side broker.  We
+  define separate observables for displayed menus, public enforcement state,
+  simulated allocation, owned execution, and private router logs.  This hierarchy
+  makes clear why public simulated ``routed share'' is not realized demand.
 
-  \item \textbf{Exact price atoms, not identified anchors.} Minimum-price ties are too common to be a
-  rounding artifact.  An independent grid-resampling null reproduces the observed
-  price grid and heterogeneity but yields only a 13.4\% tie rate, compared with
-  45.9\% in the data.  Conditioning on a tie makes the old 90.3\% author-match
-  statistic mechanical.  An adjacent-grid placebo also fails: although it gives a
-  53.3-point atom at the author price, an endpoint-label null preserving the exact
-  realized price multiset gives only a 0.79-point author excess and cannot reject
-  exchangeability.  Likewise, isolated revisions land on lagged rival quotes much
-  more often than on adjacent grid points, but not significantly more often than
-  on a tightly matched common public price menu.  These paired failures are the
-  empirical counterpart of our asynchronous-menu equivalence theorem and prevent
-  an atom from being promoted as author salience, strategic following, or collusion.
-  A preregistered negative control and two size--power experiments then identify
-  the opposite inferential danger: the hard null controls false positives but can
-  have a strictly positive response-detection threshold.  We characterize that
-  threshold analytically and distinguish nonidentification from evidence of no response.
+  \item \textbf{Displayed prices do not exhaust the clearing state.}  The public
+  menu changes slowly while router-published rate-limit and derank state changes
+  frequently at unchanged price.  The H82 event paths are descriptive because
+  their pretrends fail.  The separately frozen H84 test rejects one natural
+  stale-cheap prediction but has a nonzero backward placebo.  A first simultaneous
+  cross-router catalog has 28 of 29 exact provider--model price matches, with
+  Wilson interval $[0.828,0.994]$; because there is only one cross section, this
+  is coverage evidence rather than a pass-through estimate.
 
-  \item \textbf{Power-gated manufactured firmness.} The money quote barely moves while
-  operational state changes frequently.  A prospective crossover randomizes the
-  order of default routing and three pinned-provider policies within model-time
-  blocks.  In the 76 complete blocks, all-position default success is 98.7\%
-  while pinned success is 80.3--84.2\%.  The common rejection level survives
-  randomization of order, but an earlier apparent price-rank gradient does not.
-  These are secondary matched-block rates: the primary first-position outcomes
-  remain masked until 500 assignments per arm.  The design therefore suggests,
-  but does not yet promote, router-manufactured firmness.
+  \item \textbf{A randomized decomposition matched to the mechanism.}  In H81 we
+  hold the displayed cheapest provider fixed and randomize among cheapest-only
+  execution, explicit price order with fallback, and full delegation.  The two
+  primary contrasts isolate the option value of fallback and the additional
+  value of hidden selection for the owned account.  Assignment replay and policy
+  compliance are outcome-free.  At the pinned data revision the arm counts are
+  29, 22, and 25, below the original 40-per-arm release gate; no H81 outcome is
+  reported.  The eligible support currently contains only two repeated models,
+  which limits transport even after release.
 
-  \item \textbf{Steering memory.} \citet{johnsonrhodeswildenbeest2023} show
-  that prominence rules which reward
-  past price cuts can disrupt algorithmic collusion.  Our revealed-policy audit
-  asks whether current cheapest providers receive more selection after a recent
-  cut.  They receive less.  This is not proof of collusion--eligibility remains
-  partly hidden--but it rejects the sign of the proposed pro-competitive
-  implementation in the observed sample.
-
-  \item \textbf{Welfare scoring and finite entry.} Conditional on installed
-  capacity, the first-best routing score combines marginal resource and scarcity
-  costs with expected delay, rejection, and fidelity losses; raw token-price
-  ranking works only when those nonprice terms are equal or contractible.  In a
-  benchmark where independent providers supply redundancy for the same model,
-  the reliability value of an additional provider declines geometrically.
-  Positive setup cost therefore makes both the welfare-maximizing and zero-profit
-  counts finite for fixed demand.  Free entry need not select the welfare count:
-  an entrant can steal routed volume from incumbents without creating a
-  completion, while a low provider margin can leave the social value of
-  redundancy uncaptured.  The observed entry elasticity is not a structural
-  estimate of this wedge.
+  \item \textbf{Identification and design.}  We prove the accounting
+  decomposition and, after removing the gate-hitting terminal block, the
+  conditional design-unbiasedness of the fixed-count arm means (equivalently,
+  conditional Horvitz--Thompson contrasts).  Newcombe intervals are descriptive
+  companions.
+  We also characterize what coarsened public timing cannot identify.  The design
+  implication is execution-contingent procurement---prices, eligibility,
+  fallback, and reliability must be evaluated jointly---not a claim that the
+  current data identify a welfare optimum, collusion, or literal front-running.
 \end{enumerate}
 
 These facts jointly imply a sharper market analogy.  The model is a product
@@ -275,34 +259,42 @@ mirrored to remote object storage.  The analysis also uses a three-year historic
 quote registry for lifecycle checks, public model-level token-allocation records,
 and owned generation records for requests made with our study key.
 
-The pricing freeze used in the main tables contains 2,968,449 endpoint snapshots
-from 1,805 capture runs over nine days.  It covers approximately 300 models and 69
-providers with enough exposure for provider-level cadence classification.  The
-all-field event ledger contains 3,212 changes; the frozen Brown--MacKay screen
-retains 274 positive completion-price events over nine observed quote days.  The public routing
-simulation contains 562,550 provider-model-time rows over six days.  Owned legacy
-traffic contains 2,659 raw rows over 65 runs; after deduplication and exclusion of
-outcome-masked studies, 716 descriptive attempts remain and 617 identify the
-selected provider.  The randomized crossover is a separate prospective release.
+The paper release distinguishes the current acquisition cut from older frozen
+discovery vintages.  At immutable dataset revision
+\texttt{1d366685a8e8}, the endpoint panel contains 3,120,108 rows from 2,105
+capture runs on 11 UTC dates, 2026-07-07 through 2026-07-17.  H81 contains 76
+verified first-position blocks over 38.5 hours and 72 candidate-eligibility rows;
+H80 contains 156 verified first-position blocks over 40.7 hours.  The public
+cross-router collector has one simultaneous catalog cut: 107 Glama rows, 114
+NemoRouter rows, and 563 Requesty rows.  No repeated cross-router snapshot or
+cross-router price event exists at this revision.
+
+The price-atom, repricing-hazard, steering, and Brown--MacKay analyses below were
+frozen on earlier nine-day discovery cuts.  They are retained to document the
+falsification path and are not silently refreshed into confirmatory evidence.
+Local staging outputs that are not rebuilt from the pinned revision are excluded
+from current-status claims.
 
 \begin{table}[H]
 \centering
 \small
-\begin{tabular}{lrrp{0.36\linewidth}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.27\linewidth}r
+>{\raggedright\arraybackslash}p{0.14\linewidth}
+>{\raggedright\arraybackslash}p{0.33\linewidth}}
 \toprule
 Panel & Rows / attempts & Span & Primary role \\
 \midrule
-Endpoint snapshots & 2,968,449 & 9 days & Prices, grids, gaps, enforcement state \\
-All-field price events & 3,212 & 9 days & Repricing incidence and event construction \\
-Completion-price events & 274 & 9 quote days & Pricing-technology cadence screen \\
-Public allocation proxy & 562,550 & 6 days & Mechanical share-price comparative statics \\
-Legacy owned attempts & 716 & 65 runs & Descriptive provider-selection audit \\
-Randomized crossover & 304 + 76 & prospective & 76 matched four-policy blocks plus default-only monitoring \\
+Endpoint acquisition cut & 3,120,108 & 11 UTC dates & Current prices and public enforcement state \\
+Frozen pricing discovery cut & 2,968,449 & 9 days & Price atoms, hazards, and cadence screens \\
+H81 first-position assignments & 76 & 38.5 hours & Fallback/selection release-gate support \\
+H81 candidate eligibility & 72 & 36 runs & External-support and exclusion funnel \\
+H80 first-position assignments & 156 & 40.7 hours & Separate four-arm replication support \\
+Cross-router public catalogs & 784 & 1 cross section & Coverage and exact price equality only \\
 Historical quote registry & multi-year & 3 years & Lifecycle and duration sensitivity \\
 \bottomrule
 \end{tabular}
-\caption{Frozen analysis panels.  Sample sizes refer to the corrected nine-day manuscript
-release and are updated only at registered promotion gates.}
+\caption{Paper evidence panels at the pinned revision.  Earlier discovery cuts
+remain frozen; outcome-gated studies expose assignment and support counts only.}
 \label{tab:samples}
 \end{table}
 
@@ -325,17 +317,20 @@ cost, and status--and never retain prompt payloads.
 
 \subsection{Claim discipline}
 
-The empirical sequence was adaptive, so we distinguish discovery from
-confirmation.  Early descriptive analyses generated the administered-menu,
-price-atom, and firmness hypotheses.  The fixed-order firmness pilot revealed a
-large default-pinned gap but confounded policy with position.  We disclosed that
-failure, froze a randomized-crossover replacement before observing its outcomes,
-and treat the first release as interim.  Dynamic pricing results are re-estimated
-at a registered 30-day gate using both the original and expanded vintages.  The
-endpoint-label and matched-menu nulls were developed after inspecting the frozen
-panel, are labeled exploratory there, and are now fixed for that 30-day release.
-Tests that have not reached their registered support are reported as power-gated
-rather than as null findings.
+The empirical sequence was adaptive, so we distinguish discovery, protocol,
+amendment, and confirmation.  Early descriptive work generated the price-atom,
+firmness, and enforcement hypotheses.  The fixed-order probe confounded policy
+with position and is retained only as a design failure.  H81 was written before
+its first request and has an original 40-per-arm gate, although a legacy analysis
+inadvertently exposed aggregates from its first two blocks.  H80 is a separate
+experiment: its original gate was also 40 per arm, and its later 500-per-arm
+promotion threshold is disclosed as a post-outcome, pre-original-gate amendment.
+A proof audit further corrected H81's stopped-prefix inference before confirmatory
+release by excluding the gate-hitting block and conditioning on preterminal arm
+counts.  H82 is a retrospectively frozen descriptive event study, H84 is a
+retrospectively preregistered discovery falsification, and H94 remains a draft.
+Every change is listed in the public amendment ledger.  A test below its frozen
+support is called power-gated, never a null result.
 
 \section{Fact 1: prices are administered menus}
 \label{sec:menus}
@@ -693,79 +688,118 @@ shared discrete price menus, not a named anchor: common cost conventions, provid
 templates, strategic matching, and a Schelling-like device remain observationally
 compatible.
 
-\section{Interim design: does the router manufacture quote firmness?}
+\section{Hidden clearing: fallback and delegated selection}
 \label{sec:firmness}
 
-\subsection{Price state and operational state}
+\subsection{Why public operations are not realized routing}
 
-Over the pricing panel, only 12\% of endpoints ever change price while 86\%
-experience variation in published rate-limit state.  At thirty-minute horizons,
-latency and enforcement variables load much more strongly on operational changes
-than price does.  Raises tend to occur after slack rather than at congestion
-spikes.  These facts suggest that scarcity is cleared through quantity,
-eligibility, and fallback while the menu remains fixed.
+Displayed price and operational state move on different clocks.  Public
+rate-limit and derank transitions occur while provider--model token prices remain
+unchanged.  H82 aligns endpoint-specific enforcement onsets with neighboring
+providers for the same model.  The event paths show a broad operational response,
+but all three frozen pretrend checks fail; we therefore treat the result as a
+description of the hidden clearing margin, not a causal effect of enforcement.
+H84 then asks whether a relatively stale cheap quote predicts the next
+high-capacity event.  Its directional prediction is rejected, while a backward
+placebo is nonzero.  This falsifies one simple pickoff mechanism without ruling
+out adverse selection more generally.
 
-Displayed unavailability is not enough to establish quote revocability: public
-counters need not describe the study account.  We therefore purchase minimal
-one-token completions under four policies.  Default routing delegates provider
-choice and permits fallback.  Pinned-cheapest, pinned-second, and pinned-random
-restrict the request to one provider selected from the contemporaneous public
-surface.
+These public events do not reveal which provider served a request.  They motivate
+an owned-traffic experiment in which the displayed provider list is held fixed
+and only fallback and delegation change.
 
-\subsection{The failed pilot and randomized replacement}
+\subsection{H81 treatment decomposition}
 
-The first 96 complete blocks always ran default first.  It found a 17.7 percentage-
-point default advantage over the cheapest pinned quote, but order and policy were
-perfectly confounded.  Account-level throttling, warm-up, or within-block
-interference could produce the entire gradient.  We retain that result only as a
-design failure.
+For each eligible model--time block, the collector obtains one public provider
+list and uniformly randomizes which of three policies is executed first:
+\begin{enumerate}
+  \item $N$ (no fallback): request only the displayed cheapest provider;
+  \item $F$ (fallback): submit the displayed providers in price order and permit
+  fallback; and
+  \item $D$ (delegation): submit no provider restriction and permit the router's
+  default selection and fallback.
+\end{enumerate}
+Only the first request is confirmatory, so arbitrary interference from that
+request to later attempts in the block cannot bias the focal estimand.  The
+fallback contrast $F-N$ holds the first displayed provider fixed.  The hidden-
+selection contrast $D-F$ holds fallback permission fixed and changes who chooses
+the order and eligible set.  Neither contrast reveals the router's private score.
 
-The replacement randomizes both model order and policy order for every block and
-records the assignment seed before execution.  Let $Z_{bp}$ be assignment of
-policy $p$ to first position in block $b$, and $Y_{bp}$ request success.  Under
-random assignment, the first-position difference
+The release rule is a stopping time: let $T$ be the first block at which every
+arm has at least 40 first-position assignments.  The gate-hitting block has an
+assignment mechanically related to the preceding imbalance, so it is excluded
+from estimation.  Set $B=T-1$, let $n_p$ be the realized count of policy $p$
+among the preterminal blocks, and let $\pi_p=n_p/B$.  For bounded potential
+outcome $Y_b(p)$, define
 \begin{equation}
- \widehat{\tau}_{p}^{(1)}=
- \frac{\sum_b Z_{bD}Y_{bD}}{\sum_b Z_{bD}}
- -\frac{\sum_b Z_{bp}Y_{bp}}{\sum_b Z_{bp}}
- \label{eq:firstpos}
+ \widehat{\mu}^{HT}_p=\frac{1}{B}\sum_{b=1}^B
+ \frac{\1\{Z_b=p\}Y_b^{obs}}{\pi_p}
+ =\frac{1}{n_p}\sum_{b:Z_b=p}Y_b^{obs}.
+ \label{eq:h81-ht}
 \end{equation}
-is design-unbiased despite arbitrary effects of the first probe on later probes.
-Pooled within-block contrasts are more precise but require that carryover is
-controlled by randomized order and is not policy-specific after conditioning on
-position.  We therefore report both and make the first-position estimator the
-carryover-robust estimand at the promotion gate.
 
-The frozen interim screen contains 76 complete four-policy blocks.  Every policy
-therefore has 76 matched, randomized-order attempts: default succeeds on 75
-(98.7\%), pinned-cheapest on 61 (80.3\%), pinned-second on 62 (81.6\%), and
-pinned-random on 64 (84.2\%).  The collector also made 76 default-only monitoring
-requests on four additional models.  Pooling those rows would produce 151/152,
-but it would confound policy with model support; we exclude them.  Marginal Wilson
-intervals in \cref{fig:core} are descriptive.  Random order balances clock
-position, but treatment-specific carryover can still affect later positions.
+\begin{proposition}[Randomized fallback and hidden-selection decomposition]
+\label{prop:delegation-decomposition}
+Suppose the production policy permutation is independent of the fixed
+potential-outcome schedule.  Conditional on $T$, the terminal policy, and the
+preterminal count vector $(n_N,n_F,n_D)$, the assignments of the first $B=T-1$
+blocks are uniform over all labelings with those counts.  Hence
+$\widehat{\mu}^{HT}_p$ is conditionally design-unbiased for
+$\mu_p=B^{-1}\sum_{b=1}^B Y_b(p)$.  Consequently,
+\begin{align}
+ \widehat{\Delta}^{HT}_{F}&=\widehat{\mu}^{HT}_F-
+ \widehat{\mu}^{HT}_N, &
+ \widehat{\Delta}^{HT}_{I}&=\widehat{\mu}^{HT}_D-
+ \widehat{\mu}^{HT}_F
+ \label{eq:h81-components}
+\end{align}
+are design-unbiased for the finite-population fallback and hidden-selection
+effects.  The total delegation effect satisfies both the estimand and estimator
+identities
+\begin{equation}
+ \Delta_T=\mu_D-\mu_N=\Delta_F+\Delta_I,
+ \qquad
+ \widehat{\Delta}^{HT}_T=
+ \widehat{\Delta}^{HT}_F+\widehat{\Delta}^{HT}_I.
+ \label{eq:h81-identity}
+\end{equation}
+No monotonicity of fallback or delegation is required.
+\end{proposition}
 
-The carryover-robust first-position analysis is outcome-masked until every arm
-reaches 500 assignment-verified observations.  At the 2026-07-16 20:00 UTC
-outcome-free audit, the default, cheapest, second, and random counts are 33, 37,
-34, and 36, with 100\%
-seed-replay success.
-The eventual release uses the earliest chronological prefix satisfying the gate,
-Holm-adjusted default-pinned randomization tests, and a prespecified rank-gradient
-test.  Until then, the defensible interim conclusion is narrower: the approximately
-19\% all-position pinned rejection level survives randomization of order and the
-cheapest/second/random gradient is flat, but router-manufactured firmness is not
-yet a promoted causal fact.
+Under this conditional design, the Horvitz--Thompson mean and observed arm mean
+are identical.  We report that common point estimate, use Newcombe intervals as
+descriptive companions, and obtain exact or Monte Carlo randomization $p$-values
+by permuting the observed preterminal label multiset.  Independently drawing new
+labels with probability $1/3$ would fail to condition on the stopped design.  The
+proof and a simulation-validation protocol appear in \cref{app:h81-proof}.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/core_facts.pdf}
-\caption{Frozen evidence and audits.  Panel C shows secondary all-position rates
-from 76 complete randomized-order blocks with marginal Wilson 95\% intervals;
-the carryover-robust first-position outcomes remain masked until 500 assignments
-per arm.  Panels A, B, and D are descriptive panel statistics.}
-\label{fig:core}
-\end{figure}
+\subsection{Frozen gate, current support, and amendment history}
+
+The original H81 protocol releases the earliest chronological prefix with at
+least 40 verified first-position assignments in every arm, regardless of sign.
+At dataset revision \texttt{1d366685a8e8} (the full immutable hash appears in
+the release manifest), the outcome-free arm counts
+are 29, 22, and 25.  Assignment replay and treatment-metadata checks pass for all
+76 verified blocks, so outcomes remain physically unqueried by the public
+pre-gate analysis.  When the gate opens, the analysis will exclude its terminal
+block and condition on the remaining arm counts; this correction was frozen
+before the first H81 outcome release.  The candidate funnel is narrow: 72 eligibility records cover
+two models at ranking positions five and six; both models are eligible in every
+recorded run and adjacent eligible support never changes.  The experiment will
+therefore identify a finite-sample policy effect for those model--time blocks,
+not a market-wide average.  Simulating continued uniform assignment at the
+observed 1.90 verified blocks per hour gives 30.3 additional hours to the gate on
+average and 36.4 hours at the 90th percentile; scheduling or eligibility failures
+can only make that calendar forecast less reliable.
+
+H80 is a separate four-arm replication.  Its original protocol also specified
+40 observations per arm.  After its all-position aggregate outcomes were visible,
+but before that original first-position gate opened, the promotion threshold was
+raised to 500 per arm as a conservative replication amendment.  We retain the
+history rather than calling 500 the original preregistration.  At the same pinned
+revision H80 has 156 verified first-position blocks with arm counts 37, 43, 38,
+and 38.  H80 and H81 are never pooled because their policies and model support
+differ.
 
 \section{The steering audit}
 \label{sec:steering}
@@ -810,8 +844,9 @@ undercutting.
 \section{Bounded secondary evidence}
 \label{sec:secondary}
 
-This section reports results that sharpen the market description but do not carry
-the paper's novelty claim.
+This section reports additional results with explicit support and promotion
+boundaries.  The accounting proposition is exact; the temporal replication and
+all behavioral interpretations remain bounded by the short panel.
 
 \subsection{Pricing cadence and Brown--MacKay}
 
@@ -894,6 +929,138 @@ strictly prior rival inside 72 hours.  Consequently, the share of all price even
 caused by that named rival is sharply bounded by $[0,188/274]=[0,68.6\%]$: candidate
 abundance narrows the upper endpoint but supplies no positive lower bound.
 
+\subsection{Unit elasticity and provider revenue shares}
+\label{sec:revenue-shares}
+
+The closest provider-market elasticity estimate in the emerging literature is
+near minus one \citep{demireretal2025}.  For zero marginal cost and negligible
+feedback to aggregate model demand, minus one is also the gross-revenue
+first-order condition.  The numerical coincidence is tempting but insufficient:
+the public regression uses equilibrium provider shares rather than a provider's
+causal residual-demand derivative.  A stronger problem is algebraic.
+
+For provider $i$ in model--time market $g$, let $q_{ig}>0$ be tokens,
+$p_{ig}>0$ price, $s_{ig}=q_{ig}/Q_g$ quantity share, and
+$e_{ig}=p_{ig}q_{ig}/R_g$ public revenue-proxy share, where
+$Q_g=\sum_jq_{jg}$ and $R_g=\sum_jp_{jg}q_{jg}$.
+
+\begin{proposition}[Quantity-share and revenue-share equivalence]
+\label{prop:revenue-share-identity}
+For any common sample, positive WLS weights, market fixed effects, and additional
+controls, let $\widehat\beta_s$ and $\widehat\beta_e$ be the coefficients on
+$\log p_{ig}$ in otherwise identical regressions of $\log s_{ig}$ and
+$\log e_{ig}$.  Then
+\begin{equation}
+  \widehat\beta_s=\widehat\beta_e-1.
+  \label{eq:revenue-share-beta}
+\end{equation}
+The fitted residuals are identical, so classical, heteroskedasticity-robust, and
+cluster-robust standard errors for the price coefficient are identical.  The
+same result holds after exact multiway fixed-effect absorption.
+\end{proposition}
+
+The proof follows from
+\begin{equation}
+ \log s_{ig}=\log e_{ig}-\log p_{ig}
+ +\log(R_g/Q_g),
+ \label{eq:revenue-share-accounting}
+\end{equation}
+and Frisch--Waugh--Lovell partialling; it appears in
+\cref{app:revenue-stationarity}.  This is standard expenditure-share algebra in
+the spirit of demand-system analysis \citep{deatonmuellbauer1980}.  Its use here
+is diagnostic: a quantity-share coefficient of minus one says exactly that
+public revenue shares have a zero price coefficient.  It does not reveal whether
+providers maximize revenue, routers target expenditure shares, or unobserved
+quality and capacity assort with price.
+
+The identity holds to $3.6\times10^{-15}$ in our effective-price panel.  Across
+6,414 provider observations in 1,411 model--day--variant markets, the
+quantity-share coefficient is $-1.0269$ (clustered standard error $0.0933$) and
+the revenue-share coefficient is $-0.0269$ with the same standard error and
+95\% interval $[-0.2097,0.1559]$.  A two-one-sided equivalence test places the
+revenue-share coefficient inside $[-0.25,0.25]$ ($p=0.0084$).  All ten daily
+point estimates lie in that band.  A 999-draw within-market price-label
+permutation rejects exchangeable price--quantity matching ($p=0.001$), but does
+not identify the router or provider mechanism producing it.
+
+We then reproduce the no-performance-controls ladder in Table OA-5 of
+\citet{demireretal2025}.  The first two current coefficients are statistically
+compatible with the published estimates.  Only the specification that absorbs
+date--model and provider--model effects diverges.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+Fixed effects & Published $\widehat\beta$ (SE) & Current $\widehat\beta$ (SE) & Difference $p$ \\
+\midrule
+Date & $-0.48$ $(0.15)$ & $-0.352$ $(0.115)$ & $0.498$ \\
+Date and model & $-1.07$ $(0.23)$ & $-1.575$ $(0.281)$ & $0.164$ \\
+Date$\times$model and provider$\times$model & $-1.02$ $(0.13)$ & $-0.020$ $(0.409)$ & $0.0197$ \\
+\bottomrule
+\end{tabular}
+\caption{Published and current open-weight prompt-price elasticity ladder.  The
+difference test treats the samples as independent; source construction and
+calendar windows are not identical.}
+\label{tab:revenue-replication}
+\end{table}
+
+Under a causal own-price interpretation, the last current coefficient implies a
+local public gross-revenue log-gradient of $1+\widehat\beta=0.980$ (standard
+error $0.409$, 95\% interval $[0.179,1.782]$), rejecting revenue stationarity.
+A 99,999-draw provider-cluster sign-flip score test of the fixed $-1.02$ null
+gives $p=0.00053$; 31 leave-one-residual-support-provider-out refits span
+$[-0.358,0.582]$.
+
+Identification remains bounded.  Only 30 of 351 provider--model entities and 13
+providers change raw listed prompt price.  Just 0.157\% of raw centered log-price
+sum of squares survives both fixed effects, and the top five entities carry
+65.0\% of the residual variation.  The panel has ten days and 50 price moves.
+The result is therefore a robust current-panel replication discrepancy and an
+accounting correction, not a causal structural break or a global revenue-gap
+estimate.
+
+\subsection{A cross-router law of one posted price}
+\label{sec:cross-router-price}
+
+A credential-free simultaneous capture of Glama, Requesty, and NemoRouter adds
+an external price-discovery check.  The capture contains 784 provider--model
+quotes.  We match a model only when its literal source suffix identifies exactly
+one current official \OR\ model, normalize provider labels only for punctuation,
+and restrict the open-weight screen to models carrying a current Hugging Face
+identifier.  This produces 29 simultaneous same-provider, same-model pairs.
+
+Twenty-eight of the 29 pairs post exactly the same input and output token price,
+an exact-match share of 96.6\% with Wilson 95\% interval
+$[82.8\%,99.4\%]$.  The median absolute price wedge is zero.  The sole material
+exception is \texttt{deepseek/deepseek-v4-pro} sold under the provider label
+\texttt{deepseek}: Glama posts \$1.70 input and \$3.50 output per million tokens,
+whereas Requesty posts \$0.435 and \$0.87.  For a registered workload with 1,000
+input and 500 output tokens, the Glama quote is 296.6\% above the Requesty quote.
+
+The initial cross-section suggests a useful refinement of the market analogy.
+Routers usually distribute an upstream posted price rather than independently
+make a visible price, resembling distribution channels or DEX aggregators more
+than dealers.  Rare wedges then become candidates for channel-specific contracts,
+markups, or stale catalogs.  This interpretation is deliberately provisional:
+equal provider labels need not imply equal capacity or commercial terms, a
+Hugging Face link is not a license audit, and no public catalog reveals a fill.
+The hourly H93 panel requires seven days, 48 observations per router, 30 price
+events, 15 common shocks, and 15 simulated cheapest-provider switches before a
+dynamic pass-through or staleness claim is promoted.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.99\linewidth]{figures/h93_cross_router_price_policy_panel.pdf}
+\caption{Initial cross-router posted-price audit.  Requesty supplies the broadest
+competitive provider menu.  Among 29 Hugging-Face-linked exact provider--model
+pairs, 28 have identical component prices; the plotted DeepSeek exception is a
+cross-sectional candidate, not yet evidence of stale or strategic pricing.  The
+right panel records the prospective longitudinal promotion gates.}
+\label{fig:cross-router-price}
+\end{figure}
+
 \subsection{Entry and long-memory demand}
 
 Across 304 models, the elasticity of quoting-provider count with respect to token
@@ -927,137 +1094,33 @@ price event shapes alone are not proof of algorithmic collusion.  Common cost
 shocks, experimentation, and sparse observation remain observationally
 equivalent without an adoption event or exogenous cost shock.
 
-\section{Market-design implications and welfare}
+\section{Design implications, not welfare estimation}
 \label{sec:welfare}
 
-The facts identify design wedges, not a structural welfare number.  Let user type
-$\theta$ have completion value $v_\theta$, delay cost $d_\theta$, and rejection
-loss $\ell_\theta$.  If provider $i$ serves quantity $x_i$ with capacity $\mu_i$,
-quality $a_i$, unit cost $c_i(a_i)$, and delay $W_i(x_i,\mu_i)$, a planner chooses
-admission $A_\theta$, routing $x_{i\theta}$, capacity, and quality to maximize
-\begin{align}
- \max \quad &\int A_\theta\left[v_\theta(1-r_\theta)
- -d_\theta W_\theta-\ell_\theta r_\theta\right]\dd F(\theta) \nonumber\\
- &-\sum_i\left[k_i(\mu_i)+c_i(a_i)x_i\right]
- -\int q_\theta(1-a_{i(\theta)})\dd F(\theta),
- \label{eq:planner}
-\end{align}
-subject to capacity, queue stability, and retry feedback.  Transfers cancel from
-global welfare but determine participation and investment.
+The evidence identifies a missing contracting margin, not a structural welfare
+number.  A user or harness values a policy through its attempted-request spend,
+completion probability, delay, and fidelity.  H81 can compare the first three for
+one owned account once its gate opens; it does not observe user value, provider
+cost, external congestion, or task-level quality.  Transfers also affect provider
+entry and investment even when they cancel from a planner's static accounting.
+We therefore do not estimate a welfare loss or claim that a particular router
+policy is efficient.
 
-The decentralized agents solve different problems.  A provider chooses a sticky
-menu, capacity, and hidden quality to maximize margin times routed volume minus
-capacity and adjustment costs.  The router chooses admission, allocation,
-fallback, monitoring, and steering to maximize fees and retained user value.  A
-harness chooses model, retry, and fallback policies to maximize application
-retention net of spend.  A user sees the harness's delivered price-quality-delay
-bundle, not the provider market directly.
+The narrow implication is still useful.  A price-only best-execution rule is
+incomplete when the displayed quote is not an execution commitment.  For a fixed
+workload, an auditable procurement score must combine expected spend with failure,
+delay, and fidelity terms, and must state whether fallback is included.  Raw token
+price implements that score only when the nonprice terms are equal across eligible
+providers or already embedded in enforceable contingent prices.  H81 directly
+tests whether fallback and delegated selection are empirically relevant pieces of
+this score; it does not estimate their social weights.
 
-Holding installed capacity and the congestion state fixed makes the pricing
-implication transparent.  Let $\bar c_{i\theta}$ be the expected marginal compute
-cost of assigning type $\theta$ to provider $i$, let $\lambda_i$ be the capacity
-shadow cost, and let $\chi_{i\theta}$ collect the marginal congestion externality.
-The generalized social cost of the assignment is
-\begin{equation}
- G_{i\theta}=\bar c_{i\theta}+\lambda_i+\chi_{i\theta}
- +d_\theta W_i+(v_\theta+\ell_\theta)r_i+q_\theta(1-a_i).
- \label{eq:generalized-social-cost}
-\end{equation}
-The conditional first best admits the request when
-$v_\theta\geq\min_i G_{i\theta}$ and routes it to an eligible minimizer.  A
-decentralized score implements this rule if the money component equals marginal
-resource cost plus scarcity cost and the router adds the measured nonprice terms.
-A raw token-price ranking implements it only when those terms are common across
-providers or are already encoded in enforceable contingent prices.  This is why a
-price menu by itself is not a welfare mechanism in the observed market.
-
-A parsimonious entry benchmark makes one decentralization wedge exact.  Fix a
-single model and deliberately abstract from task differentiation; this is the
-polar case in which provider execution is substitutable conditional on delivery.
-
-\begin{proposition}[Finite entry and the reliability/business-stealing wedge]
-\label{prop:free-entry}
-An epoch contains $D>0$ jobs.  Each of $n$ symmetric providers is independently
-deliverable with probability $a\in(0,1)$, has no binding capacity conditional on
-delivery, incurs marginal cost $c$, and pays setup cost $F>0$.  A successful job
-has social value $v>c$ and is paid a platform-set price $p$; the router shares
-completed jobs symmetrically among deliverable providers.  Let
-$S_n=1-(1-a)^n$ and $S_0=0$.
-
-The welfare function and a provider's expected profit are
-\begin{equation}
- W_n=D(v-c)S_n-nF,
- \qquad
- \pi_n=(p-c)D\frac{S_n}{n}-F.
- \label{eq:entry-welfare-profit}
-\end{equation}
-The gross social value of the $n$th entrant is
-$R_n^W=D(v-c)a(1-a)^{n-1}$, which is strictly decreasing, so a greatest
-welfare-maximizing count $n^W$ is finite.  With $n^E=0$ when no provider can
-break even, the greatest symmetric free-entry count is also finite and, for
-$p>c$, satisfies
-\begin{equation}
- n^E\leq \left\lfloor\frac{(p-c)D}{F}\right\rfloor.
- \label{eq:entry-ceiling}
-\end{equation}
-The entrant's gross private return is
-$R_n^E=(p-c)DS_n/n$.  At $n\geq2$, if $p-c=v-c$, then
-$R_n^E>R_n^W$ and hence $n^E\geq n^W$, giving the usual weak bias toward
-excessive entry.  More
-generally, there is underentry when $R_n^E<F<R_n^W$ and overentry when
-$R_n^W<F<R_n^E$.
-\end{proposition}
-
-\begin{proof}
-Since $S_n-S_{n-1}=a(1-a)^{n-1}$,
-$W_n-W_{n-1}=R_n^W-F$ decreases strictly in $n$ and is eventually negative.
-Free entry requires $(p-c)DS_n/n\geq F$; because $S_n\leq1$, this implies
-\cref{eq:entry-ceiling}.  Finally,
-$S_n/n=(a/n)\sum_{k=0}^{n-1}(1-a)^k>a(1-a)^{n-1}$ for $n\geq2$.
-Comparing each gross return with $F$ yields the two directional wedges.
-\end{proof}
-
-The proposition adapts the business-stealing logic of
-\citet{mankiw1986freeentry} to reliability created by router substitution.  It
-answers the ``maximal entry'' question narrowly: for fixed demand and positive
-setup cost, neither zero-profit entry nor efficient redundancy is unbounded.
-It is a partial-equilibrium result conditional on $(D,p)$, not a solution of the
-endogenous administered-menu game.
-The platform can in principle align the margin by charging or subsidizing the
-difference $R_n^E-R_n^W$, but doing so requires demand value, cost, and
-deliverability primitives that our public panel does not identify.  Tool use,
-quality differentiation, correlated outages, and capacity constraints add
-variety and congestion terms; they do not restore a generic first welfare
-theorem.  The router's ability to allocate fees across harness and provider
-sides makes this a two-sided-platform design problem in the sense of
-\citet{rochettirole2003}.
-
-The evidence isolates four possible failures of decentralization.
-
-\begin{enumerate}
-  \item \textbf{Admission.} A high default fill rate can be privately valuable but
-  socially excessive if retries impose congestion on other users.  User-value
-  signals are needed to price or defer low-value requests.
-  \item \textbf{Quality verification.} Selection on price and latency can induce
-  unmeasured fidelity shaving.  The public panel has no task-level quality
-  certificate, so the corresponding welfare term is unidentified.
-  \item \textbf{Steering.} Prominence is an allocation instrument.  The negative
-  past-cut association fails the sign of a known pro-competitive dynamic rule and
-  may reduce the return to undercutting unless it is explained by hidden quality or
-  capacity.
-  \item \textbf{Retry feedback.} The OLS-placebo pattern is consistent with
-  positive feedback, but the IV bound implies little same-endpoint amplification.
-  The important unmeasured margin is rerouting across providers.
-\end{enumerate}
-
-The central market-design implication follows from observed quote revocability and
-the platform's documented substitution role, not from a promoted causal effect.  A price-only
-best-execution standard is incomplete when the quote is revocable.  A meaningful
-score must combine expected money cost with success probability, latency, and
-fidelity for a declared workload.  Capacity certificates, explicit fallback
-prices, or auditable provider-level fill rates would move the market from displayed
-menus toward executable commitments.  The companion mechanism paper studies such
-certificates; this paper supplies the empirical reason they are needed.
+Execution-contingent prices, explicit fallback prices, and provider-level fill
+rates would make the displayed and clearing layers more congruent.  Capacity
+certificates are one possible implementation, studied in a companion mechanism
+paper.  The stylized free-entry benchmark from the earlier manuscript is retained
+with its proof in \cref{app:entry-benchmark}; none of its primitives is calibrated
+here.
 
 \section{Related work}
 \label{sec:related}
@@ -1107,7 +1170,16 @@ not.
 
 \paragraph{Emerging AI-platform evidence.}
 Recent work studies quality-adjusted AI prices and platform self-preferencing
-\cite{wang2026,zhang2026}.  We complement these studies with provider-level
+\cite{wang2026,zhang2026}.  \citet{demireretal2025} use OpenRouter and Azure
+data to document supply, demand, and pricing and estimate an open-source
+provider--model prompt-price elasticity near minus one.  That estimate is the
+closest benchmark for provider revenue stationarity.  We show that any common
+market-fixed-effect quantity-share coefficient is mechanically one less than the
+corresponding revenue-share coefficient, then reproduce the published fixed-effect
+ladder and audit the sparse repricing support.  The accounting result is exact;
+the current within-provider/model discrepancy is promotion-gated because a
+first-order condition requires a causal own-price response.  We complement these
+studies with provider-level
 microstructure and a reproducible realized-policy audit.  The institutional APIs
 are documented by the platforms themselves \cite{openroutermetadata,
 hfinferenceproviders2026}; all policy claims in this paper are versioned to the
@@ -1202,6 +1274,210 @@ Regressions use one horizon at a time.  Capacity ceilings are displayed metadata
 not contractual commitments, and missing ceilings are not coded as infinite.
 Derank transitions and rate-limit onsets are router enforcement events; they do not
 reveal which user's request caused the event.
+
+\section{Proof and validation of the delegation decomposition}
+\label{app:h81-proof}
+
+\begin{proof}[Proof of \cref{prop:delegation-decomposition}]
+Condition on the stopping time $T$, terminal policy, preterminal counts, and the
+finite potential-outcome schedule
+$\{Y_b(N),Y_b(F),Y_b(D)\}_{b=1}^{B}$, where $B=T-1$.  Because the terminal
+policy has count 39 at $T-1$, the stopping event imposes no further ordering
+restriction after we condition on the preterminal counts.  The labels on the
+first $B$ blocks are therefore a uniform fixed-count permutation.  In
+particular, for each $b$ and $p$,
+$\Prb(Z_b=p\mid T,n_N,n_F,n_D)=n_p/B=\pi_p$.  Consistency gives
+$Y_b^{obs}=Y_b(p)$ whenever $Z_b=p$, so
+\[
+ \E_Z\!\left[
+   \left.\frac{\1\{Z_b=p\}Y_b^{obs}}{\pi_p}
+   \right|T,n_N,n_F,n_D
+ \right]
+ =\frac{\pi_pY_b(p)}{\pi_p}=Y_b(p).
+\]
+Summing over blocks and dividing by $B$ yields
+$\E_Z[\widehat\mu^{HT}_p]=\mu_p$.  Linearity of expectation proves
+design-unbiasedness of both component contrasts.  Finally,
+\[
+ (\mu_F-\mu_N)+(\mu_D-\mu_F)=\mu_D-\mu_N
+\]
+and the same cancellation holds pathwise after replacing each $\mu_p$ by
+$\widehat\mu^{HT}_p$.  The argument uses neither an ordering of the three
+potential outcomes nor independence of outcomes across blocks.  It requires only
+positive conditional assignment probabilities, correct assignment replay, and
+no interference into the first request from a prior request in the same block.
+Excluding the terminal block is essential: conditional on stopping, its
+assignment is fixed to the last arm to reach 40 and has zero probability under
+the other policies.
+\end{proof}
+
+The theorem has three distinct validation targets.  First, assignment replay must
+recover the recorded first policy from every 64-bit seed and the treatment
+metadata must implement the stated candidate-set and fallback controls.  Second,
+a finite-population Monte Carlo must hold a potential-outcome table fixed, run
+the production assignment algorithm through the balance stopping time, and
+verify both the bias of the uncorrected terminal-inclusive estimator and the
+unbiasedness and nominal size of the conditional preterminal estimator.  Third,
+adversarial missingness simulations must
+confirm that success remains defined for every attempted request while spend,
+latency, and provider identity are either fully observed or reported with their
+protocol-valid worst-case bounds.  Passing these checks validates the estimator
+implementation; it does not solve transport from the two-model collection
+support to the broader marketplace.
+
+We ran 20,000 stopped assignments at the production 40-per-arm gate.  Across the
+fallback, selection, and total contrasts, corrected bias is respectively
+$-1.04\times10^{-4}$, $-0.05\times10^{-4}$, and
+$-1.09\times10^{-4}$; each is smaller than its Monte Carlo uncertainty.  The
+terminal-inclusive fallback estimator has bias $-3.95\times10^{-4}$ (Monte Carlo
+standard error $1.23\times10^{-4}$).  The numerical magnitude is small because
+only one block is contaminated, but its sign and size depend on the unobserved
+time path and therefore cannot be assumed away.  In 500 heterogeneous sharp-null
+experiments, the fixed-count test rejects at 5.4\% (Monte Carlo standard error
+1.0 percentage point).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\linewidth]{figures/h81_theorem_validation.pdf}
+\caption{Validation of the stopped H81 design.  Panel A compares Monte Carlo
+bias under a fixed, policy-specific time-varying potential-outcome schedule;
+bars are 95\% Monte Carlo intervals.  The corrected preterminal estimator is
+centered at zero, whereas including the gate-hitting block creates a small but
+design-dependent bias.  Panel B shows the randomization-$p$ empirical CDF under
+a heterogeneous sharp null; the 5\% rejection rate is 5.4\%.  This is estimator
+validation, not empirical evidence about routing outcomes.}
+\label{fig:h81-theorem-validation}
+\end{figure}
+
+\section{Companion free-entry benchmark}
+\label{app:entry-benchmark}
+
+This benchmark is retained to delimit a possible reliability/business-stealing
+wedge.  It is not calibrated or validated by H81.
+
+\begin{proposition}[Finite entry and the reliability/business-stealing wedge]
+\label{prop:free-entry}
+An epoch contains $D>0$ jobs.  Each of $n$ symmetric providers is independently
+deliverable with probability $a\in(0,1)$, has no binding capacity conditional on
+delivery, incurs marginal cost $c$, and pays setup cost $F>0$.  A successful job
+has social value $v>c$ and is paid a platform-set price $p$; the router shares
+completed jobs symmetrically among deliverable providers.  Let
+$S_n=1-(1-a)^n$ and $S_0=0$.
+
+The welfare function and a provider's expected profit are
+\begin{equation}
+ W_n=D(v-c)S_n-nF,
+ \qquad
+ \pi_n=(p-c)D\frac{S_n}{n}-F.
+ \label{eq:entry-welfare-profit}
+\end{equation}
+The gross social value of the $n$th entrant is
+$R_n^W=D(v-c)a(1-a)^{n-1}$, which is strictly decreasing, so a greatest
+welfare-maximizing count $n^W$ is finite.  With $n^E=0$ when no provider can
+break even, the greatest symmetric free-entry count is also finite and, for
+$p>c$, satisfies
+\begin{equation}
+ n^E\leq \left\lfloor\frac{(p-c)D}{F}\right\rfloor.
+ \label{eq:entry-ceiling}
+\end{equation}
+The entrant's gross private return is $R_n^E=(p-c)DS_n/n$.  At $n\geq2$, if
+$p-c=v-c$, then $R_n^E>R_n^W$ and hence $n^E\geq n^W$.  More generally, there is
+underentry when $R_n^E<F<R_n^W$ and overentry when $R_n^W<F<R_n^E$.
+\end{proposition}
+
+\begin{proof}
+Since $S_n-S_{n-1}=a(1-a)^{n-1}$,
+$W_n-W_{n-1}=R_n^W-F$ decreases strictly in $n$ and is eventually negative.
+Free entry requires $(p-c)DS_n/n\geq F$; because $S_n\leq1$, this implies
+\cref{eq:entry-ceiling}.  Finally,
+$S_n/n=(a/n)\sum_{k=0}^{n-1}(1-a)^k>a(1-a)^{n-1}$ for $n\geq2$.
+Comparing each gross return with $F$ yields the two directional wedges.
+\end{proof}
+
+The proposition adapts the business-stealing logic of
+\citet{mankiw1986freeentry} to reliability created by router substitution.  It is
+partial equilibrium conditional on $(D,p,a,c,F)$, not a first welfare theorem for
+the observed market.  Public quote and owned-probe data do not identify any of
+those primitives jointly.
+
+We validated the companion analytic results independently of the market data.
+Across 20 detection-threshold cells, simulated residuals agree with the analytic
+identity within 2.23 Monte Carlo standard errors and have the correct sign away
+from the threshold.  The revenue-share coefficient identity holds to
+$10^{-14}$, including its heteroskedasticity-robust standard error.  All 144
+free-entry grid cells satisfy the analytic ceiling and the equal-margin
+overentry result without hitting the search boundary.  Finally, 20,000 random
+coarsening constructions produce 60,198 leader-change witnesses and no
+construction failure.  These checks detect algebra and implementation errors;
+they do not calibrate the model to the observed marketplace.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/theory_validation_suite.pdf}
+\caption{Logical and numerical validation of companion theory.  Panel A plots
+the simulated residual from the menu-detection experiment against its analytic
+counterpart; the dashed line is equality.  Panel B compares the integer
+welfare-maximizing and zero-profit provider counts across the primitive grid on
+symmetric-log axes; color records provider availability and the dashed line is
+equality.  Dispersion around equality is the model's entry wedge, not an
+empirical estimate of the number of providers.}
+\label{fig:companion-theory-validation}
+\end{figure}
+
+\section{Revenue-stationarity and bounded-gap protocol}
+\label{app:revenue-stationarity}
+
+\begin{proof}[Proof of \cref{prop:revenue-share-identity}]
+Equation~\eqref{eq:revenue-share-accounting} holds observation by observation.
+Let $M$ be the weighted residual-maker for the common market effects and controls,
+and write $x=\log p$, $y_s=\log s$, and $y_e=\log e$.  Because
+$\log(R_g/Q_g)$ lies in the market-effect span,
+$My_s=My_e-Mx$.  Frisch--Waugh--Lovell gives
+\[
+ \widehat\beta_s=(x'WMx)^{-1}x'WMy_s
+ =\widehat\beta_e-1.
+\]
+Moreover,
+$My_s-\widehat\beta_sMx=My_e-\widehat\beta_eMx$, so the regression residuals
+are identical.  The transformed regressor is also common, which makes every
+residual-based classical, heteroskedasticity-robust, or cluster-robust covariance
+estimate for the price coefficient identical.  Exact multiway absorption simply
+constructs the corresponding $M$.
+\end{proof}
+
+For provider $i$, define the public gross-revenue proxy
+$\widetilde R_i=p_i s_iQ$, where $p_i$ is the listed token price, $s_i$ is its
+provider share within a model-day, and $Q$ is aggregate model-day tokens.  If the
+provider's effect on $Q$ is negligible and marginal cost is excluded, an interior
+gross-revenue optimum requires
+\begin{equation}
+  1+\frac{\partial\log s_i}{\partial\log p_i}=0.
+  \label{eq:revenue-foc}
+\end{equation}
+A cross-sectional coefficient near minus one is not this derivative; by
+\cref{prop:revenue-share-identity}, it is exactly a zero price coefficient for
+public revenue-proxy share under the same design.  The prospective H91 protocol
+therefore decomposes log price into provider--model means
+and within-provider/model deviations under model-day fixed effects.  Its closest
+published replication uses open-weight models, listed prompt prices, and
+provider-clustered covariance; first-difference price events add one-day pretrend
+and post-event falsifications.
+
+The preregistered equivalence region is $[-1.25,-0.75]$.  Promotion requires 30
+panel days, 200 listed-price changes, at least 25\% of provider--model entities
+changing price, at least 2\% within-entity log-price variance, and equivalence in
+both the effective-price within estimate and listed-price event estimate.  Until
+all gates pass, the cross-sectional equality is reported only as a
+revenue-stationarity coincidence.
+
+A separate WCV6 sensitivity extends an estimated local share elasticity $\eta$
+into a bounded logit counterfactual.  For observed share $s$ and price multiple
+$m$, it sets the latent-weight elasticity to $\eta/(1-s)$ so that
+$\partial\log s(m)/\partial\log m=\eta$ at $m=1$, lets total demand respond to the
+share-weighted price index, and searches $m\in[0.25,4]$.  Its gap
+$1-\widetilde R_i(1)/\max_m\widetilde R_i(m)$ is conditional on that functional
+form and elasticity.  It is neither observed profit nor a simultaneous
+equilibrium loss; a boundary optimum leaves the global distance unidentified.
 
 \section{Proofs of the observational-equivalence results}
 \label{app:coarsening-proof}
@@ -1398,15 +1674,13 @@ identifiable when bids, acceptance, and termination are public.
 \toprule
 Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
-Administered menus & Frequency, size, grid, clock, day-split gap AUC & Long-run frailty and strategic response & 30 panel days, both vintages \\
-Exact price atoms & Tie atom survives independent grid null; author null fails; lagged-landing test is nonrejecting and underpowered & Anchor identity and strategic response & 30-date endpoint-label and matched-menu replication \\
-Manufactured firmness & Secondary randomized-order block level, flat rank gradient & Carryover-robust first-position estimate and transport & 500 first-position assignments per arm \\
-Negative steering memory & Rank-conditioned audit, same-sign eligibility subset & Complete eligibility or visibility instrument & Eligibility-complete panel \\
-Brown--MacKay mechanism & Cadence premium; reaction rules predictively indistinguishable & Slow-initiator/fast-responder exposure & Earliest 30-day vintage with fixed paired test \\
-Retry externality & Forward/backward asymmetry, small IV estimate & Cross-provider retry and user value & Incident instrument plus attempt logs \\
-Free-entry efficiency & Conditional reliability/business-stealing proposition; observed elasticity remains descriptive & Demand value, provider margin, setup cost, and deliverability law & Calibrated entry model or randomized admission fee \\
-Literal front-running & Proposition~\ref{prop:coarsening}; named-rival response share in $[0,68.6\%]$ & Cross-user order and quote-update sequence & Negotiated router/provider event logs \\
-Global welfare loss & None & Values, quality, costs, transfers, capacity response & Structural measurement contract \\
+H81 fallback and hidden selection & 76 verified blocks; counts 29, 22, 25; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm release gate; terminal block excluded \\
+H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
+Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
+Stale-cheap pickoff channel & H84 rejects its directional prediction; backward placebo nonzero & Prospective sample and realized fill linkage & Disjoint H85 holdout \\
+Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous cross section, Wilson interval $[0.828,0.994]$ & Repeated changes, contract comparability, eligibility, and fills & H93 longitudinal gates; H94 not yet active \\
+Literal front-running & Coarsened-timing bounds only & Cross-user arrival and quote-update sequence & Negotiated router/provider event logs \\
+Global welfare loss & No identified estimate & Values, quality, costs, transfers, and capacity response & Structural measurement contract \\
 \bottomrule
 \end{tabular}
 \caption{The ledger distinguishes a supported market fact from the stronger

@@ -137,3 +137,36 @@ logged first-position probabilities in the Horvitz--Thompson estimator. No
 primary outcome, treatment, assignment, exclusion, multiplicity, or
 stopping rule changed, and these outcome-derived bounds remain blinded until
 the fixed 40-per-arm gate.
+
+## Identification correction before the confirmatory release
+
+On 2026-07-17, after 76 verified first-position blocks had accrued but before
+the 40-per-arm outcome gate opened, the analysis of the eventual confirmatory
+cut was corrected for its assignment-dependent stopping time. The original
+rule stops at the first block `T` for which every arm count is at least 40. The
+policy assigned at block `T` is therefore mechanically the last arm to reach
+40. Treating all labels in that stopped prefix as fresh independent one-third
+draws, as the initial analyzer did, is not valid conditional randomization
+inference; the terminal block also has zero conditional probability under the
+other two policies.
+
+The release gate and its 40-per-arm threshold are unchanged. Once it opens,
+the corrected analysis:
+
+1. excludes only the gate-hitting terminal block;
+2. conditions on `T`, the terminal policy, and the three arm counts among
+   blocks `1,...,T-1`;
+3. treats those preterminal labels as a uniform fixed-count randomization;
+4. reports the arm means, equivalently conditional Horvitz--Thompson means with
+   probability `n_p/(T-1)`; and
+5. generates randomization p-values by permuting the observed preterminal label
+   multiset rather than drawing independent one-third labels.
+
+This amendment changes the estimator and reference randomization distribution,
+not the treatments, outcome, collection population, release threshold,
+directional hypotheses, or multiplicity family. It was motivated by a proof
+audit, not an H81 outcome estimate. The dedicated analyzer had not released an
+H81 outcome, but raw-source analyst blinding cannot be claimed because the two
+launch-block aggregates described above had already leaked. Both the original
+error and this post-collection, pre-release correction are retained in the gate
+genealogy.

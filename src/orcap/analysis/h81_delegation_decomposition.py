@@ -44,7 +44,8 @@ def _metadata(value: Any) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
+def prepare_assignment_attempts(frame: pd.DataFrame) -> pd.DataFrame:
+    """Deduplicate H81 rows and expose assignment metadata without outcomes."""
     if frame.empty:
         return frame.copy()
     out = frame[frame["study_id"].astype(str).eq(STUDY_ID)].copy()
@@ -91,6 +92,14 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
         "ranking_position",
     ):
         out[column] = pd.to_numeric(out[column], errors="coerce")
+    return out
+
+
+def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
+    """Add response, rejection, and spend fields to an assignment frame."""
+    out = prepare_assignment_attempts(frame)
+    if out.empty:
+        return out
     out["success"] = out["outcome"].astype(str).eq("succeeded")
     retry_reason = out.get("retry_reason", pd.Series("", index=out.index, dtype="string")).astype(
         "string"
@@ -308,7 +317,7 @@ def verify_treatment_metadata(row: pd.Series) -> bool:
 
 
 def first_position_sample(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
-    attempts = prepare_attempts(frame)
+    attempts = prepare_assignment_attempts(frame)
     first_rows = []
     candidate_blocks = 0
     assignment_replay_passes = 0
@@ -386,11 +395,16 @@ def arm_missingness_bounds(arm: pd.DataFrame, *, total_blocks: int) -> dict[str,
         # derived from that public set is not a valid support restriction.
         quote_cap[:] = np.nan
     spend_bounds = bounded_mean(spend, lower=0.0, upper=quote_cap)
+    probability_column = (
+        "analysis_assignment_probability"
+        if "analysis_assignment_probability" in arm
+        else "assignment_probability_first"
+    )
     ht_spend_bounds = ht_bounded_mean(
         spend,
         pd.to_numeric(
             arm.get(
-                "assignment_probability_first",
+                probability_column,
                 pd.Series(index=arm.index, dtype=float),
             ),
             errors="coerce",
@@ -441,27 +455,348 @@ def arm_missingness_bounds(arm: pd.DataFrame, *, total_blocks: int) -> dict[str,
     }
 
 
+def _finalize_gate_audit(
+    audit: dict[str, Any],
+    *,
+    attempts: pd.DataFrame,
+    collection_first: pd.DataFrame,
+    release_gate_first: pd.DataFrame,
+    analysis_first: pd.DataFrame,
+    release_ready: bool,
+    confirmatory_cutoff: str | None,
+    eligibility_summary: dict[str, Any],
+    simulations: int,
+) -> dict[str, Any]:
+    """Attach only assignment/support facts to the public gate audit."""
+    collection_counts = (
+        collection_first["policy"].value_counts().reindex(POLICIES, fill_value=0)
+        if len(collection_first)
+        else pd.Series(0, index=POLICIES, dtype=int)
+    )
+    release_gate_counts = (
+        release_gate_first["policy"].value_counts().reindex(POLICIES, fill_value=0)
+        if len(release_gate_first)
+        else pd.Series(0, index=POLICIES, dtype=int)
+    )
+    analysis_counts = (
+        analysis_first["policy"].value_counts().reindex(POLICIES, fill_value=0)
+        if len(analysis_first)
+        else pd.Series(0, index=POLICIES, dtype=int)
+    )
+    audit.update(
+        {
+            "study_id": STUDY_ID,
+            "first_position_counts": {
+                key: int(value) for key, value in collection_counts.items()
+            },
+            "confirmatory_prefix_counts": {
+                key: int(value) for key, value in analysis_counts.items()
+            },
+            "release_gate_prefix_counts": {
+                key: int(value) for key, value in release_gate_counts.items()
+            },
+            "release_gate_prefix_blocks": (
+                int(len(release_gate_first)) if release_ready else 0
+            ),
+            "confirmatory_prefix_blocks": (
+                int(len(analysis_first)) if release_ready else 0
+            ),
+            "confirmatory_cutoff": confirmatory_cutoff,
+            "outcomes_released": release_ready,
+            "outcome_access": (
+                "released_confirmatory_prefix"
+                if release_ready
+                else "not_queried_by_40_per_arm_gate"
+            ),
+            "terminal_gate_block_excluded": bool(release_ready),
+            "analysis_randomization": (
+                "fixed-count randomization conditional on preterminal arm counts"
+                if release_ready
+                else "not released"
+            ),
+            "models_represented": (
+                int(collection_first["model_id"].nunique()) if len(collection_first) else 0
+            ),
+            "model_ids": (
+                sorted(collection_first["model_id"].astype(str).unique().tolist())
+                if len(collection_first)
+                else []
+            ),
+            "normalized_order_entropy": _order_entropy(attempts),
+            "target_per_policy": MIN_FIRST_POSITION_PER_POLICY,
+            "accrual_projection": _accrual_projection(
+                collection_first,
+                collection_counts,
+                target_per_policy=MIN_FIRST_POSITION_PER_POLICY,
+            ),
+            "randomization_draws": simulations,
+            "eligibility_funnel": eligibility_summary,
+            "evidence_status": (
+                "randomized_decomposition_ready"
+                if release_ready
+                else "randomized_decomposition_power_gated"
+            ),
+            "identification": (
+                "After the release gate opens, the gate-hitting terminal block is excluded. "
+                "Conditional on the preterminal arm counts, treatment labels are uniformly "
+                "distributed over fixed-count assignments, so arm means and equivalent "
+                "conditional HT contrasts are design-unbiased for that finite prefix."
+            ),
+            "claim_boundary": (
+                "The fallback contrast holds the cheapest first provider fixed and changes "
+                "fallback permission. The hidden-selection contrast compares delegated default "
+                "with an explicit public-price order, both permitting fallback. It measures one "
+                "owned account and does not reveal provider intent or private router scores."
+            ),
+        }
+    )
+    return audit
+
+
+def _fixed_count_randomizations(
+    counts: pd.Series,
+    *,
+    simulations: int,
+    seed: int = 20260715,
+) -> np.ndarray:
+    """Permute the observed arm multiset for conditional randomization inference."""
+    n_blocks = int(counts.sum())
+    if not n_blocks or not simulations:
+        return np.empty((0, 0), dtype=np.int8)
+    template = np.concatenate(
+        [
+            np.full(int(counts[policy]), index, dtype=np.int8)
+            for index, policy in enumerate(POLICIES)
+        ]
+    )
+    rng = np.random.default_rng(seed)
+    labels = np.empty((simulations, n_blocks), dtype=np.int8)
+    for draw in range(simulations):
+        labels[draw] = rng.permutation(template)
+    return labels
+
+
+def _accrual_projection(
+    collection_first: pd.DataFrame,
+    counts: pd.Series,
+    *,
+    target_per_policy: int,
+    draws: int = 50_000,
+) -> dict[str, Any]:
+    """Forecast the assignment-only balance gate under continued uniform draws."""
+    if collection_first.empty:
+        return {
+            "remaining_by_policy": {
+                policy: int(target_per_policy) for policy in POLICIES
+            },
+            "completion_fraction_min_arm": 0.0,
+            "forecast_boundary": "No assignments have accrued; no time forecast is available.",
+        }
+    timestamps = pd.to_datetime(
+        collection_first.get(
+            "observed_at",
+            collection_first.get("run_ts", pd.Series(pd.NaT, index=collection_first.index)),
+        ),
+        errors="coerce",
+        utc=True,
+    )
+    span_hours = (
+        float((timestamps.max() - timestamps.min()).total_seconds() / 3600)
+        if timestamps.notna().sum() >= 2
+        else 0.0
+    )
+    blocks_per_hour = len(collection_first) / span_hours if span_hours > 0 else None
+    initial = np.asarray([int(counts.get(policy, 0)) for policy in POLICIES], dtype=np.int16)
+    simulated = np.repeat(initial[None, :], draws, axis=0)
+    extra = np.zeros(draws, dtype=np.int16)
+    active = simulated.min(axis=1) < target_per_policy
+    rng = np.random.default_rng(20260717)
+    while active.any():
+        active_index = np.flatnonzero(active)
+        labels = rng.integers(0, len(POLICIES), size=len(active_index))
+        simulated[active_index, labels] += 1
+        extra[active_index] += 1
+        active[active_index] = simulated[active_index].min(axis=1) < target_per_policy
+    remaining = {
+        policy: max(0, int(target_per_policy - counts.get(policy, 0)))
+        for policy in POLICIES
+    }
+    return {
+        "remaining_by_policy": remaining,
+        "completion_fraction_min_arm": float(counts.min() / target_per_policy),
+        "observed_first_position_blocks_per_hour": blocks_per_hour,
+        "simulated_additional_blocks_mean": float(extra.mean()),
+        "simulated_additional_blocks_p50": float(np.quantile(extra, 0.50)),
+        "simulated_additional_blocks_p90": float(np.quantile(extra, 0.90)),
+        "simulated_hours_to_gate_mean": (
+            float(extra.mean() / blocks_per_hour) if blocks_per_hour else None
+        ),
+        "simulated_hours_to_gate_p90": (
+            float(np.quantile(extra, 0.90) / blocks_per_hour) if blocks_per_hour else None
+        ),
+        "first_assignment_at": (
+            timestamps.min().isoformat() if timestamps.notna().any() else None
+        ),
+        "latest_assignment_at": (
+            timestamps.max().isoformat() if timestamps.notna().any() else None
+        ),
+        "forecast_boundary": (
+            "Uniform-assignment and observed-cadence extrapolation only. Scheduling gaps, "
+            "model eligibility, and collection failures can delay the gate. No outcome enters."
+        ),
+    }
+
+
+def _blinded_outputs(
+    collection_first: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Return schema-stable accrual outputs without reading outcome columns."""
+    counts = collection_first["policy"].value_counts().reindex(POLICIES, fill_value=0)
+    panel = pd.DataFrame(
+        [
+            {
+                "policy": policy,
+                "first_position_attempts": int(counts[policy]),
+                "successes": np.nan,
+                "success_rate": np.nan,
+                "success_ci_low": np.nan,
+                "success_ci_high": np.nan,
+                "ht_success_mean": np.nan,
+                "rate_429": np.nan,
+                "fallback_observed_rate": np.nan,
+                "spend_observed": np.nan,
+                "spend_missing": np.nan,
+                "spend_mean_lower_bound_usd": np.nan,
+                "spend_mean_upper_bound_usd": np.nan,
+                "ht_spend_mean_lower_bound_usd": np.nan,
+                "ht_spend_mean_upper_bound_usd": np.nan,
+                "spend_upper_support_complete_for_missing": np.nan,
+                "spend_observed_upper_support_violations": np.nan,
+                "successful_latency_observed": np.nan,
+                "successful_latency_missing": np.nan,
+                "successful_latency_mean_lower_bound_ms": np.nan,
+                "successful_latency_mean_upper_bound_ms": np.nan,
+                "selected_provider_observed_successes": np.nan,
+                "selected_provider_missing_successes": np.nan,
+                "selected_provider_observation_rate_success": np.nan,
+                "mean_observed_spend_usd": np.nan,
+            }
+            for policy in POLICIES
+        ]
+    )
+    model_rows = []
+    for (model_id, policy), arm in collection_first.groupby(
+        ["model_id", "policy"], sort=True
+    ):
+        model_rows.append(
+            {
+                "model_id": model_id,
+                "policy": policy,
+                "model_blocks": int(collection_first["model_id"].eq(model_id).sum()),
+                "attempts": int(len(arm)),
+                "success_rate": np.nan,
+                "ht_success_mean_within_model": np.nan,
+            }
+        )
+    model_panel = pd.DataFrame(
+        model_rows,
+        columns=[
+            "model_id",
+            "policy",
+            "model_blocks",
+            "attempts",
+            "success_rate",
+            "ht_success_mean_within_model",
+        ],
+    )
+    contrasts = pd.DataFrame(
+        [
+            {
+                "estimand": name,
+                "positive_policy": positive,
+                "negative_policy": negative,
+                "primary": primary,
+                "n_blocks": int(len(collection_first)),
+                "positive_n": int(counts[positive]),
+                "negative_n": int(counts[negative]),
+                "success_difference_hajek": np.nan,
+                "success_difference_conditional": np.nan,
+                "success_difference_ci_low": np.nan,
+                "success_difference_ci_high": np.nan,
+                "success_difference_ht": np.nan,
+                "randomization_p_greater": np.nan,
+                "randomization_p_two_sided": np.nan,
+                "spend_complete_both_arms": np.nan,
+                "observed_spend_difference_usd": np.nan,
+                "spend_difference_lower_bound_usd": np.nan,
+                "spend_difference_upper_bound_usd": np.nan,
+                "ht_spend_difference_lower_bound_usd": np.nan,
+                "ht_spend_difference_upper_bound_usd": np.nan,
+                "successful_latency_difference_lower_bound_ms": np.nan,
+                "successful_latency_difference_upper_bound_ms": np.nan,
+                "selected_provider_observation_rate_difference": np.nan,
+                "holm_p_greater": np.nan,
+            }
+            for name, positive, negative, primary in COMPARISONS
+        ]
+    )
+    return panel, model_panel, contrasts
+
+
 def analyze(
     frame: pd.DataFrame,
     *,
     eligibility: pd.DataFrame | None = None,
     simulations: int = RANDOMIZATION_DRAWS,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
-    attempts = prepare_attempts(frame)
-    _, _, _, eligibility_summary = eligibility_diagnostics(eligibility, attempts)
-    first, audit = first_position_sample(attempts)
-    collection_first = first.copy()
-    first, release_ready, confirmatory_cutoff = first_balanced_prefix(
+    assignment_attempts = prepare_assignment_attempts(frame)
+    _, _, _, eligibility_summary = eligibility_diagnostics(eligibility, assignment_attempts)
+    collection_first, audit = first_position_sample(assignment_attempts)
+    assignment_prefix, release_ready, confirmatory_cutoff = first_balanced_prefix(
         collection_first, POLICIES, MIN_FIRST_POSITION_PER_POLICY
     )
+    if not release_ready:
+        panel, model_panel, contrasts = _blinded_outputs(collection_first)
+        summary = _finalize_gate_audit(
+            audit,
+            attempts=assignment_attempts,
+            collection_first=collection_first,
+            release_gate_first=assignment_prefix,
+            analysis_first=assignment_prefix,
+            release_ready=False,
+            confirmatory_cutoff=confirmatory_cutoff,
+            eligibility_summary=eligibility_summary,
+            simulations=simulations,
+        )
+        return panel, model_panel, contrasts, summary
+
+    # Outcome columns are touched only after the assignment-only gate opens.
+    attempts = prepare_attempts(frame)
+    outcome_first, _ = first_position_sample(attempts)
+    outcome_gate_prefix, outcome_release_ready, outcome_cutoff = first_balanced_prefix(
+        outcome_first, POLICIES, MIN_FIRST_POSITION_PER_POLICY
+    )
+    if not outcome_release_ready or outcome_cutoff != confirmatory_cutoff:
+        raise RuntimeError("assignment and outcome confirmatory prefixes do not match")
+    if len(outcome_gate_prefix) < 2:
+        raise RuntimeError("release-gate prefix is too short for preterminal analysis")
+    terminal_gate_block = outcome_gate_prefix.iloc[-1]
+    first = outcome_gate_prefix.iloc[:-1].copy()
     n_blocks = len(first)
+    analysis_counts = first["policy"].value_counts().reindex(POLICIES, fill_value=0)
+    analysis_probabilities = analysis_counts / n_blocks
+    first["analysis_assignment_probability"] = first["policy"].map(
+        analysis_probabilities
+    )
     panel_rows = []
     for policy in POLICIES:
         arm = first[first["policy"].eq(policy)] if n_blocks else first
         n = len(arm)
         successes = int(arm["success"].sum()) if n else 0
         low, high = proportion_confint(successes, n, method="wilson") if n else (np.nan, np.nan)
-        probability = pd.to_numeric(arm.get("assignment_probability_first"), errors="coerce")
+        probability = pd.to_numeric(
+            arm.get("analysis_assignment_probability"), errors="coerce"
+        )
         missingness = arm_missingness_bounds(arm, total_blocks=n_blocks)
         panel_rows.append(
             {
@@ -494,7 +829,9 @@ def analyze(
     if n_blocks:
         for (model_id, policy), arm in first.groupby(["model_id", "policy"], sort=True):
             model_blocks = int(first["model_id"].eq(model_id).sum())
-            probability = pd.to_numeric(arm["assignment_probability_first"], errors="coerce")
+            probability = pd.to_numeric(
+                arm["analysis_assignment_probability"], errors="coerce"
+            )
             model_rows.append(
                 {
                     "model_id": model_id,
@@ -510,14 +847,8 @@ def analyze(
     model_panel = pd.DataFrame(model_rows)
 
     outcomes = first["success"].astype(float).to_numpy() if n_blocks else np.array([], dtype=float)
-    if n_blocks and simulations:
-        labels = np.random.default_rng(20260715).integers(
-            0, len(POLICIES), size=(simulations, n_blocks), dtype=np.int8
-        )
-    else:
-        labels = np.empty((0, 0), dtype=np.int8)
+    labels = _fixed_count_randomizations(analysis_counts, simulations=simulations)
     policy_index = {policy: index for index, policy in enumerate(POLICIES)}
-    probability = 1.0 / len(POLICIES)
     contrast_rows = []
     for name, positive, negative, primary in COMPARISONS:
         pos = first[first["policy"].eq(positive)] if n_blocks else first
@@ -541,8 +872,12 @@ def analyze(
         ht = (
             float(
                 (
-                    first["policy"].eq(positive).to_numpy() * outcomes / probability
-                    - first["policy"].eq(negative).to_numpy() * outcomes / probability
+                    first["policy"].eq(positive).to_numpy()
+                    * outcomes
+                    / analysis_probabilities[positive]
+                    - first["policy"].eq(negative).to_numpy()
+                    * outcomes
+                    / analysis_probabilities[negative]
                 ).sum()
                 / n_blocks
             )
@@ -551,8 +886,12 @@ def analyze(
         )
         if n_blocks and simulations:
             simulated = (
-                (labels == policy_index[positive]) * outcomes[None, :] / probability
-                - (labels == policy_index[negative]) * outcomes[None, :] / probability
+                (labels == policy_index[positive])
+                * outcomes[None, :]
+                / analysis_probabilities[positive]
+                - (labels == policy_index[negative])
+                * outcomes[None, :]
+                / analysis_probabilities[negative]
             ).sum(axis=1) / n_blocks
             p_greater = float((1 + (simulated >= ht - 1e-15).sum()) / (simulations + 1))
             p_two_sided = float(
@@ -615,6 +954,7 @@ def analyze(
                 "positive_n": len(pos),
                 "negative_n": len(neg),
                 "success_difference_hajek": raw,
+                "success_difference_conditional": raw,
                 "success_difference_ci_low": float(ci_low),
                 "success_difference_ci_high": float(ci_high),
                 "success_difference_ht": ht,
@@ -642,75 +982,32 @@ def analyze(
         contrasts.loc[primary_mask, "randomization_p_greater"].tolist()
     )
 
-    analysis_counts = panel.set_index("policy")["first_position_attempts"].reindex(
-        POLICIES, fill_value=0
+    summary = _finalize_gate_audit(
+        audit,
+        attempts=attempts,
+        collection_first=collection_first,
+        release_gate_first=outcome_gate_prefix,
+        analysis_first=first,
+        release_ready=True,
+        confirmatory_cutoff=confirmatory_cutoff,
+        eligibility_summary=eligibility_summary,
+        simulations=simulations,
     )
-    collection_counts = (
-        collection_first["policy"].value_counts().reindex(POLICIES, fill_value=0)
-        if len(collection_first)
-        else pd.Series(0, index=POLICIES, dtype=int)
+    summary["terminal_gate_block_policy"] = str(terminal_gate_block["policy"])
+    summary["terminal_gate_block_id"] = str(terminal_gate_block["block_id"])
+    summary["primary_estimator"] = (
+        "preterminal fixed-count arm-mean difference; identical to conditional HT"
     )
-    audit.update(
-        {
-            "study_id": STUDY_ID,
-            "first_position_counts": {key: int(value) for key, value in collection_counts.items()},
-            "confirmatory_prefix_counts": {
-                key: int(value) for key, value in analysis_counts.items()
-            },
-            "confirmatory_prefix_blocks": n_blocks if release_ready else 0,
-            "confirmatory_cutoff": confirmatory_cutoff,
-            "outcomes_released": release_ready,
-            "models_represented": (
-                int(collection_first["model_id"].nunique()) if len(collection_first) else 0
-            ),
-            "model_ids": (
-                sorted(collection_first["model_id"].astype(str).unique().tolist())
-                if len(collection_first)
-                else []
-            ),
-            "normalized_order_entropy": _order_entropy(attempts),
-            "target_per_policy": MIN_FIRST_POSITION_PER_POLICY,
-            "randomization_draws": simulations,
-            "eligibility_funnel": eligibility_summary,
-            "evidence_status": (
-                "randomized_decomposition_ready"
-                if release_ready
-                else "randomized_decomposition_power_gated"
-            ),
-            "claim_boundary": (
-                "The fallback contrast holds the cheapest first provider fixed and changes "
-                "fallback permission. The hidden-selection contrast compares delegated default "
-                "with an explicit public-price order, both permitting fallback. It measures one "
-                "owned account and does not reveal provider intent or private router scores."
-            ),
-        }
-    )
-    if not release_ready:
-        for column in panel.columns:
-            if column not in {"policy", "first_position_attempts"}:
-                panel[column] = np.nan
-        for column in model_panel.columns:
-            if column not in {"model_id", "policy", "model_blocks", "attempts"}:
-                model_panel[column] = np.nan
-        for column in contrasts.columns:
-            if column not in {
-                "estimand",
-                "positive_policy",
-                "negative_policy",
-                "primary",
-                "n_blocks",
-                "positive_n",
-                "negative_n",
-            }:
-                contrasts[column] = np.nan
-    return panel, model_panel, contrasts, audit
+    return panel, model_panel, contrasts, summary
 
 
 def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
-    frame = data.q(
+    assignment_frame = data.q(
         f"""
-        select *
+        select source, event_id, run_ts, observed_at, study_id, model_id,
+               policy, metadata_json
         from read_parquet('{data.table_glob("router_route_attempts")}', union_by_name=true)
+        where study_id = '{STUDY_ID}'
         """
     ).df()
     try:
@@ -726,9 +1023,26 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     except Exception:
         # The table is prospective and optional for historical/local datasets.
         eligibility = pd.DataFrame()
+    collection_first, _ = first_position_sample(assignment_frame)
+    _, release_ready, _ = first_balanced_prefix(
+        collection_first, POLICIES, MIN_FIRST_POSITION_PER_POLICY
+    )
+    if release_ready:
+        frame = data.q(
+            f"""
+            select *
+            from read_parquet(
+              '{data.table_glob("router_route_attempts")}',
+              union_by_name=true
+            )
+            where study_id = '{STUDY_ID}'
+            """
+        ).df()
+    else:
+        frame = assignment_frame
     panel, model_panel, contrasts, summary = analyze(frame, eligibility=eligibility)
     eligibility_rows, eligibility_models, eligibility_runs, _ = eligibility_diagnostics(
-        eligibility, prepare_attempts(frame)
+        eligibility, prepare_assignment_attempts(assignment_frame)
     )
     save(panel, out_dir, "h81_policy_panel")
     save(model_panel, out_dir, "h81_model_policy_panel")

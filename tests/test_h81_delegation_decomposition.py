@@ -77,13 +77,21 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     frame["retry_reason"] = pd.Series(pd.NA, index=frame.index, dtype="Int32")
     panel, model_panel, contrasts, summary = analyze(frame, simulations=5_000)
     indexed = contrasts.set_index("estimand")
-    assert abs(indexed.loc["fallback_option", "success_difference_hajek"] - 0.3) < 1e-12
-    assert abs(indexed.loc["hidden_selection", "success_difference_hajek"] - 0.2) < 1e-12
+    assert abs(
+        indexed.loc["fallback_option", "success_difference_hajek"] - (32 / 39 - 20 / 40)
+    ) < 1e-12
+    assert abs(
+        indexed.loc["hidden_selection", "success_difference_hajek"] - (40 / 40 - 32 / 39)
+    ) < 1e-12
     assert abs(indexed.loc["total_delegation", "success_difference_hajek"] - 0.5) < 1e-12
     assert abs(indexed.loc["total_delegation", "success_difference_ht"] - 0.5) < 1e-12
     assert indexed.loc[["fallback_option", "hidden_selection"], "holm_p_greater"].notna().all()
     assert pd.isna(indexed.loc["total_delegation", "holm_p_greater"])
-    assert panel["first_position_attempts"].eq(40).all()
+    assert panel.set_index("policy")["first_position_attempts"].to_dict() == {
+        "delegated_default": 40,
+        "price_only_no_fallback": 40,
+        "price_order_fallback": 39,
+    }
     assert panel["spend_mean_lower_bound_usd"].notna().all()
     assert panel["spend_mean_upper_bound_usd"].notna().all()
     assert panel["ht_spend_mean_lower_bound_usd"].notna().all()
@@ -97,7 +105,11 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert summary["assignment_replay_rate"] == 1.0
     assert summary["treatment_metadata_passes"] == 120
     assert summary["outcomes_released"] is True
-    assert summary["confirmatory_prefix_blocks"] == 120
+    assert summary["release_gate_prefix_blocks"] == 120
+    assert summary["confirmatory_prefix_blocks"] == 119
+    assert summary["terminal_gate_block_excluded"] is True
+    assert summary["terminal_gate_block_policy"] == "price_order_fallback"
+    assert summary["analysis_randomization"].startswith("fixed-count")
     assert summary["evidence_status"] == "randomized_decomposition_ready"
 
 
@@ -137,11 +149,22 @@ def test_zero_randomization_draws_still_runs_blinded_design_audit():
         ]
     )
 
-    panel, _, contrasts, summary = analyze(frame, simulations=0)
+    assignment_only = frame.drop(
+        columns=[
+            "outcome",
+            "retry_reason",
+            "cost_usd",
+            "latency_ms",
+            "selected_provider",
+            "fallback_triggered",
+        ]
+    )
+    panel, _, contrasts, summary = analyze(assignment_only, simulations=0)
 
     assert summary["assignment_replay_passes"] == 1
     assert summary["treatment_metadata_passes"] == 1
     assert summary["outcomes_released"] is False
+    assert summary["outcome_access"] == "not_queried_by_40_per_arm_gate"
     assert panel["success_rate"].isna().all()
     assert contrasts["randomization_p_greater"].isna().all()
 

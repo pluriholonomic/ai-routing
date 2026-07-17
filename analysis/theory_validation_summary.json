@@ -1,0 +1,29 @@
+{
+  "hypothesis": "companion theorem validation suite",
+  "detection_threshold": {
+    "cells": 20,
+    "maximum_absolute_z_error": 2.2269310271461302,
+    "all_signs_match_away_from_threshold": true
+  },
+  "revenue_share_identity": {
+    "quantity_share_price_coefficient": -0.40983959011745136,
+    "revenue_share_price_coefficient": 0.5901604098825586,
+    "coefficient_identity_error": -9.992007221626409e-15,
+    "maximum_residual_difference": 2.6645352591003757e-14,
+    "hc1_standard_error_difference": 2.7755575615628914e-17
+  },
+  "entry_grid": {
+    "cells": 144,
+    "all_ceilings_hold": true,
+    "all_equal_margin_overentry_checks_hold": true,
+    "any_grid_boundary_hit": false
+  },
+  "coarsening_construction": {
+    "sampled_transitions": 20000,
+    "leader_witnesses_attempted": 60198,
+    "construction_failures": 0,
+    "all_changed_providers_attainable": true,
+    "claim_boundary": "Endpoint reconstruction validates the constructive equivalence under unrestricted within-bin update order; it does not validate the model against market data."
+  },
+  "evidence_status": "logical_and_numerical_validation_only"
+}
