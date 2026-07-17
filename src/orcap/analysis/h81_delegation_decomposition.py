@@ -30,6 +30,12 @@ COMPARISONS = (
 )
 MIN_FIRST_POSITION_PER_POLICY = 40
 RANDOMIZATION_DRAWS = 100_000
+PRIMARY_FWER_ALPHA = 0.05
+BINARY_OUTCOME_VALUES = {
+    "succeeded": 1.0,
+    "failed": 0.0,
+    "cancelled": 0.0,
+}
 
 
 def _metadata(value: Any) -> dict[str, Any]:
@@ -100,13 +106,25 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
     out = prepare_assignment_attempts(frame)
     if out.empty:
         return out
-    out["success"] = out["outcome"].astype(str).eq("succeeded")
+    outcome = (
+        out.get("outcome", pd.Series(pd.NA, index=out.index, dtype="string"))
+        .astype("string")
+        .str.strip()
+        .str.lower()
+    )
+    out["outcome_observed"] = outcome.isin(BINARY_OUTCOME_VALUES)
+    out["success"] = outcome.map(BINARY_OUTCOME_VALUES).astype("Float64")
     retry_reason = out.get("retry_reason", pd.Series("", index=out.index, dtype="string")).astype(
         "string"
     )
-    out["rejected_429"] = (~out["success"]) & retry_reason.fillna("").str.contains("429")
+    out["rejected_429"] = pd.Series(pd.NA, index=out.index, dtype="Float64")
+    observed = out["outcome_observed"].fillna(False).astype(bool)
+    out.loc[observed, "rejected_429"] = (
+        out.loc[observed, "success"].eq(0)
+        & retry_reason.loc[observed].fillna("").str.contains("429")
+    ).astype(float)
     cost = pd.to_numeric(out.get("cost_usd"), errors="coerce")
-    out["observed_spend_usd"] = cost.where(out["success"], 0.0)
+    out["observed_spend_usd"] = cost.where(out["success"].eq(1), 0.0).where(observed)
     return out
 
 
@@ -284,17 +302,23 @@ def eligibility_diagnostics(
 
 
 def verify_first_assignment(block: pd.DataFrame) -> bool:
+    expected = _expected_first_policy(block)
+    first = block[block["policy_order"].eq(0)]
+    return expected is not None and len(first) == 1 and str(first["policy"].iloc[0]) == expected
+
+
+def _expected_first_policy(block: pd.DataFrame) -> str | None:
+    """Reconstruct a block's randomized first policy without reading outcomes."""
     try:
         seed = int(block["block_seed"].iloc[0])
         count = int(block["block_policy_count"].dropna().iloc[0])
     except (IndexError, TypeError, ValueError):
-        return False
-    first = block[block["policy_order"].eq(0)]
-    if count != len(POLICIES) or len(first) != 1:
-        return False
+        return None
+    if count != len(POLICIES):
+        return None
     expected = list(POLICIES)
     random.Random(seed).shuffle(expected)
-    return str(first["policy"].iloc[0]) == expected[0]
+    return expected[0]
 
 
 def verify_treatment_metadata(row: pd.Series) -> bool:
@@ -392,6 +416,27 @@ def arm_missingness_bounds(arm: pd.DataFrame, *, total_blocks: int) -> dict[str,
     """Bound H81 secondary means under protocol-level support restrictions."""
     n = len(arm)
     policy = str(arm["policy"].iloc[0]) if n else ""
+    success = pd.to_numeric(
+        arm.get("success", pd.Series(index=arm.index, dtype=float)),
+        errors="coerce",
+    )
+    success_bounds = bounded_mean(success, lower=0.0, upper=1.0)
+    probability_column = (
+        "analysis_assignment_probability"
+        if "analysis_assignment_probability" in arm
+        else "assignment_probability_first"
+    )
+    probability = pd.to_numeric(
+        arm.get(probability_column, pd.Series(index=arm.index, dtype=float)),
+        errors="coerce",
+    )
+    ht_success_bounds = ht_bounded_mean(
+        success,
+        probability,
+        total_blocks=total_blocks,
+        lower=0.0,
+        upper=1.0,
+    )
     spend = pd.to_numeric(
         arm.get("observed_spend_usd", pd.Series(index=arm.index, dtype=float)),
         errors="coerce",
@@ -405,26 +450,15 @@ def arm_missingness_bounds(arm: pd.DataFrame, *, total_blocks: int) -> dict[str,
         # derived from that public set is not a valid support restriction.
         quote_cap[:] = np.nan
     spend_bounds = bounded_mean(spend, lower=0.0, upper=quote_cap)
-    probability_column = (
-        "analysis_assignment_probability"
-        if "analysis_assignment_probability" in arm
-        else "assignment_probability_first"
-    )
     ht_spend_bounds = ht_bounded_mean(
         spend,
-        pd.to_numeric(
-            arm.get(
-                probability_column,
-                pd.Series(index=arm.index, dtype=float),
-            ),
-            errors="coerce",
-        ),
+        probability,
         total_blocks=total_blocks,
         lower=0.0,
         upper=quote_cap,
     )
 
-    successful = arm[arm["success"].astype(bool)] if n else arm
+    successful = arm[success.eq(1)] if n else arm
     latency = pd.to_numeric(
         successful.get("latency_ms", pd.Series(index=successful.index, dtype=float)),
         errors="coerce",
@@ -443,6 +477,12 @@ def arm_missingness_bounds(arm: pd.DataFrame, *, total_blocks: int) -> dict[str,
     selected_missing = selected.fillna("").eq("")
     selected_observation_rate = float((~selected_missing).mean()) if len(successful) else None
     return {
+        "success_outcomes_observed": success_bounds["observed"],
+        "success_outcomes_missing": success_bounds["missing"],
+        "success_mean_lower_bound": success_bounds["mean_lower_bound"],
+        "success_mean_upper_bound": success_bounds["mean_upper_bound"],
+        "ht_success_mean_lower_bound": ht_success_bounds["mean_lower_bound"],
+        "ht_success_mean_upper_bound": ht_success_bounds["mean_upper_bound"],
         "spend_observed": spend_bounds["observed"],
         "spend_missing": spend_bounds["missing"],
         "spend_mean_lower_bound_usd": spend_bounds["mean_lower_bound"],
@@ -586,6 +626,137 @@ def _fixed_count_randomizations(
     return labels
 
 
+def _row_time(frame: pd.DataFrame) -> pd.Series:
+    """Return the first available UTC timestamp under the production sort order."""
+    result = pd.Series(pd.NaT, index=frame.index, dtype="datetime64[ns, UTC]")
+    for column in ("observed_ts", "observed_at", "run_ts"):
+        if column not in frame:
+            continue
+        candidate = pd.to_datetime(frame[column], errors="coerce", utc=True)
+        result = result.where(result.notna(), candidate)
+    return result
+
+
+def preterminal_missingness_sensitivity(
+    attempts: pd.DataFrame,
+    *,
+    analysis_first: pd.DataFrame,
+    terminal_gate_block: pd.Series,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Recover intended preterminal arms and expose treatment/outcome attrition.
+
+    The confirmatory point estimator continues to use only replayed, compliant
+    first-position blocks.  This companion panel adds every reconstructable
+    intended first-position block no later than the gate-hitting block and codes
+    a missing/mismatched treatment or a non-binary outcome as unknown in [0, 1].
+    It is constructed only after the outcome gate opens.
+    """
+    if attempts.empty:
+        return pd.DataFrame(), {
+            "candidate_blocks_preterminal": 0,
+            "assigned_policy_reconstructed": 0,
+            "treatment_verified": 0,
+            "treatment_missing_or_noncompliant": 0,
+            "binary_outcome_missing_among_verified": 0,
+            "unorderable_candidate_blocks": 0,
+            "unassigned_candidate_blocks": 0,
+        }
+
+    terminal_id = str(terminal_gate_block.get("block_id", ""))
+    terminal_frame = terminal_gate_block.to_frame().T
+    terminal_times = _row_time(terminal_frame)
+    terminal_time = terminal_times.iloc[0] if len(terminal_times) else pd.NaT
+    confirmed_ids = set(analysis_first.get("block_id", pd.Series(dtype=object)).astype(str))
+    rows: list[dict[str, Any]] = []
+    unorderable = 0
+
+    for block_id, block in attempts.groupby("block_id", sort=False, dropna=True):
+        block_id = str(block_id)
+        if not block_id or block_id == terminal_id:
+            continue
+        times = _row_time(block)
+        block_time = times.min() if times.notna().any() else pd.NaT
+        if block_id not in confirmed_ids:
+            if pd.isna(block_time) or pd.isna(terminal_time):
+                # An unorderable block cannot safely be declared post-cutoff.
+                unorderable += 1
+            elif block_time > terminal_time:
+                continue
+
+        expected_policy = _expected_first_policy(block)
+        first_rows = block[block["policy_order"].eq(0)]
+        first = first_rows.iloc[0] if len(first_rows) == 1 else None
+        replay = bool(
+            expected_policy is not None
+            and first is not None
+            and str(first["policy"]) == expected_policy
+        )
+        treatment_verified = bool(replay and verify_treatment_metadata(first))
+        outcome_flag = first.get("outcome_observed") if first is not None else None
+        outcome_observed = bool(
+            treatment_verified
+            and first is not None
+            and pd.notna(outcome_flag)
+            and bool(outcome_flag)
+        )
+        success = (
+            float(first["success"])
+            if outcome_observed and first is not None and pd.notna(first.get("success"))
+            else np.nan
+        )
+        rows.append(
+            {
+                "block_id": block_id,
+                "block_time": block_time,
+                "expected_policy": expected_policy,
+                "first_row_observed": first is not None,
+                "assignment_replay_pass": replay,
+                "treatment_metadata_pass": treatment_verified,
+                "binary_outcome_observed": outcome_observed,
+                "success_for_worst_case_bounds": success,
+                "in_confirmatory_point_sample": block_id in confirmed_ids,
+            }
+        )
+
+    panel = pd.DataFrame(rows)
+    if panel.empty:
+        assigned = treatment_verified = treatment_missing = outcome_missing = 0
+        unassigned = 0
+    else:
+        assigned_mask = panel["expected_policy"].isin(POLICIES)
+        assigned = int(assigned_mask.sum())
+        treatment_verified = int(panel["treatment_metadata_pass"].sum())
+        treatment_missing = int(
+            (assigned_mask & ~panel["treatment_metadata_pass"].astype(bool)).sum()
+        )
+        outcome_missing = int(
+            (
+                panel["treatment_metadata_pass"].astype(bool)
+                & ~panel["binary_outcome_observed"].astype(bool)
+            ).sum()
+        )
+        unassigned = int((~assigned_mask).sum())
+    summary = {
+        "candidate_blocks_preterminal": int(len(panel)),
+        "assigned_policy_reconstructed": assigned,
+        "treatment_verified": treatment_verified,
+        "treatment_missing_or_noncompliant": treatment_missing,
+        "binary_outcome_missing_among_verified": outcome_missing,
+        "unorderable_candidate_blocks": int(unorderable),
+        "unassigned_candidate_blocks": unassigned,
+        "bound_rule": (
+            "Reconstructed intended arms are retained. Missing or noncompliant treatment "
+            "metadata and unknown/corrupt outcomes are assigned success 0 and 1 at the two "
+            "worst-case endpoints. Any unreconstructable arm widens every contrast to [-1,1]."
+        ),
+        "estimand_boundary": (
+            "These are attrition/treatment-record sensitivity bounds for intended policy "
+            "assignment, not a per-protocol treatment effect."
+        ),
+    }
+    return panel, summary
+
+
 def _accrual_projection(
     collection_first: pd.DataFrame,
     counts: pd.Series,
@@ -669,9 +840,16 @@ def _blinded_outputs(
                 "first_position_attempts": int(counts[policy]),
                 "successes": np.nan,
                 "success_rate": np.nan,
+                "success_rate_observed_cases": np.nan,
                 "success_ci_low": np.nan,
                 "success_ci_high": np.nan,
                 "ht_success_mean": np.nan,
+                "success_outcomes_observed": np.nan,
+                "success_outcomes_missing": np.nan,
+                "success_mean_lower_bound": np.nan,
+                "success_mean_upper_bound": np.nan,
+                "ht_success_mean_lower_bound": np.nan,
+                "ht_success_mean_upper_bound": np.nan,
                 "rate_429": np.nan,
                 "fallback_observed_rate": np.nan,
                 "spend_observed": np.nan,
@@ -705,6 +883,9 @@ def _blinded_outputs(
                 "model_blocks": int(collection_first["model_id"].eq(model_id).sum()),
                 "attempts": int(len(arm)),
                 "success_rate": np.nan,
+                "success_outcomes_missing": np.nan,
+                "success_mean_lower_bound": np.nan,
+                "success_mean_upper_bound": np.nan,
                 "ht_success_mean_within_model": np.nan,
             }
         )
@@ -716,6 +897,9 @@ def _blinded_outputs(
             "model_blocks",
             "attempts",
             "success_rate",
+            "success_outcomes_missing",
+            "success_mean_lower_bound",
+            "success_mean_upper_bound",
             "ht_success_mean_within_model",
         ],
     )
@@ -733,7 +917,21 @@ def _blinded_outputs(
                 "success_difference_conditional": np.nan,
                 "success_difference_ci_low": np.nan,
                 "success_difference_ci_high": np.nan,
+                "success_difference_simultaneous_ci_low": np.nan,
+                "success_difference_simultaneous_ci_high": np.nan,
                 "success_difference_ht": np.nan,
+                "positive_success_outcomes_missing": np.nan,
+                "negative_success_outcomes_missing": np.nan,
+                "success_difference_lower_bound": np.nan,
+                "success_difference_upper_bound": np.nan,
+                "ht_success_difference_lower_bound": np.nan,
+                "ht_success_difference_upper_bound": np.nan,
+                "planned_positive_n": np.nan,
+                "planned_negative_n": np.nan,
+                "planned_positive_treatment_or_outcome_missing": np.nan,
+                "planned_negative_treatment_or_outcome_missing": np.nan,
+                "success_difference_treatment_outcome_lower_bound": np.nan,
+                "success_difference_treatment_outcome_upper_bound": np.nan,
                 "randomization_p_greater": np.nan,
                 "randomization_p_two_sided": np.nan,
                 "spend_complete_both_arms": np.nan,
@@ -798,12 +996,24 @@ def analyze(
     first["analysis_assignment_probability"] = first["policy"].map(
         analysis_probabilities
     )
+    missingness_plan, treatment_outcome_sensitivity = preterminal_missingness_sensitivity(
+        attempts,
+        analysis_first=first,
+        terminal_gate_block=terminal_gate_block,
+    )
     panel_rows = []
     for policy in POLICIES:
         arm = first[first["policy"].eq(policy)] if n_blocks else first
         n = len(arm)
-        successes = int(arm["success"].sum()) if n else 0
-        low, high = proportion_confint(successes, n, method="wilson") if n else (np.nan, np.nan)
+        success = pd.to_numeric(arm.get("success"), errors="coerce")
+        success_observed = int(success.notna().sum())
+        success_missing = int(success.isna().sum())
+        successes = int(success.fillna(0).sum()) if n else 0
+        low, high = (
+            proportion_confint(successes, n, method="wilson")
+            if n and not success_missing
+            else (np.nan, np.nan)
+        )
         probability = pd.to_numeric(
             arm.get("analysis_assignment_probability"), errors="coerce"
         )
@@ -813,15 +1023,22 @@ def analyze(
                 "policy": policy,
                 "first_position_attempts": n,
                 "successes": successes,
-                "success_rate": successes / n if n else np.nan,
+                "success_rate": successes / n if n and not success_missing else np.nan,
+                "success_rate_observed_cases": (
+                    successes / success_observed if success_observed else np.nan
+                ),
                 "success_ci_low": float(low),
                 "success_ci_high": float(high),
                 "ht_success_mean": (
-                    float((arm["success"].astype(float) / probability).sum() / n_blocks)
-                    if n_blocks and n and probability.notna().all()
+                    float((success / probability).sum() / n_blocks)
+                    if n_blocks and n and not success_missing and probability.notna().all()
                     else np.nan
                 ),
-                "rate_429": float(arm["rejected_429"].mean()) if n else np.nan,
+                "rate_429": (
+                    float(pd.to_numeric(arm["rejected_429"], errors="coerce").mean())
+                    if success_observed
+                    else np.nan
+                ),
                 "fallback_observed_rate": (
                     float(arm["fallback_triggered"].mean()) if n else np.nan
                 ),
@@ -842,43 +1059,79 @@ def analyze(
             probability = pd.to_numeric(
                 arm["analysis_assignment_probability"], errors="coerce"
             )
+            model_success = pd.to_numeric(arm["success"], errors="coerce")
+            model_missing = int(model_success.isna().sum())
+            model_bounds = bounded_mean(model_success, lower=0.0, upper=1.0)
             model_rows.append(
                 {
                     "model_id": model_id,
                     "policy": policy,
                     "model_blocks": model_blocks,
                     "attempts": len(arm),
-                    "success_rate": float(arm["success"].mean()),
-                    "ht_success_mean_within_model": float(
-                        (arm["success"].astype(float) / probability).sum() / model_blocks
+                    "success_rate": (
+                        float(model_success.mean()) if not model_missing else np.nan
+                    ),
+                    "success_outcomes_missing": model_missing,
+                    "success_mean_lower_bound": model_bounds["mean_lower_bound"],
+                    "success_mean_upper_bound": model_bounds["mean_upper_bound"],
+                    "ht_success_mean_within_model": (
+                        float((model_success / probability).sum() / model_blocks)
+                        if not model_missing
+                        else np.nan
                     ),
                 }
             )
     model_panel = pd.DataFrame(model_rows)
 
-    outcomes = first["success"].astype(float).to_numpy() if n_blocks else np.array([], dtype=float)
+    outcomes = (
+        pd.to_numeric(first["success"], errors="coerce").to_numpy(dtype=float)
+        if n_blocks
+        else np.array([], dtype=float)
+    )
+    complete_binary_outcomes = bool(n_blocks and np.isfinite(outcomes).all())
     labels = _fixed_count_randomizations(analysis_counts, simulations=simulations)
     policy_index = {policy: index for index, policy in enumerate(POLICIES)}
+    primary_comparisons = sum(int(primary) for _, _, _, primary in COMPARISONS)
     contrast_rows = []
     for name, positive, negative, primary in COMPARISONS:
         pos = first[first["policy"].eq(positive)] if n_blocks else first
         neg = first[first["policy"].eq(negative)] if n_blocks else first
+        pos_success = pd.to_numeric(pos.get("success"), errors="coerce")
+        neg_success = pd.to_numeric(neg.get("success"), errors="coerce")
+        pos_success_missing = int(pos_success.isna().sum())
+        neg_success_missing = int(neg_success.isna().sum())
         raw = (
-            float(pos["success"].mean() - neg["success"].mean())
-            if len(pos) and len(neg)
+            float(pos_success.mean() - neg_success.mean())
+            if len(pos)
+            and len(neg)
+            and not pos_success_missing
+            and not neg_success_missing
             else np.nan
         )
-        if len(pos) and len(neg):
+        if len(pos) and len(neg) and not pos_success_missing and not neg_success_missing:
             ci_low, ci_high = confint_proportions_2indep(
-                int(pos["success"].sum()),
+                int(pos_success.sum()),
                 len(pos),
-                int(neg["success"].sum()),
+                int(neg_success.sum()),
                 len(neg),
                 method="newcomb",
                 compare="diff",
             )
+            if primary:
+                simultaneous_low, simultaneous_high = confint_proportions_2indep(
+                    int(pos_success.sum()),
+                    len(pos),
+                    int(neg_success.sum()),
+                    len(neg),
+                    method="newcomb",
+                    compare="diff",
+                    alpha=PRIMARY_FWER_ALPHA / primary_comparisons,
+                )
+            else:
+                simultaneous_low = simultaneous_high = np.nan
         else:
             ci_low = ci_high = np.nan
+            simultaneous_low = simultaneous_high = np.nan
         ht = (
             float(
                 (
@@ -891,10 +1144,10 @@ def analyze(
                 ).sum()
                 / n_blocks
             )
-            if n_blocks
+            if n_blocks and complete_binary_outcomes
             else np.nan
         )
-        if n_blocks and simulations:
+        if n_blocks and simulations and complete_binary_outcomes:
             simulated = (
                 (labels == policy_index[positive])
                 * outcomes[None, :]
@@ -922,6 +1175,54 @@ def analyze(
         )
         pos_missingness = arm_missingness_bounds(pos, total_blocks=n_blocks)
         neg_missingness = arm_missingness_bounds(neg, total_blocks=n_blocks)
+        success_bound_low, success_bound_high = difference_bounds(
+            {
+                "mean_lower_bound": pos_missingness["success_mean_lower_bound"],
+                "mean_upper_bound": pos_missingness["success_mean_upper_bound"],
+            },
+            {
+                "mean_lower_bound": neg_missingness["success_mean_lower_bound"],
+                "mean_upper_bound": neg_missingness["success_mean_upper_bound"],
+            },
+        )
+        ht_success_bound_low, ht_success_bound_high = difference_bounds(
+            {
+                "mean_lower_bound": pos_missingness["ht_success_mean_lower_bound"],
+                "mean_upper_bound": pos_missingness["ht_success_mean_upper_bound"],
+            },
+            {
+                "mean_lower_bound": neg_missingness["ht_success_mean_lower_bound"],
+                "mean_upper_bound": neg_missingness["ht_success_mean_upper_bound"],
+            },
+        )
+        planned_pos = missingness_plan[
+            missingness_plan.get("expected_policy", pd.Series(dtype=object)).eq(positive)
+        ]
+        planned_neg = missingness_plan[
+            missingness_plan.get("expected_policy", pd.Series(dtype=object)).eq(negative)
+        ]
+        planned_pos_values = pd.to_numeric(
+            planned_pos.get(
+                "success_for_worst_case_bounds",
+                pd.Series(index=planned_pos.index, dtype=float),
+            ),
+            errors="coerce",
+        )
+        planned_neg_values = pd.to_numeric(
+            planned_neg.get(
+                "success_for_worst_case_bounds",
+                pd.Series(index=planned_neg.index, dtype=float),
+            ),
+            errors="coerce",
+        )
+        planned_pos_bounds = bounded_mean(planned_pos_values, lower=0.0, upper=1.0)
+        planned_neg_bounds = bounded_mean(planned_neg_values, lower=0.0, upper=1.0)
+        treatment_outcome_low, treatment_outcome_high = difference_bounds(
+            planned_pos_bounds,
+            planned_neg_bounds,
+        )
+        if treatment_outcome_sensitivity["unassigned_candidate_blocks"]:
+            treatment_outcome_low, treatment_outcome_high = -1.0, 1.0
         spend_bound_low, spend_bound_high = difference_bounds(
             {
                 "mean_lower_bound": pos_missingness["spend_mean_lower_bound_usd"],
@@ -967,7 +1268,25 @@ def analyze(
                 "success_difference_conditional": raw,
                 "success_difference_ci_low": float(ci_low),
                 "success_difference_ci_high": float(ci_high),
+                "success_difference_simultaneous_ci_low": float(simultaneous_low),
+                "success_difference_simultaneous_ci_high": float(simultaneous_high),
                 "success_difference_ht": ht,
+                "positive_success_outcomes_missing": pos_success_missing,
+                "negative_success_outcomes_missing": neg_success_missing,
+                "success_difference_lower_bound": success_bound_low,
+                "success_difference_upper_bound": success_bound_high,
+                "ht_success_difference_lower_bound": ht_success_bound_low,
+                "ht_success_difference_upper_bound": ht_success_bound_high,
+                "planned_positive_n": int(len(planned_pos)),
+                "planned_negative_n": int(len(planned_neg)),
+                "planned_positive_treatment_or_outcome_missing": int(
+                    planned_pos_values.isna().sum()
+                ),
+                "planned_negative_treatment_or_outcome_missing": int(
+                    planned_neg_values.isna().sum()
+                ),
+                "success_difference_treatment_outcome_lower_bound": treatment_outcome_low,
+                "success_difference_treatment_outcome_upper_bound": treatment_outcome_high,
                 "randomization_p_greater": p_greater,
                 "randomization_p_two_sided": p_two_sided,
                 "spend_complete_both_arms": spend_complete,
@@ -1008,6 +1327,11 @@ def analyze(
     summary["primary_estimator"] = (
         "preterminal fixed-count arm-mean difference; identical to conditional HT"
     )
+    summary["simultaneous_uncertainty"] = (
+        "Bonferroni-Newcombe 95% familywise intervals over the two registered primary "
+        "contrasts; Holm-adjusted one-sided fixed-count randomization p-values"
+    )
+    summary["treatment_outcome_missingness_sensitivity"] = treatment_outcome_sensitivity
     return panel, model_panel, contrasts, summary
 
 
