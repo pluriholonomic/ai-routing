@@ -17,12 +17,15 @@ The July 17, 2026 revision:
   ridge estimation and an events-per-parameter gate before its holdout exists;
 - replaces H81's published Monte Carlo tail approximation with an exact
   fixed-count Fisher test and a fail-closed 100,000-draw implementation audit;
-  and
+- hardens the still-blinded H95 replication with exact within-triplet Fisher
+  inference, explicit structural and measurement missingness, provider-control
+  coverage, time/whole-triplet transport gates, and a sequential-position
+  interference diagnostic; and
 - compresses the main empirical argument to 15 pages through the references,
   moving price-atom diagnostics and proofs to Appendix A without deleting them.
 
 The latest adversarial assessment is
-[`../docs/manuscript-review-round-21-2026-07-17.md`](../docs/manuscript-review-round-21-2026-07-17.md).
+[`../docs/manuscript-review-round-22-2026-07-17.md`](../docs/manuscript-review-round-22-2026-07-17.md).
 It treats the structural paper objection as resolved; the remaining promotion
 gates are unreleased H81/H95 outcomes and the unopened 30-completed-day PM1
 holdout.

@@ -128,6 +128,7 @@ def prepare_plans(eligibility: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame
             "triplet_id",
             "triplet_sequence",
             "planned_at",
+            "triplet_position",
             "run_id",
             "model_id",
             "assigned_first_policy",
@@ -151,6 +152,8 @@ def prepare_plans(eligibility: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame
     )
     for field in ["selected_for_triplet", "eligible"]:
         frame[field] = frame[field].fillna(False).astype(bool)
+    if "triplet_position" in frame:
+        frame["triplet_position"] = pd.to_numeric(frame["triplet_position"], errors="coerce")
     selected = frame.loc[
         frame["selected_for_triplet"] & frame["eligible"] & frame["triplet_id"].notna()
     ].copy()
@@ -162,6 +165,7 @@ def prepare_plans(eligibility: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame
             and group["model_id"].nunique() == 3
             and set(group["assigned_first_policy"].astype(str)) == set(POLICIES)
             and group["block_id"].notna().all()
+            and set(group["triplet_position"].dropna().astype(int)) == {0, 1, 2}
         )
         if valid:
             valid_ids.append(str(triplet_id))
@@ -633,6 +637,7 @@ def analyze_released(
     pd.DataFrame,
     pd.DataFrame,
     pd.DataFrame,
+    pd.DataFrame,
     dict[str, Any],
 ]:
     attempts = prepare_assignment_attempts(outcome_attempts)
@@ -667,6 +672,7 @@ def analyze_released(
             "triplet_id",
             "triplet_sequence",
             "planned_at",
+            "triplet_position",
             "model_id",
             "assigned_first_policy",
             "hugging_face_id",
@@ -773,6 +779,27 @@ def analyze_released(
             }
         )
     panel = pd.DataFrame(panel_rows)
+    position_rows: list[dict[str, Any]] = []
+    for (position, policy), cell in outcomes.groupby(
+        ["triplet_position", "assigned_first_policy"], sort=True
+    ):
+        successes = float(cell["primary_success"].fillna(0.0).sum())
+        missing = int(cell["measurement_missing"].sum())
+        n = len(cell)
+        position_rows.append(
+            {
+                "triplet_position": int(position),
+                "preceding_model_blocks": int(position),
+                "policy": str(policy),
+                "assigned_blocks": n,
+                "successes_known": successes,
+                "success_rate": successes / n if missing == 0 else np.nan,
+                "measurement_missing_outcomes": missing,
+                "success_rate_lower_bound": successes / n,
+                "success_rate_upper_bound": (successes + missing) / n,
+            }
+        )
+    position_panel = pd.DataFrame(position_rows)
     exact_pvalues = (
         _exact_blocked_randomization_pvalues(outcomes)
         if complete_binary_outcomes
@@ -948,12 +975,19 @@ def analyze_released(
             "paired t intervals over realized triplets; Bonferroni 95% familywise "
             "intervals over the two primary contrasts; not randomization-CI inversion"
         ),
+        "cross_model_interference_boundary": (
+            "Policy-position randomization absorbs position-only drift. A direct-policy "
+            "interpretation additionally requires no treatment-dependent spillover from "
+            "earlier model blocks in the same triplet; the released position-policy panel "
+            "and position-zero sensitivity are diagnostics, not proofs of that assumption."
+        ),
         "support": support,
     }
     audit_columns = [
         "triplet_id",
         "triplet_sequence",
         "planned_at",
+        "triplet_position",
         "model_id",
         "assigned_first_policy",
         "observed_first_policy",
@@ -968,10 +1002,19 @@ def analyze_released(
         "measurement_missing",
         "primary_success",
     ]
-    return panel, model_rates, contrasts, lomo, outcomes[audit_columns], summary
+    return (
+        panel,
+        model_rates,
+        contrasts,
+        lomo,
+        position_panel,
+        outcomes[audit_columns],
+        summary,
+    )
 
 
 def _blinded_outputs() -> tuple[
+    pd.DataFrame,
     pd.DataFrame,
     pd.DataFrame,
     pd.DataFrame,
@@ -1002,7 +1045,14 @@ def _blinded_outputs() -> tuple[
             for name, positive, negative, primary in COMPARISONS
         ]
     )
-    return panel, pd.DataFrame(), contrasts, pd.DataFrame(), pd.DataFrame()
+    return (
+        panel,
+        pd.DataFrame(),
+        contrasts,
+        pd.DataFrame(),
+        pd.DataFrame(),
+        pd.DataFrame(),
+    )
 
 
 def run(out_dir: Path = DEFAULT_OUT, *, simulations: int = RANDOMIZATION_DRAWS) -> dict[str, Any]:
@@ -1044,7 +1094,14 @@ def run(out_dir: Path = DEFAULT_OUT, *, simulations: int = RANDOMIZATION_DRAWS) 
     prepared = prepare_assignment_attempts(assignment_attempts)
     summary, audit, _, horizon_plans = gate_summary(prepared, eligibility, simulations=simulations)
     if not summary["release_ready"]:
-        panel, model_rates, contrasts, lomo, outcome_audit = _blinded_outputs()
+        (
+            panel,
+            model_rates,
+            contrasts,
+            lomo,
+            position_panel,
+            outcome_audit,
+        ) = _blinded_outputs()
     else:
         outcome_attempts = data.q(
             f"""
@@ -1054,17 +1111,21 @@ def run(out_dir: Path = DEFAULT_OUT, *, simulations: int = RANDOMIZATION_DRAWS) 
             ) where study_id = '{STUDY_ID}'
             """
         ).df()
-        panel, model_rates, contrasts, lomo, outcome_audit, summary = analyze_released(
-            outcome_attempts,
-            horizon_plans,
+        (
+            panel,
+            model_rates,
+            contrasts,
+            lomo,
+            position_panel,
+            outcome_audit,
             summary,
-            simulations=simulations,
-        )
+        ) = analyze_released(outcome_attempts, horizon_plans, summary, simulations=simulations)
     save(audit, out_dir, "h95_assignment_audit")
     save(panel, out_dir, "h95_policy_panel")
     save(model_rates, out_dir, "h95_model_policy_panel")
     save(contrasts, out_dir, "h95_contrasts")
     save(lomo, out_dir, "h95_leave_one_model_out")
+    save(position_panel, out_dir, "h95_triplet_position_policy_panel")
     save(outcome_audit, out_dir, "h95_primary_outcome_audit")
     save_json(summary, out_dir, "h95_summary")
     return summary

@@ -118,14 +118,19 @@ def test_h95_route_attempt_preflight_uses_assignment_columns_only(monkeypatch):
     assert "outcome" not in route_sql.lower()
 
 
+def test_h95_release_hashes_every_dated_protocol_amendment() -> None:
+    hashes = release._code_hashes(release.STUDIES["h95"])
+
+    assert "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md" in hashes
+    assert all(len(digest) == 64 for digest in hashes.values())
+
+
 def test_remote_marker_precedes_first_outcome_runner(monkeypatch, tmp_path):
     calls = []
     _ready_spec(monkeypatch, calls)
     api = _Api(calls=calls)
 
-    result = release.release_study(
-        "h81", output_root=tmp_path, publish=True, api=api
-    )
+    result = release.release_study("h81", output_root=tmp_path, publish=True, api=api)
 
     labels = [call[0] for call in calls]
     assert labels.index("marker") < labels.index("runner") < labels.index("bundle")
@@ -143,17 +148,13 @@ def test_existing_manifest_skips_outcome_runner(monkeypatch, tmp_path):
     _ready_spec(monkeypatch, calls)
     api = _Api(manifest=True, calls=calls)
 
-    result = release.release_study(
-        "h81", output_root=tmp_path, publish=True, api=api
-    )
+    result = release.release_study("h81", output_root=tmp_path, publish=True, api=api)
 
     assert result["status"] == "already_released"
     assert not any(call[0] == "runner" for call in calls)
 
 
-def test_open_gate_without_publish_still_cannot_call_outcome_runner(
-    monkeypatch, tmp_path
-):
+def test_open_gate_without_publish_still_cannot_call_outcome_runner(monkeypatch, tmp_path):
     calls = []
     _ready_spec(monkeypatch, calls)
 
@@ -192,9 +193,7 @@ def test_closed_gate_never_calls_remote_api_or_runner(monkeypatch, tmp_path):
     monkeypatch.setattr(release, "_code_commit", lambda: "code-commit")
     api = _Api(calls=calls)
 
-    result = release.release_study(
-        "h81", output_root=tmp_path, publish=True, api=api
-    )
+    result = release.release_study("h81", output_root=tmp_path, publish=True, api=api)
 
     assert result["status"] == "accruing"
     assert calls == []

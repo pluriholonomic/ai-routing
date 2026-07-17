@@ -185,9 +185,7 @@ def _sha256(path: Path) -> str:
 def _code_commit() -> str:
     if value := os.environ.get("GITHUB_SHA", "").strip():
         return value
-    return subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-    ).strip()
+    return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
 
 
 def _code_hashes(spec: StudySpec) -> dict[str, str]:
@@ -198,6 +196,10 @@ def _code_hashes(spec: StudySpec) -> dict[str, str]:
         spec.analyzer_path,
         spec.preregistration,
     ]
+    protocol_dir = (ROOT / spec.preregistration).parent
+    paths.extend(
+        path.relative_to(ROOT).as_posix() for path in sorted(protocol_dir.glob("amendment-*.md"))
+    )
     return {path: _sha256(ROOT / path) for path in paths}
 
 
@@ -282,9 +284,7 @@ def release_study(
 
         manifest_remote = f"{spec.release_path}/release_manifest.json"
         marker_remote = f"{spec.release_path}/first_outcome_access.json"
-        if publish and client.file_exists(
-            HF_DATASET_REPO, manifest_remote, repo_type="dataset"
-        ):
+        if publish and client.file_exists(HF_DATASET_REPO, manifest_remote, repo_type="dataset"):
             return {
                 "study": key,
                 "status": "already_released",
@@ -292,9 +292,7 @@ def release_study(
                 "dataset_revision": source.get("revision"),
                 "remote_manifest": manifest_remote,
             }
-        if publish and client.file_exists(
-            HF_DATASET_REPO, marker_remote, repo_type="dataset"
-        ):
+        if publish and client.file_exists(HF_DATASET_REPO, marker_remote, repo_type="dataset"):
             raise RuntimeError(
                 f"{key} first-outcome marker exists without a release manifest; "
                 "refusing a second outcome access"

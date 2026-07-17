@@ -24,7 +24,9 @@ def _frames(triplets: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     for triplet_index in range(triplets):
         triplet_id = f"{STUDY_ID}|triplet-{triplet_index:03d}"
         observed_at = datetime(2026, 7, 17, 5, tzinfo=UTC) + timedelta(hours=triplet_index)
-        for position, policy in enumerate(POLICIES):
+        shift = triplet_index % len(POLICIES)
+        assigned_policies = (*POLICIES[shift:], *POLICIES[:shift])
+        for position, policy in enumerate(assigned_policies):
             model_id = f"org/model-{(triplet_index + position) % 9}"
             block_id = f"{triplet_id}|{model_id}"
             block_seed = 10_000 + triplet_index * 3 + position
@@ -40,6 +42,7 @@ def _frames(triplets: int) -> tuple[pd.DataFrame, pd.DataFrame]:
                     "hugging_face_id": model_id,
                     "eligible": True,
                     "selected_for_triplet": True,
+                    "triplet_position": position,
                     "assigned_first_policy": policy,
                     "block_id": block_id,
                 }
@@ -104,9 +107,15 @@ def test_fixed_horizon_releases_exact_balance_and_blocked_contrasts() -> None:
     assert len(plans) == 360
     assert audit["complete_assignment"].all()
 
-    panel, models, contrasts, lomo, outcome_audit, released = h95.analyze_released(
-        attempts, plans, summary, simulations=500
-    )
+    (
+        panel,
+        models,
+        contrasts,
+        lomo,
+        position_panel,
+        outcome_audit,
+        released,
+    ) = h95.analyze_released(attempts, plans, summary, simulations=500)
 
     assert panel.set_index("policy")["assigned_blocks"].to_dict() == {
         policy: 120 for policy in POLICIES
@@ -121,6 +130,8 @@ def test_fixed_horizon_releases_exact_balance_and_blocked_contrasts() -> None:
     assert released["support"]["broad_multi_model_transport_ready"] is True
     assert models["model_id"].nunique() == 9
     assert not lomo.empty
+    assert len(position_panel) == 9
+    assert position_panel["assigned_blocks"].eq(40).all()
     assert len(outcome_audit) == 360
 
 
@@ -171,7 +182,7 @@ def test_unknown_recorded_outcome_is_not_silently_coded_as_failure() -> None:
     first_index = attempts.index[attempts["event_id"].str.endswith("|0")][0]
     attempts.loc[first_index, "outcome"] = "unknown"
 
-    panel, _, contrasts, _, outcome_audit, released = h95.analyze_released(
+    panel, _, contrasts, _, _, outcome_audit, released = h95.analyze_released(
         attempts, plans, summary, simulations=500
     )
 
@@ -198,7 +209,7 @@ def test_missing_and_noncompliant_first_requests_remain_structural_itt_zeros() -
     attempts = attempts.drop(index=first_indices[0]).copy()
     attempts.loc[first_indices[1], "policy"] = "not_the_assigned_policy"
 
-    _, _, contrasts, _, outcome_audit, released = h95.analyze_released(
+    _, _, contrasts, _, _, outcome_audit, released = h95.analyze_released(
         attempts, plans, summary, simulations=500
     )
 
@@ -215,7 +226,7 @@ def test_production_monte_carlo_audit_passes_and_transport_is_reported() -> None
     summary, _, _, plans = h95.gate_summary(
         prepared, eligibility, simulations=h95.RANDOMIZATION_DRAWS
     )
-    _, _, contrasts, lomo, _, released = h95.analyze_released(
+    _, _, contrasts, lomo, _, _, released = h95.analyze_released(
         attempts,
         plans,
         summary,
@@ -238,7 +249,7 @@ def test_corrupt_treatment_metadata_is_a_structural_zero() -> None:
     metadata["requested_order_length"] = 99
     attempts.loc[first_index, "metadata_json"] = json.dumps(metadata)
 
-    _, _, _, _, outcome_audit, released = h95.analyze_released(
+    _, _, _, _, _, outcome_audit, released = h95.analyze_released(
         attempts, plans, summary, simulations=500
     )
 

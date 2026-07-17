@@ -73,7 +73,10 @@ rerun.
 The H81 bundle contains the frozen preterminal fixed-count analysis, arm panel,
 model panel, contrasts, candidate-support diagnostics, and summary. The H95
 bundle contains its fixed 120-triplet audit, arm panel, model panel, contrasts,
-and summary. The two studies are never pooled.
+whole-triplet leave-one-model-out panel, redacted row-level primary-outcome
+audit, and summary. The release manifest hashes the original preregistration
+and every dated amendment in that study directory. The two studies are never
+pooled.
 
 H81's pre-release analyzer was further frozen in commit `4d66fda`. A request
 outcome is binary only when it is `succeeded`, `failed`, or `cancelled`;
@@ -98,6 +101,36 @@ fixture enumerates all 30 assignments and agrees to machine precision. Commit
 `5cc0a4a` makes the production check fail closed if the maximum exact-versus-
 simulated tail discrepancy exceeds one percentage point.
 
+H95's prerelease analyzer was hardened in commit `f170d89` while its fixed
+horizon remained 4/120 and before any H95 outcome field was queried. Its Fisher
+tails are exact: each triplet contributes a six-assignment local contrast law,
+and the analyzer convolves those laws across the 120 independent triplets. A
+100,000-draw permutation is an implementation audit only; exact support mass
+must equal one within `1e-12`, and a tail discrepancy above 0.01 stops the
+release. A two-triplet test agrees with all 36 brute-force assignments.
+
+H95 preserves the original structural intent-to-treat zeros for a missing
+planned first request or noncompliant first policy. It also codes duplicate
+first records and an auditable provider-control mismatch as structural zeros.
+By contrast, `unknown`, missing, or malformed outcomes on a structurally valid
+record are measurement missing: they suppress all complete-data point estimates,
+paired intervals, and randomization tests and enter `[0,1]` bounds. Paired-t
+intervals are descriptive, and the two primary contrasts receive Bonferroni 95%
+familywise paired-t intervals in addition to Holm-adjusted exact one-sided
+tests.
+
+Collector rows after `f170d89` record requested-order length, provider-only
+count, public-provider count, and fallback state. The first four triplets lack
+the two newly added length fields; their 12 first-position rows remain in the
+fixed horizon as legacy-unverified, with explicit audit coverage and sensitivity
+bounds. Leave-one-model-out diagnostics drop whole triplets, and six-hour
+concentration is computed from distinct plans rather than block rows. Because
+the three model blocks are sequential, direct-policy language additionally
+requires no treatment-dependent spillover from an earlier model block. A
+position-by-policy panel exposes the randomized execution-position pattern;
+position-zero cells are the no-earlier-block diagnostic, not proof that later
+positions are spillover-free.
+
 These releases identify owned-account policy effects over their realized model
 support. They do not identify market-wide routed share, private provider cost,
 provider intent, collusion, or social welfare.
@@ -115,6 +148,17 @@ provider intent, collusion, or social welfare.
 - an unknown H81 outcome cannot become a failure or retain a point estimate;
 - a noncompliant preterminal treatment record re-enters the intended-assignment
   worst-case bounds after a valid replacement opens the gate;
+- an unknown H95 outcome cannot become a failure or retain complete-data
+  inference;
+- H95 missing requests, noncompliant policies, duplicate rows, and auditable
+  provider-control failures retain their structural intent-to-treat coding;
+- exact H95 tails match brute force, while production exact-versus-simulated
+  drift fails closed;
+- H95 time concentration and whole-triplet leave-one-model-out gates use their
+  registered units;
+- the H95 position-by-policy panel exposes the sequential-block interference
+  diagnostic;
+- every dated study amendment is hashed into the first-access manifest;
 - the remote workflow is compaction-triggered, non-cancelling, publishing, and
   artifact-retaining.
 
@@ -124,4 +168,13 @@ The latest post-amendment preflight, workflow `29563312069`, ran code commit
 four of 120 H95 triplets, and queried no outcome field. The preceding compact
 workflow `29561825717` passed preparation and all eight table shards; full-screen
 workflow `29561010800` completed analysis and both publication steps. The full
-repository suite after the fail-closed exact-inference audit reports 542 passes.
+repository suite after the H95 prerelease audit reports 551 passes. An
+outcome-blind local preflight using commit `f170d89` against the same pinned
+revision again found 4/120 H95 triplets, perfect plan compliance and replay,
+zero missing first records, 12 legacy-unverified metadata rows, and no outcome
+query.
+
+Scheduled H95 workflow `29564165459` checked out `f170d89` and completed
+successfully at 07:49 UTC. Its artifact was not yet part of revision `4fd167d6`,
+so this is deployment evidence only; the paper and gate remain at 4/120 until a
+later compaction and assignment-only audit establish another valid plan.

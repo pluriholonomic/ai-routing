@@ -34,7 +34,14 @@ or promoted claims. It is not a substitute for the original protocols.
   route switches.
 - H95 outcome-free support: four planned triplets, 12 first-position blocks,
   eight distinct models, effective model count 7.20, and perfect plan compliance
-  and replay. No outcome was queried.
+  and replay. All 12 first requests are recorded; the first four triplets predate
+  the new row-level provider-order length fields and are explicitly
+  legacy-unverified. Three of four triplets fall in the largest six-hour bin, so
+  the early support does not pass the registered time-transport gate. No outcome
+  was queried. Model blocks are sequential; policy-position randomization handles
+  position-only drift, while direct-policy interpretation additionally requires
+  no treatment-dependent cross-model carryover. The release now preserves a
+  position-by-policy diagnostic for that assumption.
 
 Local `analysis/` outputs that were not rebuilt from this revision are not
 authoritative evidence for the rewrite.
@@ -73,6 +80,12 @@ authoritative evidence for the rewrite.
   steps. New-head preflight `29563312069` then checked out `f2fd115`, pinned
   revision `4fd167d6`, reproduced H81 counts 32/23/27 and H95 support 4/120,
   and again reported `outcomes_queried=false` for both studies.
+- Four H95 workflow runs existed in the pinned dataset. The first hardened
+  scheduled run, `29564165459`, checked out `f170d89` and completed successfully
+  at 07:49 UTC. Its artifact had not yet been compacted into revision `4fd167d6`,
+  so the authoritative gate remains 4/120 rather than inferring a fifth valid
+  plan from workflow success alone. Subsequent clean checkouts record the
+  expanded treatment metadata without depending on the local computer.
 
 These workflows run on GitHub-hosted runners and do not depend on the local
 computer remaining online.
@@ -102,6 +115,8 @@ computer remaining online.
 | 2026-07-17 / `55b5087` | H81 | Pre-release audit found avoidable Monte Carlo error in the primary Fisher tails even though binary outcomes and fixed counts admit finite exact enumeration | H81 remained below 40 per arm; no outcome was queried | Published p-values now sum the multivariate-hypergeometric support exactly. The 100,000-draw permutation is retained only as an audit check; a 30-assignment brute-force fixture agrees to machine precision and the full suite has 541 passes. |
 | 2026-07-17 / `5cc0a4a` | H81 | Red-team follow-up found that the exact-versus-Monte-Carlo discrepancy was reported but could not stop a bad release | H81 remained below 40 per arm; no outcome was queried | Exact support mass must equal one within `1e-12`, and a production release fails closed if the 100,000-draw tail differs by more than 0.01. The production-setting regression and full 542-test suite pass. |
 | 2026-07-17 07:31 / run `29563312069` | H81/H95 deployment | Verify the exact-inference manuscript/code head on the live remote release path | Both gates closed; `outcomes_queried=false` | Head `f2fd115` pinned revision `4fd167d6`; H81 remained 32/23/27 and H95 remained 4/120. This is deployment evidence, not an effect estimate. |
+| 2026-07-17 / `f170d89` | H95 | Prerelease audit found silent unknown-to-failure coercion, simulation-only tails despite a finite exact law, missing row-level provider-control lengths, marginal normal intervals, and unimplemented time/leave-one-model-out transport gates | H95 remained 4/120; the outcome-blind preflight selected assignment metadata only and reported `outcomes_queried=false` | Structural missing/noncompliant requests remain ITT zeros, but unknown compliant outcomes now suppress complete-data inference and enter `[0,1]` bounds. Fisher tails convolve the six assignments per triplet exactly, with a fail-closed 100,000-draw audit. Future rows carry provider-control lengths; the 12 legacy rows remain flagged in the horizon. Paired-t familywise intervals, distinct-triplet time concentration, whole-triplet LOMO, row-level outcome audit, and adversarial tests are implemented; the full suite has 551 passes. |
+| 2026-07-17 07:49 / run `29564165459` | H95 deployment | First scheduled collector run on the hardened metadata commit | Workflow succeeded on head `f170d89`; artifact not yet in the pinned revision; no outcome log inspected | Verifies remote deployment only. The manuscript retains 4/120 until compaction and an assignment-only gate audit prove another valid plan. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
 
 ## H81 stopping-time correction
@@ -133,6 +148,9 @@ standard error 0.49 percentage points).
    result exists yet.
 6. H94 is active only for post-04:30:20 UTC snapshots and has no prospective
    result yet. H95 has four of 120 planned triplets and no released outcome.
+   Its exact inference and transport implementation are frozen, but its first
+   12 rows remain transparently legacy-unverified for the newly added provider-
+   control length fields.
    PM1 is result-blind at 10/30 completed dates and now has a fixed ridge
    estimator plus an events-per-parameter promotion gate.
 7. No current design identifies literal front-running, provider intent,

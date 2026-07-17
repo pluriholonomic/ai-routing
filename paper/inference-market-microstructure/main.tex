@@ -146,7 +146,11 @@ they are not evidence for the focal clearing claim.
   first request: an independent fixed-horizon replication over 120 three-model
   triplets (360 first-position assignments, exactly 120 per arm) drawn from the
   broader rank-7--30 eligible frontier.  H81 and H95 are never pooled, and no H95
-  outcome is queried before all 120 plans exist.
+  outcome is queried before all 120 plans exist.  H95's prerelease analyzer uses
+  exact within-triplet Fisher inference, explicit measurement-missing bounds,
+  row-level treatment-control coverage, and registered time and whole-triplet
+  transport diagnostics; it also exposes the sequential-position interference
+  assumption rather than treating it as automatic.
 
   \item \textbf{Identification and design.}  We prove the accounting
   decomposition and, after removing the gate-hitting terminal block, the
@@ -314,7 +318,7 @@ H81 first-position assignments & 82 & ongoing & Fallback/selection release-gate 
 H81 candidate eligibility & 74 & 37 runs & External-support and exclusion funnel \\
 H80 first-position assignments & 156 & 40.7 hours & Separate four-arm replication support \\
 Cross-router public catalogs & 2 snapshots/router & 0.054 days & Coverage and exact price equality only \\
-H95 prospective replication & 4 triplets / 12 blocks & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
+H95 prospective replication & 4 triplets / 12 blocks (12 legacy-control rows) & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
 Historical quote registry & multi-year & 3 years & Lifecycle and duration sensitivity \\
 \bottomrule
 \end{tabular}
@@ -954,14 +958,32 @@ eligible models uniformly, and assigns each of the three H81 policies to first
 position exactly once.  The confirmatory sample is the first 120 valid written
 triplet plans: 360 first-position assignments with exact 120-per-arm balance and
 at most 1,080 one-token requests.  Missing planned requests and noncompliance are
-coded as failures, primary inference permutes labels within triplet, and the two
-directional contrasts receive Holm adjustment.  Broad transport additionally
-requires at least eight audited models, effective model count five, no model over
-35\%, and leave-one-model-out sign stability.  The protocol, collector, analyzer,
-and workflow were frozen in commit \texttt{00351dd} before the first request.
-The current outcome-free support is four compliant triplets, 12 blocks, eight
-unique models, and effective model count 7.20.  H95 has no released outcome and
-is never pooled with H81.
+coded as structural intent-to-treat failures.  A recorded compliant outcome is
+binary only when it is \texttt{succeeded}, \texttt{failed}, or
+\texttt{cancelled}; unknown or malformed values suppress complete-data inference
+and enter $[0,1]$ bounds.  Fisher tails convolve the six possible assignments in
+each triplet exactly, while 100,000 permutations are a fail-closed implementation
+audit.  The two directional contrasts receive Holm adjustment; paired-$t$
+intervals are descriptive and additionally Bonferroni-adjusted as a two-contrast
+family.  \Cref{prop:h95-fixed-horizon} gives the finite-population result and
+exact reference law.
+
+Broad transport additionally requires at least eight audited models, effective
+model count five, no model over 35\%, no six-hour bin over 20\%, and whole-triplet
+leave-one-model-out sign stability.  The protocol, collector, analyzer, and
+workflow were frozen in commit \texttt{00351dd} before the first request; the
+prerelease inference and telemetry audit was frozen in commit \texttt{f170d89}
+with the outcome gate still closed.  At revision \texttt{4fd167d674f6}, the
+outcome-free support is four compliant triplets, 12 blocks, eight unique models,
+effective model count 7.20, perfect plan replay, and zero missing first records.
+All 12 first-position rows predate row-level provider-order lengths, so they
+remain in the horizon as legacy-unverified rather than being silently passed or
+discarded.  Three of four triplets occupy the largest six-hour bin, so this early
+support fails the time-transport gate.  Because the three model blocks execute
+sequentially, a direct-policy interpretation also requires no treatment-dependent
+spillover from an earlier model block; the release includes a position-by-policy
+diagnostic, whose position-zero cells have no earlier H95 block.  H95 has no
+released outcome and is never pooled with H81.
 
 \section{Secondary evidence and falsification}
 \label{sec:secondary}
@@ -1154,7 +1176,10 @@ test remains unopened until the 30-date gate.  Second, H81 remains below its
 original release gate and spans only two repeated models.  H80's later
 replication-promotion gate remains at 500 per arm, versus current outcome-free
 first-position counts of 37, 43, 38, and 38.  H95 broadens prospective support,
-but has no released outcome and cannot retroactively repair H81.  Third, owned probes identify one
+but has no released outcome and cannot retroactively repair H81.  Its first 12
+rows predate the expanded provider-control metadata, and direct-policy language
+requires no treatment-dependent carryover across its sequential model blocks;
+both limitations remain visible in the release diagnostics.  Third, owned probes identify one
 account, region, prompt family, and time window; they do not identify market-wide
 provider shares.  Fourth, public operational fields are router-published
 aggregates with missingness, not raw attempt logs.  Fifth, provider cost, private
@@ -1325,6 +1350,106 @@ a heterogeneous sharp null; the 5\% rejection rate is 5.05\%.  This is estimator
 validation, not empirical evidence about routing outcomes.}
 \label{fig:h81-theorem-validation}
 \end{figure}
+
+\section{Fixed-horizon H95 identification and exact inference}
+\label{app:h95-proof}
+
+Let $J=120$ index the prospectively written triplets and let $m\in\{1,2,3\}$
+index the three sampled model blocks in triplet $j$.  Write
+$\mathcal P=\{N,F,D\}$ for the no-fallback, fallback, and delegated policies.
+The assignment $Z_j$ is a uniformly random bijection from the three model blocks
+to $\mathcal P$, independently across triplets.  For a binary protocol outcome
+$Y_{jm}(p)$, define the realized-support policy mean and its estimator by
+\begin{equation}
+ \mu_p=\frac{1}{3J}\sum_{j=1}^J\sum_{m=1}^3Y_{jm}(p),
+ \qquad
+ \widehat\mu_p=\frac{1}{J}\sum_{j=1}^J\sum_{m=1}^3
+ \1\{Z_{jm}=p\}Y_{jm}^{obs}.
+ \label{eq:h95-policy-mean}
+\end{equation}
+Exactly one term contributes per triplet to $\widehat\mu_p$.
+
+\begin{proposition}[Fixed-horizon blocked identification and exact Fisher law]
+\label{prop:h95-fixed-horizon}
+Condition on the first $J=120$ valid plans and their sampled models.  Suppose
+(i) each logged policy permutation is independent of the finite potential-outcome
+schedule, (ii) consistency holds, and (iii) a model block's outcome is not changed
+by the policies assigned to other model blocks in its triplet.  Execution position
+and arbitrary position-only drift may be part of the fixed unit schedule.  Then
+$\widehat\mu_p$ in \cref{eq:h95-policy-mean} is design-unbiased for $\mu_p$.
+Consequently, $\widehat\mu_F-\widehat\mu_N$ and
+$\widehat\mu_D-\widehat\mu_F$ are unbiased for the realized-support fallback and
+hidden-selection effects, and their sum equals
+$\widehat\mu_D-\widehat\mu_N$ pathwise.
+
+Under the Fisher sharp null $Y_{jm}(N)=Y_{jm}(F)=Y_{jm}(D)=y_{jm}$ for every
+$j,m$, let $\mathfrak S_3$ be the six assignments and, for policies $p,q$, let
+\begin{equation}
+ G_{j,pq}=\frac{1}{6}\sum_{\pi\in\mathfrak S_3}
+ \delta_{\,y_{j,\pi(p)}-y_{j,\pi(q)}}.
+ \label{eq:h95-local-law}
+\end{equation}
+The exact randomization law of the unnormalized contrast
+$J(\widehat\mu_p-\widehat\mu_q)$ is the convolution
+\begin{equation}
+ G_{pq}=G_{1,pq}*G_{2,pq}*\cdots*G_{J,pq}.
+ \label{eq:h95-convolution}
+\end{equation}
+For binary outcomes each local law is supported on $\{-1,0,1\}$, so summing the
+appropriate upper or absolute tail of \cref{eq:h95-convolution} gives an exact
+one- or two-sided Fisher $p$-value without Monte Carlo error.
+\end{proposition}
+
+\begin{proof}
+For every fixed $j,m,p$, uniform bijective assignment gives
+$\Prb(Z_{jm}=p)=1/3$.  Under consistency and no treatment-dependent cross-model
+interference,
+\[
+ \E_Z\!\left[\1\{Z_{jm}=p\}Y_{jm}^{obs}\right]
+ =\frac{1}{3}Y_{jm}(p).
+\]
+Summing over the three model blocks and $J$ triplets, then dividing by $J$,
+yields $\E_Z[\widehat\mu_p]=\mu_p$.  Linearity proves the two component
+contrasts, and
+$(\widehat\mu_F-\widehat\mu_N)+(\widehat\mu_D-\widehat\mu_F)
+=\widehat\mu_D-\widehat\mu_N$ holds by cancellation for every assignment and
+outcome realization.
+
+Under the sharp null, all three observed outcomes in triplet $j$ are fixed under
+every assignment.  Its contribution to the $p-q$ contrast therefore has the
+six-point empirical law in \cref{eq:h95-local-law}.  Assignments are independent
+across prospectively written triplets, so the law of their sum is the convolution
+in \cref{eq:h95-convolution}.  Tail summation is exact because this support is
+finite.  Position-specific outcome levels do not affect the argument: positions
+are fixed units and policies are permuted over them.  Treatment-dependent
+spillovers are different.  They make $Y_{jm}$ a function of the full assignment
+vector and invalidate the direct-effect interpretation above; the released
+position panel can reveal some resulting heterogeneity but cannot prove the
+assumption.
+\end{proof}
+
+The primary protocol outcome treats an absent planned first request, a mismatched
+first policy, a duplicate first record, or an auditable provider-control failure
+as zero.  This defines an intent-to-treat deliverability outcome rather than a
+per-protocol completion rate.  By contrast, an unknown or malformed value on an
+otherwise valid recorded request is measurement missing.  Because the Fisher law
+holds all three outcomes in every triplet fixed while permuting their labels, one
+unknown value prevents complete-data randomization inference for every contrast;
+the implementation suppresses all point estimates and reports $[0,1]$ bounds.
+The paired Student-$t$ intervals treat the realized triplets as a sample and are
+descriptive companions, not inversions of \cref{eq:h95-convolution}.
+
+The prerelease validation enumerates all $6^2=36$ joint assignments of a
+two-triplet fixture and agrees with the convolution tails to machine precision.
+A 100,000-draw permutation remains only as a discrepancy audit; exact support
+mass must equal one within $10^{-12}$, and a maximum tail discrepancy above 0.01
+stops release.  Separate adversaries replace a valid outcome with
+\texttt{unknown}, delete and mismatch planned first requests, corrupt a
+provider-control length, concentrate every triplet in one six-hour bin, and
+verify that leave-one-model-out analysis drops whole triplets.  The full
+repository suite has 551 passes.  These checks validate the release code and
+claim boundary.  They are not H95 outcome evidence: the fixed horizon remains
+four of 120 at the pinned outcome-free revision.
 
 \section{Companion free-entry benchmark}
 \label{app:entry-benchmark}
@@ -1758,7 +1883,7 @@ Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
 H81 fallback and hidden selection & 82 verified blocks; counts 32, 23, 27; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm gate; terminal excluded; Holm tests, familywise intervals, and worst-case treatment/outcome bounds frozen \\
 H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
-H95 fixed-horizon replication & Four compliant triplets, 12 blocks, eight unique models; no outcome released & 120 written triplets and broad audited model support & Fixed 120-triplet horizon; never pooled with H81 \\
+H95 fixed-horizon replication & Four compliant triplets, 12 blocks, eight unique models; 12 legacy-unverified control records; no outcome released & 120 written triplets, row-level control coverage, broad audited model/time support, and cross-position robustness & Fixed 120-triplet horizon; exact within-triplet Fisher law; whole-triplet LOMO; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
 Stale-cheap pickoff channel & H84 rejects its directional prediction; backward placebo nonzero & Prospective sample and realized fill linkage & Disjoint H85 holdout \\
 Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous discovery cross section, Wilson interval $[0.828,0.994]$; 28/29 have an observed term conflict & Repeated changes, full contract comparability, eligibility, and fills & H94 has one prospective snapshot/router after 2026-07-17 04:30:20 UTC; all dynamic event gates closed \\
@@ -1811,7 +1936,13 @@ binary failures from unknown outcomes, refuses complete-data inference under
 outcome attrition, and emits both arm-specific and intended-assignment
 worst-case bounds.  Commit \texttt{55b5087} adds exact finite-support Fisher
 tails; commit \texttt{5cc0a4a} makes the retained permutation audit fail closed
-at a one-percentage-point discrepancy.  The full repository test run has 542
+at a one-percentage-point discrepancy.  Commit \texttt{f170d89}, made at H95
+support 4/120 and before outcome access, adds the analogous exact six-assignment
+convolution, explicit structural-versus-measurement missingness, row-level
+provider-control coverage, paired familywise intervals, time concentration,
+whole-triplet leave-one-model-out, and a triplet-position diagnostic.  The
+release now hashes every dated protocol amendment and writes redacted outcome,
+position, and transport audit panels.  The full repository test run has 551
 passes.  The remote path publishes a content-hashed
 bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
@@ -1826,6 +1957,13 @@ dataset publication, and Space publication; the independent remote-health audit
 workflow \texttt{29558374319}; the post-repair audit exactly reconstructed 3,219
 of 3,219 completed-day pricing events and found no price or capability conflict
 among same-listing raw variants.  The two prospective studies are never pooled.
+An outcome-blind preflight using \texttt{f170d89} against the same revision again
+found H95 support 4/120, perfect plan compliance and replay, zero missing first
+records, and 12 legacy-unverified provider-control rows; it did not select an
+outcome field.  Scheduled collector run \texttt{29564165459} then checked out
+\texttt{f170d89} and completed successfully at 07:49 UTC.  Its artifact was not
+yet compacted into the pinned revision, so this is deployment evidence rather
+than a fifth counted triplet.
 
 \paragraph{Privacy and platform load.}
 Capture records exclude prompts and completions.  The owned experiments use a

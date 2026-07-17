@@ -116,18 +116,47 @@ OpenRouter ranks 7--30, requires a Hugging Face id and at least two positive-pri
 providers, uniformly samples three eligible models, and assigns each H81 policy
 to first position exactly once. The full eligibility funnel is written before
 requests. Missing planned records and noncompliance are coded as failure;
-randomization inference permutes labels within triplet and Holm-adjusts the two
-directional primary tests.
+an unknown or malformed outcome on an otherwise compliant recorded request is
+measurement missing and cannot be silently converted to failure.
+
+A prerelease red-team amendment in commit `f170d89` was deployed while the
+fixed horizon was 4/120 and before any H95 outcome field was queried. Published
+Fisher tails now convolve the exact six-assignment law within each triplet;
+100,000 permutations are retained only as an implementation audit, and the
+release fails closed above a 0.01 tail discrepancy. Exact two-triplet results
+match brute-force enumeration of all 36 joint assignments. Unknown measurement
+outcomes suppress every complete-data point estimate and randomization test and
+enter `[0,1]` bounds. Missing planned requests, assignment noncompliance,
+duplicate first records, and auditable provider-control failures remain
+structural intent-to-treat zeros under the original protocol. The two primary
+tests receive Holm adjustment; paired Student-t intervals are descriptive, with
+Bonferroni 95% familywise intervals over the two primary contrasts.
+
+The three model blocks are sequential. Random assignment of policy across
+models and positions absorbs position-only drift, but the direct-policy
+estimand also requires no treatment-dependent carryover from an earlier model
+block. The release therefore writes a position-by-policy panel; position-zero
+cells have no preceding H95 block in the triplet. This is a falsification and
+sensitivity diagnostic, not a proof of no interference.
 
 The design uses a fixed horizon rather than the H81 arm-balance stopping rule and
-is never pooled with H81. Four compliant triplets have accrued: 12 blocks over
-eight unique models, effective model count 7.20, perfect plan compliance and
-replay, and no outcome query. No H95
-outcome is queried before 120 plans exist. Broad
+is never pooled with H81. At revision `4fd167d6`, four compliant triplets have
+accrued: 12 blocks over eight unique models, effective model count 7.20, perfect
+plan compliance and replay, no missing first record, and no outcome query. The
+12 first-position rows predate the new row-level order-length fields; they remain
+in the horizon as `legacy_treatment_metadata_unverified`. Future rows record
+`requested_order_length`, `provider_only_count`, public provider count, and
+fallback state, and the release reports coverage and pass rates rather than
+silently certifying legacy rows. No H95 outcome is queried before 120 plans
+exist. Broad
 transport additionally requires at least eight audited model ids, effective
 model count five, no model above 35% of plans, no six-hour bin above 20%, and both
-primary effect directions stable under leave-one-model-out. The launch establishes
-prospective operation only; it is not an empirical effect result.
+primary effect directions stable when each model's containing triplets are
+dropped whole. The current four-triplet support fails the time gate because its
+largest six-hour bin contains three of four triplets; this is an early-accrual
+diagnostic, not a causal-design failure. Adversarial H95 tests and the full
+551-test repository suite pass. The launch establishes prospective operation
+only; it is not an empirical effect result.
 
 ## T2. Asynchronous-menu observational equivalence
 
