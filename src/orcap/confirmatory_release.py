@@ -270,6 +270,16 @@ def release_study(
                 "gate": gate,
             }
 
+        if not publish:
+            return {
+                "study": key,
+                "status": "ready_requires_published_first_access",
+                "release_ready": True,
+                "dataset_revision": source.get("revision"),
+                "gate": gate,
+                "outcome_access": "not_queried_without_remote_first_access_marker",
+            }
+
         manifest_remote = f"{spec.release_path}/release_manifest.json"
         marker_remote = f"{spec.release_path}/first_outcome_access.json"
         if publish and client.file_exists(

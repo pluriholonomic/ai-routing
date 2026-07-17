@@ -151,6 +151,19 @@ def test_existing_manifest_skips_outcome_runner(monkeypatch, tmp_path):
     assert not any(call[0] == "runner" for call in calls)
 
 
+def test_open_gate_without_publish_still_cannot_call_outcome_runner(
+    monkeypatch, tmp_path
+):
+    calls = []
+    _ready_spec(monkeypatch, calls)
+
+    result = release.release_study("h81", output_root=tmp_path, publish=False)
+
+    assert result["status"] == "ready_requires_published_first_access"
+    assert result["outcome_access"] == "not_queried_without_remote_first_access_marker"
+    assert not any(call[0] == "runner" for call in calls)
+
+
 def test_orphan_marker_refuses_second_outcome_access(monkeypatch, tmp_path):
     calls = []
     _ready_spec(monkeypatch, calls)

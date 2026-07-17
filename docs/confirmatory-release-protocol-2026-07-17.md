@@ -35,6 +35,11 @@ preflight writes `assignment_only_gate.json` and exits successfully when a gate
 is closed. It does not select response, provider, latency, cost, token, retry, or
 fallback fields.
 
+A local invocation without `--publish` is preflight-only even after a gate
+opens. It reports `ready_requires_published_first_access` and cannot call the
+outcome analyzer. The only outcome-reading path is therefore the marker-first
+published transaction below.
+
 ## First-access transaction
 
 When a gate is open, the runner executes this ordered state transition:
@@ -79,6 +84,7 @@ provider intent, collusion, or social welfare.
 `tests/test_confirmatory_release.py` verifies that:
 
 - closed gates never select outcome columns;
+- an open gate without publication still cannot invoke an outcome analyzer;
 - the remote marker precedes the first analyzer call;
 - a completed release is not rerun;
 - an orphaned marker blocks a second access;
