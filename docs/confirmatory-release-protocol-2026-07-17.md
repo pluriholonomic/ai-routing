@@ -84,11 +84,12 @@ outcome is binary only when it is `succeeded`, `failed`, or `cancelled`;
 Any such value suppresses the complete-data point contrast and randomization
 test and enters arm-level `[0,1]` bounds. The released contrast table also
 contains Bonferroni-Newcombe 95% familywise intervals for the two primary
-components and a wider intended-assignment sensitivity that reconstructs the
-first arm from the block seed. Missing/noncompliant treatment records and
-missing outcomes are sent to both worst-case endpoints; an unreconstructable
-arm widens the contrast to `[-1,1]`. These are attrition bounds, not a
-per-protocol effect.
+components, conditional finite-population Hoeffding--Serfling intervals simultaneous over
+all three policy means, and a wider intended-assignment sensitivity that
+reconstructs the first arm from the block seed. Missing/noncompliant treatment
+records and missing outcomes are sent to both worst-case endpoints; an
+unreconstructable arm widens the contrast to `[-1,1]`. These are attrition
+bounds, not a per-protocol effect.
 
 Commit `55b5087`, also made while the H81 outcome gate was closed, replaced the
 published Monte Carlo tail approximation with an exact finite-support
@@ -110,6 +111,19 @@ superseded all-arm law rejects at 5.65% and 6.70%. Second, exact Bernoulli power
 at the minimum preterminal counts 39/40 reaches 80% only for effects of 25--35
 percentage points at the Bonferroni 2.5% threshold, depending on the baseline.
 These are design-validation and planning calculations, not H81 outcomes.
+
+A second outcome-blind interval audit adds the design-valid confidence set.
+Conditional on the stopped prefix, each policy arm is a simple random sample
+without replacement from its fixed potential-outcome schedule. The
+Hoeffding--Serfling
+bounded-outcome inequality plus a union bound over the three policy means gives
+simultaneous coverage of at least 95% without a binomial model or independent
+arms. Five fixed-schedule stress tests give worst Bonferroni-Newcombe family
+coverage 95.13% and worst observed coverage 99.93% for the conservative design
+interval; the latter has mean contrast width about 0.76. Exact joint enumeration of the
+two-test Holm family at counts 39/40/40 requires a 35-point component effect for
+80% worst-terminal-policy power on the preregistered grid. These remain planning
+and implementation facts, not H81 outcomes.
 
 H95's prerelease analyzer was hardened in commit `f170d89` while its fixed
 horizon remained 4/120 and before any H95 outcome field was queried. Its Fisher
@@ -193,3 +207,9 @@ Automatically triggered audit `29565268475` checked out paper/code head
 and H95 support 5/120. H95 has 15/15 first records, perfect plan compliance and
 replay, 12 legacy-unverified rows, and 3/3 newly auditable rows passing. Both
 outcome-query flags remain false.
+
+Exact-head audit `29566914482` then checked out paper/code head `244c384`,
+pinned revision `42334a840dc8088cc8cde441ebe3649cfa041b5e`, reproduced the same
+H81 counts and H95 support, and again reported `outcomes_queried=false` for both
+studies. This is the outcome-blind provenance point for the finite-population
+interval and joint-Holm amendment.

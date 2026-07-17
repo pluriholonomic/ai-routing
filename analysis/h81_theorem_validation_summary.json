@@ -91,6 +91,175 @@
       "maximum_power_on_grid": 0.9839577601812303
     }
   ],
+  "interval_coverage_audit": [
+    {
+      "scenario": "heterogeneous_sign",
+      "estimand": "fallback_option",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.9683333333333334,
+      "newcombe_bonferroni_coverage": 0.9866666666666667,
+      "design_serfling_coverage": 1.0,
+      "mean_newcombe_marginal_width": 0.39559123045349415,
+      "mean_newcombe_bonferroni_width": 0.44702192467995505,
+      "mean_design_serfling_width": 0.7626678167888254
+    },
+    {
+      "scenario": "heterogeneous_sign",
+      "estimand": "hidden_selection",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.9666666666666667,
+      "newcombe_bonferroni_coverage": 0.9853333333333333,
+      "design_serfling_coverage": 1.0,
+      "mean_newcombe_marginal_width": 0.39603341904265504,
+      "mean_newcombe_bonferroni_width": 0.4475011209009577,
+      "mean_design_serfling_width": 0.7632382589486458
+    },
+    {
+      "scenario": "monotone_midrange",
+      "estimand": "fallback_option",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.961,
+      "newcombe_bonferroni_coverage": 0.9806666666666667,
+      "design_serfling_coverage": 1.0,
+      "mean_newcombe_marginal_width": 0.3822901819476037,
+      "mean_newcombe_bonferroni_width": 0.4325949435844535,
+      "mean_design_serfling_width": 0.7623898384278279
+    },
+    {
+      "scenario": "monotone_midrange",
+      "estimand": "hidden_selection",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.9593333333333334,
+      "newcombe_bonferroni_coverage": 0.984,
+      "design_serfling_coverage": 0.9993333333333333,
+      "mean_newcombe_marginal_width": 0.38262122841964674,
+      "mean_newcombe_bonferroni_width": 0.4329933837940665,
+      "mean_design_serfling_width": 0.7650239821291362
+    },
+    {
+      "scenario": "near_ceiling",
+      "estimand": "fallback_option",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.9686666666666667,
+      "newcombe_bonferroni_coverage": 0.9873333333333333,
+      "design_serfling_coverage": 1.0,
+      "mean_newcombe_marginal_width": 0.32540654418358417,
+      "mean_newcombe_bonferroni_width": 0.3724732940730746,
+      "mean_design_serfling_width": 0.7643700934396354
+    },
+    {
+      "scenario": "near_ceiling",
+      "estimand": "hidden_selection",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.9793333333333333,
+      "newcombe_bonferroni_coverage": 0.9923333333333333,
+      "design_serfling_coverage": 1.0,
+      "mean_newcombe_marginal_width": 0.2607839885960951,
+      "mean_newcombe_bonferroni_width": 0.3048862280142796,
+      "mean_design_serfling_width": 0.7624743499547706
+    },
+    {
+      "scenario": "rare_success",
+      "estimand": "fallback_option",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.969,
+      "newcombe_bonferroni_coverage": 0.991,
+      "design_serfling_coverage": 1.0,
+      "mean_newcombe_marginal_width": 0.27571288005086597,
+      "mean_newcombe_bonferroni_width": 0.3203710199270482,
+      "mean_design_serfling_width": 0.763029756095187
+    },
+    {
+      "scenario": "rare_success",
+      "estimand": "hidden_selection",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.9526666666666667,
+      "newcombe_bonferroni_coverage": 0.9793333333333333,
+      "design_serfling_coverage": 1.0,
+      "mean_newcombe_marginal_width": 0.33522742183657633,
+      "mean_newcombe_bonferroni_width": 0.38284289596474774,
+      "mean_design_serfling_width": 0.7646400314008381
+    },
+    {
+      "scenario": "sharp_null_heterogeneous",
+      "estimand": "fallback_option",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.9506666666666667,
+      "newcombe_bonferroni_coverage": 0.9756666666666667,
+      "design_serfling_coverage": 1.0,
+      "mean_newcombe_marginal_width": 0.396732005748988,
+      "mean_newcombe_bonferroni_width": 0.4482608008450602,
+      "mean_design_serfling_width": 0.7641963472677399
+    },
+    {
+      "scenario": "sharp_null_heterogeneous",
+      "estimand": "hidden_selection",
+      "experiments": 3000,
+      "newcombe_marginal_coverage": 0.9466666666666667,
+      "newcombe_bonferroni_coverage": 0.973,
+      "design_serfling_coverage": 0.9996666666666667,
+      "mean_newcombe_marginal_width": 0.39632723493111244,
+      "mean_newcombe_bonferroni_width": 0.4478118303412663,
+      "mean_design_serfling_width": 0.7630159623575073
+    },
+    {
+      "scenario": "heterogeneous_sign",
+      "estimand": "joint_primary_family",
+      "experiments": 3000,
+      "newcombe_joint_family_coverage": 0.9746666666666667,
+      "design_serfling_joint_family_coverage": 1.0
+    },
+    {
+      "scenario": "monotone_midrange",
+      "estimand": "joint_primary_family",
+      "experiments": 3000,
+      "newcombe_joint_family_coverage": 0.9686666666666667,
+      "design_serfling_joint_family_coverage": 0.9993333333333333
+    },
+    {
+      "scenario": "near_ceiling",
+      "estimand": "joint_primary_family",
+      "experiments": 3000,
+      "newcombe_joint_family_coverage": 0.9813333333333333,
+      "design_serfling_joint_family_coverage": 1.0
+    },
+    {
+      "scenario": "rare_success",
+      "estimand": "joint_primary_family",
+      "experiments": 3000,
+      "newcombe_joint_family_coverage": 0.973,
+      "design_serfling_joint_family_coverage": 1.0
+    },
+    {
+      "scenario": "sharp_null_heterogeneous",
+      "estimand": "joint_primary_family",
+      "experiments": 3000,
+      "newcombe_joint_family_coverage": 0.9513333333333334,
+      "design_serfling_joint_family_coverage": 0.9996666666666667
+    }
+  ],
+  "joint_holm_power_audit": [
+    {
+      "scenario": "equal_components",
+      "power_definition": "both_rejection_probability",
+      "minimum_grid_effect_for_80pct_worst_terminal_power": 0.35000000000000003,
+      "maximum_worst_terminal_policy_power": 0.9701385463328561
+    },
+    {
+      "scenario": "fallback_only",
+      "power_definition": "fallback_rejection_probability",
+      "minimum_grid_effect_for_80pct_worst_terminal_power": 0.35000000000000003,
+      "maximum_worst_terminal_policy_power": 0.9736448815882842,
+      "maximum_mixed_null_false_rejection_probability": 0.02109335048097421
+    },
+    {
+      "scenario": "selection_only",
+      "power_definition": "selection_rejection_probability",
+      "minimum_grid_effect_for_80pct_worst_terminal_power": 0.35000000000000003,
+      "maximum_worst_terminal_policy_power": 0.9744008884637827,
+      "maximum_mixed_null_false_rejection_probability": 0.03234810496472799
+    }
+  ],
   "evidence_status": "simulation_validation_not_empirical_evidence",
-  "claim_boundary": "This validates the stopped-design estimator under a synthetic fixed potential-outcome schedule and reports model-based Bernoulli power scenarios. It does not validate H81 transport, reveal H81 outcomes, or identify market welfare."
+  "claim_boundary": "This validates the stopped-design estimator under a synthetic fixed potential-outcome schedule, audits descriptive interval coverage, validates a conservative finite-population confidence set, and reports model-based Bernoulli power scenarios. It does not validate H81 transport, reveal H81 outcomes, or identify market welfare."
 }

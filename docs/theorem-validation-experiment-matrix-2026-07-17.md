@@ -47,7 +47,7 @@ delegation as both an estimand and estimator identity.
    - Pass rule: 100% replay and treatment compliance. Any failure invalidates
      the affected block and triggers a collector incident, not an outcome-based
      exclusion.
-   - Current result: 84/84 for both checks at revision `3efd953a`; arm counts
+   - Current result: 84/84 for both checks at revision `42334a84`; arm counts
      are 32, 24, and 28 and outcomes remain unqueried.
 
 2. **Stopped-design Monte Carlo**
@@ -95,7 +95,27 @@ delegation as both an estimand and estimator identity.
    - Boundary: this is a model-based planning surface, not an empirical outcome
      estimate and not a post-outcome sample-size amendment.
 
-5. **Missingness adversary**
+5. **Finite-population interval and joint-Holm audit**
+   - Condition on the terminal policy and preterminal counts. For each policy
+     mean use the Hoeffding--Serfling sampling-without-replacement radius
+     `sqrt((1-(n_p-1)/B) log(6 / 0.05) / (2 n_p))`; union-bound the three means and propagate
+     their intervals to both primary contrasts.
+   - Stress five fixed binary schedules with 3,000 stopped assignments each and
+     compare marginal Newcombe, Bonferroni-Newcombe family, and design-Hoeffding--Serfling
+     coverage and width.
+   - Enumerate every triple of arm success counts under Bernoulli planning
+     scenarios, apply both exact pairwise Fisher tests and the registered Holm
+     step-down rule, and repeat for each possible minimum-count terminal arm.
+   - Current result: worst marginal Newcombe coverage is 94.67%, worst
+     Bonferroni-Newcombe family coverage is 95.13%, and design-Hoeffding--Serfling family
+     coverage is at least 99.93% in the audit. The design guarantee comes from the bound,
+     not the simulation; mean design interval width is about 0.76. Worst-terminal
+     80% Holm power requires a 35-point component effect on the fixed grid.
+   - Boundary: Newcombe remains descriptive under a binomial interpretation;
+     the conservative Hoeffding--Serfling interval is the finite-population design-valid
+     confidence set. Neither result reveals an H81 outcome.
+
+6. **Missingness adversary**
    - Replace a verified binary outcome with `unknown`; delete spend, latency,
      and selected-provider fields by treatment, success, and quote level; and
      corrupt a treatment-control record before a valid replacement reaches the
@@ -110,11 +130,11 @@ delegation as both an estimand and estimator identity.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
    - Current result: implemented before outcome access in commit `4d66fda`.
-     Both adversarial tests and the current full 554-test suite pass. The two primary
+     Both adversarial tests and the current full 557-test suite pass. The two primary
      intervals additionally receive Bonferroni-Newcombe familywise adjustment;
      their exact conditional Fisher p-values retain the registered Holm family.
 
-6. **External-support and leave-one-model-out audit**
+7. **External-support and leave-one-model-out audit**
    - Report model dominance, effective model count, support turnover, arm balance
      by model, and leave-one-model-out contrasts after release.
    - Pass rule for a broad claim: at least eight models, effective model count at
@@ -158,7 +178,7 @@ cells have no preceding H95 block in the triplet. This is a falsification and
 sensitivity diagnostic, not a proof of no interference.
 
 The design uses a fixed horizon rather than the H81 arm-balance stopping rule and
-is never pooled with H81. At revision `3efd953a`, five compliant triplets have
+is never pooled with H81. At revision `42334a84`, five compliant triplets have
 accrued: 15 blocks over nine unique models, effective model count 7.76, perfect
 plan compliance and replay, no missing first record, and no outcome query. The
 first 12 first-position rows predate the new row-level order-length fields and

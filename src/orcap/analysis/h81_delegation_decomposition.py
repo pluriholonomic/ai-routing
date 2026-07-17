@@ -680,6 +680,40 @@ def _exact_pairwise_binary_randomization_pvalues(
     )
 
 
+def _simultaneous_serfling_mean_radii(
+    counts: pd.Series,
+    *,
+    alpha: float = PRIMARY_FWER_ALPHA,
+) -> dict[str, float]:
+    """Return design-valid simultaneous radii for all randomized policy means.
+
+    Conditional on the preterminal count vector, each policy arm is a simple
+    random sample without replacement from the fixed preterminal population.
+    Serfling's finite-population refinement of Hoeffding's bound for outcomes
+    in ``[0, 1]`` and a union bound across all three policy means give coverage
+    of at least ``1 - alpha``.  This needs neither independent arms nor a
+    binomial model.
+    """
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must lie strictly between zero and one")
+    aligned = counts.reindex(POLICIES, fill_value=0).astype(int)
+    if (aligned <= 0).any():
+        return {policy: np.nan for policy in POLICIES}
+    population_size = int(aligned.sum())
+    log_term = math.log(2.0 * len(POLICIES) / alpha)
+    return {
+        policy: min(
+            1.0,
+            math.sqrt(
+                (1.0 - (int(aligned[policy]) - 1.0) / population_size)
+                * log_term
+                / (2.0 * int(aligned[policy]))
+            ),
+        )
+        for policy in POLICIES
+    }
+
+
 def _row_time(frame: pd.DataFrame) -> pd.Series:
     """Return the first available UTC timestamp under the production sort order."""
     result = pd.Series(pd.NaT, index=frame.index, dtype="datetime64[ns, UTC]")
@@ -1044,6 +1078,7 @@ def analyze(
     n_blocks = len(first)
     analysis_counts = first["policy"].value_counts().reindex(POLICIES, fill_value=0)
     analysis_probabilities = analysis_counts / n_blocks
+    design_mean_radii = _simultaneous_serfling_mean_radii(analysis_counts)
     first["analysis_assignment_probability"] = first["policy"].map(analysis_probabilities)
     missingness_plan, treatment_outcome_sensitivity = preterminal_missingness_sensitivity(
         attempts,
@@ -1076,6 +1111,17 @@ def analyze(
                 ),
                 "success_ci_low": float(low),
                 "success_ci_high": float(high),
+                "success_design_simultaneous_ci_low": (
+                    max(0.0, successes / n - design_mean_radii[policy])
+                    if n and not success_missing
+                    else np.nan
+                ),
+                "success_design_simultaneous_ci_high": (
+                    min(1.0, successes / n + design_mean_radii[policy])
+                    if n and not success_missing
+                    else np.nan
+                ),
+                "success_design_simultaneous_radius": design_mean_radii[policy],
                 "ht_success_mean": (
                     float((success / probability).sum() / n_blocks)
                     if n_blocks and n and not success_missing and probability.notna().all()
@@ -1185,6 +1231,9 @@ def analyze(
             if n_blocks and complete_binary_outcomes
             else np.nan
         )
+        design_radius = design_mean_radii[positive] + design_mean_radii[negative]
+        design_simultaneous_low = max(-1.0, raw - design_radius) if np.isfinite(raw) else np.nan
+        design_simultaneous_high = min(1.0, raw + design_radius) if np.isfinite(raw) else np.nan
         if n_blocks and complete_binary_outcomes:
             p_greater, p_two_sided = _exact_pairwise_binary_randomization_pvalues(
                 pos_success.to_numpy(dtype=float),
@@ -1325,6 +1374,9 @@ def analyze(
                 "success_difference_ci_high": float(ci_high),
                 "success_difference_simultaneous_ci_low": float(simultaneous_low),
                 "success_difference_simultaneous_ci_high": float(simultaneous_high),
+                "success_difference_design_simultaneous_ci_low": design_simultaneous_low,
+                "success_difference_design_simultaneous_ci_high": design_simultaneous_high,
+                "success_difference_design_simultaneous_radius": design_radius,
                 "success_difference_ht": ht,
                 "positive_success_outcomes_missing": pos_success_missing,
                 "negative_success_outcomes_missing": neg_success_missing,
@@ -1406,7 +1458,9 @@ def analyze(
     )
     summary["simultaneous_uncertainty"] = (
         "Bonferroni-Newcombe 95% familywise intervals over the two registered primary "
-        "contrasts; Holm-adjusted one-sided fixed-count randomization p-values"
+        "contrasts under a binomial interpretation; conditional finite-population "
+        "Hoeffding-Serfling intervals simultaneous over all three policy means; Holm-adjusted "
+        "one-sided fixed-count randomization p-values"
     )
     summary["treatment_outcome_missingness_sensitivity"] = treatment_outcome_sensitivity
     return panel, model_panel, contrasts, summary

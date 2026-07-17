@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from orcap.analysis.h81_theorem_validation import (
     POLICIES,
+    exact_joint_holm_power,
     exact_pairwise_bernoulli_power,
     simulate_bias,
+    simulate_interval_coverage,
     simulate_nuisance_arm_size,
     simulate_randomization_size,
     stopped_assignment,
@@ -61,3 +63,32 @@ def test_exact_pairwise_power_increases_with_effect_size():
     ]
     assert powers == sorted(powers)
     assert powers[-1] > powers[0]
+
+
+def test_interval_coverage_audit_emits_both_descriptive_and_design_intervals():
+    audit = simulate_interval_coverage(experiments_per_scenario=20, target_per_arm=8, seed=31)
+    assert set(audit["estimand"]) == {"fallback_option", "hidden_selection"}
+    assert audit["newcombe_marginal_covers"].dtype == bool
+    assert audit["design_serfling_covers"].dtype == bool
+    assert (audit["design_serfling_low"] <= audit["truth"]).mean() >= 0.95
+    assert (audit["truth"] <= audit["design_serfling_high"]).mean() >= 0.95
+
+
+def test_exact_joint_holm_power_controls_global_and_mixed_null_fwer():
+    counts = dict.fromkeys(POLICIES, 8)
+    global_null = exact_joint_holm_power(
+        counts=counts,
+        probabilities=dict.fromkeys(POLICIES, 0.5),
+    )
+    assert global_null["any_rejection_probability"] <= 0.05 + 1e-12
+
+    mixed = exact_joint_holm_power(
+        counts=counts,
+        probabilities={
+            "price_only_no_fallback": 0.1,
+            "price_order_fallback": 0.9,
+            "delegated_default": 0.9,
+        },
+    )
+    assert mixed["fallback_rejection_probability"] > global_null["any_rejection_probability"]
+    assert mixed["selection_rejection_probability"] <= 0.05 + 1e-12

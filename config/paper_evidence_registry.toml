@@ -3,8 +3,8 @@ schema_version = 1
 paper_path = "paper/inference-market-microstructure/main.tex"
 paper_track = "ACM EC / TEAC"
 authoritative_dataset = "t4run/openrouter-market-history"
-authoritative_revision = "3efd953a98108381732684508991bab2f5ee28b4"
-evidence_freeze_utc = "2026-07-17T08:13:04Z"
+authoritative_revision = "42334a840dc8088cc8cde441ebe3649cfa041b5e"
+evidence_freeze_utc = "2026-07-17T08:35:10Z"
 status = "outcome-safe refresh with H81 and H95 accruing; clean remote first-access release armed; focal outcomes blinded"
 amendment_ledger = "docs/paper-evidence-amendment-ledger-2026-07-17.md"
 
@@ -113,8 +113,8 @@ source_tables = ["router_route_attempts", "router_probe_eligibility"]
 analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py", "src/orcap/analysis/h81_theorem_validation.py"]
 collectors = ["src/orcap/capture_decomposition_probes.py"]
 tests = ["tests/test_h81_delegation_decomposition.py", "tests/test_h81_theorem_validation.py", "tests/test_blinded_study_isolation.py"]
-protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md"]
-validation_methods = ["randomization algebra", "Monte Carlo design recovery", "pairwise nuisance-arm size stress test", "exact Bernoulli scenario power", "missingness bounds", "leave-one-model-out sensitivity"]
+protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md"]
+validation_methods = ["randomization algebra", "Monte Carlo design recovery", "pairwise nuisance-arm size stress test", "exact Bernoulli scenario power", "exact joint Holm power", "finite-population simultaneous Hoeffding-Serfling intervals", "fixed-schedule interval coverage audit", "missingness bounds", "leave-one-model-out sensitivity"]
 claim_boundary = "After removing the gate-hitting block, fixed-count arm means and conditional HT contrasts identify policy effects for the owned account and preterminal eligible blocks; the design does not identify router intent or social welfare."
 
 [[claim]]
@@ -129,8 +129,8 @@ source_tables = ["router_route_attempts", "router_probe_eligibility"]
 analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py", "src/orcap/confirmatory_release.py"]
 collectors = ["src/orcap/capture_decomposition_probes.py"]
 tests = ["tests/test_h81_delegation_decomposition.py", "tests/test_blinded_study_isolation.py", "tests/test_confirmatory_release.py"]
-protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "docs/confirmatory-release-protocol-2026-07-17.md"]
-validation_methods = ["seed replay", "treatment compliance", "pairwise conditional randomization inference", "nuisance-arm size stress test", "exact scenario power", "Newcombe interval", "support audit"]
+protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md", "docs/confirmatory-release-protocol-2026-07-17.md"]
+validation_methods = ["seed replay", "treatment compliance", "pairwise conditional randomization inference", "nuisance-arm size stress test", "exact joint Holm power", "Newcombe interval", "finite-population simultaneous Hoeffding-Serfling interval", "fixed-schedule interval coverage audit", "support audit"]
 claim_boundary = "Current support is two repeatedly eligible models with no adjacent support turnover; no outcome may be promoted before the frozen 40-per-arm gate."
 
 [[claim]]

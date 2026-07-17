@@ -8,7 +8,7 @@ or promoted claims. It is not a substitute for the original protocols.
 
 - Dataset: private Hugging Face dataset `t4run/openrouter-market-history`.
 - Outcome-free randomized-design revision:
-  `3efd953a98108381732684508991bab2f5ee28b4`.
+  `42334a840dc8088cc8cde441ebe3649cfa041b5e`.
 - Corrected public-input revision:
   `b389923ad7713bc230dd522f770aa306bf778806`.
 - Endpoint panel: 2,004,680 distinct provider-model listings from 2,116 capture
@@ -92,6 +92,10 @@ authoritative evidence for the rewrite.
 - Exact-paper-head audit `29565662719` checked out `d61a6b2`, reproduced the
   same immutable revision and counts, and again reported
   `outcomes_queried=false` for H81 and H95.
+- Corrected-paper exact-head audit `29566914482` checked out `244c384`, pinned
+  revision `42334a84`, reproduced H81 counts 32/24/28 and H95 support 5/120,
+  and again reported `outcomes_queried=false` for both studies. This is the
+  outcome-blind provenance point for the finite-population interval amendment.
 
 These workflows run on GitHub-hosted runners and do not depend on the local
 computer remaining online.
@@ -121,6 +125,7 @@ computer remaining online.
 | 2026-07-17 / `55b5087` | H81 | Pre-release audit found avoidable Monte Carlo error in the primary Fisher tails even though binary outcomes and fixed counts admit finite exact enumeration | H81 remained below 40 per arm; no outcome was queried | Published p-values now sum the multivariate-hypergeometric support exactly. The 100,000-draw permutation is retained only as an audit check; a 30-assignment brute-force fixture agrees to machine precision and the full suite has 541 passes. |
 | 2026-07-17 / `5cc0a4a` | H81 | Red-team follow-up found that the exact-versus-Monte-Carlo discrepancy was reported but could not stop a bad release | H81 remained below 40 per arm; no outcome was queried | Exact support mass must equal one within `1e-12`, and a production release fails closed if the 100,000-draw tail differs by more than 0.01. The production-setting regression and full 542-test suite pass. |
 | 2026-07-17 / pairwise-Fisher amendment | H81 | A second proof audit found that permuting all three labels tests a global sharp null and is not exact for either registered pairwise null when the nuisance third policy has an effect | H81 remained 32/24/28 at revision `3efd953a`; the clean gate reported `outcomes_queried=false` | Each test now conditions on the nuisance-arm assignment and sums the two-arm hypergeometric law. In 2,000 nuisance-effect experiments per null, corrected size is 3.45%/3.60% versus 5.65%/6.70% for the superseded law. Exact 39/40 Bernoulli scenarios show that 80% power requires a 25--35 percentage-point effect at the Bonferroni threshold; nonsignificance cannot establish equivalence. |
+| 2026-07-17 / design-interval amendment | H81 | Interval audit found that descriptive Newcombe intervals do not by themselves match the conditional finite-population theorem, and marginal Bonferroni power does not describe the joint Holm family | H81 remained 32/24/28 at revision `42334a84`; exact-head run `29566914482` reported `outcomes_queried=false` | The release now adds a Hoeffding--Serfling confidence set simultaneous over the three fixed potential-outcome means and exact joint-Holm planning power for all minimum-count terminal arms. Worst simulated Bonferroni-Newcombe family coverage is 95.13%; worst design-family coverage is 99.93%, with mean width about 0.76. Worst-terminal 80% joint power requires a 35-point component effect on the fixed grid. |
 | 2026-07-17 07:31 / run `29563312069` | H81/H95 deployment | Verify the exact-inference manuscript/code head on the live remote release path | Both gates closed; `outcomes_queried=false` | Head `f2fd115` pinned revision `4fd167d6`; H81 remained 32/23/27 and H95 remained 4/120. This is deployment evidence, not an effect estimate. |
 | 2026-07-17 / `f170d89` | H95 | Prerelease audit found silent unknown-to-failure coercion, simulation-only tails despite a finite exact law, missing row-level provider-control lengths, marginal normal intervals, and unimplemented time/leave-one-model-out transport gates | H95 remained 4/120; the outcome-blind preflight selected assignment metadata only and reported `outcomes_queried=false` | Structural missing/noncompliant requests remain ITT zeros, but unknown compliant outcomes now suppress complete-data inference and enter `[0,1]` bounds. Fisher tails convolve the six assignments per triplet exactly, with a fail-closed 100,000-draw audit. Future rows carry provider-control lengths; the 12 legacy rows remain flagged in the horizon. Paired-t familywise intervals, distinct-triplet time concentration, whole-triplet LOMO, row-level outcome audit, and adversarial tests are implemented; the full suite has 551 passes. |
 | 2026-07-17 07:49 / run `29564165459` | H95 deployment | First scheduled collector run on the hardened metadata commit | Workflow succeeded on head `f170d89`; artifact not yet in the pinned revision; no outcome log inspected | Verifies remote deployment only. The manuscript retains 4/120 until compaction and an assignment-only gate audit prove another valid plan. |

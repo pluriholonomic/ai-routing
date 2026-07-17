@@ -18,6 +18,9 @@ The July 17, 2026 revision:
 - corrects H81's exact Fisher reference experiment to condition on the nuisance
   third arm, adds a fail-closed 100,000-draw pairwise audit, demonstrates the
   superseded all-arm test's size distortion, and reports exact pre-outcome power;
+- adds a conditional finite-population Hoeffding--Serfling confidence set, fixed-schedule
+  interval-coverage stress tests, and exact joint power for the registered
+  two-test Holm family while H81 outcomes remain unopened;
 - hardens the still-blinded H95 replication with exact within-triplet Fisher
   inference, explicit structural and measurement missingness, provider-control
   coverage, time/whole-triplet transport gates, and a sequential-position
@@ -26,11 +29,12 @@ The July 17, 2026 revision:
   moving price-atom diagnostics and proofs to Appendix A without deleting them.
 
 The latest adversarial assessment is
-[`../docs/manuscript-review-round-23-2026-07-17.md`](../docs/manuscript-review-round-23-2026-07-17.md).
-It treats the H81 pairwise randomization defect as repaired before outcome access
-and identifies H81's 25--35-point familywise power boundary; the remaining
-promotion gates are unreleased H81/H95 outcomes and the unopened 30-completed-day
-PM1 holdout.
+[`../docs/manuscript-review-round-24-2026-07-17.md`](../docs/manuscript-review-round-24-2026-07-17.md).
+It treats the H81 pairwise randomization defect and confidence-theorem mismatch
+as repaired before outcome access, quantifies a 35-point worst-terminal joint
+Holm power boundary, and makes the design-only precision cost explicit. The
+remaining promotion gates are unreleased H81/H95 outcomes and the unopened
+30-completed-day PM1 holdout.
 
 This directory contains three non-concurrent manuscripts built from the reviewed
 research drafts:

@@ -4,10 +4,12 @@ import random
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from orcap.analysis.h81_delegation_decomposition import (
     POLICIES,
     _exact_pairwise_binary_randomization_pvalues,
+    _simultaneous_serfling_mean_radii,
     analyze,
     eligibility_diagnostics,
 )
@@ -133,6 +135,8 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert summary["analysis_randomization"].startswith("fixed-count")
     assert summary["randomization_inference"].startswith("exact pairwise-hypergeometric")
     assert summary["simultaneous_uncertainty"].startswith("Bonferroni-Newcombe")
+    assert contrasts["success_difference_design_simultaneous_ci_low"].notna().all()
+    assert contrasts["success_difference_design_simultaneous_ci_high"].notna().all()
     sensitivity = summary["treatment_outcome_missingness_sensitivity"]
     assert sensitivity["treatment_missing_or_noncompliant"] == 0
     assert sensitivity["binary_outcome_missing_among_verified"] == 0
@@ -187,6 +191,17 @@ def test_pairwise_randomization_tail_is_defined_without_a_nuisance_arm_null():
     nuisance_successes = np.ones(50)
     assert nuisance_failures.sum() != nuisance_successes.sum()
     assert _exact_pairwise_binary_randomization_pvalues(positive, negative) == baseline
+
+
+def test_simultaneous_serfling_radii_are_validated_and_shrink_with_arm_count():
+    small = _simultaneous_serfling_mean_radii(pd.Series(dict.fromkeys(POLICIES, 40)))
+    large = _simultaneous_serfling_mean_radii(pd.Series(dict.fromkeys(POLICIES, 160)))
+    finite_population_factor = 1.0 - 39.0 / 120.0
+    expected = np.sqrt(finite_population_factor * np.log(2 * len(POLICIES) / 0.05) / (2 * 40))
+    assert abs(small[POLICIES[0]] - expected) < 1e-15
+    assert all(0.0 < large[policy] < small[policy] < 1.0 for policy in POLICIES)
+    with pytest.raises(ValueError, match="alpha"):
+        _simultaneous_serfling_mean_radii(pd.Series(dict.fromkeys(POLICIES, 40)), alpha=0.0)
 
 
 def test_production_monte_carlo_discrepancy_gate_passes_fixed_fixture():

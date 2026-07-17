@@ -155,10 +155,10 @@ they are not evidence for the focal clearing claim.
   \item \textbf{Identification and design.}  We prove the accounting
   decomposition and, after removing the gate-hitting terminal block, the
   conditional design-unbiasedness of the fixed-count arm means (equivalently,
-  conditional Horvitz--Thompson contrasts).  The frozen release reports
-  exact pairwise-conditional Fisher randomization tests with Holm adjustment, marginal
-  Newcombe intervals, and Bonferroni--Newcombe intervals simultaneous over the
-  two registered components.  Unknown or malformed outcomes are not failures:
+  conditional Horvitz--Thompson contrasts).  The frozen release reports exact
+  pairwise-conditional Fisher randomization tests with Holm adjustment,
+  descriptive Newcombe intervals, and a conservative finite-population
+  confidence set simultaneous over the three policy means.  Unknown or malformed outcomes are not failures:
   they suppress point inference and enter $[0,1]$ worst-case bounds together
   with missing or noncompliant treatment records.
   We also characterize what coarsened public timing cannot identify.  The design
@@ -279,7 +279,7 @@ provider--model listing observations from 2,116 capture runs on 11 UTC dates,
 count is 2,013,866; the difference preserves 9,186 same-listing raw variants,
 all due to availability state rather than price or capability conflicts.  The
 newest outcome-free randomized-design status is separately pinned at revision
-\texttt{3efd953a9810}: H81 contains 84 verified first-position blocks, with arm
+\texttt{42334a840dc}: H81 contains 84 verified first-position blocks, with arm
 counts 32, 24, and 28 and exact assignment replay.  Its earlier eligibility
 audit contains 74 candidate rows across 37 runs; H80 remains a separate study
 with 156 verified first-position blocks over 40.7 hours.  The public cross-router
@@ -890,9 +890,20 @@ For any tested pair $p,q$ and remaining policy $r$, under the pairwise sharp nul
 $Y_\ell(p)=Y_\ell(q)$ for every preterminal block $\ell$, conditioning
 additionally on the set of blocks assigned to $r$ leaves a uniform fixed-count
 randomization of $p$ and $q$.  The resulting pairwise Fisher test is exact
-regardless of the potential outcomes under $r$.  Holm adjustment of the two primary pairwise
-$p$-values controls strong familywise error.  No monotonicity of fallback or
-delegation is required.
+regardless of the potential outcomes under $r$.  Holm adjustment of the two
+primary pairwise $p$-values controls strong familywise error.  For
+$\alpha\in(0,1)$, define $\rho_p=1-(n_p-1)/B$ and
+$h_p=\sqrt{\rho_p\log(6/\alpha)/(2n_p)}$.  Conditional on
+the same stopped design,
+\begin{equation}
+ \Pr_Z\!\left(\bigcap_{p\in\{N,F,D\}}
+ \left\{|\widehat\mu_p-\mu_p|\le h_p\right\}\right)\ge 1-\alpha,
+ \label{eq:h81-hoeffding-means}
+\end{equation}
+so every contrast $p-q$ is simultaneously covered by
+$[\widehat\mu_p-\widehat\mu_q-h_p-h_q,
+  \widehat\mu_p-\widehat\mu_q+h_p+h_q]\cap[-1,1]$.
+No monotonicity of fallback or delegation is required.
 \end{proposition}
 
 Under this conditional design, the Horvitz--Thompson mean and observed arm mean
@@ -919,7 +930,10 @@ The two directional components form one family.  Their one-sided conditional
 randomization tests receive Holm adjustment, and their confidence columns also
 include Bonferroni--Newcombe intervals with 95\% familywise coverage under the
 usual two-sample binomial interpretation.  We label the latter descriptive,
-not randomization inversions.  The point estimate, interval, and randomization
+not randomization inversions.  The release additionally reports the interval in
+\cref{eq:h81-hoeffding-means}, which is conservative but valid for the bounded
+finite-population randomization target without independent arms or a binomial
+model.  The point estimate, interval, and randomization
 test are emitted only when every verified request has a binary outcome:
 \texttt{succeeded} is one, \texttt{failed} or \texttt{cancelled} is zero, and
 \texttt{unknown}, missing, or malformed values remain missing.  Arm-level
@@ -934,7 +948,7 @@ assignment attrition bounds, not a per-protocol treatment effect.
 
 The original H81 protocol releases the earliest chronological prefix with at
 least 40 verified first-position assignments in every arm, regardless of sign.
-At the outcome-free release revision \texttt{3efd953a9810} (the full immutable
+At the outcome-free release revision \texttt{42334a840dc} (the full immutable
 hash appears in the release manifest), the arm counts
 are 32, 24, and 28.  Assignment replay and treatment-metadata checks pass for all
 84 verified blocks, so outcomes remain physically unqueried by the public
@@ -947,7 +961,9 @@ pass.  A later outcome-blind proof audit replaced an all-arm global-sharp-null
 permutation with the pairwise conditional law in
 \cref{eq:h81-exact-randomization}.  Its nuisance-effect size audit and exact
 power surface imply that the fixed gate is informative for large wedges but not
-an equivalence design.  The full 554-test suite passes.  The candidate funnel is narrow: 74 eligibility records cover
+an equivalence design.  A second outcome-blind amendment adds a simultaneous
+finite-population confidence set and exact joint-Holm power: on the frozen grid,
+80\% worst-terminal-policy power requires a 35-point component wedge.  The candidate funnel is narrow: 74 eligibility records cover
 two models at ranking positions five and six; both models are eligible in every
 recorded run and adjacent eligible support never changes.  The experiment will
 therefore identify a finite-sample policy effect for those model--time blocks,
@@ -988,7 +1004,7 @@ model count five, no model over 35\%, no six-hour bin over 20\%, and whole-tripl
 leave-one-model-out sign stability.  The protocol, collector, analyzer, and
 workflow were frozen in commit \texttt{00351dd} before the first request; the
 prerelease inference and telemetry audit was frozen in commit \texttt{f170d89}
-with the outcome gate still closed.  At revision \texttt{3efd953a9810}, the
+with the outcome gate still closed.  At revision \texttt{42334a840dc}, the
 outcome-free support is five compliant triplets, 15 blocks, nine unique models,
 effective model count 7.76, perfect plan replay, and zero missing first records.
 The first 12 first-position rows predate row-level provider-order lengths and
@@ -1192,7 +1208,10 @@ test remains unopened until the 30-date gate.  Second, H81 remains below its
 original release gate and spans only two repeated models.  At its minimum
 preterminal counts, exact Bernoulli scenarios require a 25--35 percentage-point
 effect for 80\% power at the conservative familywise threshold; a null result
-would therefore leave modest economically relevant effects unresolved.  H80's later
+would therefore leave modest economically relevant effects unresolved.  Exact
+joint-Holm enumeration puts worst-terminal-policy 80\% power at a 35-point
+component effect, while the model-free simultaneous design interval has mean
+width about 0.76 in fixed-schedule stress tests.  H80's later
 replication-promotion gate remains at 500 per arm, versus current outcome-free
 first-position counts of 37, 43, 38, and 38.  H95 broadens prospective support,
 but has no released outcome and cannot retroactively repair H81.  Its first 12
@@ -1330,9 +1349,22 @@ $Y_\ell(r)$ because both $\mathcal C_r$ and its labels are held fixed.  Each
 primary $p$-value is therefore valid under its own null even when the other null
 is false, and Holm's step-down argument gives strong familywise control without
 a dependence assumption.
+
+For the interval statement, conditional fixed-count uniformity also makes the
+$n_p$ blocks labeled $p$ a simple random sample without replacement from the
+$B$ fixed numbers $\{Y_b(p)\}_{b=1}^B\subset[0,1]$.  Hoeffding's
+sampling-without-replacement inequality therefore gives
+$\Pr_Z(|\widehat\mu_p-\mu_p|>h_p)\le
+2\exp(-2n_ph_p^2/\rho_p)=\alpha/3$; see
+\citet{hoeffding1963,serfling1974}.  A union bound over $N,F,D$ proves
+\cref{eq:h81-hoeffding-means}.  On that joint event, the triangle inequality
+gives
+$|[(\widehat\mu_p-\widehat\mu_q)-(\mu_p-\mu_q)]|\le h_p+h_q$
+for every pair simultaneously.  Intersecting with the logical outcome-difference
+range $[-1,1]$ cannot reduce coverage.
 \end{proof}
 
-The theorem has four distinct validation targets.  First, assignment replay must
+The theorem has five distinct validation targets.  First, assignment replay must
 recover the recorded first policy from every 64-bit seed and the treatment
 metadata must implement the stated candidate-set and fallback controls.  Second,
 a finite-population Monte Carlo must hold a potential-outcome table fixed, run
@@ -1340,8 +1372,9 @@ the production assignment algorithm through the balance stopping time, and
 verify both the bias of the uncorrected terminal-inclusive estimator and the
 unbiasedness and nominal size of the conditional preterminal estimator.  Third,
 a nuisance-arm stress test must impose each pairwise sharp null while allowing
-the untested policy an arbitrary effect, and exact scenario power must state what
-the fixed 40-per-arm gate can detect.  Fourth, adversarial missingness simulations must
+the untested policy an arbitrary effect.  Fourth, fixed-schedule interval
+coverage and exact joint-Holm planning power must expose both the guarantee and
+precision cost of the 40-per-arm gate.  Fifth, adversarial missingness simulations must
 confirm that unknown outcome codes are never coerced to failure; incomplete
 binary outcomes must suppress point inference and enter $[0,1]$ bounds.  The
 same audit reconstructs intended first-policy assignments and sends missing or
@@ -1394,11 +1427,46 @@ pairwise test rejects at 3.45\% for fallback and 3.60\% for hidden selection,
 whereas the superseded all-arm law rejects at 5.65\% and 6.70\%.  Exact Bernoulli
 scenario power at the minimum preterminal counts 39/40 reaches 80\% only for
 effects of 22.5--30 percentage points unadjusted and 25--35 points at the
-Bonferroni 2.5\% threshold, depending on baseline success.  Thus H81 can detect
-large wedges but cannot interpret nonsignificance as equivalence.  The
+Bonferroni 2.5\% threshold, depending on baseline success.  Exact joint-Holm
+enumeration over all three possible 39/40/40 terminal-arm identities requires a
+35-point fallback-only, selection-only, or equal-component wedge for at least
+80\% worst-case power on the five-point grid; mixed-null false rejection is at
+most 3.23\%.  Across five fixed binary schedules and 3,000 stopped assignments
+per schedule, worst marginal Newcombe coverage is 94.67\% and worst
+Bonferroni--Newcombe family coverage is 95.13\%.  The worst
+design-Hoeffding--Serfling family coverage is 99.93\%, but its mean contrast
+width is about 0.76; its
+formal guarantee comes from \cref{eq:h81-hoeffding-means}, not that simulation.
+Thus H81 can detect large wedges but cannot interpret nonsignificance as
+equivalence.  The
 100,000-draw pairwise tail remains solely a discrepancy audit, and the release
-fails closed above one percentage point.  The full repository suite has 554
+fails closed above one percentage point.  The full repository suite has 557
 passes.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{figures/h81_interval_coverage.pdf}
+\caption{Outcome-blind interval audit over five fixed binary potential-outcome
+schedules and 3,000 stopped assignments per schedule.  Panel A takes the worse
+coverage of the two primary contrasts; Panel B reports simultaneous family
+coverage; Panel C shows the precision cost.  Bonferroni--Newcombe is descriptive
+under a binomial model.  The wider design-Hoeffding--Serfling interval is valid for
+the conditional finite population; its observed near-100\% coverage is an audit, not
+the source of its guarantee.}
+\label{fig:h81-interval-coverage}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{figures/h81_joint_holm_power.pdf}
+\caption{Exact Bernoulli-scenario power for the registered two-test Holm family
+at minimum preterminal counts 39/40/40, minimized over the identity of the
+terminal arm.  The first two panels activate one component and hold the other
+null; the dotted line is false rejection of that remaining true null.  The last
+panel activates equal fallback and selection components.  This is a planning
+calculation, not an H81 outcome.}
+\label{fig:h81-joint-holm-power}
+\end{figure}
 
 \section{Fixed-horizon H95 identification and exact inference}
 \label{app:h95-proof}
@@ -1496,7 +1564,7 @@ stops release.  Separate adversaries replace a valid outcome with
 \texttt{unknown}, delete and mismatch planned first requests, corrupt a
 provider-control length, concentrate every triplet in one six-hour bin, and
 verify that leave-one-model-out analysis drops whole triplets.  The full
-repository suite has 554 passes.  These checks validate the release code and
+repository suite has 557 passes.  These checks validate the release code and
 claim boundary.  They are not H95 outcome evidence: the fixed horizon remains
 five of 120 at the pinned outcome-free revision.
 
@@ -1987,14 +2055,16 @@ worst-case bounds.  Commit \texttt{55b5087} adds exact finite-support Fisher
 tails; commit \texttt{5cc0a4a} makes the retained permutation audit fail closed
 at a one-percentage-point discrepancy.  The subsequent outcome-blind pairwise
 amendment holds the nuisance third arm fixed, adds a nuisance-effect size audit,
-and records exact minimum-count power before release.  Commit \texttt{f170d89}, made at H95
+and records exact minimum-count power before release.  A second outcome-blind
+amendment adds the simultaneous finite-population interval, fixed-schedule
+coverage audit, and exact joint-Holm power.  Commit \texttt{f170d89}, made at H95
 support 4/120 and before outcome access, adds the analogous exact six-assignment
 convolution, explicit structural-versus-measurement missingness, row-level
 provider-control coverage, paired familywise intervals, time concentration,
 whole-triplet leave-one-model-out, and a triplet-position diagnostic.  The
 release now hashes every dated protocol amendment and writes redacted outcome,
 position, and transport audit panels.  The full repository test run has 551
-passes at that H95 freeze and 554 after the H81 pairwise audit.  The remote path publishes a content-hashed
+passes at that H95 freeze and 557 after the H81 interval audit.  The remote path publishes a content-hashed
 bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
 run \texttt{29563312069}, checking out manuscript/code head \texttt{f2fd115},
@@ -2023,6 +2093,10 @@ records; both studies again report \texttt{outcomes\_queried=false}.
 Exact-paper-head audit \texttt{29565662719} then checked out
 \texttt{d61a6b2}, reproduced the same revision and counts, and again left both
 outcome-query flags false.
+Corrected-paper audit \texttt{29566914482} checked out \texttt{244c384}, pinned
+revision \texttt{42334a840dc}, reproduced the same counts, and again left both
+outcome-query flags false.  The design-interval amendment was frozen immediately
+after that outcome-blind provenance point.
 
 \paragraph{Privacy, load, and release tiers.}
 Capture records exclude prompts and completions.  Owned experiments use a fixed
