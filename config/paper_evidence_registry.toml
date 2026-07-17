@@ -276,7 +276,7 @@ classification = "outcome-free accrual audit"
 [[gate_event]]
 study_id = "H81"
 effective_utc = "2026-07-17T04:06:21Z"
-commit = "working-tree"
+commit = "6017dae"
 gate_version = "v1-preterminal-conditional"
 target_per_arm = 40
 event = "exclude the gate-hitting terminal block and condition randomization inference on the preterminal arm counts"

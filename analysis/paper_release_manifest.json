@@ -4,9 +4,9 @@
   "evidence_freeze_utc": "2026-07-17T03:30:47Z",
   "files": [
     {
-      "bytes": 14180,
+      "bytes": 14175,
       "path": "config/paper_evidence_registry.toml",
-      "sha256": "4146ac955f8f2c9a84ed0697149ac1acf593bc2ff7aed3bbfb295e4835ec2c3f"
+      "sha256": "f38da19555d61a5480c38f20eec5390bfff667cd72ca47e9eccfb047cc412674"
     },
     {
       "bytes": 3183,
@@ -39,9 +39,9 @@
       "sha256": "75e4b5842c79b9d6a75eb1d27098a7ec3f5bfba8f00e9a879f4d15815e41238f"
     },
     {
-      "bytes": 6998,
+      "bytes": 6982,
       "path": "docs/paper-evidence-amendment-ledger-2026-07-17.md",
-      "sha256": "570267e4428a0d0a9af8cb72719b9e62d0c45bbf4648bd16c6d3adfe3bc51c3e"
+      "sha256": "340954de6844efdbd1296fe16273e525ee3cfc75da5f7893d935fada27467c86"
     },
     {
       "bytes": 7347,
@@ -220,7 +220,7 @@
     }
   ],
   "gate_event_count": 7,
-  "generated_at_utc": "2026-07-17T04:29:29.370885+00:00",
+  "generated_at_utc": "2026-07-17T04:30:46.013872+00:00",
   "paper_theorem_count": 7,
   "paper_track": "ACM EC / TEAC",
   "registered_claim_count": 13,
