@@ -5,6 +5,7 @@ from orcap.analysis.h81_theorem_validation import (
     exact_joint_holm_power,
     exact_pairwise_bernoulli_power,
     simulate_bias,
+    simulate_compliance_selection,
     simulate_interval_coverage,
     simulate_nuisance_arm_size,
     simulate_randomization_size,
@@ -48,6 +49,21 @@ def test_pairwise_test_controls_size_with_a_nonnull_nuisance_arm():
     # discrete, but the corrected pairwise law must not be anti-conservative.
     assert rates["pairwise_reject_5pct"].max() <= 0.08
     assert audit["pairwise_p_greater"].between(0.0, 1.0).all()
+
+
+def test_intention_to_treat_resists_outcome_dependent_compliance_selection():
+    audit = simulate_compliance_selection(experiments_per_strength=1_000)
+    summary = audit.groupby("strength", sort=True).agg(
+        itt_estimate=("itt_estimate", "mean"),
+        per_protocol_estimate=("per_protocol_estimate", "mean"),
+        itt_rejection=("itt_reject_5pct", "mean"),
+        per_protocol_rejection=("per_protocol_reject_5pct", "mean"),
+    )
+
+    assert summary["itt_estimate"].abs().max() <= 0.015
+    assert summary["itt_rejection"].max() <= 0.075
+    assert summary.loc[1.0, "per_protocol_estimate"] >= 0.95
+    assert summary.loc[1.0, "per_protocol_rejection"] >= 0.95
 
 
 def test_exact_pairwise_power_increases_with_effect_size():

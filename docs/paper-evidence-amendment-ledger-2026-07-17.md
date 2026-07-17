@@ -130,6 +130,7 @@ computer remaining online.
 | 2026-07-17 / `f170d89` | H95 | Prerelease audit found silent unknown-to-failure coercion, simulation-only tails despite a finite exact law, missing row-level provider-control lengths, marginal normal intervals, and unimplemented time/leave-one-model-out transport gates | H95 remained 4/120; the outcome-blind preflight selected assignment metadata only and reported `outcomes_queried=false` | Structural missing/noncompliant requests remain ITT zeros, but unknown compliant outcomes now suppress complete-data inference and enter `[0,1]` bounds. Fisher tails convolve the six assignments per triplet exactly, with a fail-closed 100,000-draw audit. Future rows carry provider-control lengths; the 12 legacy rows remain flagged in the horizon. Paired-t familywise intervals, distinct-triplet time concentration, whole-triplet LOMO, row-level outcome audit, and adversarial tests are implemented; the full suite has 551 passes. |
 | 2026-07-17 / H95 pairwise-interval amendment | H95 | A second proof audit found that the six-assignment law is exact for the global three-policy sharp null but not either pairwise elementary null when the nuisance policy has an effect; paired-t intervals also did not state design-only uncertainty | Exact-head audit `29568434722` checked head `973f900` at revision `30b430e2`; H95 remained 5/120 and reported `outcomes_queried=false` | Each test now conditions on the nuisance-policy assignment and convolves two focal-label swaps per triplet. Mixed-null stress tests give 4.06% worst corrected true-null rejection versus 8.12% for the superseded law. A simultaneous bounded-outcome Hoeffding interval adds a 0.270 radius at 120 triplets; worst simulated family coverage is 99.90% with mean width 0.540, versus 95.52% and 0.290 for descriptive paired-t intervals. |
 | 2026-07-17 / H95 position-zero amendment | H95 | Sequential model blocks leave the primary direct-policy interpretation conditional on no treatment-dependent carryover; the existing position panel was diagnostic but did not define an identified first-block estimand | Exact-head audit `29569590704` checked head `4860015` at revision `f5b82281`; H95 remained 5/120 and reported `outcomes_queried=false` | A separate secondary estimator uses the randomized first model block only. Conditional arm means are design-unbiased, pairwise tails are hypergeometric, and Hoeffding--Serfling intervals are simultaneous over the three means. Planted later-block carryover creates 0.2437 primary bias but only 0.00103 position-zero bias; mean position-zero interval width is 0.810. The sensitivity does not change the primary family or prove actual interference. |
+| 2026-07-17 / H81 intended-assignment amendment | H81 | The prior gate and point sample filtered on post-assignment treatment metadata, so arm-dependent compliance could invalidate the fixed-count reference experiment and create a selected per-protocol comparison | Exact-head audit `29570676475` checked head `406a478` at revision `f5b82281`; H81 remained 32/24/28, all 84 rows passed replay and treatment fidelity, and `outcomes_queried=false` | The gate now counts every pre-request plan or historical seed-replayed intended assignment. Missing, mismatched, duplicate, and noncompliant requests remain in their randomized arms; the primary estimand is assigned-policy ITT and fidelity is diagnostic. A sharp-null adversary leaves ITT bias below 0.0022 and rejection at 2.83--3.70%, while the superseded filtered comparison reaches bias one and 100% false rejection at the same approximate retention rate. Current counts are unchanged. |
 | 2026-07-17 07:49 / run `29564165459` | H95 deployment | First scheduled collector run on the hardened metadata commit | Workflow succeeded on head `f170d89`; artifact not yet in the pinned revision; no outcome log inspected | Verifies remote deployment only. The manuscript retains 4/120 until compaction and an assignment-only gate audit prove another valid plan. |
 | 2026-07-17 08:06 / compaction `29564756681`, audit `29565268475` | H81/H95 | Fold the first hardened H95 artifact and verify the paper head remotely | Both gates closed; `outcomes_queried=false` | Head `14ba8c6` pinned revision `3efd953a`. H81 advanced to 84 blocks (32/24/28). H95 advanced to 5/120 with 15/15 first records, perfect replay/compliance, 12 legacy rows, and 3/3 newly auditable rows passing. This is assignment and deployment evidence only. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
@@ -143,8 +144,11 @@ wrong conditional reference distribution and can bias time-varying outcomes.
 
 The corrected confirmatory sample is blocks `1,...,T-1`. Conditional on `T`,
 the terminal policy, and the preterminal count vector, these labels are uniform
-over fixed-count assignments. Arm means are therefore the conditional
-Horvitz-Thompson means with probabilities `n_p/(T-1)`. For each pairwise null,
+over fixed-count intended assignments. Arm means are therefore the conditional
+intention-to-treat Horvitz-Thompson means with probabilities `n_p/(T-1)`.
+Treatment realization and metadata never filter these labels; future blocks
+write the seed and intended first policy before the request, and historical
+blocks replay the same seed. For each pairwise null,
 randomization inference additionally conditions on the nuisance-arm assignment
 and permutes only the two contrasted labels. A 20,000-draw validation at the
 actual gate finds corrected bias indistinguishable from zero for all three
@@ -156,8 +160,9 @@ effects at the conservative familywise threshold.
 
 ## Claim consequences for the rewrite
 
-1. H81 is the focal randomized design, but no causal outcome is yet reportable;
-   the current outcome-free counts are 32, 24, and 28.
+1. H81 is the focal randomized ITT design, but no causal outcome is yet
+   reportable; the current outcome-free intended-assignment counts are 32, 24,
+   and 28, with 100% first-row, replay, and treatment-fidelity support.
 2. H80 is a separate replication and must retain both its original 40-per-arm
    history and its later 500-per-arm promotion rule.
 3. H82 is descriptive because its frozen pretrends fail.

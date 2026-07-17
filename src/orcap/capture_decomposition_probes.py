@@ -77,7 +77,33 @@ ELIGIBILITY_SCHEMA = pa.schema(
         ("quote_cap_input_tokens", pa.int32()),
         ("request_timeout_ms", pa.float64()),
         ("block_id", pa.string()),
+        ("block_seed", pa.string()),
+        ("first_policy_planned", pa.string()),
+        ("assignment_probability_first", pa.float64()),
+        ("randomized_order", pa.bool_()),
         ("run_seed", pa.string()),
+        ("payload_retained", pa.bool_()),
+        ("run_ts", pa.string()),
+        ("dt", pa.string()),
+    ]
+)
+
+PLAN_SCHEMA = pa.schema(
+    [
+        ("plan_id", pa.string()),
+        ("planned_at", pa.string()),
+        ("run_id", pa.string()),
+        ("study_id", pa.string()),
+        ("ranking_position", pa.int32()),
+        ("evaluation_order", pa.int32()),
+        ("model_id", pa.string()),
+        ("block_id", pa.string()),
+        ("block_seed", pa.string()),
+        ("first_policy_planned", pa.string()),
+        ("assignment_probability_first", pa.float64()),
+        ("randomized_order", pa.bool_()),
+        ("public_provider_count", pa.int32()),
+        ("public_provider_order_sha256", pa.string()),
         ("payload_retained", pa.bool_()),
         ("run_ts", pa.string()),
         ("dt", pa.string()),
@@ -157,11 +183,32 @@ def write_eligibility_audit(
     )
 
 
+def write_decomposition_plan(
+    record: dict[str, Any],
+    *,
+    run_ts: str,
+    dt: str | None = None,
+    curated_dir: Path = CURATED_DIR,
+) -> Path:
+    """Persist one outcome-free randomized block plan before its first request."""
+    dt = dt or dt_partition()
+    row = record | {"payload_retained": False, "run_ts": run_ts, "dt": dt}
+    return write_partition(
+        pa.Table.from_pylist([row], schema=PLAN_SCHEMA),
+        "router_decomposition_plans",
+        run_ts,
+        dt,
+        curated_dir,
+    )
+
+
 def run_decomposition_probes(
     model_ids: list[str] | None = None,
     *,
     eligibility_records: list[dict[str, Any]] | None = None,
     run_id: str | None = None,
+    persist_plans: bool = True,
+    curated_dir: Path = CURATED_DIR,
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     seed_text = os.environ.get("ORCAP_DECOMP_RANDOMIZATION_SEED")
@@ -204,6 +251,13 @@ def run_decomposition_probes(
                 else None
             )
             block_id = f"{STUDY_ID}|{run_id}|{model_id}" if eligible else None
+            block_seed = rng.getrandbits(64) if eligible else None
+            tasks = (
+                decomposition_tasks(endpoints, random.Random(block_seed))
+                if block_seed is not None
+                else []
+            )
+            first_policy_planned = str(tasks[0]["policy"]) if tasks else None
             if eligibility_records is not None:
                 eligibility_records.append(
                     {
@@ -229,6 +283,10 @@ def run_decomposition_probes(
                         "quote_cap_input_tokens": QUOTE_CAP_INPUT_TOKENS,
                         "request_timeout_ms": REQUEST_TIMEOUT_MS,
                         "block_id": block_id,
+                        "block_seed": str(block_seed) if block_seed is not None else None,
+                        "first_policy_planned": first_policy_planned,
+                        "assignment_probability_first": 1.0 / len(POLICIES),
+                        "randomized_order": True,
                         "run_seed": str(run_seed),
                     }
                 )
@@ -240,8 +298,28 @@ def run_decomposition_probes(
                     exclusion_reason,
                 )
                 continue
-            block_seed = rng.getrandbits(64)
-            tasks = decomposition_tasks(endpoints, random.Random(block_seed))
+            planned_at = run_timestamp()
+            if persist_plans:
+                write_decomposition_plan(
+                    {
+                        "plan_id": block_id,
+                        "planned_at": planned_at,
+                        "run_id": run_id,
+                        "study_id": STUDY_ID,
+                        "ranking_position": ranking_position,
+                        "evaluation_order": evaluation_order,
+                        "model_id": model_id,
+                        "block_id": block_id,
+                        "block_seed": str(block_seed),
+                        "first_policy_planned": first_policy_planned,
+                        "assignment_probability_first": 1.0 / len(POLICIES),
+                        "randomized_order": True,
+                        "public_provider_count": len(provider_order),
+                        "public_provider_order_sha256": order_hash,
+                    },
+                    run_ts=f"{run_id}-{evaluation_order:03d}",
+                    curated_dir=curated_dir,
+                )
             cheapest_price = float(endpoints[0]["price"])
 
             for position, task in enumerate(tasks):

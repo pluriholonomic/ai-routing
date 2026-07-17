@@ -109,13 +109,13 @@ title = "Randomized fallback and hidden-selection decomposition"
 disposition = "main"
 identification = "finite-population randomized ITT decomposition"
 status = "theorem, proof, and stopped-design simulation validation present; H81 outcomes gated"
-source_tables = ["router_route_attempts", "router_probe_eligibility"]
+source_tables = ["router_route_attempts", "router_probe_eligibility", "router_decomposition_plans"]
 analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py", "src/orcap/analysis/h81_theorem_validation.py"]
 collectors = ["src/orcap/capture_decomposition_probes.py"]
 tests = ["tests/test_h81_delegation_decomposition.py", "tests/test_h81_theorem_validation.py", "tests/test_blinded_study_isolation.py"]
-protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md"]
-validation_methods = ["randomization algebra", "Monte Carlo design recovery", "pairwise nuisance-arm size stress test", "exact Bernoulli scenario power", "exact joint Holm power", "finite-population simultaneous Hoeffding-Serfling intervals", "fixed-schedule interval coverage audit", "missingness bounds", "leave-one-model-out sensitivity"]
-claim_boundary = "After removing the gate-hitting block, fixed-count arm means and conditional HT contrasts identify policy effects for the owned account and preterminal eligible blocks; the design does not identify router intent or social welfare."
+protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-intention-to-treat.md"]
+validation_methods = ["randomization algebra", "pre-request plan integrity", "historical eligibility RNG reconstruction", "Monte Carlo design recovery", "pairwise nuisance-arm size stress test", "post-assignment compliance-selection stress test", "exact Bernoulli scenario power", "exact joint Holm power", "finite-population simultaneous Hoeffding-Serfling intervals", "fixed-schedule interval coverage audit", "missingness bounds", "leave-one-model-out sensitivity"]
+claim_boundary = "After removing the gate-hitting block, intended-assignment fixed-count arm means and conditional HT contrasts identify assignment-policy ITT effects for the owned account and preterminal eligible blocks. Treatment fidelity is diagnostic and is not an analysis-sample filter; the design does not identify router intent or social welfare."
 
 [[claim]]
 claim_id = "E-H81"
@@ -124,14 +124,14 @@ tex_label = ""
 title = "Owned randomized fallback and hidden-selection experiment"
 disposition = "main"
 identification = "randomized first-position ITT"
-status = "power-gated; 84 verified blocks and arm counts 32/24/28 at the pinned revision"
-source_tables = ["router_route_attempts", "router_probe_eligibility"]
+status = "power-gated; 84 intended blocks, 100% observed/replayed/treatment-fidelity support, and arm counts 32/24/28 at the pinned revision"
+source_tables = ["router_route_attempts", "router_probe_eligibility", "router_decomposition_plans"]
 analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py", "src/orcap/confirmatory_release.py"]
 collectors = ["src/orcap/capture_decomposition_probes.py"]
 tests = ["tests/test_h81_delegation_decomposition.py", "tests/test_blinded_study_isolation.py", "tests/test_confirmatory_release.py"]
-protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md", "docs/confirmatory-release-protocol-2026-07-17.md"]
-validation_methods = ["seed replay", "treatment compliance", "pairwise conditional randomization inference", "nuisance-arm size stress test", "exact joint Holm power", "Newcombe interval", "finite-population simultaneous Hoeffding-Serfling interval", "fixed-schedule interval coverage audit", "support audit"]
-claim_boundary = "Current support is two repeatedly eligible models with no adjacent support turnover; no outcome may be promoted before the frozen 40-per-arm gate."
+protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-intention-to-treat.md", "docs/confirmatory-release-protocol-2026-07-17.md"]
+validation_methods = ["plan-first assignment ledger", "historical eligibility RNG reconstruction", "seed replay", "assignment-integrity fail-closed gate", "treatment-fidelity reporting", "pairwise conditional randomization inference", "nuisance-arm size stress test", "post-assignment compliance-selection stress test", "exact joint Holm power", "Newcombe interval", "finite-population simultaneous Hoeffding-Serfling interval", "fixed-schedule interval coverage audit", "support audit"]
+claim_boundary = "Current support is two repeatedly eligible models with no adjacent support turnover. The primary estimand is assigned-policy ITT, not a per-protocol effect; no outcome may be promoted before the frozen 40-intended-assignments-per-arm gate."
 
 [[claim]]
 claim_id = "E-H80"

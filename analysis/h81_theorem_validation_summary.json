@@ -260,6 +260,53 @@
       "maximum_mixed_null_false_rejection_probability": 0.03234810496472799
     }
   ],
+  "post_assignment_compliance_selection_audit": [
+    {
+      "strength": 0.0,
+      "experiments": 3000,
+      "mean_itt_estimate": -0.0006040606825099605,
+      "mean_per_protocol_estimate": -0.006257341472141775,
+      "itt_false_rejection_rate_5pct": 0.03233333333333333,
+      "per_protocol_false_rejection_rate_5pct": 0.025666666666666667,
+      "mean_treatment_fidelity_rate": 0.4990258702908395
+    },
+    {
+      "strength": 0.25,
+      "experiments": 3000,
+      "mean_itt_estimate": -0.0008166402025773651,
+      "mean_per_protocol_estimate": 0.24971112662152958,
+      "itt_false_rejection_rate_5pct": 0.037,
+      "per_protocol_false_rejection_rate_5pct": 0.395,
+      "mean_treatment_fidelity_rate": 0.5019115350595127
+    },
+    {
+      "strength": 0.5,
+      "experiments": 3000,
+      "mean_itt_estimate": 0.0021842409851233744,
+      "mean_per_protocol_estimate": 0.5054981967374522,
+      "itt_false_rejection_rate_5pct": 0.035333333333333335,
+      "per_protocol_false_rejection_rate_5pct": 0.9423333333333334,
+      "mean_treatment_fidelity_rate": 0.49976040305807645
+    },
+    {
+      "strength": 0.75,
+      "experiments": 3000,
+      "mean_itt_estimate": -0.0018503601611191973,
+      "mean_per_protocol_estimate": 0.753233732341482,
+      "itt_false_rejection_rate_5pct": 0.028333333333333332,
+      "per_protocol_false_rejection_rate_5pct": 1.0,
+      "mean_treatment_fidelity_rate": 0.49909471870593236
+    },
+    {
+      "strength": 1.0,
+      "experiments": 3000,
+      "mean_itt_estimate": -0.00056944915082906,
+      "mean_per_protocol_estimate": 1.0,
+      "itt_false_rejection_rate_5pct": 0.029666666666666668,
+      "per_protocol_false_rejection_rate_5pct": 1.0,
+      "mean_treatment_fidelity_rate": 0.49938288321357865
+    }
+  ],
   "evidence_status": "simulation_validation_not_empirical_evidence",
-  "claim_boundary": "This validates the stopped-design estimator under a synthetic fixed potential-outcome schedule, audits descriptive interval coverage, validates a conservative finite-population confidence set, and reports model-based Bernoulli power scenarios. It does not validate H81 transport, reveal H81 outcomes, or identify market welfare."
+  "claim_boundary": "This validates the stopped-design estimator under a synthetic fixed potential-outcome schedule, audits descriptive interval coverage, validates a conservative finite-population confidence set, reports model-based Bernoulli power scenarios, and demonstrates why post-assignment treatment-fidelity filtering cannot define the randomization sample. It does not validate H81 transport, reveal H81 outcomes, or identify market welfare."
 }

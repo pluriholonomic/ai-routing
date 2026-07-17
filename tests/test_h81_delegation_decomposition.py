@@ -11,7 +11,10 @@ from orcap.analysis.h81_delegation_decomposition import (
     _exact_pairwise_binary_randomization_pvalues,
     _simultaneous_serfling_mean_radii,
     analyze,
+    assignment_integrity_pass,
     eligibility_diagnostics,
+    first_position_sample,
+    reconstruct_legacy_plans,
 )
 
 
@@ -132,7 +135,9 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert summary["confirmatory_prefix_blocks"] == 119
     assert summary["terminal_gate_block_excluded"] is True
     assert summary["terminal_gate_block_policy"] == "price_order_fallback"
-    assert summary["analysis_randomization"].startswith("fixed-count")
+    assert summary["analysis_randomization"].startswith("intention-to-treat")
+    assert summary["intended_first_position_blocks"] == 120
+    assert panel["treatment_metadata_pass_rate"].eq(1.0).all()
     assert summary["randomization_inference"].startswith("exact pairwise-hypergeometric")
     assert summary["simultaneous_uncertainty"].startswith("Bonferroni-Newcombe")
     assert contrasts["success_difference_design_simultaneous_ci_low"].notna().all()
@@ -266,6 +271,119 @@ def test_noncompliant_planned_block_enters_worst_case_treatment_bounds():
         hidden["success_difference_treatment_outcome_upper_bound"]
         >= hidden["success_difference_hajek"]
     )
+
+
+def test_noncompliant_request_remains_in_intention_to_treat_primary_sample():
+    frame = _balanced_frame()
+    metadata = json.loads(frame.loc[0, "metadata_json"])
+    metadata["allow_fallbacks"] = False
+    frame.loc[0, "metadata_json"] = json.dumps(metadata)
+
+    panel, _, contrasts, summary = analyze(frame, simulations=500)
+    delegated = panel.set_index("policy").loc["delegated_default"]
+
+    assert summary["outcomes_released"] is True
+    assert summary["intended_first_position_blocks"] == 120
+    assert summary["verified_first_position_blocks"] == 119
+    assert delegated["intended_assignments"] == 40
+    assert delegated["treatment_metadata_passes"] == 39
+    assert delegated["success_rate"] == 1.0
+    assert contrasts["randomization_p_greater"].notna().all()
+
+
+def test_plan_only_assignment_enters_ledger_with_missing_request_fidelity():
+    frame = _balanced_frame().iloc[0:0].copy()
+    seed = _seed_for_first("price_order_fallback", 90_000)
+    plans = pd.DataFrame(
+        [
+            {
+                "plan_id": "planned-block",
+                "planned_at": "2026-07-17T10:00:00Z",
+                "run_id": "run-plan",
+                "run_ts": "20260717T100000Z",
+                "study_id": "openrouter-fallback-selection-decomposition-v1",
+                "ranking_position": 5,
+                "evaluation_order": 0,
+                "model_id": "model/planned",
+                "block_id": "planned-block",
+                "block_seed": str(seed),
+                "first_policy_planned": "price_order_fallback",
+                "assignment_probability_first": 1 / 3,
+                "randomized_order": True,
+            }
+        ]
+    )
+
+    ledger, audit = first_position_sample(frame, plans=plans)
+
+    assert len(ledger) == 1
+    row = ledger.iloc[0]
+    assert row["policy"] == "price_order_fallback"
+    assert bool(row["assignment_plan_recorded"])
+    assert not bool(row["first_row_observed"])
+    assert not bool(row["treatment_metadata_pass"])
+    assert audit["assignment_plan_replay_rate"] == 1.0
+    assert audit["intended_first_position_blocks"] == 1
+
+
+def test_legacy_eligibility_rng_reconstructs_assignment_without_attempt_row():
+    run_seed = 20260717
+    pairs = [(5, "model/a"), (6, "model/b")]
+    shuffled = pairs.copy()
+    random.Random(run_seed).shuffle(shuffled)
+    eligibility = pd.DataFrame(
+        [
+            {
+                "run_id": "legacy-run",
+                "run_seed": str(run_seed),
+                "run_ts": "20260717T100000Z",
+                "observed_at": f"2026-07-17T10:00:0{index}Z",
+                "study_id": "openrouter-fallback-selection-decomposition-v1",
+                "ranking_position": ranking_position,
+                "evaluation_order": index,
+                "model_id": model_id,
+                "eligible": True,
+                "block_id": f"legacy-{model_id}",
+            }
+            for index, (ranking_position, model_id) in enumerate(shuffled)
+        ]
+    )
+
+    plans, replay = reconstruct_legacy_plans(eligibility)
+    empty_attempts = _balanced_frame().iloc[0:0].copy()
+    ledger, audit = first_position_sample(empty_attempts, plans=plans)
+
+    assert replay == {
+        "candidate_runs": 1,
+        "replayed_runs": 1,
+        "failed_runs": 0,
+        "eligible_blocks": 2,
+        "reconstructed_blocks": 2,
+    }
+    assert len(ledger) == 2
+    assert set(ledger["policy"]).issubset(POLICIES)
+    assert ledger["first_row_observed"].eq(False).all()
+    assert audit["intended_first_position_blocks"] == 2
+
+
+def test_corrupt_pre_request_plan_fails_assignment_integrity_gate():
+    frame = _balanced_frame().iloc[0:0].copy()
+    seed = _seed_for_first("delegated_default", 120_000)
+    plans = pd.DataFrame(
+        [
+            {
+                "block_id": "corrupt-plan",
+                "block_seed": str(seed),
+                "first_policy_planned": "price_only_no_fallback",
+            }
+        ]
+    )
+
+    ledger, audit = first_position_sample(frame, plans=plans)
+
+    assert ledger.empty
+    assert audit["assignment_plan_replay_rate"] == 0.0
+    assert not assignment_integrity_pass(audit)
 
 
 def test_zero_randomization_draws_still_runs_blinded_design_audit():

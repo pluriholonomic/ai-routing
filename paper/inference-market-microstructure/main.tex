@@ -138,9 +138,13 @@ they are not evidence for the focal clearing claim.
   hold the displayed cheapest provider fixed and randomize among cheapest-only
   execution, explicit price order with fallback, and full delegation.  The two
   primary contrasts isolate the option value of fallback and the additional
-  value of hidden selection for the owned account.  Assignment replay and policy
-  compliance are outcome-free.  At the pinned data revision the arm counts are
-  32, 24, and 28, below the original 40-per-arm release gate; no H81 outcome is
+  value of hidden selection for the owned account.  The primary sample is now
+  explicitly intention-to-treat: a plan written before each future first request,
+  or the frozen seed for historical blocks, fixes the intended arm without
+  filtering on request realization or treatment fidelity.  At the pinned data
+  revision all 84 intended assignments are observed, replayed, and compliant;
+  the arm counts are 32, 24, and 28, below the original 40-per-arm release gate,
+  and no H81 outcome is
   reported.  The eligible support currently contains only two repeated models,
   which limits transport even after release.  We therefore froze H95 before its
   first request: an independent fixed-horizon replication over 120 three-model
@@ -157,13 +161,16 @@ they are not evidence for the focal clearing claim.
 
   \item \textbf{Identification and design.}  We prove the accounting
   decomposition and, after removing the gate-hitting terminal block, the
-  conditional design-unbiasedness of the fixed-count arm means (equivalently,
-  conditional Horvitz--Thompson contrasts).  The frozen release reports exact
+  conditional design-unbiasedness of the intended-assignment fixed-count ITT
+  means (equivalently, conditional Horvitz--Thompson contrasts).  The frozen
+  release reports exact
   pairwise-conditional Fisher randomization tests with Holm adjustment,
   descriptive Newcombe intervals, and a conservative finite-population
   confidence set simultaneous over the three policy means.  Unknown or malformed outcomes are not failures:
-  they suppress point inference and enter $[0,1]$ worst-case bounds together
-  with missing or noncompliant treatment records.
+  they suppress point inference and enter $[0,1]$ worst-case bounds.  Missing or
+  noncompliant treatment records stay in their randomized arms and are reported
+  as fidelity diagnostics; a separate worst-case sensitivity treats their
+  outcomes as untrusted.
   We also characterize what coarsened public timing cannot identify.  The design
   implication is execution-contingent procurement---prices, eligibility,
   fallback, and reliability must be evaluated jointly---not a claim that the
@@ -282,8 +289,9 @@ provider--model listing observations from 2,116 capture runs on 11 UTC dates,
 count is 2,013,866; the difference preserves 9,186 same-listing raw variants,
 all due to availability state rather than price or capability conflicts.  The
 outcome-free randomized-design status is separately pinned at revision
-\texttt{30b430e2a09}: H81 contains 84 verified first-position blocks, with arm
-counts 32, 24, and 28 and exact assignment replay.  Its earlier eligibility
+\texttt{f5b822812a8}: H81 contains 84 intended first-position assignments, with
+arm counts 32, 24, and 28 and 100\% first-row observation, assignment replay,
+and treatment-metadata fidelity.  Its earlier eligibility
 audit contains 74 candidate rows across 37 runs; H80 remains a separate study
 with 156 verified first-position blocks over 40.7 hours.  The public cross-router
 collector has two snapshots per router over 0.054 days.  Its latest catalog has
@@ -377,7 +385,11 @@ experiment: its original gate was also 40 per arm, and its later 500-per-arm
 promotion threshold is disclosed as a post-outcome, pre-original-gate amendment.
 A proof audit further corrected H81's stopped-prefix inference before confirmatory
 release by excluding the gate-hitting block and conditioning on preterminal arm
-counts.  H82 is a retrospectively frozen descriptive event study and H84 is a
+counts.  A later outcome-blind audit found that filtering the gate and primary
+sample on post-assignment treatment metadata would invalidate that reference
+experiment under arm-dependent compliance.  The corrected gate counts every
+planned or seed-replayed intended assignment; treatment fidelity is a diagnostic,
+not an inclusion rule.  H82 is a retrospectively frozen descriptive event study and H84 is a
 retrospectively preregistered discovery falsification.  H94 is a future-only
 protocol whose activation cutoff excludes the discovery cross-section.  H95 is
 an independent prospective fixed-horizon replication frozen before its first
@@ -851,8 +863,19 @@ fallback contrast $F-N$ holds the first displayed provider fixed.  The hidden-
 selection contrast $D-F$ holds fallback permission fixed and changes who chooses
 the order and eligible set.  Neither contrast reveals the router's private score.
 
+The randomization unit is the intended first assignment, not a treatment-
+compliant request.  For future blocks an outcome-free plan row containing the
+block seed and first policy is persisted before the request; historical blocks
+replay the candidate shuffle and block seeds from outcome-free eligibility-run
+metadata, with still older recorded blocks falling back to their block seed.  A
+missing request, recorded-
+policy mismatch, or provider-control failure stays in its intended arm.  Thus
+$Y_b(p)$ below is the intention-to-treat deliverability outcome under assignment
+to policy $p$, including any effect of the code path failing to realize its
+controls.  Treatment fidelity is reported separately.
+
 The release rule is a stopping time: let $T$ be the first block at which every
-arm has at least 40 first-position assignments.  The gate-hitting block has an
+arm has at least 40 intended first-position assignments.  The gate-hitting block has an
 assignment mechanically related to the preceding imbalance, so it is excluded
 from estimation.  Set $B=T-1$, let $n_p$ be the realized count of policy $p$
 among the preterminal blocks, and let $\pi_p=n_p/B$.  For bounded potential
@@ -866,8 +889,10 @@ outcome $Y_b(p)$, define
 
 \begin{proposition}[Randomized fallback and hidden-selection decomposition]
 \label{prop:delegation-decomposition}
-Suppose the production policy permutation is independent of the fixed
-potential-outcome schedule.  Conditional on $T$, the terminal policy, and the
+Suppose the outcome-free production policy plan is independent of the fixed
+assignment-policy potential-outcome schedule, and every planned or seed-replayed
+assignment remains in its intended arm regardless of treatment realization.
+Conditional on $T$, the terminal policy, and the
 preterminal count vector $(n_N,n_F,n_D)$, the assignments of the first $B=T-1$
 blocks are uniform over all labelings with those counts.  Hence
 $\widehat{\mu}^{HT}_p$ is conditionally design-unbiased for
@@ -879,8 +904,9 @@ $\mu_p=B^{-1}\sum_{b=1}^B Y_b(p)$.  Consequently,
  \widehat{\mu}^{HT}_F
  \label{eq:h81-components}
 \end{align}
-are design-unbiased for the finite-population fallback and hidden-selection
-effects.  The total delegation effect satisfies both the estimand and estimator
+are design-unbiased for the finite-population intention-to-treat fallback and
+hidden-selection effects.  The total delegation effect satisfies both the
+estimand and estimator
 identities
 \begin{equation}
  \Delta_T=\mu_D-\mu_N=\Delta_F+\Delta_I,
@@ -906,11 +932,11 @@ the same stopped design,
 so every contrast $p-q$ is simultaneously covered by
 $[\widehat\mu_p-\widehat\mu_q-h_p-h_q,
   \widehat\mu_p-\widehat\mu_q+h_p+h_q]\cap[-1,1]$.
-No monotonicity of fallback or delegation is required.
+No monotonicity of fallback, delegation, or treatment fidelity is required.
 \end{proposition}
 
-Under this conditional design, the Horvitz--Thompson mean and observed arm mean
-are identical.  We report that common point estimate, use Newcombe intervals as
+Under this conditional design, the Horvitz--Thompson mean and intended-arm mean
+are identical.  We report that common ITT point estimate, use Newcombe intervals as
 descriptive companions, and compute exact pairwise Fisher randomization
 $p$-values.  Fix a tested pair $a,b$, let $c$ be the nuisance third policy, and
 condition on its realized assignment set.  If $K_{ab}$ of the remaining
@@ -937,24 +963,26 @@ not randomization inversions.  The release additionally reports the interval in
 \cref{eq:h81-hoeffding-means}, which is conservative but valid for the bounded
 finite-population randomization target without independent arms or a binomial
 model.  The point estimate, interval, and randomization
-test are emitted only when every verified request has a binary outcome:
+test are emitted only when every intended preterminal assignment has a unique
+binary outcome:
 \texttt{succeeded} is one, \texttt{failed} or \texttt{cancelled} is zero, and
-\texttt{unknown}, missing, or malformed values remain missing.  Arm-level
-$[0,1]$ bounds then propagate to each contrast.  A second, wider sensitivity
-reconstructs the intended first policy from the frozen seed for every candidate
-block before the terminal gate block and assigns both missing/noncompliant
-treatment records and missing outcomes to their two worst-case endpoints.  An
-unreconstructable policy widens the contrast to $[-1,1]$.  These are intended-
-assignment attrition bounds, not a per-protocol treatment effect.
+\texttt{unknown}, missing, duplicated, or malformed values remain missing.  A
+binary outcome from a unique but noncompliant request remains an ITT outcome.
+Arm-level $[0,1]$ bounds propagate measurement missingness to each contrast.  A
+second, wider fidelity sensitivity treats missing or noncompliant treatment
+records and missing outcomes as untrusted and assigns them to both endpoints.
+An unreconstructable intended arm widens the contrast to $[-1,1]$.  These are
+implementation-fidelity bounds, not a complier or per-protocol effect.
 
 \subsection{Frozen gate, current support, and amendment history}
 
-The original H81 protocol releases the earliest chronological prefix with at
-least 40 verified first-position assignments in every arm, regardless of sign.
-At the outcome-free release revision \texttt{30b430e2a09} (the full immutable
+The amended H81 protocol releases the earliest chronological prefix with at
+least 40 intended first-position assignments in every arm, regardless of sign.
+At the outcome-free release revision \texttt{f5b822812a8} (the full immutable
 hash appears in the release manifest), the arm counts
-are 32, 24, and 28.  Assignment replay and treatment-metadata checks pass for all
-84 verified blocks, so outcomes remain physically unqueried by the public
+are 32, 24, and 28.  First-row observation, assignment replay, and treatment-
+metadata checks pass for all 84 intended blocks, so outcomes remain physically
+unqueried by the public
 pre-gate analysis.  When the gate opens, the analysis will exclude its terminal
 block and condition on the remaining arm counts; this correction was frozen
 before the first H81 outcome release.  Commit \texttt{4d66fda}, also before
@@ -966,7 +994,15 @@ permutation with the pairwise conditional law in
 power surface imply that the fixed gate is informative for large wedges but not
 an equivalence design.  A second outcome-blind amendment adds a simultaneous
 finite-population confidence set and exact joint-Holm power: on the frozen grid,
-80\% worst-terminal-policy power requires a 35-point component wedge.  The candidate funnel is narrow: 74 eligibility records cover
+80\% worst-terminal-policy power requires a 35-point component wedge.  A third
+outcome-blind amendment removes post-assignment treatment-fidelity filtering,
+adds the pre-request plan ledger and historical eligibility-RNG reconstruction,
+and fixes the primary estimand as assigned-
+policy ITT.  In a sharp-null stress test, outcome-dependent compliance leaves
+the ITT estimate within 0.0022 of zero and its false-rejection rate between
+2.83\% and 3.70\%, while the superseded filtered estimator reaches bias one and
+100\% false rejection.  Current H81 counts do not change because every recorded
+block passes fidelity.  The candidate funnel is narrow: 74 eligibility records cover
 two models at ranking positions five and six; both models are eligible in every
 recorded run and adjacent eligible support never changes.  The experiment will
 therefore identify a finite-sample policy effect for those model--time blocks,
@@ -1220,7 +1256,12 @@ zero response.  Exact cluster sign-flip p-values are 0.425 and 0.214, and every
 registered empirical calibration diagnostic rejects the known-clock family as a
 fitted description.  A separately preregistered 15/15-date whole-market holdout
 test remains unopened until the 30-date gate.  Second, H81 remains below its
-original release gate and spans only two repeated models.  At its minimum
+amended intended-assignment release gate and spans only two repeated models.
+The ITT correction removes compliance-selection bias but changes the
+interpretation when fidelity is imperfect: it estimates the effect of assigning
+the policy code path, not the effect among requests whose controls were delivered.
+At the current outcome-free cut fidelity is 100\%, so this distinction changes no
+count.  At its minimum
 preterminal counts, exact Bernoulli scenarios require a 25--35 percentage-point
 effect for 80\% power at the conservative familywise threshold; a null result
 would therefore leave modest economically relevant effects unresolved.  Exact
@@ -1325,7 +1366,10 @@ reveal which user's request caused the event.
 \begin{proof}[Proof of \cref{prop:delegation-decomposition}]
 Condition on the stopping time $T$, terminal policy, preterminal counts, and the
 finite potential-outcome schedule
-$\{Y_b(N),Y_b(F),Y_b(D)\}_{b=1}^{B}$, where $B=T-1$.  Because the terminal
+$\{Y_b(N),Y_b(F),Y_b(D)\}_{b=1}^{B}$, where each outcome includes the
+assignment's treatment-realization path and $B=T-1$.  The plan ledger is fixed
+before that path is observed, and every intended assignment remains in the
+ledger.  Because the terminal
 policy has count 39 at $T-1$, the stopping event imposes no further ordering
 restriction after we condition on the preterminal counts.  The labels on the
 first $B$ blocks are therefore a uniform fixed-count permutation.  In
@@ -1348,8 +1392,11 @@ design-unbiasedness of both component contrasts.  Finally,
 and the same cancellation holds pathwise after replacing each $\mu_p$ by
 $\widehat\mu^{HT}_p$.  The argument uses neither an ordering of the three
 potential outcomes nor independence of outcomes across blocks.  It requires only
-positive conditional assignment probabilities, correct assignment replay, and
-no interference into the first request from a prior request in the same block.
+positive conditional assignment probabilities, a correct pre-request plan or
+seed replay, and no interference into the first request from a prior request in
+the same block.  Treatment realization may depend on the intended arm and its
+potential outcome because it is part of the ITT response rather than a sample
+filter.
 Excluding the terminal block is essential: conditional on stopping, its
 assignment is fixed to the last arm to reach 40 and has zero probability under
 the other policies.
@@ -1385,9 +1432,10 @@ for every pair simultaneously.  Intersecting with the logical outcome-difference
 range $[-1,1]$ cannot reduce coverage.
 \end{proof}
 
-The theorem has five distinct validation targets.  First, assignment replay must
-recover the recorded first policy from every 64-bit seed and the treatment
-metadata must implement the stated candidate-set and fallback controls.  Second,
+The theorem has six distinct validation targets.  First, plan and seed replay
+must recover the intended first policy from every 64-bit seed; first-row
+realization, recorded-policy replay, and treatment metadata are audited without
+filtering the randomized sample.  Second,
 a finite-population Monte Carlo must hold a potential-outcome table fixed, run
 the production assignment algorithm through the balance stopping time, and
 verify both the bias of the uncorrected terminal-inclusive estimator and the
@@ -1395,11 +1443,13 @@ unbiasedness and nominal size of the conditional preterminal estimator.  Third,
 a nuisance-arm stress test must impose each pairwise sharp null while allowing
 the untested policy an arbitrary effect.  Fourth, fixed-schedule interval
 coverage and exact joint-Holm planning power must expose both the guarantee and
-precision cost of the 40-per-arm gate.  Fifth, adversarial missingness simulations must
+precision cost of the 40-per-arm gate.  Fifth, a sharp-null compliance-selection
+adversary must show that the ITT estimator remains valid when a filtered per-
+protocol estimator does not.  Sixth, adversarial missingness simulations must
 confirm that unknown outcome codes are never coerced to failure; incomplete
 binary outcomes must suppress point inference and enter $[0,1]$ bounds.  The
-same audit reconstructs intended first-policy assignments and sends missing or
-noncompliant treatment records to both worst-case endpoints.  Spend, latency,
+same audit sends missing or noncompliant treatment records to both endpoints in
+the separate fidelity sensitivity.  Spend, latency,
 and provider identity are either fully observed or reported with their
 protocol-valid worst-case bounds.  Passing these checks validates the estimator
 implementation; it does not solve transport from the two-model collection
@@ -1461,8 +1511,30 @@ formal guarantee comes from \cref{eq:h81-hoeffding-means}, not that simulation.
 Thus H81 can detect large wedges but cannot interpret nonsignificance as
 equivalence.  The
 100,000-draw pairwise tail remains solely a discrepancy audit, and the release
-fails closed above one percentage point.  The full repository suite has 563
+fails closed above one percentage point.  The full repository suite has 570
 passes.
+
+The compliance-selection adversary holds every direct policy outcome equal and
+varies only how treatment fidelity depends on policy and that fixed outcome.
+Across 3,000 stopped assignments at each of five strengths, the ITT contrast is
+within 0.0022 of zero and its one-sided false-rejection rate is 2.83--3.70\%.
+The filtered comparison reaches bias 0.250 at the first nonzero strength, bias
+one at the maximum, and false rejection 39.5\%, 94.2\%, and 100\% as selection
+strength rises.  Mean fidelity stays near 50\% throughout.  Equal retention
+therefore does not rescue conditioning on which arm--outcome cells survive.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{figures/h81_compliance_selection.pdf}
+\caption{Outcome-blind H81 treatment-fidelity adversary under an exact sharp
+null.  The intended-assignment ITT estimator retains every randomized block;
+the superseded comparison filters on post-assignment compliance.  Panel A shows
+selection-induced bias, Panel B shows false rejection by the nominal 5\% Fisher
+test, and Panel C confirms that the overall retained share remains approximately
+one-half.  The construction demonstrates a design failure; it is not evidence
+that real H81 compliance depends on outcomes.}
+\label{fig:h81-compliance-selection}
+\end{figure}
 
 \begin{figure}[!t]
 \centering
@@ -1671,7 +1743,7 @@ Separate adversaries replace a valid outcome with
 \texttt{unknown}, delete and mismatch planned first requests, corrupt a
 provider-control length, concentrate every triplet in one six-hour bin, and
 verify that leave-one-model-out analysis drops whole triplets.  The full
-repository suite has 563 passes.  These checks validate the release code and
+repository suite has 570 passes.  These checks validate the release code and
 claim boundary.  They are not H95 outcome evidence: the fixed horizon remains
 five of 120 at the pinned outcome-free revision.
 
@@ -2138,7 +2210,7 @@ identifiable when bids, acceptance, and termination are public.
 \toprule
 Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
-H81 fallback and hidden selection & 84 verified blocks; counts 32, 24, 28; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm gate; terminal excluded; Holm tests, familywise intervals, and worst-case treatment/outcome bounds frozen \\
+H81 fallback and hidden selection & 84 intended blocks; counts 32, 24, 28; 100\% first-row, replay, and treatment fidelity; no outcome released & Precision and transport beyond two repeated models & Amended 40-intended-assignments-per-arm ITT gate; terminal excluded; Holm tests, familywise intervals, and fidelity/missing-outcome bounds frozen \\
 H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
 H95 fixed-horizon replication & Five compliant triplets, 15 blocks, nine unique models; 12 legacy-unverified and three passing auditable control records; no outcome released & 120 written triplets, row-level control coverage, broad audited model/time support, and cross-position robustness & Fixed 120-triplet horizon; nuisance-conditioned pairwise Fisher law, simultaneous design intervals, and lower-precision position-zero sensitivity; whole-triplet LOMO; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
@@ -2190,14 +2262,18 @@ input, and environment hashes; only then can the dedicated analyzer read outcome
 fields.  A non-publishing invocation remains preflight-only even after a gate
 opens.  The H81 release analyzer at commit \texttt{4d66fda} distinguishes
 binary failures from unknown outcomes, refuses complete-data inference under
-outcome attrition, and emits both arm-specific and intended-assignment
-worst-case bounds.  Commit \texttt{55b5087} adds exact finite-support Fisher
+outcome attrition, and emits arm-specific missing-outcome and implementation-
+fidelity bounds.  Commit \texttt{55b5087} adds exact finite-support Fisher
 tails; commit \texttt{5cc0a4a} makes the retained permutation audit fail closed
 at a one-percentage-point discrepancy.  The subsequent outcome-blind pairwise
 amendment holds the nuisance third arm fixed, adds a nuisance-effect size audit,
 and records exact minimum-count power before release.  A second outcome-blind
 amendment adds the simultaneous finite-population interval, fixed-schedule
-coverage audit, and exact joint-Holm power.  Commit \texttt{f170d89}, made at H95
+coverage audit, and exact joint-Holm power.  A third H81 outcome-blind amendment
+defines the primary sample by intended assignment, adds a plan row persisted
+before every future first request, retains missing or noncompliant requests in
+their intended arms, and validates the change with an outcome-dependent
+compliance-selection adversary.  Commit \texttt{f170d89}, made at H95
 support 4/120 and before outcome access, adds the initial finite assignment
 convolution, explicit structural-versus-measurement missingness, row-level
 provider-control coverage, paired familywise intervals, time concentration,
@@ -2211,7 +2287,8 @@ position-zero estimator, exact secondary pairwise family, simultaneous
 Hoeffding--Serfling intervals, and planted-carryover bias audit without changing
 the primary horizon or family.  The full repository test run has 551 passes at the initial
 H95 freeze, 557 after the H81 interval audit, 561 after the H95 pairwise-
-interval audit, and 563 after the H95 position-zero interference audit.  The
+interval audit, 563 after the H95 position-zero interference audit, and 570
+after the H81 intended-assignment ITT audit.  The
 remote path publishes a content-hashed
 bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
@@ -2252,7 +2329,11 @@ point for the H95 pairwise-law and design-interval amendment.
 Corrected-H95 audit \texttt{29569590704} then checked out \texttt{4860015},
 pinned revision \texttt{f5b822812a8}, reproduced the same counts and support,
 and again left both outcome-query flags false.  This is the provenance point for
-the position-zero carryover amendment.
+the position-zero carryover amendment.  Published position-zero audit
+\texttt{29570676475} checked out \texttt{406a478} against the same immutable
+revision, again reproduced H81 counts 32/24/28 and H95 support 5/120, and wrote
+only assignment-gate artifacts with both outcome-query flags false.  This is the
+provenance point for the H81 intended-assignment amendment.
 
 \paragraph{Privacy, load, and release tiers.}
 Capture records exclude prompts and completions.  Owned experiments use a fixed

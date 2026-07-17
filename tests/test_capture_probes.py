@@ -6,6 +6,7 @@ import pyarrow.parquet as pq
 from orcap.capture_decomposition_probes import (
     decomposition_tasks,
     public_provider_order,
+    write_decomposition_plan,
     write_eligibility_audit,
 )
 from orcap.capture_probes import (
@@ -199,6 +200,10 @@ def test_write_eligibility_audit_uses_stable_privacy_safe_schema(tmp_path):
                 "quote_cap_input_tokens": 64,
                 "request_timeout_ms": 60_000.0,
                 "block_id": "block-a",
+                "block_seed": "17",
+                "first_policy_planned": "delegated_default",
+                "assignment_probability_first": 1 / 3,
+                "randomized_order": True,
                 "run_seed": "18446744073709551615",
             }
         ],
@@ -212,3 +217,34 @@ def test_write_eligibility_audit_uses_stable_privacy_safe_schema(tmp_path):
     assert row["eligible"] is True
     assert row["payload_retained"] is False
     assert row["run_seed"] == "18446744073709551615"
+    assert row["block_seed"] == "17"
+    assert row["first_policy_planned"] == "delegated_default"
+
+
+def test_write_decomposition_plan_is_outcome_free_and_pre_request(tmp_path):
+    path = write_decomposition_plan(
+        {
+            "plan_id": "block-a",
+            "planned_at": "20260715T120001Z",
+            "run_id": "20260715T120000Z",
+            "study_id": "openrouter-fallback-selection-decomposition-v1",
+            "ranking_position": 5,
+            "evaluation_order": 0,
+            "model_id": "model/a",
+            "block_id": "block-a",
+            "block_seed": "17",
+            "first_policy_planned": "delegated_default",
+            "assignment_probability_first": 1 / 3,
+            "randomized_order": True,
+            "public_provider_count": 3,
+            "public_provider_order_sha256": "abc",
+        },
+        run_ts="20260715T120000Z-000",
+        dt="2026-07-15",
+        curated_dir=tmp_path,
+    )
+
+    row = pq.ParquetFile(path).read().to_pylist()[0]
+    assert row["first_policy_planned"] == "delegated_default"
+    assert row["payload_retained"] is False
+    assert not {"outcome", "cost_usd", "latency_ms", "selected_provider"} & set(row)

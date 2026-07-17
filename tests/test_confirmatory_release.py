@@ -95,10 +95,11 @@ def test_assignment_gate_queries_never_select_h81_outcomes(monkeypatch):
 
     assert status["release_ready"] is False
     assert status["outcomes_queried"] is False
-    assert len(sqls) == 1
-    assert "select *" not in sqls[0].lower()
-    for forbidden in ["outcome", "cost_usd", "latency_ms", "selected_provider"]:
-        assert forbidden not in sqls[0].lower()
+    assert len(sqls) == 3
+    assert all("select *" not in sql.lower() for sql in sqls)
+    for sql in sqls:
+        for forbidden in ["outcome", "cost_usd", "latency_ms", "selected_provider"]:
+            assert forbidden not in sql.lower()
 
 
 def test_h95_route_attempt_preflight_uses_assignment_columns_only(monkeypatch):
@@ -123,6 +124,14 @@ def test_h95_release_hashes_every_dated_protocol_amendment() -> None:
 
     assert "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md" in hashes
     assert all(len(digest) == 64 for digest in hashes.values())
+
+
+def test_h81_release_hashes_intention_to_treat_amendment() -> None:
+    hashes = release._code_hashes(release.STUDIES["h81"])
+
+    assert (
+        "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-intention-to-treat.md"
+    ) in hashes
 
 
 def test_remote_marker_precedes_first_outcome_runner(monkeypatch, tmp_path):

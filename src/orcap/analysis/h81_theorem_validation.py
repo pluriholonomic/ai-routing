@@ -161,6 +161,83 @@ def simulate_randomization_size(
     return pd.DataFrame(rows)
 
 
+def simulate_compliance_selection(
+    *,
+    experiments_per_strength: int = 3_000,
+    target_per_arm: int = 40,
+    seed: int = 20260721,
+) -> pd.DataFrame:
+    """Stress post-assignment compliance filtering under a sharp outcome null.
+
+    The binary outcome is identical under every policy. Treatment fidelity is
+    nevertheless allowed to depend jointly on the assigned policy and that
+    fixed outcome. The intended-assignment ITT analysis retains every block;
+    the superseded per-protocol analysis discards noncompliant blocks and then
+    applies the same nominal pairwise Fisher test to a selected sample.
+    """
+    rng = np.random.default_rng(seed)
+    positive = POLICIES.index("delegated_default")
+    negative = POLICIES.index("price_order_fallback")
+    strengths = np.linspace(0.0, 1.0, 5)
+    rows: list[dict[str, Any]] = []
+    for strength in strengths:
+        for experiment in range(experiments_per_strength):
+            labels = stopped_assignment(rng, target_per_arm)[:-1]
+            n_blocks = len(labels)
+            block = np.arange(n_blocks, dtype=np.int64)
+            # Fixed heterogeneous sharp-null schedule with about 50% successes.
+            outcomes = (((block * 37 + 11) % 101) < 50).astype(float)
+            compliance_uniform = rng.random((n_blocks, len(POLICIES)))
+            centered = outcomes - 0.5
+            probabilities = np.column_stack(
+                [
+                    0.5 + strength * centered,
+                    np.full(n_blocks, 0.5),
+                    0.5 - strength * centered,
+                ]
+            )
+            compliance = compliance_uniform < probabilities
+            realized_compliance = compliance[np.arange(n_blocks), labels]
+
+            itt_positive = outcomes[labels == positive]
+            itt_negative = outcomes[labels == negative]
+            per_protocol_positive = outcomes[(labels == positive) & realized_compliance]
+            per_protocol_negative = outcomes[(labels == negative) & realized_compliance]
+            itt_estimate = float(itt_positive.mean() - itt_negative.mean())
+            per_protocol_estimate = (
+                float(per_protocol_positive.mean() - per_protocol_negative.mean())
+                if len(per_protocol_positive) and len(per_protocol_negative)
+                else np.nan
+            )
+            itt_p, _ = _exact_pairwise_binary_randomization_pvalues(
+                itt_positive,
+                itt_negative,
+                observed_statistic=itt_estimate,
+            )
+            per_protocol_p, _ = _exact_pairwise_binary_randomization_pvalues(
+                per_protocol_positive,
+                per_protocol_negative,
+                observed_statistic=per_protocol_estimate,
+            )
+            rows.append(
+                {
+                    "strength": float(strength),
+                    "experiment": experiment,
+                    "n_blocks": n_blocks,
+                    "itt_estimate": itt_estimate,
+                    "per_protocol_estimate": per_protocol_estimate,
+                    "itt_p_greater": itt_p,
+                    "per_protocol_p_greater": per_protocol_p,
+                    "itt_reject_5pct": bool(itt_p <= 0.05),
+                    "per_protocol_reject_5pct": bool(per_protocol_p <= 0.05),
+                    "treatment_fidelity_rate": float(realized_compliance.mean()),
+                    "positive_fidelity_rate": float(realized_compliance[labels == positive].mean()),
+                    "negative_fidelity_rate": float(realized_compliance[labels == negative].mean()),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def _all_arm_tail_used_before_pairwise_correction(
     outcomes: np.ndarray,
     labels: np.ndarray,
@@ -640,6 +717,7 @@ def summarize(
     power: pd.DataFrame | None = None,
     interval_coverage: pd.DataFrame | None = None,
     joint_power: pd.DataFrame | None = None,
+    compliance_selection: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     contrast_rows = []
     for name in CONTRASTS:
@@ -766,6 +844,22 @@ def summarize(
                     group["fallback_rejection_probability"].max()
                 )
             joint_power_rows.append(row)
+    compliance_rows: list[dict[str, Any]] = []
+    if compliance_selection is not None and not compliance_selection.empty:
+        for strength, group in compliance_selection.groupby("strength", sort=True):
+            compliance_rows.append(
+                {
+                    "strength": float(strength),
+                    "experiments": int(len(group)),
+                    "mean_itt_estimate": float(group["itt_estimate"].mean()),
+                    "mean_per_protocol_estimate": float(group["per_protocol_estimate"].mean()),
+                    "itt_false_rejection_rate_5pct": float(group["itt_reject_5pct"].mean()),
+                    "per_protocol_false_rejection_rate_5pct": float(
+                        group["per_protocol_reject_5pct"].mean()
+                    ),
+                    "mean_treatment_fidelity_rate": float(group["treatment_fidelity_rate"].mean()),
+                }
+            )
     return {
         "hypothesis": "H81 stopped-design estimator validation",
         "bias_draws": int(len(bias)),
@@ -779,13 +873,15 @@ def summarize(
         "minimum_detectable_effect_grid": mde_rows,
         "interval_coverage_audit": interval_rows,
         "joint_holm_power_audit": joint_power_rows,
+        "post_assignment_compliance_selection_audit": compliance_rows,
         "evidence_status": "simulation_validation_not_empirical_evidence",
         "claim_boundary": (
             "This validates the stopped-design estimator under a synthetic fixed potential-"
             "outcome schedule, audits descriptive interval coverage, validates a conservative "
-            "finite-population confidence set, and reports model-based Bernoulli power "
-            "scenarios. It does not validate H81 transport, reveal H81 outcomes, or identify "
-            "market welfare."
+            "finite-population confidence set, reports model-based Bernoulli power scenarios, "
+            "and demonstrates why post-assignment treatment-fidelity filtering cannot define "
+            "the randomization sample. It does not validate H81 transport, reveal H81 outcomes, "
+            "or identify market welfare."
         ),
     }
 
@@ -1068,6 +1164,80 @@ def plot_joint_holm_power(joint_power: pd.DataFrame, out_dir: Path) -> None:
     plt.close(fig)
 
 
+def plot_compliance_selection(compliance_selection: pd.DataFrame, out_dir: Path) -> None:
+    """Plot bias and size induced by post-assignment fidelity filtering."""
+    import matplotlib.pyplot as plt
+
+    summary = (
+        compliance_selection.groupby("strength", sort=True)
+        .agg(
+            itt_estimate=("itt_estimate", "mean"),
+            per_protocol_estimate=("per_protocol_estimate", "mean"),
+            itt_rejection=("itt_reject_5pct", "mean"),
+            per_protocol_rejection=("per_protocol_reject_5pct", "mean"),
+            treatment_fidelity=("treatment_fidelity_rate", "mean"),
+        )
+        .reset_index()
+    )
+    fig, axes = plt.subplots(1, 3, figsize=(11.5, 3.7))
+    axes[0].plot(
+        summary["strength"],
+        summary["itt_estimate"],
+        marker="o",
+        label="Intended-assignment ITT",
+        color="#2369a1",
+    )
+    axes[0].plot(
+        summary["strength"],
+        summary["per_protocol_estimate"],
+        marker="s",
+        label="Filtered per-protocol",
+        color="#c7553d",
+    )
+    axes[0].axhline(0.0, color="black", linestyle="--", linewidth=0.8)
+    axes[0].set_ylabel("Mean estimated sharp-null effect")
+    axes[0].set_title("A. Selection-induced bias")
+    axes[0].legend(frameon=False, fontsize=8)
+
+    axes[1].plot(
+        summary["strength"],
+        summary["itt_rejection"],
+        marker="o",
+        label="Intended-assignment ITT",
+        color="#2369a1",
+    )
+    axes[1].plot(
+        summary["strength"],
+        summary["per_protocol_rejection"],
+        marker="s",
+        label="Filtered per-protocol",
+        color="#c7553d",
+    )
+    axes[1].axhline(0.05, color="black", linestyle="--", linewidth=0.8)
+    axes[1].set_ylim(0.0, 1.0)
+    axes[1].set_ylabel("False rejection probability")
+    axes[1].set_title("B. Nominal 5% Fisher test")
+    axes[1].legend(frameon=False, fontsize=8)
+
+    axes[2].plot(
+        summary["strength"],
+        summary["treatment_fidelity"],
+        marker="^",
+        color="#6f6f6f",
+    )
+    axes[2].set_ylim(0.0, 1.0)
+    axes[2].set_ylabel("Mean treatment-fidelity rate")
+    axes[2].set_title("C. Retained request share")
+    for axis in axes:
+        axis.set_xlabel("Outcome-dependent compliance strength")
+        axis.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / "h81_compliance_selection.png", dpi=200)
+    fig.savefig(out_dir / "h81_compliance_selection.pdf")
+    plt.close(fig)
+
+
 def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     bias = simulate_bias()
     size = simulate_randomization_size()
@@ -1075,15 +1245,26 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     power = exact_power_grid()
     interval_coverage = simulate_interval_coverage()
     joint_power = exact_joint_holm_power_grid()
-    summary = summarize(bias, size, nuisance_size, power, interval_coverage, joint_power)
+    compliance_selection = simulate_compliance_selection()
+    summary = summarize(
+        bias,
+        size,
+        nuisance_size,
+        power,
+        interval_coverage,
+        joint_power,
+        compliance_selection,
+    )
     save(bias, out_dir, "h81_theorem_validation_draws")
     save(size, out_dir, "h81_theorem_randomization_size")
     save(nuisance_size, out_dir, "h81_theorem_nuisance_arm_size")
     save(power, out_dir, "h81_theorem_power")
     save(interval_coverage, out_dir, "h81_interval_coverage")
     save(joint_power, out_dir, "h81_joint_holm_power")
+    save(compliance_selection, out_dir, "h81_compliance_selection")
     save_json(summary, out_dir, "h81_theorem_validation_summary")
     plot_validation(bias, size, nuisance_size, power, out_dir)
     plot_interval_coverage(interval_coverage, out_dir)
     plot_joint_holm_power(joint_power, out_dir)
+    plot_compliance_selection(compliance_selection, out_dir)
     return summary

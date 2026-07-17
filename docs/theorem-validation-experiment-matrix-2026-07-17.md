@@ -33,24 +33,44 @@ implementation and theorem checks, not empirical calibration.
 ### Logical claim
 
 Conditional on the balance stopping time, terminal arm, and preterminal counts,
-the first `T-1` treatment labels are a uniform fixed-count permutation. Their
-arm means equal conditional Horvitz-Thompson means and unbiasedly estimate the
-finite-population policy means. Fallback plus hidden selection equals total
-delegation as both an estimand and estimator identity.
+the first `T-1` intended-assignment labels are a uniform fixed-count
+permutation. Their ITT arm means equal conditional Horvitz-Thompson means and
+unbiasedly estimate the finite-population assigned-policy means. Fallback plus
+hidden selection equals total delegation as both an estimand and estimator
+identity. Treatment realization may depend on assignment; it is reported and
+never filters this reference experiment.
 
 ### Validation experiments
 
-1. **Seed replay and treatment compliance**
-   - Input: outcome-free H81 assignment rows and candidate telemetry.
-   - Test: reproduce the first policy from every 64-bit seed; verify provider
-     `order`, `only`, and `allow_fallbacks` fields against the policy label.
-   - Pass rule: 100% replay and treatment compliance. Any failure invalidates
-     the affected block and triggers a collector incident, not an outcome-based
-     exclusion.
-   - Current result: 84/84 for both checks at revision `42334a84`; arm counts
-     are 32, 24, and 28 and outcomes remain unqueried.
+1. **Plan/seed replay and treatment-fidelity audit**
+   - Input: outcome-free H81 plan rows, historical assignment rows, and
+     candidate telemetry.
+   - Test: future blocks persist `router_decomposition_plans` with the seed and
+     intended first policy before the request; historical blocks reproduce the
+     same policy from every 64-bit seed. Verify first-row realization, recorded-
+     policy replay, and provider `order`, `only`, and `allow_fallbacks` fields.
+   - Pass rule: plan/seed integrity must be 100%. A missing, mismatched, or
+     noncompliant request remains in its intended arm and triggers fidelity and
+     missingness flags rather than changing the gate or sample.
+   - Current result: 84/84 first rows, assignment replays, and treatment checks
+     at revision `f5b82281`; arm counts are 32, 24, and 28 and outcomes remain
+     unqueried. The pre-request plan table begins prospectively after this
+     amendment; historical rows remain seed-replayed.
 
-2. **Stopped-design Monte Carlo**
+2. **Post-assignment compliance-selection adversary**
+   - Hold every direct policy outcome equal while allowing treatment fidelity
+     to depend jointly on the randomized arm and that fixed outcome.
+   - Compare the intended-assignment ITT arm difference and exact pairwise test
+     with the superseded comparison that filters to compliant requests.
+   - Pass rule: ITT bias no larger than 0.015 and false rejection no larger than
+     7.5% at every strength; the adversary must produce material bias in the
+     filtered comparison at maximum strength.
+   - Current result: across 3,000 experiments at each of five strengths, ITT
+     bias is at most 0.0022 and rejection is 2.83--3.70%. The filtered estimate
+     reaches bias one and 100% false rejection while mean retention stays near
+     50%.
+
+3. **Stopped-design Monte Carlo**
    - Fix heterogeneous, policy-specific, time-varying potential outcomes.
    - Draw production labels until all arm counts reach 40.
    - Compare the old terminal-inclusive estimator with the corrected conditional
@@ -61,7 +81,7 @@ delegation as both an estimand and estimator identity.
      and `-1.09e-4`, all within Monte Carlo error. The old terminal-inclusive
      fallback estimator has detectable bias under the deliberately trending DGP.
 
-3. **Pairwise sharp-null randomization size**
+4. **Pairwise sharp-null randomization size**
    - Generate a common heterogeneous outcome path under the sharp null.
    - Preserve each realized preterminal arm-count multiset and hold the nuisance
      third-policy assignment fixed. For each primary pair, sum the exact two-arm
@@ -83,7 +103,7 @@ delegation as both an estimand and estimator identity.
      The 100,000-draw tails permute the contrasted pair only and remain
      discrepancy checks; the release fails closed above one percentage point.
 
-4. **Exact pre-outcome power surface**
+5. **Exact pre-outcome power surface**
    - Enumerate independent-Bernoulli scenario power at the conservative minimum
      preterminal pair counts 39 and 40, over baseline success probabilities 25%,
      50%, and 75% and effect increments of 2.5 percentage points.
@@ -95,7 +115,7 @@ delegation as both an estimand and estimator identity.
    - Boundary: this is a model-based planning surface, not an empirical outcome
      estimate and not a post-outcome sample-size amendment.
 
-5. **Finite-population interval and joint-Holm audit**
+6. **Finite-population interval and joint-Holm audit**
    - Condition on the terminal policy and preterminal counts. For each policy
      mean use the Hoeffding--Serfling sampling-without-replacement radius
      `sqrt((1-(n_p-1)/B) log(6 / 0.05) / (2 n_p))`; union-bound the three means and propagate
@@ -115,26 +135,26 @@ delegation as both an estimand and estimator identity.
      the conservative Hoeffding--Serfling interval is the finite-population design-valid
      confidence set. Neither result reveals an H81 outcome.
 
-6. **Missingness adversary**
+7. **Missingness and implementation-fidelity adversary**
    - Replace a verified binary outcome with `unknown`; delete spend, latency,
      and selected-provider fields by treatment, success, and quote level; and
-     corrupt a treatment-control record before a valid replacement reaches the
-     gate.
+     corrupt a treatment-control record.
    - Verify that unknown outcomes are never coded as failure, incomplete binary
      outcomes suppress point/randomization inference, and `[0,1]` arm bounds
-     propagate to every contrast. Reconstruct intended first policies from
-     their seeds and send missing/noncompliant treatment records to both
-     endpoints; any unreconstructable arm must yield `[-1,1]`.
+     propagate to every contrast. Keep every reconstructable intended policy in
+     the ITT gate and primary sample. The separate fidelity sensitivity sends
+     missing/noncompliant treatment records to both endpoints; any
+     unreconstructable arm must yield `[-1,1]`.
    - Explicit-order spend bounds use only protocol-valid quote caps; delegated
      default receives no invalid public-set upper cap.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
    - Current result: implemented before outcome access in commit `4d66fda`.
-     Both adversarial tests and the current full 563-test suite pass. The two primary
+     All adversarial tests and the current full 570-test suite pass. The two primary
      intervals additionally receive Bonferroni-Newcombe familywise adjustment;
      their exact conditional Fisher p-values retain the registered Holm family.
 
-7. **External-support and leave-one-model-out audit**
+8. **External-support and leave-one-model-out audit**
    - Report model dominance, effective model count, support turnover, arm balance
      by model, and leave-one-model-out contrasts after release.
    - Pass rule for a broad claim: at least eight models, effective model count at

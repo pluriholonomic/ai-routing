@@ -36,6 +36,15 @@ RELEASE_PROTOCOL_VERSION = "confirmatory-release-v1"
 ASSIGNMENT_COLUMNS = (
     "source, event_id, run_ts, observed_at, study_id, model_id, policy, metadata_json"
 )
+H81_PLAN_COLUMNS = (
+    "plan_id, planned_at, run_id, run_ts, study_id, ranking_position, "
+    "evaluation_order, model_id, block_id, block_seed, first_policy_planned, "
+    "assignment_probability_first, randomized_order"
+)
+H81_ELIGIBILITY_ASSIGNMENT_COLUMNS = (
+    "run_id, run_seed, run_ts, observed_at, study_id, ranking_position, "
+    "evaluation_order, model_id, eligible, block_id"
+)
 
 
 @dataclass(frozen=True)
@@ -77,10 +86,37 @@ def h81_gate_status() -> dict[str, Any]:
         ).df()
     except Exception:
         assignment = _empty_assignment_frame()
-    first, audit = h81.first_position_sample(assignment)
+    try:
+        plans = data.q(
+            f"""
+            select {H81_PLAN_COLUMNS}
+            from read_parquet(
+              '{data.table_glob("router_decomposition_plans")}', union_by_name=true
+            ) where study_id = '{h81.STUDY_ID}'
+            """
+        ).df()
+    except Exception:
+        plans = pd.DataFrame()
+    try:
+        eligibility = data.q(
+            f"""
+            select {H81_ELIGIBILITY_ASSIGNMENT_COLUMNS}
+            from read_parquet(
+              '{data.table_glob("router_probe_eligibility")}', union_by_name=true
+            ) where study_id = '{h81.STUDY_ID}'
+            """
+        ).df()
+    except Exception:
+        eligibility = pd.DataFrame()
+    assignment_plans, plan_audit = h81.combined_assignment_plans(plans, eligibility)
+    first, audit = h81.first_position_sample(assignment, plans=assignment_plans)
+    audit["assignment_plan_sources"] = plan_audit
     prefix, ready, cutoff = h81.first_balanced_prefix(
         first, h81.POLICIES, h81.MIN_FIRST_POSITION_PER_POLICY
     )
+    balance_ready = bool(ready)
+    integrity_pass = h81.assignment_integrity_pass(audit)
+    ready = bool(balance_ready and integrity_pass)
     counts = (
         first["policy"].value_counts().reindex(h81.POLICIES, fill_value=0)
         if len(first)
@@ -89,6 +125,8 @@ def h81_gate_status() -> dict[str, Any]:
     return {
         "study_id": h81.STUDY_ID,
         "release_ready": bool(ready),
+        "balance_gate_ready": balance_ready,
+        "assignment_integrity_pass": integrity_pass,
         "outcomes_queried": False,
         "target_per_policy": h81.MIN_FIRST_POSITION_PER_POLICY,
         "first_position_counts": {key: int(value) for key, value in counts.items()},
@@ -96,10 +134,16 @@ def h81_gate_status() -> dict[str, Any]:
             key: max(0, h81.MIN_FIRST_POSITION_PER_POLICY - int(value))
             for key, value in counts.items()
         },
-        "verified_first_position_blocks": int(len(first)),
+        "intended_first_position_blocks": int(len(first)),
+        "verified_first_position_blocks": int(audit.get("verified_first_position_blocks", 0)),
         "release_gate_prefix_blocks": int(len(prefix)) if ready else 0,
         "confirmatory_cutoff": cutoff,
+        "assignment_plan_coverage": audit.get("assignment_plan_coverage"),
+        "assignment_plan_replay_rate": audit.get("assignment_plan_replay_rate"),
+        "assignment_plan_sources": audit.get("assignment_plan_sources"),
+        "assignment_reconstruction_rate": audit.get("assignment_reconstruction_rate"),
         "assignment_replay_rate": audit.get("assignment_replay_rate"),
+        "first_row_observation_rate": audit.get("first_row_observation_rate"),
         "treatment_metadata_pass_rate": audit.get("treatment_metadata_pass_rate"),
         "outcome_access": (
             "permitted_after_remote_first_access_marker"

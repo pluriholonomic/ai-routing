@@ -129,6 +129,159 @@ def prepare_attempts(frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def prepare_plans(frame: pd.DataFrame | None) -> pd.DataFrame:
+    """Normalize outcome-free H81 plans written before the first request."""
+    if frame is None or frame.empty:
+        return pd.DataFrame()
+    out = frame.copy()
+    if "study_id" in out:
+        out = out[out["study_id"].astype(str).eq(STUDY_ID)].copy()
+    required = {"block_id", "block_seed", "first_policy_planned"}
+    if out.empty or not required.issubset(out.columns):
+        return pd.DataFrame()
+    out = out[
+        out["block_id"].notna()
+        & out["block_id"].astype(str).ne("")
+        & out["first_policy_planned"].astype(str).isin(POLICIES)
+    ].copy()
+    if out.empty:
+        return out
+    sort_columns = [column for column in ("planned_at", "run_ts", "block_id") if column in out]
+    if sort_columns:
+        out = out.sort_values(sort_columns, kind="stable")
+    return out.drop_duplicates("block_id", keep="first").reset_index(drop=True)
+
+
+def reconstruct_legacy_plans(
+    eligibility: pd.DataFrame | None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Replay pre-plan-table block seeds from the outcome-free run RNG state.
+
+    Legacy eligibility rows record the run seed, ranked candidate order,
+    evaluation order, and eligibility decision. Replaying the candidate shuffle
+    and then consuming one 64-bit block seed per eligible candidate reconstructs
+    the assignment even when that block wrote no request row.
+    """
+    required = {
+        "run_id",
+        "run_seed",
+        "ranking_position",
+        "evaluation_order",
+        "model_id",
+        "eligible",
+        "block_id",
+    }
+    if eligibility is None or eligibility.empty or not required.issubset(eligibility.columns):
+        return pd.DataFrame(), {
+            "candidate_runs": 0,
+            "replayed_runs": 0,
+            "failed_runs": 0,
+            "eligible_blocks": 0,
+            "reconstructed_blocks": 0,
+        }
+    frame = eligibility.copy()
+    if "study_id" in frame:
+        frame = frame[frame["study_id"].astype(str).eq(STUDY_ID)].copy()
+    frame = frame.dropna(subset=["run_id", "model_id"]).copy()
+    rows: list[dict[str, Any]] = []
+    candidate_runs = replayed_runs = failed_runs = eligible_blocks = 0
+    for run_id, group in frame.groupby("run_id", sort=True):
+        candidate_runs += 1
+        group = group.sort_values("evaluation_order", kind="stable").drop_duplicates(
+            "model_id", keep="first"
+        )
+        try:
+            run_seed = int(group["run_seed"].dropna().iloc[0])
+            ranked = [
+                (int(row["ranking_position"]), str(row["model_id"]))
+                for _, row in group.sort_values("ranking_position", kind="stable").iterrows()
+            ]
+            rng = random.Random(run_seed)
+            shuffled = ranked.copy()
+            rng.shuffle(shuffled)
+            observed = [
+                (int(row["ranking_position"]), str(row["model_id"])) for _, row in group.iterrows()
+            ]
+        except (IndexError, TypeError, ValueError):
+            failed_runs += 1
+            continue
+        if shuffled != observed:
+            failed_runs += 1
+            continue
+        replayed_runs += 1
+        by_pair = {
+            (int(row["ranking_position"]), str(row["model_id"])): row for _, row in group.iterrows()
+        }
+        for evaluation_order, pair in enumerate(shuffled):
+            row = by_pair[pair]
+            eligible_value = row.get("eligible", False)
+            eligible = bool(eligible_value) if pd.notna(eligible_value) else False
+            if not eligible:
+                continue
+            eligible_blocks += 1
+            block_seed = rng.getrandbits(64)
+            block_id = str(row.get("block_id", ""))
+            if not block_id:
+                continue
+            rows.append(
+                {
+                    "plan_id": block_id,
+                    "planned_at": row.get("observed_at", row.get("run_ts")),
+                    "run_id": str(run_id),
+                    "run_ts": row.get("run_ts"),
+                    "study_id": STUDY_ID,
+                    "ranking_position": pair[0],
+                    "evaluation_order": evaluation_order,
+                    "model_id": pair[1],
+                    "block_id": block_id,
+                    "block_seed": str(block_seed),
+                    "first_policy_planned": _first_policy_from_seed(block_seed),
+                    "assignment_probability_first": 1.0 / len(POLICIES),
+                    "randomized_order": True,
+                    "plan_origin": "legacy_eligibility_run_seed_replay",
+                }
+            )
+    audit = {
+        "candidate_runs": candidate_runs,
+        "replayed_runs": replayed_runs,
+        "failed_runs": failed_runs,
+        "eligible_blocks": eligible_blocks,
+        "reconstructed_blocks": len(rows),
+    }
+    return pd.DataFrame(rows), audit
+
+
+def combined_assignment_plans(
+    plans: pd.DataFrame | None,
+    eligibility: pd.DataFrame | None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Prefer explicit pre-request plans and fill historical blocks by RNG replay."""
+    explicit = prepare_plans(plans)
+    legacy, legacy_audit = reconstruct_legacy_plans(eligibility)
+    if explicit.empty and legacy.empty:
+        combined = pd.DataFrame()
+    elif explicit.empty:
+        combined = legacy
+    elif legacy.empty:
+        combined = explicit
+    else:
+        explicit = explicit.copy()
+        explicit["plan_origin"] = "explicit_pre_request_plan"
+        combined = pd.concat([explicit, legacy], ignore_index=True, sort=False)
+        combined["_explicit"] = combined["plan_origin"].eq("explicit_pre_request_plan")
+        combined = (
+            combined.sort_values(["block_id", "_explicit"], ascending=[True, False])
+            .drop_duplicates("block_id", keep="first")
+            .drop(columns="_explicit")
+        )
+    audit = {
+        "explicit_pre_request_plans": int(len(explicit)),
+        "legacy_reconstruction": legacy_audit,
+        "combined_unique_plans": int(len(combined)),
+    }
+    return combined.reset_index(drop=True), audit
+
+
 def prepare_eligibility(
     frame: pd.DataFrame | None, attempts: pd.DataFrame
 ) -> tuple[pd.DataFrame, str]:
@@ -317,8 +470,17 @@ def _expected_first_policy(block: pd.DataFrame) -> str | None:
         return None
     if count != len(POLICIES):
         return None
+    return _first_policy_from_seed(seed)
+
+
+def _first_policy_from_seed(seed: int | str) -> str | None:
+    """Replay the prespecified policy permutation from an outcome-free seed."""
+    try:
+        parsed = int(seed)
+    except (TypeError, ValueError):
+        return None
     expected = list(POLICIES)
-    random.Random(seed).shuffle(expected)
+    random.Random(parsed).shuffle(expected)
     return expected[0]
 
 
@@ -341,61 +503,213 @@ def verify_treatment_metadata(row: pd.Series) -> bool:
     return False
 
 
-def first_position_sample(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+def first_position_sample(
+    frame: pd.DataFrame,
+    *,
+    plans: pd.DataFrame | None = None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Build the intended-assignment ledger without conditioning on compliance.
+
+    Prospective blocks use the plan written before the first request. Historical
+    blocks fall back to replaying the same frozen seed from their attempt rows.
+    A missing, duplicated, mismatched, or noncompliant first request remains in
+    its intended arm; those facts are outcomes of assignment, not eligibility
+    filters for the randomization reference experiment.
+    """
     attempts = prepare_assignment_attempts(frame)
-    if attempts.empty:
+    outcome_capable = "outcome" in attempts.columns or "success" in attempts.columns
+    planned = prepare_plans(plans)
+    if attempts.empty and planned.empty:
         return attempts.copy(), {
             "candidate_blocks": 0,
+            "assignment_plan_blocks": 0,
+            "assignment_plan_replay_passes": 0,
+            "assignment_reconstructable_blocks": 0,
             "assignment_replay_passes": 0,
+            "intended_first_position_blocks": 0,
             "verified_first_position_blocks": 0,
+            "first_row_observed_blocks": 0,
             "treatment_metadata_passes": 0,
             "complete_blocks": 0,
+            "assignment_plan_coverage": None,
+            "assignment_plan_replay_rate": None,
+            "assignment_reconstruction_rate": None,
             "assignment_replay_rate": None,
+            "first_row_observation_rate": None,
             "treatment_metadata_pass_rate": None,
         }
-    first_rows = []
-    candidate_blocks = 0
+
+    attempt_groups = (
+        {
+            str(block_id): block.copy()
+            for block_id, block in attempts.groupby("block_id", sort=False, dropna=True)
+            if str(block_id)
+        }
+        if "block_id" in attempts.columns
+        else {}
+    )
+    plan_rows = {str(row["block_id"]): row.copy() for _, row in planned.iterrows()}
+    block_ids = set(attempt_groups) | set(plan_rows)
+    first_rows: list[pd.Series] = []
+    candidate_blocks = len(block_ids)
+    plan_candidates = len(plan_rows)
+    plan_replay_passes = 0
+    reconstructable = 0
     assignment_replay_passes = 0
-    verified_blocks = 0
+    first_row_observed_blocks = 0
     treatment_metadata_passes = 0
     complete_blocks = 0
-    for block_id, block in attempts.groupby("block_id", sort=False, dropna=True):
-        if not block_id:
-            continue
-        candidate_blocks += 1
-        complete_blocks += int(
-            len(block) == len(POLICIES)
-            and set(block["policy"]) == set(POLICIES)
-            and not block["policy"].duplicated().any()
-            and not block["policy_order"].duplicated().any()
+    outcome_columns = (
+        "outcome",
+        "retry_reason",
+        "cost_usd",
+        "latency_ms",
+        "selected_provider",
+        "fallback_triggered",
+        "outcome_observed",
+        "success",
+        "rejected_429",
+        "observed_spend_usd",
+    )
+
+    for block_id in sorted(block_ids):
+        block = attempt_groups.get(block_id, pd.DataFrame())
+        plan = plan_rows.get(block_id)
+        if not block.empty:
+            complete_blocks += int(
+                len(block) == len(POLICIES)
+                and set(block["policy"]) == set(POLICIES)
+                and not block["policy"].duplicated().any()
+                and not block["policy_order"].duplicated().any()
+            )
+
+        if plan is not None:
+            replayed_plan = _first_policy_from_seed(plan.get("block_seed"))
+            expected_policy = str(plan.get("first_policy_planned", ""))
+            plan_replay = replayed_plan == expected_policy and expected_policy in POLICIES
+            plan_replay_passes += int(plan_replay)
+            if not plan_replay:
+                continue
+        else:
+            expected_policy = _expected_first_policy(block) if not block.empty else None
+            if expected_policy is None:
+                continue
+
+        reconstructable += 1
+        actual_first_rows = (
+            block[block["policy_order"].eq(0)] if not block.empty else pd.DataFrame()
         )
-        if not verify_first_assignment(block):
-            continue
-        assignment_replay_passes += 1
-        first = block[block["policy_order"].eq(0)].iloc[0].copy()
-        if not verify_treatment_metadata(first):
-            continue
-        treatment_metadata_passes += 1
+        first_observed = len(actual_first_rows) == 1
+        actual_first = actual_first_rows.iloc[0].copy() if first_observed else None
+        recorded_policy = str(actual_first.get("policy", "")) if actual_first is not None else None
+        assignment_replay = bool(first_observed and recorded_policy == expected_policy)
+        treatment_pass = bool(
+            assignment_replay
+            and actual_first is not None
+            and verify_treatment_metadata(actual_first)
+        )
+        assignment_replay_passes += int(assignment_replay)
+        first_row_observed_blocks += int(first_observed)
+        treatment_metadata_passes += int(treatment_pass)
+
+        if actual_first is not None:
+            first = actual_first.copy()
+        elif not block.empty:
+            first = block.iloc[0].copy()
+            for column in outcome_columns:
+                if column in first.index:
+                    first[column] = False if column == "outcome_observed" else pd.NA
+        else:
+            first = pd.Series(dtype=object)
+
+        if actual_first is None and outcome_capable:
+            for column in outcome_columns:
+                if column not in first.index:
+                    first[column] = False if column == "outcome_observed" else pd.NA
+
+        if plan is not None:
+            plan_to_first = {
+                "study_id": "study_id",
+                "model_id": "model_id",
+                "block_id": "block_id",
+                "block_seed": "block_seed",
+                "assignment_probability_first": "assignment_probability_first",
+                "randomized_order": "randomized_order",
+                "ranking_position": "ranking_position",
+                "planned_at": "observed_at",
+                "run_ts": "run_ts",
+            }
+            for source, target in plan_to_first.items():
+                value = plan.get(source)
+                if pd.notna(value):
+                    first[target] = value
+            first["source"] = first.get("source", "router_decomposition_plan")
+            first["event_id"] = first.get("event_id", f"{block_id}|planned-first")
+
+        first["block_id"] = block_id
+        first["policy_order"] = 0
+        first["recorded_policy"] = recorded_policy
+        first["intended_policy"] = expected_policy
+        first["policy"] = expected_policy
+        first["assignment_plan_recorded"] = plan is not None
+        first["assignment_plan_replay_pass"] = plan is not None
+        first["first_row_observed"] = first_observed
+        first["assignment_replay_pass"] = assignment_replay
+        first["treatment_metadata_pass"] = treatment_pass
         first["assignment_verified"] = True
         first_rows.append(first)
-        verified_blocks += 1
+
     first = pd.DataFrame(first_rows)
+    intended_blocks = len(first)
     audit = {
         "candidate_blocks": candidate_blocks,
+        "assignment_plan_blocks": plan_candidates,
+        "assignment_plan_replay_passes": plan_replay_passes,
+        "assignment_reconstructable_blocks": reconstructable,
         "assignment_replay_passes": assignment_replay_passes,
-        "verified_first_position_blocks": verified_blocks,
+        "intended_first_position_blocks": intended_blocks,
+        # Retained for historical manifests; this now means treatment-fidelity
+        # passes and is not the analysis-sample count.
+        "verified_first_position_blocks": treatment_metadata_passes,
+        "first_row_observed_blocks": first_row_observed_blocks,
         "treatment_metadata_passes": treatment_metadata_passes,
         "complete_blocks": complete_blocks,
+        "assignment_plan_coverage": (
+            plan_candidates / intended_blocks if intended_blocks else None
+        ),
+        "assignment_plan_replay_rate": (
+            plan_replay_passes / plan_candidates if plan_candidates else None
+        ),
+        "assignment_reconstruction_rate": (
+            reconstructable / candidate_blocks if candidate_blocks else None
+        ),
         "assignment_replay_rate": (
-            assignment_replay_passes / candidate_blocks if candidate_blocks else None
+            assignment_replay_passes / intended_blocks if intended_blocks else None
+        ),
+        "first_row_observation_rate": (
+            first_row_observed_blocks / intended_blocks if intended_blocks else None
         ),
         "treatment_metadata_pass_rate": (
-            treatment_metadata_passes / assignment_replay_passes
-            if assignment_replay_passes
-            else None
+            treatment_metadata_passes / intended_blocks if intended_blocks else None
         ),
     }
     return first, audit
+
+
+def assignment_integrity_pass(audit: dict[str, Any]) -> bool:
+    """Require assignment-ledger integrity without requiring treatment fidelity."""
+    plan_replay = audit.get("assignment_plan_replay_rate")
+    reconstruction = audit.get("assignment_reconstruction_rate")
+    sources = audit.get("assignment_plan_sources") or {}
+    legacy = sources.get("legacy_reconstruction") or {}
+    legacy_complete = int(legacy.get("failed_runs", 0)) == 0 and int(
+        legacy.get("eligible_blocks", 0)
+    ) == int(legacy.get("reconstructed_blocks", 0))
+    return bool(
+        (plan_replay is None or math.isclose(float(plan_replay), 1.0))
+        and (reconstruction is None or math.isclose(float(reconstruction), 1.0))
+        and legacy_complete
+    )
 
 
 def _order_entropy(attempts: pd.DataFrame) -> float | None:
@@ -538,6 +852,7 @@ def _finalize_gate_audit(
         {
             "study_id": STUDY_ID,
             "first_position_counts": {key: int(value) for key, value in collection_counts.items()},
+            "intended_first_position_blocks": int(len(collection_first)),
             "confirmatory_prefix_counts": {
                 key: int(value) for key, value in analysis_counts.items()
             },
@@ -555,7 +870,7 @@ def _finalize_gate_audit(
             ),
             "terminal_gate_block_excluded": bool(release_ready),
             "analysis_randomization": (
-                "fixed-count randomization conditional on preterminal arm counts"
+                "intention-to-treat fixed-count randomization conditional on preterminal arm counts"
                 if release_ready
                 else "not released"
             ),
@@ -583,15 +898,20 @@ def _finalize_gate_audit(
             ),
             "identification": (
                 "After the release gate opens, the gate-hitting terminal block is excluded. "
-                "Conditional on the preterminal arm counts, treatment labels are uniformly "
-                "distributed over fixed-count assignments, so arm means and equivalent "
-                "conditional HT contrasts are design-unbiased for that finite prefix."
+                "The gate and primary sample use every outcome-free planned or seed-replayed "
+                "intended first assignment without filtering on request realization or treatment "
+                "metadata. Conditional on the preterminal arm counts, intended labels are "
+                "uniformly distributed over fixed-count assignments, so intention-to-treat arm "
+                "means and equivalent conditional HT contrasts are design-unbiased for that "
+                "finite prefix."
             ),
             "claim_boundary": (
                 "The fallback contrast holds the cheapest first provider fixed and changes "
                 "fallback permission. The hidden-selection contrast compares delegated default "
                 "with an explicit public-price order, both permitting fallback. It measures one "
-                "owned account and does not reveal provider intent or private router scores."
+                "owned account and does not reveal provider intent or private router scores. "
+                "If treatment fidelity is below one, the primary effect is assignment-policy ITT, "
+                "not a per-protocol effect of controls actually delivered."
             ),
         }
     )
@@ -731,13 +1051,13 @@ def preterminal_missingness_sensitivity(
     analysis_first: pd.DataFrame,
     terminal_gate_block: pd.Series,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Recover intended preterminal arms and expose treatment/outcome attrition.
+    """Expose implementation fidelity and measurement missingness.
 
-    The confirmatory point estimator continues to use only replayed, compliant
-    first-position blocks.  This companion panel adds every reconstructable
-    intended first-position block no later than the gate-hitting block and codes
-    a missing/mismatched treatment or a non-binary outcome as unknown in [0, 1].
-    It is constructed only after the outcome gate opens.
+    The confirmatory point estimator is intention-to-treat and retains every
+    planned or seed-replayed first assignment. This companion sensitivity treats
+    a missing/mismatched implementation or a non-binary outcome as untrusted in
+    ``[0, 1]``. It is a worst-case fidelity diagnostic, not a per-protocol or
+    complier estimand, and is constructed only after the outcome gate opens.
     """
     if attempts.empty:
         return pd.DataFrame(), {
@@ -803,6 +1123,34 @@ def preterminal_missingness_sensitivity(
                 "binary_outcome_observed": outcome_observed,
                 "success_for_worst_case_bounds": success,
                 "in_confirmatory_point_sample": block_id in confirmed_ids,
+            }
+        )
+
+    covered_ids = {str(row["block_id"]) for row in rows}
+    for _, intended in analysis_first.iterrows():
+        block_id = str(intended.get("block_id", ""))
+        if not block_id or block_id in covered_ids:
+            continue
+        outcome_flag = intended.get("outcome_observed")
+        treatment_verified = bool(intended.get("treatment_metadata_pass", False))
+        outcome_observed = bool(
+            treatment_verified and pd.notna(outcome_flag) and bool(outcome_flag)
+        )
+        rows.append(
+            {
+                "block_id": block_id,
+                "block_time": _row_time(intended.to_frame().T).iloc[0],
+                "expected_policy": intended.get("intended_policy", intended.get("policy")),
+                "first_row_observed": bool(intended.get("first_row_observed", False)),
+                "assignment_replay_pass": bool(intended.get("assignment_replay_pass", False)),
+                "treatment_metadata_pass": treatment_verified,
+                "binary_outcome_observed": outcome_observed,
+                "success_for_worst_case_bounds": (
+                    float(intended["success"])
+                    if outcome_observed and pd.notna(intended.get("success"))
+                    else np.nan
+                ),
+                "in_confirmatory_point_sample": True,
             }
         )
 
@@ -1040,14 +1388,25 @@ def analyze(
     frame: pd.DataFrame,
     *,
     eligibility: pd.DataFrame | None = None,
+    plans: pd.DataFrame | None = None,
     simulations: int = RANDOMIZATION_DRAWS,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     assignment_attempts = prepare_assignment_attempts(frame)
     _, _, _, eligibility_summary = eligibility_diagnostics(eligibility, assignment_attempts)
-    collection_first, audit = first_position_sample(assignment_attempts)
+    assignment_plans, plan_audit = combined_assignment_plans(plans, eligibility)
+    collection_first, audit = first_position_sample(
+        assignment_attempts,
+        plans=assignment_plans,
+    )
+    audit["assignment_plan_sources"] = plan_audit
     assignment_prefix, release_ready, confirmatory_cutoff = first_balanced_prefix(
         collection_first, POLICIES, MIN_FIRST_POSITION_PER_POLICY
     )
+    balance_gate_ready = release_ready
+    integrity_pass = assignment_integrity_pass(audit)
+    audit["assignment_integrity_pass"] = integrity_pass
+    audit["balance_gate_ready"] = balance_gate_ready
+    release_ready = bool(balance_gate_ready and integrity_pass)
     if not release_ready:
         panel, model_panel, contrasts = _blinded_outputs(collection_first)
         summary = _finalize_gate_audit(
@@ -1065,7 +1424,7 @@ def analyze(
 
     # Outcome columns are touched only after the assignment-only gate opens.
     attempts = prepare_attempts(frame)
-    outcome_first, _ = first_position_sample(attempts)
+    outcome_first, _ = first_position_sample(attempts, plans=assignment_plans)
     outcome_gate_prefix, outcome_release_ready, outcome_cutoff = first_balanced_prefix(
         outcome_first, POLICIES, MIN_FIRST_POSITION_PER_POLICY
     )
@@ -1100,10 +1459,32 @@ def analyze(
         )
         probability = pd.to_numeric(arm.get("analysis_assignment_probability"), errors="coerce")
         missingness = arm_missingness_bounds(arm, total_blocks=n_blocks)
+        first_row_observed = (
+            arm.get("first_row_observed", pd.Series(False, index=arm.index))
+            .fillna(False)
+            .astype(bool)
+        )
+        assignment_replay = (
+            arm.get("assignment_replay_pass", pd.Series(False, index=arm.index))
+            .fillna(False)
+            .astype(bool)
+        )
+        treatment_metadata = (
+            arm.get("treatment_metadata_pass", pd.Series(False, index=arm.index))
+            .fillna(False)
+            .astype(bool)
+        )
         panel_rows.append(
             {
                 "policy": policy,
                 "first_position_attempts": n,
+                "intended_assignments": n,
+                "first_rows_observed": int(first_row_observed.sum()),
+                "first_row_observation_rate": (float(first_row_observed.mean()) if n else np.nan),
+                "assignment_replay_passes": int(assignment_replay.sum()),
+                "assignment_replay_rate": float(assignment_replay.mean()) if n else np.nan,
+                "treatment_metadata_passes": int(treatment_metadata.sum()),
+                "treatment_metadata_pass_rate": (float(treatment_metadata.mean()) if n else np.nan),
                 "successes": successes,
                 "success_rate": successes / n if n and not success_missing else np.nan,
                 "success_rate_observed_cases": (
@@ -1445,7 +1826,7 @@ def analyze(
     summary["terminal_gate_block_policy"] = str(terminal_gate_block["policy"])
     summary["terminal_gate_block_id"] = str(terminal_gate_block["block_id"])
     summary["primary_estimator"] = (
-        "preterminal fixed-count arm-mean difference; identical to conditional HT"
+        "preterminal intended-assignment ITT arm-mean difference; identical to conditional HT"
     )
     summary["randomization_inference"] = (
         "exact pairwise-hypergeometric Fisher sharp-null tails conditional on the "
@@ -1488,7 +1869,25 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     except Exception:
         # The table is prospective and optional for historical/local datasets.
         eligibility = pd.DataFrame()
-    collection_first, _ = first_position_sample(assignment_frame)
+    try:
+        plans = data.q(
+            f"""
+            select *
+            from read_parquet(
+              '{data.table_glob("router_decomposition_plans")}',
+              union_by_name=true
+            )
+            where study_id = '{STUDY_ID}'
+            """
+        ).df()
+    except Exception:
+        # Historical blocks predate the plan-first table and replay their seeds.
+        plans = pd.DataFrame()
+    assignment_plans, _ = combined_assignment_plans(plans, eligibility)
+    collection_first, _ = first_position_sample(
+        assignment_frame,
+        plans=assignment_plans,
+    )
     _, release_ready, _ = first_balanced_prefix(
         collection_first, POLICIES, MIN_FIRST_POSITION_PER_POLICY
     )
@@ -1505,13 +1904,18 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
         ).df()
     else:
         frame = assignment_frame
-    panel, model_panel, contrasts, summary = analyze(frame, eligibility=eligibility)
+    panel, model_panel, contrasts, summary = analyze(
+        frame,
+        eligibility=eligibility,
+        plans=plans,
+    )
     eligibility_rows, eligibility_models, eligibility_runs, _ = eligibility_diagnostics(
         eligibility, prepare_assignment_attempts(assignment_frame)
     )
     save(panel, out_dir, "h81_policy_panel")
     save(model_panel, out_dir, "h81_model_policy_panel")
     save(contrasts, out_dir, "h81_contrasts")
+    save(collection_first, out_dir, "h81_intended_assignment_ledger")
     save(eligibility_rows, out_dir, "h81_eligibility_rows")
     save(eligibility_models, out_dir, "h81_eligibility_models")
     save(eligibility_runs, out_dir, "h81_eligibility_runs")

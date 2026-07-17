@@ -5,8 +5,9 @@ Status: implemented before either H81 or H95 outcome gate opened.
 This protocol governs the first confirmatory outcome access for the focal H81
 fallback/selection experiment and the independent H95 fixed-horizon
 replication. It operationalizes the release contract already stated in their
-preregistrations; it does not change an estimand, hypothesis, stopping rule,
-sample, or multiplicity family.
+preregistrations and their dated outcome-blind amendments. The original release
+contract changes only where an amendment below explicitly corrects a reference-
+experiment defect before outcome access.
 
 ## Trigger and immutable input
 
@@ -28,8 +29,11 @@ Before a gate opens, the runner reads only the following columns from
 `source`, `event_id`, `run_ts`, `observed_at`, `study_id`, `model_id`, `policy`,
 and `metadata_json`.
 
-H81 checks assignment replay, treatment metadata, the earliest chronological
-40-per-arm prefix, and its cutoff. H95 additionally reads the outcome-free
+H81 additionally reads the outcome-free `router_decomposition_plans` columns
+needed to replay the intended first policy. It checks plan/seed replay, first-row
+realization, treatment fidelity, the earliest chronological 40-intended-
+assignments-per-arm prefix, and its cutoff; only intended assignment defines the
+gate. H95 additionally reads its separate outcome-free
 eligibility-plan table and checks the first 120 valid written triplets. The
 preflight writes `assignment_only_gate.json` and exits successfully when a gate
 is closed. It does not select response, provider, latency, cost, token, retry, or
@@ -70,8 +74,9 @@ rerun.
 
 ## Released outputs and boundaries
 
-The H81 bundle contains the frozen preterminal fixed-count analysis, arm panel,
-model panel, contrasts, candidate-support diagnostics, and summary. The H95
+The H81 bundle contains the frozen preterminal fixed-count ITT analysis, intended-
+assignment ledger, arm panel, model panel, contrasts, candidate-support
+diagnostics, and summary. The H95
 bundle contains its fixed 120-triplet audit, arm panel, model panel, contrasts,
 whole-triplet leave-one-model-out panel, redacted row-level primary-outcome
 audit, position-by-policy panel, position-zero policy and contrast panels, and
@@ -82,15 +87,17 @@ pooled.
 H81's pre-release analyzer was further frozen in commit `4d66fda`. A request
 outcome is binary only when it is `succeeded`, `failed`, or `cancelled`;
 `unknown`, missing, and malformed values are not silently coded as failures.
-Any such value suppresses the complete-data point contrast and randomization
-test and enters arm-level `[0,1]` bounds. The released contrast table also
+Any such value on an intended assignment suppresses the complete-data point
+contrast and randomization test and enters arm-level `[0,1]` bounds. The released
+contrast table also
 contains Bonferroni-Newcombe 95% familywise intervals for the two primary
 components, conditional finite-population Hoeffding--Serfling intervals simultaneous over
-all three policy means, and a wider intended-assignment sensitivity that
-reconstructs the first arm from the block seed. Missing/noncompliant treatment
-records and missing outcomes are sent to both worst-case endpoints; an
-unreconstructable arm widens the contrast to `[-1,1]`. These are attrition
-bounds, not a per-protocol effect.
+all three policy means, and a wider implementation-fidelity sensitivity.
+Missing/noncompliant treatment records remain in the primary intended arm; a
+unique binary outcome is the ITT outcome even when treatment fidelity fails.
+The separate sensitivity sends untrusted implementations and missing outcomes
+to both endpoints; an unreconstructable arm widens the contrast to `[-1,1]`.
+These are fidelity bounds, not a complier or per-protocol effect.
 
 Commit `55b5087`, also made while the H81 outcome gate was closed, replaced the
 published Monte Carlo tail approximation with an exact finite-support
@@ -125,6 +132,25 @@ interval; the latter has mean contrast width about 0.76. Exact joint enumeration
 two-test Holm family at counts 39/40/40 requires a 35-point component effect for
 80% worst-terminal-policy power on the preregistered grid. These remain planning
 and implementation facts, not H81 outcomes.
+
+A third outcome-blind H81 amendment corrects post-assignment compliance
+selection. Future blocks write a privacy-safe plan row containing the seed and
+intended first policy before the first request; historical eligibility rows
+replay the run-seed candidate shuffle and per-eligible-block RNG draws, including
+blocks with no attempt row, while still older recorded blocks replay their block
+seed. Any failed plan or legacy-run replay closes the assignment-integrity gate.
+Missing requests, recorded-policy
+mismatches, duplicates, and treatment-control failures remain in their intended
+arms. The gate therefore counts assignment rather than realized treatment, and
+the primary estimand is assigned-policy ITT. At the pinned provenance point all
+84 current blocks pass first-row, replay, and treatment-fidelity checks, so the
+32/24/28 counts are unchanged.
+
+In 3,000 sharp-null experiments at each of five outcome-dependent compliance
+strengths, the ITT estimate stays within 0.0022 of zero and its false-rejection
+rate is 2.83--3.70%. The superseded filtered comparison reaches bias 1.0 and
+100% false rejection while the overall retained share stays near 50%. This
+validates the correction's necessity; it is not H81 outcome evidence.
 
 H95's prerelease analyzer was first hardened in commit `f170d89` while its fixed
 horizon remained 4/120 and before any H95 outcome field was queried. A second
@@ -207,6 +233,14 @@ provider intent, collusion, or social welfare.
 - a completed release is not rerun;
 - an orphaned marker blocks a second access;
 - empty/new datasets fail closed rather than raising into an ambiguous state;
+- H81's gate can read only explicit assignment and plan columns, never outcome
+  fields;
+- a plan-only H81 block remains in its intended arm with missing request and
+  treatment-fidelity flags;
+- a noncompliant H81 request remains in the ITT point sample rather than changing
+  the stopped-design reference experiment;
+- the H81 ITT estimator remains centered and size-controlled under an outcome-
+  dependent compliance adversary that breaks the superseded filtered analysis;
 - an unknown H81 outcome cannot become a failure or retain a point estimate;
 - a noncompliant preterminal treatment record re-enters the intended-assignment
   worst-case bounds after a valid replacement opens the gate;
@@ -269,3 +303,10 @@ Corrected-H95 audit `29569590704` checked out head `4860015`, pinned revision
 32/24/28, H95 support 5/120, perfect replay and compliance, and
 `outcomes_queried=false` for both studies. This is the outcome-blind provenance
 point for the position-zero carryover amendment.
+
+Published position-zero audit `29570676475` checked out head `406a478`, pinned
+the same revision, reproduced H81 counts 32/24/28 and H95 support 5/120, and
+again reported `outcomes_queried=false` for both studies. Its 8.8 KB artifact
+contained only `release_status.json` and the two `assignment_only_gate.json`
+files. This is the outcome-blind provenance point for the H81 intended-
+assignment ITT amendment.
