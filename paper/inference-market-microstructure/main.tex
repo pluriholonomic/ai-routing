@@ -151,7 +151,9 @@ they are not evidence for the focal clearing claim.
   outcome design intervals, explicit measurement-missing bounds, row-level
   treatment-control coverage, and registered time and whole-triplet transport
   diagnostics; it also exposes the sequential-position interference assumption
-  rather than treating it as automatic.
+  rather than treating it as automatic.  A separately frozen position-zero
+  estimator uses the first model block only to remove carryover from earlier H95
+  blocks, at a disclosed loss of precision.
 
   \item \textbf{Identification and design.}  We prove the accounting
   decomposition and, after removing the gate-hitting terminal block, the
@@ -1020,8 +1022,15 @@ auditable and pass, for current audit coverage 20\% and conditional pass rate
 support fails the time-transport gate.  Because the three model blocks execute
 sequentially, a direct-policy interpretation also requires no treatment-dependent
 spillover from an earlier model block; the release includes a position-by-policy
-diagnostic, whose position-zero cells have no earlier H95 block.  H95 has no
-released outcome and is never pooled with H81.
+diagnostic.  Because model order is fixed before the independent policy shuffle,
+the position-zero cells also support a secondary randomized estimator over the
+first model block, which has no earlier H95 request.  It uses exact conditional
+pairwise tests and a simultaneous Hoeffding--Serfling interval.  In a planted-
+carryover audit the primary estimator's absolute bias reaches 0.244 while the
+position-zero estimator remains within 0.001, but its mean design interval width
+is 0.810.  Agreement at release supports but cannot prove no interference;
+disagreement narrows the estimand to position zero.  H95 has no released outcome
+and is never pooled with H81.
 
 \section{Secondary evidence and falsification}
 \label{sec:secondary}
@@ -1226,7 +1235,10 @@ contrast; tighter paired-$t$ intervals require a triplet-superpopulation
 interpretation.  Its first 12
 rows predate the expanded provider-control metadata, and direct-policy language
 requires no treatment-dependent carryover across its sequential model blocks;
-both limitations remain visible in the release diagnostics.  Third, owned probes identify one
+the identified position-zero sensitivity removes earlier within-triplet
+carryover but has mean design width 0.810 and cannot detect interference from
+unrelated prior traffic.  Both limitations remain visible in the release
+diagnostics.  Third, owned probes identify one
 account, region, prompt family, and time window; they do not identify market-wide
 provider shares.  Fourth, public operational fields are router-published
 aggregates with missingness, not raw attempt logs.  Fifth, provider cost, private
@@ -1449,7 +1461,7 @@ formal guarantee comes from \cref{eq:h81-hoeffding-means}, not that simulation.
 Thus H81 can detect large wedges but cannot interpret nonsignificance as
 equivalence.  The
 100,000-draw pairwise tail remains solely a discrepancy audit, and the release
-fails closed above one percentage point.  The full repository suite has 561
+fails closed above one percentage point.  The full repository suite has 563
 passes.
 
 \begin{figure}[!t]
@@ -1589,6 +1601,47 @@ released position panel can reveal some resulting heterogeneity but cannot
 prove the assumption.
 \end{proof}
 
+\begin{corollary}[Randomized position-zero carryover sensitivity]
+\label{cor:h95-position-zero}
+Let $M_{j0}$ be the model block scheduled first in triplet $j$, let $A_{j0}$ be
+its assigned first policy, and set $Y^0_j(p)=Y_{j,M_{j0}}(p)$.  Model order is
+fixed before the independent policy shuffle.  Conditional on the written
+triplets, realized $(M_{j0})_{j=1}^J$, and position-zero policy counts
+$n_p^0>0$, define
+\begin{equation}
+ \mu_p^0=\frac1J\sum_{j=1}^JY_j^0(p),\qquad
+ \widehat\mu_p^0=\frac1{n_p^0}\sum_{j:A_{j0}=p}Y_j^{obs}.
+ \label{eq:h95-position-zero}
+\end{equation}
+Then $\widehat\mu_p^0$ is design-unbiased for $\mu_p^0$.  For any pair $p,q$,
+conditioning additionally on the nuisance-policy membership gives the exact
+two-arm hypergeometric Fisher law.  Moreover, with
+\[
+ h_p^0=\sqrt{\left(1-\frac{n_p^0-1}{J}\right)
+              \frac{\log(6/\alpha)}{2n_p^0}},
+\]
+the three policy-mean intervals $[\widehat\mu_p^0\pm h_p^0]\cap[0,1]$ and all
+contrasts propagated from them have simultaneous coverage at least $1-\alpha$.
+The position-zero outcome cannot be affected by an earlier H95 model block in
+the same triplet.
+\end{corollary}
+
+\begin{proof}
+Conditional on the realized first model blocks and the count vector, the policy
+labels at position zero are uniform over all assignments with counts
+$(n_p^0)_{p\in\mathcal P}$.  Each arm is therefore a simple random sample without
+replacement from the $J$ fixed values $(Y_j^0(p))_{j=1}^J$, proving unbiasedness.
+For a pair $p,q$, condition on which triplets received the nuisance third policy.
+Under the pairwise sharp null, the pooled focal outcomes are fixed and the
+positive-arm success count is hypergeometric with the realized focal counts.
+Finally, the sampling-without-replacement Hoeffding--Serfling bound gives failure
+probability at most $\alpha/3$ for each policy mean at radius $h_p^0$; a union
+bound and the triangle inequality prove the simultaneous mean and contrast
+statements \citep{serfling1974}.  By construction, triplet position zero precedes
+positions one and two.  The result does not rule out interference from unrelated
+traffic before the triplet.
+\end{proof}
+
 The primary protocol outcome treats an absent planned first request, a mismatched
 first policy, a duplicate first record, or an auditable provider-control failure
 as zero.  This defines an intent-to-treat deliverability outcome rather than a
@@ -1618,7 +1671,7 @@ Separate adversaries replace a valid outcome with
 \texttt{unknown}, delete and mismatch planned first requests, corrupt a
 provider-control length, concentrate every triplet in one six-hour bin, and
 verify that leave-one-model-out analysis drops whole triplets.  The full
-repository suite has 561 passes.  These checks validate the release code and
+repository suite has 563 passes.  These checks validate the release code and
 claim boundary.  They are not H95 outcome evidence: the fixed horizon remains
 five of 120 at the pinned outcome-free revision.
 
@@ -1631,6 +1684,28 @@ nuisance policy has an effect; the dashed line is 5\%.  Panels C--D compare the
 descriptive Bonferroni paired-$t$ family with the simultaneous bounded-outcome
 design interval.  These are assignment and reporting audits, not H95 outcomes.}
 \label{fig:h95-theorem-validation}
+\end{figure}
+
+The position-zero audit plants treatment-dependent carryover that can improve a
+later block after delegated policy appeared earlier while holding every direct
+policy effect at zero.  Across 5,000 120-triplet assignments at five spillover
+strengths, the primary three-block hidden-selection estimator reaches absolute
+bias 0.2437.  The position-zero estimator remains within 0.00103 of zero, with
+100\% observed design-family coverage, but its mean interval width is 0.810.
+Thus the sensitivity removes the planted channel by discarding two-thirds of
+the blocks; it is not a more precise replacement.  Measurement missingness on a
+position-zero row suppresses its point and test output, while missingness only
+on later rows does not erase the separately identified first-block sensitivity.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/h95_position_zero_interference.pdf}
+\caption{Outcome-blind planted-interference validation.  Delegated policy can
+change later H95 blocks but never the first block.  Panel A shows resulting bias,
+Panel B the bias--variance tradeoff, and Panel C the conservative position-zero
+design coverage and width.  The construction demonstrates what the sensitivity
+detects; it is not evidence that actual carryover exists.}
+\label{fig:h95-position-zero}
 \end{figure}
 
 \section{Companion free-entry benchmark}
@@ -2065,7 +2140,7 @@ Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
 H81 fallback and hidden selection & 84 verified blocks; counts 32, 24, 28; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm gate; terminal excluded; Holm tests, familywise intervals, and worst-case treatment/outcome bounds frozen \\
 H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
-H95 fixed-horizon replication & Five compliant triplets, 15 blocks, nine unique models; 12 legacy-unverified and three passing auditable control records; no outcome released & 120 written triplets, row-level control coverage, broad audited model/time support, and cross-position robustness & Fixed 120-triplet horizon; nuisance-conditioned pairwise Fisher law and simultaneous design intervals; whole-triplet LOMO; never pooled with H81 \\
+H95 fixed-horizon replication & Five compliant triplets, 15 blocks, nine unique models; 12 legacy-unverified and three passing auditable control records; no outcome released & 120 written triplets, row-level control coverage, broad audited model/time support, and cross-position robustness & Fixed 120-triplet horizon; nuisance-conditioned pairwise Fisher law, simultaneous design intervals, and lower-precision position-zero sensitivity; whole-triplet LOMO; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
 Stale-cheap pickoff channel & H84 rejects its directional prediction; backward placebo nonzero & Prospective sample and realized fill linkage & Disjoint H85 holdout \\
 Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous discovery cross section, Wilson interval $[0.828,0.994]$; 28/29 have an observed term conflict & Repeated changes, full contract comparability, eligibility, and fills & H94 has one prospective snapshot/router after 2026-07-17 04:30:20 UTC; all dynamic event gates closed \\
@@ -2131,9 +2206,13 @@ release now hashes every dated protocol amendment and writes redacted outcome,
 position, and transport audit panels.  A second outcome-blind H95 proof audit at
 5/120 replaces the global six-assignment law with nuisance-conditioned focal
 swaps, adds mixed-null size validation, and reports simultaneous bounded-outcome
-design intervals.  The full repository test run has 551 passes at the initial
-H95 freeze, 557 after the H81 interval audit, and 561 after the H95 pairwise-
-interval audit.  The remote path publishes a content-hashed
+design intervals.  A third outcome-blind H95 amendment formalizes the randomized
+position-zero estimator, exact secondary pairwise family, simultaneous
+Hoeffding--Serfling intervals, and planted-carryover bias audit without changing
+the primary horizon or family.  The full repository test run has 551 passes at the initial
+H95 freeze, 557 after the H81 interval audit, 561 after the H95 pairwise-
+interval audit, and 563 after the H95 position-zero interference audit.  The
+remote path publishes a content-hashed
 bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
 run \texttt{29563312069}, checking out manuscript/code head \texttt{f2fd115},
@@ -2170,6 +2249,10 @@ Published-paper audit \texttt{29568434722} checked out \texttt{973f900}, pinned
 revision \texttt{30b430e2a09}, reproduced H81 counts 32/24/28 and H95 support
 5/120, and again left both outcome-query flags false.  This is the provenance
 point for the H95 pairwise-law and design-interval amendment.
+Corrected-H95 audit \texttt{29569590704} then checked out \texttt{4860015},
+pinned revision \texttt{f5b822812a8}, reproduced the same counts and support,
+and again left both outcome-query flags false.  This is the provenance point for
+the position-zero carryover amendment.
 
 \paragraph{Privacy, load, and release tiers.}
 Capture records exclude prompts and completions.  Owned experiments use a fixed

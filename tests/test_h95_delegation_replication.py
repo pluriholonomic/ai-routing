@@ -135,6 +135,15 @@ def test_fixed_horizon_releases_exact_balance_and_blocked_contrasts() -> None:
     assert position_panel["assigned_blocks"].eq(40).all()
     assert len(outcome_audit) == 360
 
+    zero_panel, zero_contrasts, zero_summary = h95._position_zero_sensitivity(outcome_audit)
+    assert zero_summary["triplets"] == h95.TARGET_TRIPLETS
+    assert zero_summary["policy_counts"] == {policy: 40 for policy in POLICIES}
+    assert zero_panel["assigned_blocks"].eq(40).all()
+    zero_estimates = zero_contrasts.set_index("estimand")["success_difference"].to_dict()
+    assert zero_estimates["fallback_option_value"] == 1.0
+    assert zero_estimates["hidden_selection_value"] == 0.0
+    assert zero_contrasts.loc[zero_contrasts["primary"], "holm_p_greater"].notna().all()
+
 
 def test_exact_randomization_matches_brute_force_for_two_triplets() -> None:
     outcomes = pd.DataFrame(
@@ -196,6 +205,7 @@ def test_unknown_recorded_outcome_is_not_silently_coded_as_failure() -> None:
 
     assert released["primary_measurement_missing_outcomes"] == 1
     assert released["point_inference_suppressed_for_measurement_missingness"] is True
+    assert released["position_zero_sensitivity"]["complete_binary_outcomes"] is False
     assert contrasts["success_difference"].isna().all()
     assert contrasts["randomization_p_greater"].isna().all()
     assert contrasts["design_hoeffding_ci_low"].isna().all()
@@ -209,6 +219,28 @@ def test_unknown_recorded_outcome_is_not_silently_coded_as_failure() -> None:
         affected_arm["success_rate_measurement_upper_bound"]
         - affected_arm["success_rate_measurement_lower_bound"]
     ) == pytest.approx(1 / h95.TARGET_TRIPLETS)
+
+
+def test_later_measurement_missingness_does_not_erase_position_zero_sensitivity() -> None:
+    eligibility, attempts = _frames(h95.TARGET_TRIPLETS)
+    prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
+    summary, _, _, plans = h95.gate_summary(prepared, eligibility, simulations=0)
+    later_block = eligibility.loc[eligibility["triplet_position"].eq(1), "block_id"].iloc[0]
+    later_first = attempts.index[
+        attempts["event_id"].str.startswith(f"{later_block}|")
+        & attempts["event_id"].str.endswith("|0")
+    ][0]
+    attempts.loc[later_first, "outcome"] = "unknown"
+
+    _, _, contrasts, _, _, outcome_audit, released = h95.analyze_released(
+        attempts, plans, summary, simulations=0
+    )
+    _, zero_contrasts, zero_summary = h95._position_zero_sensitivity(outcome_audit)
+
+    assert contrasts["success_difference"].isna().all()
+    assert released["position_zero_sensitivity"]["complete_binary_outcomes"] is True
+    assert zero_summary["complete_binary_outcomes"] is True
+    assert zero_contrasts["success_difference"].notna().all()
 
 
 def test_missing_and_noncompliant_first_requests_remain_structural_itt_zeros() -> None:

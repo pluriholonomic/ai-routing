@@ -40,3 +40,13 @@ def test_design_interval_covers_fixed_schedule_family() -> None:
     assert family["design_hoeffding_family_coverage"].min() >= 0.99
     assert component["monte_carlo_bias"].abs().max() <= 0.005
     assert family["design_hoeffding_mean_width"].mean() > family["paired_t_mean_width"].mean()
+
+
+def test_position_zero_remains_centered_under_planted_carryover() -> None:
+    audit = validation.simulate_position_zero_interference(experiments=3_000)
+    strongest = audit.sort_values("spillover_strength").iloc[-1]
+
+    assert abs(strongest["full_three_block_mean_estimate"]) >= 0.20
+    assert abs(strongest["position_zero_mean_estimate"]) <= 0.005
+    assert audit["position_zero_design_coverage"].min() >= 0.99
+    assert audit["position_zero_mean_interval_width"].mean() >= 0.75

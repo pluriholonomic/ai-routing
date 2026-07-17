@@ -16,5 +16,12 @@
     "mean_design_hoeffding_width": 0.5404952441772811,
     "design_radius_at_120_triplets": 0.27024762208864056
   },
+  "position_zero_interference": {
+    "maximum_full_three_block_absolute_bias": 0.24368333333333334,
+    "maximum_position_zero_absolute_bias": 0.0010200180166080532,
+    "worst_position_zero_design_coverage": 1.0,
+    "mean_position_zero_interval_width": 0.8104612396077778,
+    "interpretation": "The planted spillover changes later H95 blocks after delegated policy appears. The position-zero estimator has no earlier H95 block and remains centered on the direct-effect target, but it is a lower-precision sensitivity analysis."
+  },
   "claim_boundary": "The audit validates the registered assignment law and bounded-outcome reporting rule. It does not reveal an H95 outcome, prove no cross-model interference, or identify market-wide routing or welfare."
 }

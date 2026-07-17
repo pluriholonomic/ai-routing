@@ -4,14 +4,14 @@
   "evidence_freeze_utc": "2026-07-17T09:01:10Z",
   "files": [
     {
-      "bytes": 23190,
+      "bytes": 24834,
       "path": "config/paper_evidence_registry.toml",
-      "sha256": "938db2f8503f0add31cfc6577b288e080d28b8fa282e6e3d5fe439ca3549cf80"
+      "sha256": "a64cce62a2fd5f7cdfc4306e5d4d76a091aacbd47acdb8ca0994a2b15730d22c"
     },
     {
-      "bytes": 13997,
+      "bytes": 15903,
       "path": "docs/confirmatory-release-protocol-2026-07-17.md",
-      "sha256": "cf9257efc6d275499aad4c8bd29d9e413d44d34174bde771a40bc63511bb17d9"
+      "sha256": "eab4ae1baef1c54424e2add4e09fac2f4e4bc19b53fe4371ddb9db513e812fbb"
     },
     {
       "bytes": 3183,
@@ -44,9 +44,9 @@
       "sha256": "137b85bc9341693e0981799fd3d185fc1bf0df15309daec79edd7bf4fa358e77"
     },
     {
-      "bytes": 21110,
+      "bytes": 21965,
       "path": "docs/paper-evidence-amendment-ledger-2026-07-17.md",
-      "sha256": "a0cc53b6e3594d59cdeac0cd869bcde21147cdf65387a80f900de6afb014bfce"
+      "sha256": "5ca8ec479127b0b0f50e5d4c1fe8080765c7079c6fe95b737b00e09522b2376f"
     },
     {
       "bytes": 7347,
@@ -72,6 +72,11 @@
       "bytes": 4618,
       "path": "experiments/h95-delegation-replication-v1/amendment-2026-07-17-pairwise-intervals.md",
       "sha256": "688da023cd34b0c06d21dbed7abf5eb69be87aaf0c6c8635c4bf8a65bf5fee01"
+    },
+    {
+      "bytes": 3872,
+      "path": "experiments/h95-delegation-replication-v1/amendment-2026-07-17-position-zero.md",
+      "sha256": "e00fcef03e4838cea1283dd90cfaff94eb83cb4438da26f23cfb12faf16d18d7"
     },
     {
       "bytes": 5740,
@@ -114,6 +119,11 @@
       "sha256": "4a01814f2ff4865a23eef438b8f1c588113312d1e9eb4b01b09f89e8738ca47c"
     },
     {
+      "bytes": 21489,
+      "path": "paper/inference-market-microstructure/figures/h95_position_zero_interference.pdf",
+      "sha256": "b9ef167f0e3dffad7e4452b6d2e3f71821e92fe76283a05924690cb384e67370"
+    },
+    {
       "bytes": 22549,
       "path": "paper/inference-market-microstructure/figures/h95_theorem_validation.pdf",
       "sha256": "502e6b5080fda2776197d08c3543439c00415ba007976ae4ed2af3feea2e5087"
@@ -129,9 +139,9 @@
       "sha256": "199ea7b6288b525db3dcfdefe4f1a7398b928397ac8adc3bcb11fd4b9b216643"
     },
     {
-      "bytes": 124800,
+      "bytes": 129771,
       "path": "paper/inference-market-microstructure/main.tex",
-      "sha256": "4e4acd56c6e4cc1d2fa94e1067104c0e1c2958c4df359c39b338cd6ecfaa61ba"
+      "sha256": "9a6695d297bf0062eab55ac9c8e86374025d7d8e24e346b73f34b54ebb7ad7c2"
     },
     {
       "bytes": 8867,
@@ -184,14 +194,14 @@
       "sha256": "b5fcb59b2b9e697f83056b6b28f14450976139a692c1b48b095df03ca22ad71e"
     },
     {
-      "bytes": 49807,
+      "bytes": 56693,
       "path": "src/orcap/analysis/h95_delegation_replication.py",
-      "sha256": "881f8d047ac5b160539e075bc4df8f4da2f21d61d37086fd2ab8a5cb428152d8"
+      "sha256": "34435fba71a5a6c23c8a435ea5877e3cdad951c568963d74fefb7eeaf55346dc"
     },
     {
-      "bytes": 18148,
+      "bytes": 25048,
       "path": "src/orcap/analysis/h95_theorem_validation.py",
-      "sha256": "a83012ffb2a6334d07755bfea1ca914aff571a511bf331fb6bd86ec1cee3ed2c"
+      "sha256": "3b80d758576703526f97fd09fcd7e09641869fd6c90bdcef6fd24afd55222349"
     },
     {
       "bytes": 11108,
@@ -284,14 +294,14 @@
       "sha256": "1ffcbde65bd893afe45182184d8245f284f3448b0ff0824862c10d8877f2af34"
     },
     {
-      "bytes": 14670,
+      "bytes": 16557,
       "path": "tests/test_h95_delegation_replication.py",
-      "sha256": "9a24e4c8b184dc0cc104cc3f735346a17c6dca49af8065573d1d48dc278acab0"
+      "sha256": "cd9a6c557a55c737325b381208fedaea283ebfc0b66355dd1133cf8d5970b96b"
     },
     {
-      "bytes": 1757,
+      "bytes": 2245,
       "path": "tests/test_h95_theorem_validation.py",
-      "sha256": "9ca2bf241cf5555a5597952fd9ab7e20f8e015736e1046bc2c2c8633fef791a4"
+      "sha256": "64b78a302d3a592d8031876d03f0345cdc9bc2f772ed1d7b181739ad8093c7a7"
     },
     {
       "bytes": 38762,
@@ -310,10 +320,10 @@
     }
   ],
   "gate_event_count": 17,
-  "generated_at_utc": "2026-07-17T09:18:03.543736+00:00",
-  "paper_theorem_count": 8,
+  "generated_at_utc": "2026-07-17T09:36:29.295564+00:00",
+  "paper_theorem_count": 9,
   "paper_track": "ACM EC / TEAC",
-  "registered_claim_count": 15,
+  "registered_claim_count": 16,
   "schema_version": 1,
   "status": "outcome-safe refresh with H81 and H95 accruing; clean remote first-access release armed; focal outcomes blinded"
 }

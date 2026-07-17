@@ -25,15 +25,17 @@ The July 17, 2026 revision:
   Fisher inference, simultaneous bounded-outcome design intervals, explicit
   structural and measurement missingness, provider-control coverage,
   time/whole-triplet transport gates, and a sequential-position interference
-  diagnostic; and
+  diagnostic, plus a lower-precision randomized position-zero sensitivity that
+  removes carryover from earlier H95 blocks; and
 - compresses the main empirical argument to 15 pages through the references,
   moving price-atom diagnostics and proofs to Appendix A without deleting them.
 
 The latest adversarial assessment is
-[`../docs/manuscript-review-round-25-2026-07-17.md`](../docs/manuscript-review-round-25-2026-07-17.md).
-It treats the H81 and H95 pairwise-reference-law defects and confidence-theorem
-mismatches as repaired before outcome access. The remaining promotion gates are
-unreleased H81/H95 outcomes and the unopened 30-completed-day PM1 holdout.
+[`../docs/manuscript-review-round-26-2026-07-17.md`](../docs/manuscript-review-round-26-2026-07-17.md).
+It treats the H81 and H95 pairwise-reference-law defects, confidence-theorem
+mismatches, and H95 within-triplet carryover sensitivity as repaired before
+outcome access. The remaining promotion gates are unreleased H81/H95 outcomes
+and the unopened 30-completed-day PM1 holdout.
 
 This directory contains three non-concurrent manuscripts built from the reviewed
 research drafts:

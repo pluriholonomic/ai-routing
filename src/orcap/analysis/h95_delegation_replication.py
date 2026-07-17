@@ -28,7 +28,11 @@ from ..capture_decomposition_replication import (
 )
 from . import data
 from .common import DEFAULT_OUT, save, save_json
-from .h81_delegation_decomposition import verify_treatment_metadata
+from .h81_delegation_decomposition import (
+    _exact_pairwise_binary_randomization_pvalues,
+    _simultaneous_serfling_mean_radii,
+    verify_treatment_metadata,
+)
 
 COMPARISONS = (
     (
@@ -642,6 +646,139 @@ def _blocked_design_radius(
     return float(math.sqrt(2.0 * math.log(2.0 * family_size / alpha) / triplets))
 
 
+def _position_zero_sensitivity(
+    outcomes: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    """Analyze the first model block, which has no earlier H95 block.
+
+    Policy is uniformly assigned to triplet position zero.  Conditional on the
+    realized position-zero models and policy counts, each policy arm is a simple
+    random sample without replacement from those fixed units.  This sensitivity
+    therefore removes treatment-dependent carryover from earlier H95 blocks at
+    the cost of using only one observation per triplet.
+    """
+    first = outcomes.loc[pd.to_numeric(outcomes["triplet_position"]).eq(0)].copy()
+    if first.empty:
+        return (
+            pd.DataFrame(),
+            pd.DataFrame(),
+            {
+                "triplets": 0,
+                "complete_binary_outcomes": False,
+                "claim_boundary": "No position-zero H95 outcome is available.",
+            },
+        )
+    if first["triplet_id"].duplicated().any():
+        raise RuntimeError("H95 position-zero sensitivity requires one row per triplet")
+    first = first.sort_values(["triplet_sequence", "triplet_id"]).reset_index(drop=True)
+    first["primary_success"] = pd.to_numeric(first["primary_success"], errors="coerce")
+    complete = bool(
+        first["primary_success"].notna().all()
+        and np.isin(first["primary_success"].to_numpy(dtype=float), (0.0, 1.0)).all()
+    )
+    counts = (
+        first["assigned_first_policy"].astype(str).value_counts().reindex(POLICIES, fill_value=0)
+    )
+    radii = _simultaneous_serfling_mean_radii(counts, alpha=PRIMARY_FWER_ALPHA)
+    panel_rows: list[dict[str, Any]] = []
+    for policy in POLICIES:
+        group = first.loc[first["assigned_first_policy"].astype(str).eq(policy)]
+        assigned = int(len(group))
+        known = pd.to_numeric(group["primary_success"], errors="coerce").dropna()
+        successes = int(known.sum())
+        missing = assigned - int(len(known))
+        panel_rows.append(
+            {
+                "policy": policy,
+                "assigned_blocks": assigned,
+                "successes_known": successes,
+                "measurement_missing_outcomes": missing,
+                "success_rate": successes / assigned if assigned and missing == 0 else np.nan,
+                "success_rate_lower_bound": successes / assigned if assigned else np.nan,
+                "success_rate_upper_bound": (
+                    (successes + missing) / assigned if assigned else np.nan
+                ),
+                "design_serfling_mean_radius": radii[policy],
+            }
+        )
+    panel = pd.DataFrame(panel_rows)
+    panel_index = panel.set_index("policy")
+
+    contrast_rows: list[dict[str, Any]] = []
+    for name, positive, negative, primary in COMPARISONS:
+        positive_values = first.loc[
+            first["assigned_first_policy"].astype(str).eq(positive), "primary_success"
+        ].to_numpy(dtype=float)
+        negative_values = first.loc[
+            first["assigned_first_policy"].astype(str).eq(negative), "primary_success"
+        ].to_numpy(dtype=float)
+        if complete and len(positive_values) and len(negative_values):
+            estimate = float(positive_values.mean() - negative_values.mean())
+            greater, two_sided = _exact_pairwise_binary_randomization_pvalues(
+                positive_values, negative_values, observed_statistic=estimate
+            )
+            radius = float(radii[positive] + radii[negative])
+            design_low = max(-1.0, estimate - radius)
+            design_high = min(1.0, estimate + radius)
+        else:
+            estimate = greater = two_sided = radius = design_low = design_high = np.nan
+        pos = panel_index.loc[positive]
+        neg = panel_index.loc[negative]
+        contrast_rows.append(
+            {
+                "estimand": name,
+                "positive_policy": positive,
+                "negative_policy": negative,
+                "primary": primary,
+                "success_difference": estimate,
+                "design_serfling_ci_low": design_low,
+                "design_serfling_ci_high": design_high,
+                "design_serfling_radius": radius,
+                "randomization_p_greater": greater,
+                "randomization_p_two_sided": two_sided,
+                "measurement_missingness_lower_bound": (
+                    pos["success_rate_lower_bound"] - neg["success_rate_upper_bound"]
+                ),
+                "measurement_missingness_upper_bound": (
+                    pos["success_rate_upper_bound"] - neg["success_rate_lower_bound"]
+                ),
+            }
+        )
+    contrasts = pd.DataFrame(contrast_rows)
+    contrasts["holm_p_greater"] = np.nan
+    primary_mask = contrasts["primary"] & contrasts["randomization_p_greater"].notna()
+    if int(primary_mask.sum()) == 2:
+        contrasts.loc[primary_mask, "holm_p_greater"] = multipletests(
+            contrasts.loc[primary_mask, "randomization_p_greater"].to_numpy(),
+            alpha=PRIMARY_FWER_ALPHA,
+            method="holm",
+        )[1]
+    summary = {
+        "triplets": int(len(first)),
+        "policy_counts": {policy: int(counts[policy]) for policy in POLICIES},
+        "complete_binary_outcomes": complete,
+        "measurement_missing_outcomes": int(first["primary_success"].isna().sum()),
+        "identification": (
+            "conditional finite-population policy effects over the randomized position-zero "
+            "model blocks; no earlier H95 block can create carryover"
+        ),
+        "randomization_inference": (
+            "exact pairwise hypergeometric Fisher tails conditional on the nuisance-policy "
+            "membership and realized position-zero arm counts; Holm over two primary tests"
+        ),
+        "design_uncertainty": (
+            "Hoeffding-Serfling intervals simultaneous over the three position-zero policy "
+            "means and propagated to all contrasts"
+        ),
+        "claim_boundary": (
+            "This is a prespecified secondary carryover sensitivity using one model block per "
+            "triplet. It is less precise than the primary three-block estimator and does not "
+            "test interference caused by other traffic before the triplet."
+        ),
+    }
+    return panel, contrasts, summary
+
+
 def _leave_one_model_out(
     outcomes: pd.DataFrame,
     contrasts: pd.DataFrame,
@@ -1016,6 +1153,7 @@ def analyze_released(
     support["broad_multi_model_transport_ready"] = bool(
         support.get("structural_transport_gates_pass") and lomo_gate_pass
     )
+    _, _, position_zero_summary = _position_zero_sensitivity(outcomes)
     summary = summary | {
         "evidence_status": "fixed_horizon_outcomes_released",
         "outcomes_released": True,
@@ -1068,6 +1206,7 @@ def analyze_released(
             "earlier model blocks in the same triplet; the released position-policy panel "
             "and position-zero sensitivity are diagnostics, not proofs of that assumption."
         ),
+        "position_zero_sensitivity": position_zero_summary,
         "support": support,
     }
     audit_columns = [
@@ -1189,6 +1328,8 @@ def run(out_dir: Path = DEFAULT_OUT, *, simulations: int = RANDOMIZATION_DRAWS) 
             position_panel,
             outcome_audit,
         ) = _blinded_outputs()
+        position_zero_panel = pd.DataFrame()
+        position_zero_contrasts = pd.DataFrame()
     else:
         outcome_attempts = data.q(
             f"""
@@ -1207,12 +1348,15 @@ def run(out_dir: Path = DEFAULT_OUT, *, simulations: int = RANDOMIZATION_DRAWS) 
             outcome_audit,
             summary,
         ) = analyze_released(outcome_attempts, horizon_plans, summary, simulations=simulations)
+        position_zero_panel, position_zero_contrasts, _ = _position_zero_sensitivity(outcome_audit)
     save(audit, out_dir, "h95_assignment_audit")
     save(panel, out_dir, "h95_policy_panel")
     save(model_rates, out_dir, "h95_model_policy_panel")
     save(contrasts, out_dir, "h95_contrasts")
     save(lomo, out_dir, "h95_leave_one_model_out")
     save(position_panel, out_dir, "h95_triplet_position_policy_panel")
+    save(position_zero_panel, out_dir, "h95_position_zero_policy_panel")
+    save(position_zero_contrasts, out_dir, "h95_position_zero_contrasts")
     save(outcome_audit, out_dir, "h95_primary_outcome_audit")
     save_json(summary, out_dir, "h95_summary")
     return summary

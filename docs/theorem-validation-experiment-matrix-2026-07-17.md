@@ -130,7 +130,7 @@ delegation as both an estimand and estimator identity.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
    - Current result: implemented before outcome access in commit `4d66fda`.
-     Both adversarial tests and the current full 561-test suite pass. The two primary
+     Both adversarial tests and the current full 563-test suite pass. The two primary
      intervals additionally receive Bonferroni-Newcombe familywise adjustment;
      their exact conditional Fisher p-values retain the registered Holm family.
 
@@ -186,6 +186,20 @@ estimand also requires no treatment-dependent carryover from an earlier model
 block. The release therefore writes a position-by-policy panel; position-zero
 cells have no preceding H95 block in the triplet. This is a falsification and
 sensitivity diagnostic, not a proof of no interference.
+
+The outcome-blind position-zero amendment makes that first-block sensitivity
+formally identified. Model order is fixed before the policy shuffle; conditional
+on the first models and realized policy counts, each position-zero arm is a
+simple random sample without replacement from the 120 first-block units.
+Position-zero means are design-unbiased, pairwise p-values use the exact
+hypergeometric law after conditioning on nuisance membership, and simultaneous
+Hoeffding--Serfling intervals propagate from the three policy means. This is a
+separate secondary two-test family and never changes the primary estimator or
+horizon. A five-strength, 5,000-experiment planted-carryover audit produces
+0.2437 maximum absolute bias in the primary three-block estimator and 0.00103
+in position zero. The carryover-free interval has 100% worst observed coverage
+but mean width 0.810, so robustness is purchased with substantial precision
+loss. The simulation demonstrates the diagnostic, not actual interference.
 
 The design uses a fixed horizon rather than the H81 arm-balance stopping rule and
 is never pooled with H81. At revision `30b430e2`, five compliant triplets have

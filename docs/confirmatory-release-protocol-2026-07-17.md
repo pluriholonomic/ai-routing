@@ -74,7 +74,8 @@ The H81 bundle contains the frozen preterminal fixed-count analysis, arm panel,
 model panel, contrasts, candidate-support diagnostics, and summary. The H95
 bundle contains its fixed 120-triplet audit, arm panel, model panel, contrasts,
 whole-triplet leave-one-model-out panel, redacted row-level primary-outcome
-audit, and summary. The release manifest hashes the original preregistration
+audit, position-by-policy panel, position-zero policy and contrast panels, and
+summary. The release manifest hashes the original preregistration
 and every dated amendment in that study directory. The two studies are never
 pooled.
 
@@ -150,6 +151,25 @@ observed design-family coverage 99.90% and mean width 0.540, versus 95.52% and
 mean width 0.290 for the descriptive Bonferroni paired-t family. The inequality,
 not the simulated coverage, supplies the design guarantee.
 
+A third outcome-blind H95 amendment makes the position-zero diagnostic a formal
+secondary sensitivity. Model order is fixed before the policy shuffle, so
+conditional on the realized first models and position-zero arm counts, policy
+labels form a complete randomization across the 120 fixed first-block units.
+Position-zero arm means are design-unbiased, pairwise Fisher tails are exact
+hypergeometric tails after conditioning on nuisance membership, and
+Hoeffding--Serfling intervals cover all three policy means simultaneously. The
+two secondary directional tests receive Holm adjustment within a separate
+secondary family and do not alter the primary family or fixed horizon.
+
+The first model block has no earlier H95 request. In a planted-carryover audit
+with zero direct policy effects, maximum absolute primary three-block bias is
+0.2437 while position-zero bias is 0.00103. The sensitivity's worst observed
+design-family coverage is 100%, but mean interval width is 0.810. Agreement can
+support but not prove the primary no-interference interpretation; disagreement
+narrows the defensible estimand to position zero. Missingness on a position-zero
+row suppresses its complete-data output, while missingness confined to later
+rows does not erase the separately identified first-block sensitivity.
+
 H95 preserves the original structural intent-to-treat zeros for a missing
 planned first request or noncompliant first policy. It also codes duplicate
 first records and an auditable provider-control mismatch as structural zeros.
@@ -203,6 +223,9 @@ provider intent, collusion, or social welfare.
   registered units;
 - the H95 position-by-policy panel exposes the sequential-block interference
   diagnostic;
+- the H95 position-zero estimator is exact under its conditional randomization,
+  remains centered under planted later-block carryover, and reports its wider
+  simultaneous design interval;
 - every dated study amendment is hashed into the first-access manifest;
 - the remote workflow is compaction-triggered, non-cancelling, publishing, and
   artifact-retaining.
@@ -240,3 +263,9 @@ Published-paper audit `29568434722` checked out head `973f900`, pinned revision
 32/24/28, H95 support 5/120, perfect replay and compliance, and
 `outcomes_queried=false` for both studies. This is the outcome-blind provenance
 point for the H95 pairwise-reference-law and design-interval amendment.
+
+Corrected-H95 audit `29569590704` checked out head `4860015`, pinned revision
+`f5b822812a8266200c9b277e88578c8829338e83`, and again reported H81 counts
+32/24/28, H95 support 5/120, perfect replay and compliance, and
+`outcomes_queried=false` for both studies. This is the outcome-blind provenance
+point for the position-zero carryover amendment.

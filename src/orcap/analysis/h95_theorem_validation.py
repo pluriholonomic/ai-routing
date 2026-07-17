@@ -262,7 +262,84 @@ def simulate_interval_coverage(
     return pd.DataFrame(rows)
 
 
-def summarize(size: pd.DataFrame, coverage: pd.DataFrame) -> dict[str, Any]:
+def simulate_position_zero_interference(
+    *,
+    experiments: int = 5_000,
+    triplets: int = TARGET_TRIPLETS,
+    strengths: tuple[float, ...] = (0.0, 0.25, 0.5, 0.75, 1.0),
+    seed: int = 20260717,
+) -> pd.DataFrame:
+    """Plant treatment-dependent carryover and compare full versus first block."""
+    rng = np.random.default_rng(seed + 500)
+    assignment = PERMUTATIONS[rng.integers(0, len(PERMUTATIONS), size=(experiments, triplets))]
+    index = np.arange(triplets * 3).reshape(triplets, 3)
+    direct = (((29 * index + 13) % 101) < 50).astype(float)
+    triplet_index = np.arange(triplets)[None, :]
+    direct_observed = np.empty((experiments, triplets, len(POLICIES)), dtype=float)
+    for policy_index in range(len(POLICIES)):
+        direct_observed[:, :, policy_index] = direct[triplet_index, assignment[:, :, policy_index]]
+
+    delegated_index = POLICY_INDEX["delegated_default"]
+    fallback_index = POLICY_INDEX["price_order_fallback"]
+    delegated_position = assignment[:, :, delegated_index]
+    policy_at_zero = np.argmax(assignment == 0, axis=2)
+    position_zero_outcome = np.broadcast_to(direct[:, 0], (experiments, triplets))
+    counts = np.column_stack(
+        [np.count_nonzero(policy_at_zero == policy, axis=1) for policy in range(3)]
+    )
+    successes = np.column_stack(
+        [
+            np.where(policy_at_zero == policy, position_zero_outcome, 0.0).sum(axis=1)
+            for policy in range(3)
+        ]
+    )
+    rates = successes / counts
+    position_zero_estimate = rates[:, delegated_index] - rates[:, fallback_index]
+    log_term = math.log(2.0 * len(POLICIES) / PRIMARY_FWER_ALPHA)
+    radii = np.sqrt((1.0 - (counts - 1.0) / triplets) * log_term / (2.0 * counts))
+    position_zero_radius = radii[:, delegated_index] + radii[:, fallback_index]
+    position_zero_low = np.maximum(-1.0, position_zero_estimate - position_zero_radius)
+    position_zero_high = np.minimum(1.0, position_zero_estimate + position_zero_radius)
+    rows: list[dict[str, Any]] = []
+    eligibility_score = (37 * index + 5) % 100
+    for strength in strengths:
+        observed = direct_observed.copy()
+        for policy_index in range(len(POLICIES)):
+            if policy_index == delegated_index:
+                continue
+            position = assignment[:, :, policy_index]
+            eligible = eligibility_score[triplet_index, position] < round(100 * strength)
+            spillover = (delegated_position < position) & eligible
+            observed[:, :, policy_index] = np.where(spillover, 1.0, observed[:, :, policy_index])
+        full_estimate = observed[:, :, delegated_index].mean(axis=1) - observed[
+            :, :, fallback_index
+        ].mean(axis=1)
+        rows.append(
+            {
+                "spillover_strength": strength,
+                "experiments": experiments,
+                "direct_hidden_selection_target": 0.0,
+                "full_three_block_mean_estimate": float(np.mean(full_estimate)),
+                "full_three_block_rmse": float(np.sqrt(np.mean(full_estimate**2))),
+                "position_zero_mean_estimate": float(np.mean(position_zero_estimate)),
+                "position_zero_rmse": float(np.sqrt(np.mean(position_zero_estimate**2))),
+                "position_zero_design_coverage": float(
+                    np.mean((position_zero_low <= 0.0) & (0.0 <= position_zero_high))
+                ),
+                "position_zero_mean_interval_width": float(
+                    np.mean(position_zero_high - position_zero_low)
+                ),
+                "position_zero_mean_min_arm_count": float(np.mean(counts.min(axis=1))),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def summarize(
+    size: pd.DataFrame,
+    coverage: pd.DataFrame,
+    interference: pd.DataFrame,
+) -> dict[str, Any]:
     corrected = size.loc[size["method"].eq("pairwise_conditional")]
     superseded = size.loc[size["method"].eq("superseded_all_policy")]
     family = coverage.loc[coverage["estimand"].eq("two_primary_family")]
@@ -293,6 +370,25 @@ def summarize(size: pd.DataFrame, coverage: pd.DataFrame) -> dict[str, Any]:
                 TARGET_TRIPLETS,
                 alpha=PRIMARY_FWER_ALPHA,
                 family_size=len(PRIMARY_COMPARISONS),
+            ),
+        },
+        "position_zero_interference": {
+            "maximum_full_three_block_absolute_bias": float(
+                interference["full_three_block_mean_estimate"].abs().max()
+            ),
+            "maximum_position_zero_absolute_bias": float(
+                interference["position_zero_mean_estimate"].abs().max()
+            ),
+            "worst_position_zero_design_coverage": float(
+                interference["position_zero_design_coverage"].min()
+            ),
+            "mean_position_zero_interval_width": float(
+                interference["position_zero_mean_interval_width"].mean()
+            ),
+            "interpretation": (
+                "The planted spillover changes later H95 blocks after delegated policy appears. "
+                "The position-zero estimator has no earlier H95 block and remains centered on "
+                "the direct-effect target, but it is a lower-precision sensitivity analysis."
             ),
         },
         "claim_boundary": (
@@ -411,6 +507,70 @@ def plot_validation(size: pd.DataFrame, coverage: pd.DataFrame, out_dir: Path) -
     plt.close(fig)
 
 
+def plot_position_zero_validation(interference: pd.DataFrame, out_dir: Path) -> None:
+    x = interference["spillover_strength"]
+    fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.2))
+    axes[0].plot(
+        x,
+        interference["full_three_block_mean_estimate"],
+        marker="o",
+        label="Primary three-block",
+    )
+    axes[0].plot(
+        x,
+        interference["position_zero_mean_estimate"],
+        marker="^",
+        label="Position zero",
+    )
+    axes[0].axhline(0.0, color="black", linestyle="--", linewidth=0.8)
+    axes[0].set_title("A. Bias under planted carryover")
+    axes[0].set_xlabel("Spillover strength")
+    axes[0].set_ylabel("Mean hidden-selection estimate")
+    axes[0].legend(frameon=False, fontsize=8)
+
+    axes[1].plot(
+        x,
+        interference["full_three_block_rmse"],
+        marker="o",
+        label="Primary three-block",
+    )
+    axes[1].plot(
+        x,
+        interference["position_zero_rmse"],
+        marker="^",
+        label="Position zero",
+    )
+    axes[1].set_title("B. Bias--variance tradeoff")
+    axes[1].set_xlabel("Spillover strength")
+    axes[1].set_ylabel("RMSE around direct target")
+
+    axes[2].plot(
+        x,
+        interference["position_zero_design_coverage"],
+        marker="o",
+        label="Family coverage",
+    )
+    axes[2].axhline(0.95, color="black", linestyle="--", linewidth=0.8)
+    width_axis = axes[2].twinx()
+    width_axis.plot(
+        x,
+        interference["position_zero_mean_interval_width"],
+        marker="^",
+        color="#c9583e",
+        label="Mean width",
+    )
+    axes[2].set_title("C. Design coverage and width")
+    axes[2].set_xlabel("Spillover strength")
+    axes[2].set_ylabel("Coverage")
+    width_axis.set_ylabel("Interval width", color="#c9583e")
+    axes[2].set_ylim(0.90, 1.005)
+
+    fig.tight_layout()
+    fig.savefig(out_dir / "h95_position_zero_interference.png", dpi=200)
+    fig.savefig(out_dir / "h95_position_zero_interference.pdf")
+    plt.close(fig)
+
+
 def run(
     out_dir: Path = DEFAULT_OUT,
     *,
@@ -419,11 +579,14 @@ def run(
     out_dir.mkdir(parents=True, exist_ok=True)
     size = simulate_pairwise_nuisance_size(experiments=experiments)
     coverage = simulate_interval_coverage(experiments_per_scenario=experiments)
-    summary = summarize(size, coverage)
+    interference = simulate_position_zero_interference(experiments=experiments)
+    summary = summarize(size, coverage, interference)
     save(size, out_dir, "h95_pairwise_nuisance_size")
     save(coverage, out_dir, "h95_interval_coverage")
+    save(interference, out_dir, "h95_position_zero_interference")
     save_json(summary, out_dir, "h95_theorem_validation_summary")
     plot_validation(size, coverage, out_dir)
+    plot_position_zero_validation(interference, out_dir)
     return summary
 
 

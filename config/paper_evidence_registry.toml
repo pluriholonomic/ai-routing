@@ -225,9 +225,25 @@ source_tables = ["router_route_attempts", "router_replication_eligibility"]
 analyzers = ["src/orcap/analysis/h95_delegation_replication.py", "src/orcap/analysis/h95_theorem_validation.py"]
 collectors = ["src/orcap/capture_decomposition_replication.py"]
 tests = ["tests/test_capture_decomposition_replication.py", "tests/test_h95_delegation_replication.py", "tests/test_h95_theorem_validation.py"]
-protocols = ["experiments/h95-delegation-replication-v1/preregistration.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17-pairwise-intervals.md"]
-validation_methods = ["randomization algebra", "nuisance-conditioned two-swap convolution", "four-assignment brute-force audit", "mixed-null strong-FWER stress test", "fixed-schedule interval coverage", "structural-versus-measurement missingness adversaries", "whole-triplet leave-one-model-out", "position-by-policy interference diagnostic"]
+protocols = ["experiments/h95-delegation-replication-v1/preregistration.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17-pairwise-intervals.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17-position-zero.md"]
+validation_methods = ["randomization algebra", "nuisance-conditioned two-swap convolution", "four-assignment brute-force audit", "mixed-null strong-FWER stress test", "fixed-schedule interval coverage", "planted cross-model carryover", "position-zero bias and coverage audit", "structural-versus-measurement missingness adversaries", "whole-triplet leave-one-model-out", "position-by-policy interference diagnostic"]
 claim_boundary = "The theorem identifies policy effects over the first 120 written eligible triplets under consistency and no treatment-dependent cross-model interference; it does not identify market-wide routing, provider intent, or welfare."
+
+[[claim]]
+claim_id = "T-H95-POSITION-ZERO"
+kind = "theorem"
+tex_label = "cor:h95-position-zero"
+title = "Randomized position-zero carryover sensitivity"
+disposition = "appendix"
+identification = "conditional finite-population policy effects over randomized first model blocks"
+status = "corollary, proof, exact pairwise law, simultaneous design interval, and planted-interference validation present; H95 outcomes gated"
+source_tables = ["router_route_attempts", "router_replication_eligibility"]
+analyzers = ["src/orcap/analysis/h95_delegation_replication.py", "src/orcap/analysis/h95_theorem_validation.py"]
+collectors = ["src/orcap/capture_decomposition_replication.py"]
+tests = ["tests/test_capture_decomposition_replication.py", "tests/test_h95_delegation_replication.py", "tests/test_h95_theorem_validation.py"]
+protocols = ["experiments/h95-delegation-replication-v1/amendment-2026-07-17-position-zero.md"]
+validation_methods = ["conditional complete-randomization algebra", "pairwise hypergeometric Fisher law", "Hoeffding-Serfling family interval", "planted treatment-dependent carryover", "bias-variance audit"]
+claim_boundary = "The secondary estimator removes carryover from earlier H95 blocks by using position zero only; it is lower precision, does not replace the primary family, and does not exclude interference from unrelated prior traffic."
 
 [[claim]]
 claim_id = "E-H95"
@@ -241,8 +257,8 @@ source_tables = ["router_route_attempts", "router_replication_eligibility"]
 analyzers = ["src/orcap/analysis/h95_delegation_replication.py", "src/orcap/analysis/h95_theorem_validation.py", "src/orcap/confirmatory_release.py"]
 collectors = ["src/orcap/capture_decomposition_replication.py"]
 tests = ["tests/test_capture_decomposition_replication.py", "tests/test_h95_delegation_replication.py", "tests/test_h95_theorem_validation.py", "tests/test_remote_pipeline_health.py", "tests/test_confirmatory_release.py"]
-protocols = ["experiments/h95-delegation-replication-v1/preregistration.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17-pairwise-intervals.md", "docs/confirmatory-release-protocol-2026-07-17.md"]
-validation_methods = ["fixed 120-triplet horizon", "exact within-triplet arm balance", "seed replay", "nuisance-conditioned pairwise exact inference", "simultaneous bounded-outcome design intervals", "structural-versus-measurement missingness audit", "row-level treatment-control coverage", "time and whole-triplet transport diagnostics", "position-by-policy interference diagnostic"]
+protocols = ["experiments/h95-delegation-replication-v1/preregistration.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17-pairwise-intervals.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17-position-zero.md", "docs/confirmatory-release-protocol-2026-07-17.md"]
+validation_methods = ["fixed 120-triplet horizon", "exact within-triplet arm balance", "seed replay", "nuisance-conditioned pairwise exact inference", "simultaneous bounded-outcome design intervals", "position-zero carryover-free sensitivity", "structural-versus-measurement missingness audit", "row-level treatment-control coverage", "time and whole-triplet transport diagnostics", "position-by-policy interference diagnostic"]
 claim_boundary = "H95 is separate from H81 and identifies owned-account policy effects over sampled eligible Hugging Face-linked models; it does not identify market-wide flow or welfare."
 
 [[gate_event]]
