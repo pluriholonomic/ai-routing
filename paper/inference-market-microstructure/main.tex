@@ -1638,7 +1638,8 @@ successful data compaction.  It pins one immutable input revision and queries
 assignment fields only while H81 or H95 is below its frozen gate.  Once a gate
 opens, the runner first commits a timestamped access marker containing the code,
 input, and environment hashes; only then can the dedicated analyzer read outcome
-fields.  It publishes a content-hashed bundle exactly once and refuses automatic
+fields.  A non-publishing invocation remains preflight-only even after a gate
+opens.  The remote path publishes a content-hashed bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
 run \texttt{29556911017} reproduced H81 counts 30/23/25 and H95 support 1/120 at
 revision \texttt{08a2a183d6df}, with both outcome-query flags false.  The paper is

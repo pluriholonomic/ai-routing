@@ -378,3 +378,23 @@ target_per_arm = 120
 event = "clean remote release runner pins one dataset revision, commits a first-access marker before any outcome query, hashes every output, and refuses duplicate or orphan-marker access"
 outcome_visibility = "live run 29556911017 queried plan and assignment metadata only; H95 remained gated at one of 120 triplets"
 classification = "pre-release hardening"
+
+[[gate_event]]
+study_id = "H81"
+effective_utc = "2026-07-17T05:20:48Z"
+commit = "93ad8ff2889fbe9d8a7542b9067d79eca8924be7"
+gate_version = "v1-published-access-only"
+target_per_arm = 40
+event = "an open gate in non-publishing mode reports readiness but cannot invoke the outcome analyzer; only the marker-first remote publication path may read outcomes"
+outcome_visibility = "H81 remained below gate; regression test uses a synthetic open gate without outcome data"
+classification = "pre-release hardening"
+
+[[gate_event]]
+study_id = "H95"
+effective_utc = "2026-07-17T05:20:48Z"
+commit = "93ad8ff2889fbe9d8a7542b9067d79eca8924be7"
+gate_version = "v1-published-access-only"
+target_per_arm = 120
+event = "an open gate in non-publishing mode reports readiness but cannot invoke the outcome analyzer; only the marker-first remote publication path may read outcomes"
+outcome_visibility = "H95 remained below gate; regression test uses a synthetic open gate without outcome data"
+classification = "pre-release hardening"

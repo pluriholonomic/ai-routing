@@ -32,8 +32,10 @@ still has no focal treatment-effect estimate.
 5. **Red-team tests found and fixed two edge cases.** Empty H81 and H95 support
    tables previously raised while constructing gate audits. Both now return a
    closed gate, preventing a new or temporarily empty dataset from producing an
-   ambiguous scheduled-release failure. The focused release and blinding suite
-   passes 22 tests.
+   ambiguous scheduled-release failure. A subsequent audit also closed a local
+   dry-run escape hatch: even a synthetic open gate cannot invoke an outcome
+   analyzer without remote marker-first publication. The focused release and
+   blinding suites pass.
 
 ## Remaining reasons for rejection
 
