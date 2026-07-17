@@ -8,6 +8,7 @@ import pytest
 
 from orcap.analysis.pm1_temporal_validation import (
     _exact_sign_flip_p,
+    _ridge_logit_predict,
     assign_training_provider_rates,
     prepare_ex_ante_panel,
     registered_temporal_split,
@@ -119,6 +120,24 @@ def test_exact_sign_flip_is_enumerated_at_date_cluster_level() -> None:
     assert _exact_sign_flip_p(np.array([])) is None
 
 
+def test_fixed_ridge_logit_remains_finite_under_complete_separation() -> None:
+    y_train = np.r_[np.zeros(20), np.ones(20)]
+    separating = y_train.copy()
+    x_train = np.column_stack([np.ones(len(y_train)), separating])
+    x_test = np.array([[1.0, 0.0], [1.0, 1.0]])
+
+    probability, coefficients = _ridge_logit_predict(
+        x_train,
+        y_train,
+        x_test,
+        ["const", "separating_feature"],
+    )
+
+    assert np.isfinite(probability).all()
+    assert ((probability > 0) & (probability < 1)).all()
+    assert [row["term"] for row in coefficients] == ["const", "separating_feature"]
+
+
 def test_run_is_result_blind_before_gate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -160,6 +179,11 @@ def test_ready_run_uses_one_fixed_holdout(
         "L4_vs_L3",
         "L5_vs_L4",
     }
+    assert summary["estimator"]["ridge_c"] == 1.0
+    assert summary["estimator"]["holdout_tuning"] is False
+    assert summary["support"]["primary_train_parameters_including_intercept"] == 17
+    assert summary["support"]["minimum_identification_gate"] is False
+    assert summary["verdict"] == "insufficient_identifying_support"
     predictions = pd.read_parquet(tmp_path / "pm1_temporal_validation_predictions.parquet")
     assert predictions["dt"].nunique() == 15
     assert predictions["dt"].min() == "2026-01-16"

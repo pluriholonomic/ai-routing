@@ -36,6 +36,11 @@ TARGET_DAYS = TRAIN_DAYS + TEST_DAYS
 BOOTSTRAP_REPS = 10_000
 BOOTSTRAP_SEED = 81_503
 EPSILON = 1e-8
+RIDGE_C = 1.0
+MIN_TRAIN_OUTCOMES_PER_PRIMARY_PARAMETER = 10
+MIN_TEST_EVENTS = 50
+MIN_EVENT_DATES = 10
+MIN_TEST_MODELS = 10
 
 CONTRASTS = (
     ("L2_vs_L1", 1, 2, "duration_calendar"),
@@ -300,6 +305,69 @@ def temporal_design(panel: pd.DataFrame, rung: int) -> tuple[np.ndarray, list[st
     return np.column_stack(cols), names
 
 
+def _ridge_logit_predict(
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    names: list[str],
+) -> tuple[np.ndarray, list[dict[str, float | str]]]:
+    """Fit one fixed, training-standardized ridge logit without holdout tuning."""
+    if names[0] != "const" or x_train.shape[1] != len(names):
+        raise ValueError("PM1 temporal design must begin with one intercept column")
+    y = np.asarray(y_train, dtype=float)
+    if len(np.unique(y)) != 2:
+        raise ValueError("ridge logit requires both training outcomes")
+
+    features_train = np.asarray(x_train[:, 1:], dtype=float)
+    features_test = np.asarray(x_test[:, 1:], dtype=float)
+    means = features_train.mean(axis=0) if features_train.shape[1] else np.array([])
+    scales = features_train.std(axis=0) if features_train.shape[1] else np.array([])
+    scales = np.where(scales > 0, scales, 1.0)
+    standardized_train = (features_train - means) / scales
+    standardized_test = (features_test - means) / scales
+
+    if standardized_train.shape[1]:
+        from sklearn.linear_model import LogisticRegression
+
+        fit = LogisticRegression(
+            C=RIDGE_C,
+            l1_ratio=0.0,
+            solver="lbfgs",
+            fit_intercept=True,
+            max_iter=2_000,
+            random_state=BOOTSTRAP_SEED,
+        ).fit(standardized_train, y)
+        probability = fit.predict_proba(standardized_test)[:, 1]
+        coefficient_values = [float(fit.intercept_[0]), *fit.coef_[0].astype(float).tolist()]
+    else:
+        mean = float(np.clip(y.mean(), EPSILON, 1 - EPSILON))
+        probability = np.full(len(x_test), mean, dtype=float)
+        coefficient_values = [float(np.log(mean / (1 - mean)))]
+
+    coefficients: list[dict[str, float | str]] = [
+        {
+            "term": "const",
+            "coefficient": coefficient_values[0],
+            "scale": "intercept",
+            "training_mean": 0.0,
+            "training_sd": 1.0,
+        }
+    ]
+    coefficients.extend(
+        {
+            "term": name,
+            "coefficient": float(coefficient),
+            "scale": "training_z_score",
+            "training_mean": float(mean),
+            "training_sd": float(scale),
+        }
+        for name, coefficient, mean, scale in zip(
+            names[1:], coefficient_values[1:], means, scales, strict=True
+        )
+    )
+    return np.asarray(probability, dtype=float), coefficients
+
+
 def _log_loss(y: np.ndarray, probability: np.ndarray) -> np.ndarray:
     probability = np.clip(np.asarray(probability, dtype=float), EPSILON, 1 - EPSILON)
     y = np.asarray(y, dtype=float)
@@ -362,39 +430,68 @@ def evaluate_temporal_panel(
     train, test = assign_training_provider_rates(train, test)
     y_train = train["event"].astype(bool).astype(float).to_numpy()
     y_test = test["event"].astype(bool).astype(float).to_numpy()
+    _, primary_names = temporal_design(train, 3)
+    primary_parameter_count = len(primary_names)
+    train_events = int(y_train.sum())
+    train_nonevents = int(len(y_train) - train_events)
+    test_events = int(y_test.sum())
+    test_nonevents = int(len(y_test) - test_events)
 
     support = {
         "train_rows": int(len(train)),
         "test_rows": int(len(test)),
-        "train_events": int(y_train.sum()),
-        "test_events": int(y_test.sum()),
+        "train_events": train_events,
+        "train_nonevents": train_nonevents,
+        "test_events": test_events,
+        "test_nonevents": test_nonevents,
         "train_event_dates": int(train.loc[train["event"].astype(bool), "dt"].nunique()),
         "test_event_dates": int(test.loc[test["event"].astype(bool), "dt"].nunique()),
         "test_models": int(test["model_id"].nunique()),
         "test_providers": int(test["provider_name"].nunique()),
+        "primary_train_parameters_including_intercept": primary_parameter_count,
+        "train_events_per_primary_parameter": (
+            float(train_events / primary_parameter_count) if primary_parameter_count else None
+        ),
+        "train_nonevents_per_primary_parameter": (
+            float(train_nonevents / primary_parameter_count) if primary_parameter_count else None
+        ),
     }
     support["minimum_identification_gate"] = bool(
-        support["train_events"] >= 50
-        and support["test_events"] >= 50
-        and support["test_event_dates"] >= 10
+        train_events
+        >= MIN_TRAIN_OUTCOMES_PER_PRIMARY_PARAMETER * primary_parameter_count
+        and train_nonevents
+        >= MIN_TRAIN_OUTCOMES_PER_PRIMARY_PARAMETER * primary_parameter_count
+        and test_events >= MIN_TEST_EVENTS
+        and test_nonevents >= MIN_TEST_EVENTS
+        and support["train_event_dates"] >= MIN_EVENT_DATES
+        and support["test_event_dates"] >= MIN_EVENT_DATES
+        and support["test_models"] >= MIN_TEST_MODELS
         and len(np.unique(y_train)) == 2
         and len(np.unique(y_test)) == 2
     )
+    support["minimum_identification_gate_rule"] = {
+        "train_events_per_primary_parameter": MIN_TRAIN_OUTCOMES_PER_PRIMARY_PARAMETER,
+        "train_nonevents_per_primary_parameter": MIN_TRAIN_OUTCOMES_PER_PRIMARY_PARAMETER,
+        "test_events": MIN_TEST_EVENTS,
+        "test_nonevents": MIN_TEST_EVENTS,
+        "train_event_dates": MIN_EVENT_DATES,
+        "test_event_dates": MIN_EVENT_DATES,
+        "test_models": MIN_TEST_MODELS,
+    }
 
     predictions = test[["dt", "model_id", "provider_name", "event"]].copy()
     coefficients: list[dict[str, Any]] = []
     rung_metrics: dict[str, Any] = {}
     fit_errors: dict[str, str] = {}
-    import statsmodels.api as sm
-
     for rung in range(1, 6):
         x_train, names = temporal_design(train, rung)
         x_test, test_names = temporal_design(test, rung)
         if names != test_names:
             raise AssertionError("train/test PM1 design columns differ")
         try:
-            fit = sm.GLM(y_train, x_train, family=sm.families.Binomial()).fit(maxiter=200)
-            probability = np.asarray(fit.predict(x_test), dtype=float)
+            probability, rung_coefficients = _ridge_logit_predict(
+                x_train, y_train, x_test, names
+            )
             if not np.isfinite(probability).all():
                 raise ValueError("non-finite holdout predictions")
         except Exception as exc:
@@ -419,10 +516,9 @@ def evaluate_temporal_panel(
         coefficients.extend(
             {
                 "rung": rung,
-                "term": name,
-                "coefficient": float(value),
+                **row,
             }
-            for name, value in zip(names, fit.params, strict=True)
+            for row in rung_coefficients
         )
 
     contrast_rows: list[dict[str, Any]] = []
@@ -502,6 +598,12 @@ def evaluate_temporal_panel(
         "evidence_status": "temporal_holdout_released",
         "verdict": verdict,
         "primary_contrast": PRIMARY_CONTRAST,
+        "estimator": {
+            "model": "training-standardized L2-penalized logistic regression",
+            "ridge_c": RIDGE_C,
+            "holdout_tuning": False,
+            "coefficient_scale": "training z score except intercept",
+        },
         "split": split,
         "support": support,
         "rung_metrics": rung_metrics,
@@ -558,9 +660,18 @@ def run(
                     "holdout": "next 15 completed UTC quote dates",
                     "features": "prior-close only",
                     "provider_activity": "training-prefix only",
+                    "estimator": (
+                        "training-standardized L2 logistic, C=1 fixed before holdout, "
+                        "no holdout tuning"
+                    ),
                     "primary_contrast": PRIMARY_CONTRAST,
                     "primary_loss": "date-weighted paired Bernoulli log loss",
                     "multiplicity": "Holm across four adjacent ladder contrasts",
+                    "minimum_identification_gate": (
+                        "10 train events and 10 train nonevents per L3 parameter; "
+                        "50 test events and nonevents; 10 train/test event dates; "
+                        "10 test models"
+                    ),
                 },
                 "claim_boundary": (
                     "No PM1 temporal coefficient, prediction, loss, AUC, or repricing-event "
