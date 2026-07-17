@@ -1,5 +1,29 @@
 # LaTeX manuscripts
 
+## Current focal manuscript
+
+The paper currently under empirical/reviewer revision is
+[`inference-market-microstructure/main.tex`](inference-market-microstructure/main.tex).
+Its checked-in, rendered artifact is
+[`../output/pdf/inference-market-microstructure.pdf`](../output/pdf/inference-market-microstructure.pdf).
+
+The July 17, 2026 revision:
+
+- replaces the corrupted pricing-event ledger with the exact chronological
+  reconstruction (3,219 of 3,219 completed-day events);
+- updates the outcome-blind H81 and H95 collection counts and immutable data
+  revision;
+- freezes a leakage-resistant 15-day/15-day PM1 temporal validation before its
+  holdout exists; and
+- compresses the main empirical argument to 15 pages through the references,
+  moving price-atom diagnostics and proofs to Appendix A without deleting them.
+
+The latest adversarial assessment is
+[`../docs/manuscript-review-round-19-2026-07-17.md`](../docs/manuscript-review-round-19-2026-07-17.md).
+It treats the structural paper objection as resolved; the remaining promotion
+gates are unreleased H81/H95 outcomes and the unopened 30-completed-day PM1
+holdout.
+
 This directory contains three non-concurrent manuscripts built from the reviewed
 research drafts:
 
@@ -28,7 +52,7 @@ The verified rendered PDFs are written to `output/pdf/` at the repository root:
 - `output/pdf/routescope.pdf`
 - `output/pdf/inference-market-microstructure.pdf`
 
-Both manuscripts share `../references.bib`. Run `latexmk -C` inside either
+All three manuscripts share `../references.bib`. Run `latexmk -C` inside any
 source directory to remove only LaTeX build intermediates; do not remove the
 versioned PDF deliverables.
 
