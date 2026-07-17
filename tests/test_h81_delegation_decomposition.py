@@ -104,6 +104,9 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert abs(indexed.loc["total_delegation", "success_difference_hajek"] - 0.5) < 1e-12
     assert abs(indexed.loc["total_delegation", "success_difference_ht"] - 0.5) < 1e-12
     assert indexed.loc[["fallback_option", "hidden_selection"], "holm_p_greater"].notna().all()
+    assert indexed["randomization_p_greater_mc_check"].notna().all()
+    assert indexed["randomization_mc_max_abs_error"].notna().all()
+    assert summary["randomization_mc_audit_enforced"] is False
     assert pd.isna(indexed.loc["total_delegation", "holm_p_greater"])
     assert panel.set_index("policy")["first_position_attempts"].to_dict() == {
         "delegated_default": 40,
@@ -179,6 +182,14 @@ def test_exact_binary_randomization_matches_brute_force_label_permutations():
 
     assert abs(exact_greater - brute_greater) < 1e-15
     assert abs(exact_two_sided - brute_two_sided) < 1e-15
+
+
+def test_production_monte_carlo_discrepancy_gate_passes_fixed_fixture():
+    _, _, contrasts, summary = analyze(_balanced_frame(), simulations=100_000)
+
+    assert summary["randomization_mc_audit_enforced"] is True
+    assert bool(contrasts["randomization_mc_audit_pass"].astype(bool).all())
+    assert contrasts["randomization_mc_max_abs_error"].max() <= 0.01
 
 
 def test_unknown_outcome_is_bounded_instead_of_silently_coded_as_failure():

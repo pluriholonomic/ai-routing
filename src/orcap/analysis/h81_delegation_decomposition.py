@@ -30,6 +30,7 @@ COMPARISONS = (
 )
 MIN_FIRST_POSITION_PER_POLICY = 40
 RANDOMIZATION_DRAWS = 100_000
+RANDOMIZATION_MC_AUDIT_TOLERANCE = 0.01
 PRIMARY_FWER_ALPHA = 0.05
 BINARY_OUTCOME_VALUES = {
     "succeeded": 1.0,
@@ -657,6 +658,7 @@ def _exact_binary_randomization_pvalues(
     denominator = math.comb(n_total, successes)
     greater_probabilities: list[float] = []
     two_sided_probabilities: list[float] = []
+    support_probabilities: list[float] = []
     tolerance = 1e-15
     positive_min = max(0, successes - n_negative - n_other)
     positive_max = min(n_positive, successes)
@@ -671,11 +673,15 @@ def _exact_binary_randomization_pvalues(
                 * math.comb(n_other, other_successes)
             )
             probability = ways / denominator
+            support_probabilities.append(probability)
             statistic = positive_successes / n_positive - negative_successes / n_negative
             if statistic >= observed_statistic - tolerance:
                 greater_probabilities.append(probability)
             if abs(statistic) >= abs(observed_statistic) - tolerance:
                 two_sided_probabilities.append(probability)
+    support_mass = math.fsum(support_probabilities)
+    if not math.isclose(support_mass, 1.0, rel_tol=0.0, abs_tol=1e-12):
+        raise RuntimeError(f"exact randomization support has mass {support_mass}")
     return (
         float(math.fsum(greater_probabilities)),
         float(math.fsum(two_sided_probabilities)),
@@ -986,6 +992,7 @@ def _blinded_outputs(
                 "randomization_p_greater_mc_check": np.nan,
                 "randomization_p_two_sided_mc_check": np.nan,
                 "randomization_mc_max_abs_error": np.nan,
+                "randomization_mc_audit_pass": np.nan,
                 "spend_complete_both_arms": np.nan,
                 "observed_spend_difference_usd": np.nan,
                 "spend_difference_lower_bound_usd": np.nan,
@@ -1214,8 +1221,10 @@ def analyze(
             mc_max_abs_error = float(
                 max(abs(p_greater_mc - p_greater), abs(p_two_sided_mc - p_two_sided))
             )
+            mc_audit_pass = bool(mc_max_abs_error <= RANDOMIZATION_MC_AUDIT_TOLERANCE)
         else:
             p_greater_mc = p_two_sided_mc = mc_max_abs_error = np.nan
+            mc_audit_pass = np.nan
         spend_complete = bool(
             len(pos)
             and len(neg)
@@ -1346,6 +1355,7 @@ def analyze(
                 "randomization_p_greater_mc_check": p_greater_mc,
                 "randomization_p_two_sided_mc_check": p_two_sided_mc,
                 "randomization_mc_max_abs_error": mc_max_abs_error,
+                "randomization_mc_audit_pass": mc_audit_pass,
                 "spend_complete_both_arms": spend_complete,
                 "observed_spend_difference_usd": spend_difference,
                 "spend_difference_lower_bound_usd": spend_bound_low,
@@ -1362,6 +1372,15 @@ def analyze(
             }
         )
     contrasts = pd.DataFrame(contrast_rows)
+    if simulations >= RANDOMIZATION_DRAWS and complete_binary_outcomes:
+        audit_pass = contrasts["randomization_mc_audit_pass"].fillna(False).astype(bool)
+        if not audit_pass.all():
+            worst = float(contrasts["randomization_mc_max_abs_error"].max())
+            raise RuntimeError(
+                "exact-versus-Monte-Carlo randomization audit failed: "
+                f"max absolute error {worst:.6f} exceeds "
+                f"{RANDOMIZATION_MC_AUDIT_TOLERANCE:.6f}"
+            )
     contrasts["holm_p_greater"] = np.nan
     primary_mask = contrasts["primary"].astype(bool)
     contrasts.loc[primary_mask, "holm_p_greater"] = holm_adjust(
@@ -1387,6 +1406,10 @@ def analyze(
     summary["randomization_inference"] = (
         "exact multivariate-hypergeometric Fisher sharp-null tails conditional on "
         "preterminal arm counts; configured Monte Carlo draws are an audit check only"
+    )
+    summary["randomization_mc_audit_tolerance"] = RANDOMIZATION_MC_AUDIT_TOLERANCE
+    summary["randomization_mc_audit_enforced"] = bool(
+        simulations >= RANDOMIZATION_DRAWS and complete_binary_outcomes
     )
     summary["simultaneous_uncertainty"] = (
         "Bonferroni-Newcombe 95% familywise intervals over the two registered primary "
