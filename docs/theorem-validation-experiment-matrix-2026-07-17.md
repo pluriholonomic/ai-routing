@@ -153,11 +153,24 @@ never filters this reference experiment.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
    - Current result: implemented before outcome access in commit `4d66fda`.
-     All adversarial tests and the current full 573-test suite pass. The two primary
+     All adversarial tests and the current full 574-test suite pass. The two primary
      intervals additionally receive Bonferroni-Newcombe familywise adjustment;
      their exact conditional Fisher p-values retain the registered Holm family.
 
-8. **External-support and leave-one-model-out audit**
+8. **Post-marker presentation-failure preservation**
+   - Inject an algebraically incoherent contrast after the raw policy panel,
+     model panel, contrast table, intended-assignment ledger, support tables,
+     and summary would have been written.
+   - Pass rule: the strict presentation validator must still reject; the
+     one-time analyzer must write a machine-readable failure artifact, prohibit
+     paper promotion and automatic outcome re-query, and preserve the raw
+     marker-bound bundle for amendment-based recovery.
+   - Current result: the strict API raises on the planted identity violation,
+     while the one-shot preservation wrapper records
+     `failed_closed_raw_release_preserved`. The focused 26-test release suite
+     and full 574-test repository suite pass before outcome access.
+
+9. **External-support and leave-one-model-out audit**
    - Report model dominance, effective model count, support turnover, arm balance
      by model, and leave-one-model-out contrasts after release.
    - Pass rule for a broad claim: at least eight models, effective model count at

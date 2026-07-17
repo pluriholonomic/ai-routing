@@ -49,6 +49,26 @@ estimates agree, the total contrast equals the sum of the two components to
 preterminal prefix, exactly one gate-hitting block is excluded, and the
 treatment/outcome sensitivity fields are complete.
 
+## Post-marker preservation rule
+
+A further outcome-blind transaction audit found that the strict renderer runs
+after the irreversible remote first-outcome-access marker.  Under the original
+implementation, a missing binary outcome, algebraic validation failure, or
+plotting error could raise after the raw tables had been written but before the
+immutable release bundle was published.  That would leave an orphan marker and
+make automatic re-access correctly impossible, while needlessly stranding the
+first result in a temporary workflow artifact.
+
+The strict validator and its paper-promotion rule are unchanged.  The one-time
+analyzer now wraps only the presentation step: a validation or rendering error
+writes `h81_release_report_error.json`, marks paper promotion false, preserves
+the already-written policy panel, model panel, contrasts, intended-assignment
+ledger, support diagnostics, and summary, and allows those raw artifacts to be
+published in the immutable marker-bound bundle.  Recovery must use that bundle
+and a dated amendment; the source outcomes may not be queried again.  Direct
+calls to the strict renderer still raise, and no failed presentation can produce
+the table, figure, or neutral paragraph used in the paper.
+
 ## Interpretation rule
 
 Every estimate, interval, and registered p-value is reported regardless of

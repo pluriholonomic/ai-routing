@@ -1923,13 +1923,23 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     if summary.get("outcomes_released"):
         # Imported only at the open gate so blinded accrual runs do not create a
         # result-looking artifact. The report contains no estimator choices.
-        from .h81_release_report import build_release_report
+        from .h81_release_report import build_release_report_safely
 
-        build_release_report(
+        presentation = build_release_report_safely(
             panel,
             model_panel,
             contrasts,
             summary,
             out_dir=out_dir,
         )
+        summary["release_presentation_status"] = presentation["status"]
+        summary["release_presentation_paper_promotion_permitted"] = presentation[
+            "paper_promotion_permitted"
+        ]
+        if error_artifact := presentation.get("error_artifact"):
+            summary["release_presentation_error_artifact"] = error_artifact
+        # The raw tables and initial summary were persisted before rendering.
+        # Rewrite only the summary metadata so the immutable bundle records
+        # whether the paper-facing layer passed or failed closed.
+        save_json(summary, out_dir, "h81_summary")
     return summary

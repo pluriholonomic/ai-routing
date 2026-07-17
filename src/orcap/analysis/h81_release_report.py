@@ -36,6 +36,7 @@ ESTIMAND_LABELS = {
     "total_delegation": "Total delegation (D - N)",
 }
 REPORT_SCHEMA_VERSION = "h81-release-report-v1"
+REPORT_FAILURE_SCHEMA_VERSION = "h81-release-report-failure-v1"
 
 
 def _finite(value: Any) -> bool:
@@ -451,3 +452,57 @@ def build_release_report(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return report
+
+
+def build_release_report_safely(
+    policy_panel: pd.DataFrame,
+    model_panel: pd.DataFrame,
+    contrasts: pd.DataFrame,
+    summary: dict[str, Any],
+    *,
+    out_dir: Path,
+) -> dict[str, Any]:
+    """Render the paper-facing package without endangering the one-shot bundle.
+
+    The remote transaction commits its irreversible first-outcome-access marker
+    before the analyzer runs.  A presentation invariant or plotting failure must
+    therefore remain fail-closed for the manuscript while still allowing the
+    already-written raw tables and summary to enter the immutable release bundle.
+    The strict ``build_release_report`` API continues to raise for direct callers;
+    only the one-shot analyzer uses this preservation wrapper.
+    """
+    try:
+        report = build_release_report(
+            policy_panel,
+            model_panel,
+            contrasts,
+            summary,
+            out_dir=out_dir,
+        )
+    except Exception as exc:  # noqa: BLE001 - preserve every post-marker failure
+        failure = {
+            "schema_version": REPORT_FAILURE_SCHEMA_VERSION,
+            "status": "failed_closed_raw_release_preserved",
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+            "outcomes_released": bool(summary.get("outcomes_released")),
+            "raw_analysis_files_preserved": True,
+            "paper_promotion_permitted": False,
+            "automatic_outcome_requery_permitted": False,
+            "recovery_rule": (
+                "Use the immutable raw release tables and a dated amendment; do not query "
+                "the source outcomes again."
+            ),
+        }
+        out_dir.mkdir(parents=True, exist_ok=True)
+        error_path = out_dir / "h81_release_report_error.json"
+        error_path.write_text(
+            json.dumps(failure, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return failure | {"error_artifact": error_path.name}
+    return report | {
+        "status": "rendered",
+        "paper_promotion_permitted": True,
+        "automatic_outcome_requery_permitted": False,
+    }

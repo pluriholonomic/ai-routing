@@ -4,14 +4,14 @@
   "evidence_freeze_utc": "2026-07-17T10:51:04Z",
   "files": [
     {
-      "bytes": 28004,
+      "bytes": 28092,
       "path": "config/paper_evidence_registry.toml",
-      "sha256": "063e61d2ef3e1f3ac210c38d42f9ac2505029bba6289962e9324e141800596ec"
+      "sha256": "2d5577d55bed80679133ff8011534f2f52bb7111a9c2c6bbbe9ab22bff78c652"
     },
     {
-      "bytes": 20503,
+      "bytes": 21023,
       "path": "docs/confirmatory-release-protocol-2026-07-17.md",
-      "sha256": "e8ec777446e074b319787a3a70b10e3e222d756a0c63e2602be13dc21c1d33ab"
+      "sha256": "15344ba5b2385e1774c25e7897d500274ccc3ccf7a67c3227120f4fc25f6c359"
     },
     {
       "bytes": 3183,
@@ -74,9 +74,9 @@
       "sha256": "9db1706417ca407d89930a9cc1dd1d245773021a3587f203f42543c80105b6b3"
     },
     {
-      "bytes": 3523,
+      "bytes": 4765,
       "path": "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-release-report.md",
-      "sha256": "f85c42a6d2c233f571c35018f8b585f020cc6c300c1619a30dcbb17079fcb667"
+      "sha256": "66255b0a0c462f559e24cdeffe2aed72d38386a453675866282e9f1f0895e661"
     },
     {
       "bytes": 9496,
@@ -159,9 +159,9 @@
       "sha256": "199ea7b6288b525db3dcfdefe4f1a7398b928397ac8adc3bcb11fd4b9b216643"
     },
     {
-      "bytes": 136099,
+      "bytes": 136635,
       "path": "paper/inference-market-microstructure/main.tex",
-      "sha256": "689c40de28ea0951225eb2f7caed13cc69a9df4db13fff4bcd292db77d25551b"
+      "sha256": "157ce5ee0ace4dcf7869c805de5946d7e8a57f1f001af5d58b2b01dba8290454"
     },
     {
       "bytes": 8867,
@@ -179,14 +179,14 @@
       "sha256": "e9b9179a526ae2e5ce747214fef1a286e394d49dc9d3a4b4d941db8efd9aa183"
     },
     {
-      "bytes": 83351,
+      "bytes": 83996,
       "path": "src/orcap/analysis/h81_delegation_decomposition.py",
-      "sha256": "74ae9f588c6adc9064e73b4150527fc5d80caa09d3523b67088a0b630a643cdb"
+      "sha256": "a6f56e44f13041aa663c966d28c5918291715cb654729204c74d6b6067c2c31d"
     },
     {
-      "bytes": 18357,
+      "bytes": 20559,
       "path": "src/orcap/analysis/h81_release_report.py",
-      "sha256": "c6e218df5bf82167d7eb641cc3fd881a11b2ed590fe577f5d12cfe6248981958"
+      "sha256": "2aa612ebc2f504d65d18b91d7aa02cf1b5aba8e84d4fa8263e5dc37b62a50ca4"
     },
     {
       "bytes": 52948,
@@ -289,9 +289,9 @@
       "sha256": "63524e8f2b14489cc0e2a83f243b2d7beacd3f47de19bf867d26f22232b9137c"
     },
     {
-      "bytes": 22753,
+      "bytes": 23811,
       "path": "tests/test_h81_delegation_decomposition.py",
-      "sha256": "38d231449deabb76e3135af14125795118407668e27e28c9e5d9ad273244c9b4"
+      "sha256": "dea7215757c5b95595caa2474b8fe06e446f23a2eb8d1fb7779cbd1d692120e9"
     },
     {
       "bytes": 4144,
@@ -350,7 +350,7 @@
     }
   ],
   "gate_event_count": 20,
-  "generated_at_utc": "2026-07-17T10:55:59.873433+00:00",
+  "generated_at_utc": "2026-07-17T11:03:44.786296+00:00",
   "paper_theorem_count": 9,
   "paper_track": "ACM EC / TEAC",
   "registered_claim_count": 16,

@@ -60,6 +60,14 @@ When a gate is open, the runner executes this ordered state transition:
 7. Hash every released JSON and Parquet output and publish the complete bundle
    plus `release_manifest.json` to the fixed study path.
 
+For H81, the raw analyzer tables and summary are persisted before its
+paper-facing presentation validator runs.  A presentation validation or render
+failure remains fail-closed for paper promotion, but it writes a machine-readable
+error record and does not abort publication of those already-written raw
+artifacts.  This prevents a renderer defect from converting the irreversible
+first-access marker into avoidable data loss.  Recovery uses the marker-bound
+bundle and a dated amendment; it never re-queries outcomes.
+
 The fixed remote paths are:
 
 - `releases/h81-confirmatory-v1/`

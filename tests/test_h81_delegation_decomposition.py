@@ -16,7 +16,11 @@ from orcap.analysis.h81_delegation_decomposition import (
     first_position_sample,
     reconstruct_legacy_plans,
 )
-from orcap.analysis.h81_release_report import build_release_report, validate_release_outputs
+from orcap.analysis.h81_release_report import (
+    build_release_report,
+    build_release_report_safely,
+    validate_release_outputs,
+)
 
 
 def _seed_for_first(policy: str, start: int) -> int:
@@ -550,3 +554,27 @@ def test_release_report_refuses_blinded_or_algebraically_incoherent_outputs():
     broken.loc[broken["estimand"].eq("total_delegation"), "success_difference_ht"] += 0.1
     with pytest.raises(ValueError, match="decomposition identity"):
         validate_release_outputs(panel, broken, summary)
+
+
+def test_safe_release_report_preserves_raw_bundle_when_presentation_fails(tmp_path):
+    panel, model_panel, contrasts, summary = analyze(_balanced_frame(), simulations=500)
+    broken = contrasts.copy()
+    broken.loc[broken["estimand"].eq("total_delegation"), "success_difference_hajek"] += 0.1
+    broken.loc[broken["estimand"].eq("total_delegation"), "success_difference_ht"] += 0.1
+
+    result = build_release_report_safely(
+        panel,
+        model_panel,
+        broken,
+        summary,
+        out_dir=tmp_path,
+    )
+
+    assert result["status"] == "failed_closed_raw_release_preserved"
+    assert result["paper_promotion_permitted"] is False
+    assert result["automatic_outcome_requery_permitted"] is False
+    assert result["outcomes_released"] is True
+    error = json.loads((tmp_path / result["error_artifact"]).read_text())
+    assert error["raw_analysis_files_preserved"] is True
+    assert error["error_type"] == "ValueError"
+    assert "decomposition identity" in error["error_message"]

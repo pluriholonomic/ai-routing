@@ -994,7 +994,10 @@ in outcome-blind audits; their dated genealogy is reported in
 results.  The result table, forest plot, and neutral reporting paragraph are
 also frozen before outcome access.  Their validator requires the ITT/HT equality,
 the component-sum identity, the complete Holm family, the terminal exclusion,
-and the registered missingness fields before rendering.  At the minimum gate
+and the registered missingness fields before rendering.  A presentation failure
+after the irreversible first-access marker still forbids paper promotion, but
+the already-written raw tables are retained in the marker-bound bundle so
+recovery cannot require a second outcome query.  At the minimum gate
 counts, 80\% worst-terminal-policy Holm power on
 the frozen grid requires a 35-point component wedge, so the design is not an
 equivalence test.
@@ -1508,7 +1511,7 @@ formal guarantee comes from \cref{eq:h81-hoeffding-means}, not that simulation.
 Thus H81 can detect large wedges but cannot interpret nonsignificance as
 equivalence.  The
 100,000-draw pairwise tail remains solely a discrepancy audit, and the release
-fails closed above one percentage point.  The full repository suite has 573
+fails closed above one percentage point.  The full repository suite has 574
 passes.
 
 The compliance-selection adversary holds every direct policy outcome equal and
@@ -2286,10 +2289,15 @@ the primary horizon or family.  The full repository test run has 551 passes at t
 H95 freeze, 557 after the H81 interval audit, 561 after the H95 pairwise-
 interval audit, 563 after the H95 position-zero interference audit, 570
 after the H81 intended-assignment ITT audit, 571 after the outcome-free
-remote-plan artifact audit, and 573 after the frozen release-presentation audit.  The
+remote-plan artifact audit, 573 after the frozen release-presentation audit,
+and 574 after the post-marker preservation audit.  The
 remote path publishes a content-hashed
 bundle exactly once and refuses automatic
-re-access if an orphan marker records an interrupted first run.  Live preflight
+re-access if an orphan marker records an interrupted first run.  The H81
+analyzer persists its raw tables before the paper-facing renderer; a renderer
+failure leaves paper promotion closed but publishes the raw marker-bound bundle
+with a machine-readable failure record, so forensic recovery never re-queries
+the source outcomes.  Live preflight
 run \texttt{29563312069}, checking out manuscript/code head \texttt{f2fd115},
 reproduced H81 counts 32/23/27 and H95 support 4/120 at their separate
 outcome-free revision \texttt{4fd167d674f6}, with both
