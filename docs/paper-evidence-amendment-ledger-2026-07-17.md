@@ -8,7 +8,7 @@ or promoted claims. It is not a substitute for the original protocols.
 
 - Dataset: private Hugging Face dataset `t4run/openrouter-market-history`.
 - Outcome-free randomized-design revision:
-  `1311e5e513c62b18594b1391bf62cf802fcc8688`.
+  `8ce9eb75ed6ec76733a56d03b97b21ef55933345`.
 - Corrected public-input revision:
   `b389923ad7713bc230dd522f770aa306bf778806`.
 - Endpoint panel: 2,004,680 distinct provider-model listings from 2,116 capture
@@ -17,12 +17,12 @@ or promoted claims. It is not a substitute for the original protocols.
   availability-only and contain no price or capability conflict.
 - H80 outcome-free support: 156 verified first-position blocks with arm counts
   37, 43, 38, and 38; 100% assignment replay; outcomes masked.
-- H81 outcome-free support: 80 verified first-position blocks with arm counts
-  31, 23, and 26; 100% assignment replay and treatment-metadata compliance;
+- H81 outcome-free support: 82 verified first-position blocks with arm counts
+  32, 23, and 27; 100% assignment replay and treatment-metadata compliance;
   outcomes masked.
 - H81 external support: two repeated models, 74 eligibility rows, ranks five
   and six, effective model count two, and zero adjacent-run support turnover.
-- H81 has remaining arm deficits 9, 17, and 14. Calendar forecasts are omitted
+- H81 has remaining arm deficits 8, 17, and 13. Calendar forecasts are omitted
   because recent scheduling and eligibility failures make the short-run accrual
   rate nonstationary.
 - Cross-router catalog: one simultaneous cross section only. Of 29 HF-linked
@@ -32,8 +32,8 @@ or promoted claims. It is not a substitute for the original protocols.
 - H94 prospective support: zero snapshots after the 04:30:20 UTC activation
   cutoff and therefore zero eligible transitions, common shocks, or simulated
   route switches.
-- H95 outcome-free support: three planned triplets, nine first-position blocks,
-  eight distinct models, effective model count 7.36, and perfect plan compliance
+- H95 outcome-free support: four planned triplets, 12 first-position blocks,
+  eight distinct models, effective model count 7.20, and perfect plan compliance
   and replay. No outcome was queried.
 
 Local `analysis/` outputs that were not rebuilt from this revision are not
@@ -64,6 +64,11 @@ authoritative evidence for the rewrite.
   05:16 UTC. It pinned dataset revision `08a2a183`, reproduced H81 counts
   30/23/25 and H95 support 1/120, wrote 90-day assignment-only artifacts, and
   explicitly reported `outcomes_queried=false` for both studies.
+- Fresh consolidation run `29561825717` completed from commit `b77a39b` with
+  preparation and all eight table shards passing. Its automatically triggered
+  release audit `29562343314` checked out paper/analysis commit `976468a`, pinned
+  revision `8ce9eb75`, reproduced H81 counts 32/23/27 and H95 support 4/120,
+  and explicitly reported `outcomes_queried=false` for both studies.
 
 These workflows run on GitHub-hosted runners and do not depend on the local
 computer remaining online.
@@ -89,6 +94,7 @@ computer remaining online.
 | 2026-07-17 05:20 / `93ad8ff` | H81/H95 | Red-team audit found that non-publishing mode would have invoked an analyzer after a future gate opened | Both real gates still closed; no outcome queried | Non-publishing mode is now permanently preflight-only, including at an open gate. Only the remote marker-first publication transaction can invoke an outcome analyzer. A synthetic-open-gate regression test enforces this boundary. |
 | 2026-07-17 / `4d66fda` | H81 | Pre-release missingness audit found that `unknown` or malformed outcomes were silently coerced to failure and that the two primary intervals were marginal only | H81 remained below 40 per arm; no dedicated outcome query occurred | Binary outcomes are now explicit; incomplete outcomes suppress point/randomization inference and enter `[0,1]` bounds. Intended arms are reconstructed from seeds for worst-case treatment/outcome attrition bounds, and the two primary intervals receive Bonferroni familywise adjustment. Unknown-outcome and noncompliance adversaries plus the full 539-test suite pass. |
 | 2026-07-17 / `1719ade` | PM1 temporal holdout | Pre-release audit found that the 17-parameter primary rung could pass with only 50 training events and that unpenalized logistic fits could separate | Only 10/30 completed dates existed; the event table and holdout remained unqueried | Every rung now uses training-standardized ridge logistic regression with fixed `C=1` and no holdout tuning. Promotion requires 10 training events and nonevents per primary parameter, 50 test events and nonevents, 10 train/test event dates, and 10 test models. Separation and low-support regression tests pass; the full suite has 540 passes. |
+| 2026-07-17 07:12 / run `29562343314` | H81/H95 | Clean post-amendment gate audit after eight-shard consolidation | Both gates closed; `outcomes_queried=false` | Revision `8ce9eb75` contains 82 H81 blocks (32/23/27) and four H95 triplets (12 blocks, eight models). This updates accrual only; no effect estimate exists. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
 
 ## H81 stopping-time correction
@@ -110,7 +116,7 @@ standard error 0.49 percentage points).
 ## Claim consequences for the rewrite
 
 1. H81 is the focal randomized design, but no causal outcome is yet reportable;
-   the current outcome-free counts are 31, 23, and 26.
+   the current outcome-free counts are 32, 23, and 27.
 2. H80 is a separate replication and must retain both its original 40-per-arm
    history and its later 500-per-arm promotion rule.
 3. H82 is descriptive because its frozen pretrends fail.
@@ -119,7 +125,7 @@ standard error 0.49 percentage points).
 5. H93 is a cross-sectional equality fact only; no pass-through or reaction
    result exists yet.
 6. H94 is active only for post-04:30:20 UTC snapshots and has no prospective
-   result yet. H95 has three of 120 planned triplets and no released outcome.
+   result yet. H95 has four of 120 planned triplets and no released outcome.
    PM1 is result-blind at 10/30 completed dates and now has a fixed ridge
    estimator plus an events-per-parameter promotion gate.
 7. No current design identifies literal front-running, provider intent,

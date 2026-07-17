@@ -68,15 +68,15 @@ randomized clearing effects because H81 and H95 remain below their frozen gates.
 
 ## Post-correction live accrual
 
-After the repaired public release, workflow `29559930551` consolidated the
+After the repaired public release, workflow `29561825717` consolidated the
 newest buffered randomized probes into immutable dataset revision
-`1311e5e513c62b18594b1391bf62cf802fcc8688`. Outcome-free release audit
-`29560437241` reports:
+`8ce9eb75ed6ec76733a56d03b97b21ef55933345`. Outcome-free release audit
+`29562343314`, running code commit `976468a`, reports:
 
-- H81: 80 verified first-position blocks, counts 31/23/26, with 9/17/14
+- H81: 82 verified first-position blocks, counts 32/23/27, with 8/17/13
   remaining; outcomes were not queried.
-- H95: 3 compliant triplets, 9 first-position blocks, 8 unique models and
-  effective model count 7.36; 117 triplets remain; outcomes were not queried.
+- H95: 4 compliant triplets, 12 first-position blocks, 8 unique models and
+  effective model count 7.20; 116 triplets remain; outcomes were not queried.
 - Remote-health run `29560495633` passed against the live workflows and data
   sink.
 

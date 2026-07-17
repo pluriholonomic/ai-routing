@@ -67,16 +67,16 @@ gates.
 
 ### 1. The focal causal estimates still do not exist
 
-At pinned revision `1311e5e513c6`, H81 has 80 verified first-position blocks
-with counts 31/23/26. It therefore reports no success difference, interval,
+At pinned revision `8ce9eb75ed6e`, H81 has 82 verified first-position blocks
+with counts 32/23/27. It therefore reports no success difference, interval,
 randomization p-value, or realized missingness pattern. The analysis contract is
 now credible, but a credible unopened contract is not an empirical finding.
 
 ### 2. The broad-support replication is still at launch scale
 
-H95 has three compliant triplets and nine blocks. Its eight unique models and
-effective model count 7.36 show that the sampling frame can diversify support,
-but three triplets contain essentially no effect information. The fixed
+H95 has four compliant triplets and 12 blocks. Its eight unique models and
+effective model count 7.20 show that the sampling frame can diversify support,
+but four triplets contain essentially no effect information. The fixed
 120-triplet horizon and within-triplet randomization must remain unchanged.
 
 ### 3. The temporal pricing claim remains descriptive

@@ -107,7 +107,9 @@ provider intent, collusion, or social welfare.
 - the remote workflow is compaction-triggered, non-cancelling, publishing, and
   artifact-retaining.
 
-The first live non-publishing preflight pinned dataset revision
-`1311e5e513c62b18594b1391bf62cf802fcc8688`, reported H81 counts 31/23/26 and
-three of 120 H95 triplets, and queried no outcome field. The full repository
-suite after the H81 missingness freeze reports 539 passes.
+The latest post-amendment preflight, workflow `29562343314`, ran code commit
+`976468a`, pinned dataset revision
+`8ce9eb75ed6ec76733a56d03b97b21ef55933345`, reported H81 counts 32/23/27 and
+four of 120 H95 triplets, and queried no outcome field. The preceding compact
+workflow `29561825717` passed preparation and all eight table shards. The full
+repository suite after the PM1 support-gate freeze reports 540 passes.

@@ -47,8 +47,8 @@ delegation as both an estimand and estimator identity.
    - Pass rule: 100% replay and treatment compliance. Any failure invalidates
      the affected block and triggers a collector incident, not an outcome-based
      exclusion.
-   - Current result: 80/80 for both checks at revision `1311e5e`; arm counts
-     are 31, 23, and 26 and outcomes remain unqueried.
+   - Current result: 82/82 for both checks at revision `8ce9eb75`; arm counts
+     are 32, 23, and 27 and outcomes remain unqueried.
 
 2. **Stopped-design Monte Carlo**
    - Fix heterogeneous, policy-specific, time-varying potential outcomes.
@@ -113,8 +113,8 @@ randomization inference permutes labels within triplet and Holm-adjusts the two
 directional primary tests.
 
 The design uses a fixed horizon rather than the H81 arm-balance stopping rule and
-is never pooled with H81. Three compliant triplets have accrued: nine blocks over
-eight unique models, effective model count 7.36, perfect plan compliance and
+is never pooled with H81. Four compliant triplets have accrued: 12 blocks over
+eight unique models, effective model count 7.20, perfect plan compliance and
 replay, and no outcome query. No H95
 outcome is queried before 120 plans exist. Broad
 transport additionally requires at least eight audited model ids, effective
