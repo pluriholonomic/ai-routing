@@ -602,6 +602,7 @@ def main() -> None:
             # Pricing-model ladder and the Brown-MacKay competitive-null
             # sequence. BM modules consume PM outputs where available.
             "pm1": "pm1_hazard_baseline",
+            "pm1_temporal": "pm1_temporal_validation",
             "pm2": "pm2_sufficient_stats",
             "pm5": "pm5_tie_microstructure",
             "pm5_heldout": "pm5_heldout_matched_market",

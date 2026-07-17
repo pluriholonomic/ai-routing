@@ -66,6 +66,27 @@ The main positive public-data result remains that displayed prices and
 operational state are distinct layers. The paper still lacks its focal released
 randomized clearing effects because H81 and H95 remain below their frozen gates.
 
+## Post-correction live accrual
+
+After the repaired public release, workflow `29559930551` consolidated the
+newest buffered randomized probes into immutable dataset revision
+`1311e5e513c62b18594b1391bf62cf802fcc8688`. Outcome-free release audit
+`29560437241` reports:
+
+- H81: 80 verified first-position blocks, counts 31/23/26, with 9/17/14
+  remaining; outcomes were not queried.
+- H95: 3 compliant triplets, 9 first-position blocks, 8 unique models and
+  effective model count 7.36; 117 triplets remain; outcomes were not queried.
+- Remote-health run `29560495633` passed against the live workflows and data
+  sink.
+
+The new `pm1_temporal_validation` module is fail-closed at 10/30 completed UTC
+dates. It excludes the represented but open July 17 date and does not query the
+pricing-event table before the gate. At 30 completed dates it will fit on the
+first 15, score the next 15 once, use prior-close covariates and training-only
+provider controls, and apply Holm correction to the four adjacent-rung paired
+log-loss contrasts.
+
 ## Verification
 
 - Ruff passed for the corrected PM2 analyzer, vintage test, and paper-rerun

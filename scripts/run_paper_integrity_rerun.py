@@ -21,6 +21,7 @@ from orcap.analysis import data
 # path is the marker-first confirmatory release transaction.
 PAPER_PUBLIC_MODULES = [
     "pm1_hazard_baseline",
+    "pm1_temporal_validation",
     "pm2_sufficient_stats",
     "pm5_tie_microstructure",
     "pm6_event_reclassification",

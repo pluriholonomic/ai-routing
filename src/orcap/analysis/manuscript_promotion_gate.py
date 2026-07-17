@@ -35,6 +35,7 @@ REQUIRED_DUAL_VINTAGE_ANALYSES = (
     "bm3_quality_adjusted_premium",
     "bm4_reaction_rules",
 )
+REQUIRED_TEMPORAL_VALIDATIONS = ("pm1_temporal_validation",)
 
 
 def _dates(values: Iterable[Any]) -> list[str]:
@@ -86,6 +87,7 @@ def build_promotion_status(
                 "complete": quote_ready,
             },
             "required_side_by_side_analyses": list(REQUIRED_DUAL_VINTAGE_ANALYSES),
+            "required_temporal_validations": list(REQUIRED_TEMPORAL_VALIDATIONS),
             "freeze_rule": (
                 "Use the earliest observed nine-day prefix and earliest observed 30-day "
                 "prefix; later dates belong to a continuation vintage."
@@ -115,6 +117,7 @@ def build_promotion_status(
                 "first-position HT and Hajek estimates with assignment replay",
                 "cheapest-second-random rank-gradient test",
                 "nine-day and 30-day pricing tables in the same release",
+                "leakage-free PM1 15-day/15-day temporal holdout",
                 "updated source manifest, manuscript estimates, rendered PDF, and reviewer audit",
             ],
             "sign_flip_rule": (
