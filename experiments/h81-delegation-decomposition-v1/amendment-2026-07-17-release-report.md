@@ -15,6 +15,14 @@ reproduced counts 34/31/29 and the passing assignment-integrity gate, and again
 recorded `outcomes_queried=false`. This is the provenance point that ties the
 code below, its tests, and this amendment to the pre-outcome state.
 
+Post-marker preservation was committed as
+`d4d2b19d07d03c19573de7f58c67c1e3e0dd7f31`. Exact-head assignment-only
+audit `29575626677` checked out that commit, pinned immutable revision
+`df74e296828b5d1d8f80e6925f1260e09a8c0fb3`, reproduced counts 34/31/29 with
+100% reconstruction, replay, first-row observation, and treatment fidelity,
+and again recorded `outcomes_queried=false`. The artifact contained only the
+two assignment-only gates and release status.
+
 ## Motivation
 
 The analysis code already freezes the estimands, stopped prefix, exact tests,

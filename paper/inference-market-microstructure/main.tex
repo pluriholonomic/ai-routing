@@ -289,7 +289,7 @@ provider--model listing observations from 2,116 capture runs on 11 UTC dates,
 count is 2,013,866; the difference preserves 9,186 same-listing raw variants,
 all due to availability state rather than price or capability conflicts.  The
 outcome-free randomized-design status is separately pinned at revision
-\texttt{60d5a02005d}: H81 contains 94 intended first-position assignments, with
+\texttt{df74e296828}: H81 contains 94 intended first-position assignments, with
 arm counts 34, 31, and 29 and 100\% first-row observation, assignment replay,
 assignment reconstruction, and treatment-metadata fidelity.  Its eligibility
 audit contains 90 eligible candidate rows across 45 runs; H80 remains a separate study
@@ -978,7 +978,7 @@ implementation-fidelity bounds, not a complier or per-protocol effect.
 
 The amended H81 protocol releases the earliest chronological prefix with at
 least 40 intended first-position assignments in every arm, regardless of sign.
-At the outcome-free release revision \texttt{60d5a02005d} (the full immutable
+At the outcome-free release revision \texttt{df74e296828} (the full immutable
 hash appears in the release manifest), the arm counts
 are 34, 31, and 29.  First-row observation, assignment replay, assignment
 reconstruction, and treatment-metadata checks pass for all 94 intended blocks,
@@ -1048,7 +1048,7 @@ prerelease inference and telemetry audit was frozen in commit \texttt{f170d89}
 with the outcome gate still closed.  A second proof audit corrected the pairwise
 reference law and interval interpretation after exact-head run
 \texttt{29568434722} again reported \texttt{outcomes\_queried=false}.  At
-revision \texttt{60d5a02005d}, the
+revision \texttt{df74e296828}, the
 outcome-free support is seven compliant triplets, 21 blocks, nine unique models,
 effective model count 7.74, perfect plan replay, and zero missing first records.
 The first 12 first-position rows predate row-level provider-order lengths and
@@ -1743,7 +1743,7 @@ Separate adversaries replace a valid outcome with
 \texttt{unknown}, delete and mismatch planned first requests, corrupt a
 provider-control length, concentrate every triplet in one six-hour bin, and
 verify that leave-one-model-out analysis drops whole triplets.  The full
-repository suite has 573 passes.  These checks validate the release code and
+repository suite has 574 passes.  These checks validate the release code and
 claim boundary.  They are not H95 outcome evidence: the fixed horizon remains
 seven of 120 at the pinned outcome-free revision.
 
@@ -2359,6 +2359,12 @@ observation, and treatment fidelity.  Exact-head audit
 \texttt{65e1425} against the same immutable revision and again left both outcome
 flags false.  The deterministic table, figure, neutral paragraph, and their
 algebraic validator were therefore frozen before outcome access.
+Post-marker preservation commit \texttt{d4d2b19} was then checked by exact-head
+audit \texttt{29575626677} against revision \texttt{df74e296828}.  It reproduced
+the same 34/31/29 H81 counts and 7/120 H95 support and again left both outcome
+flags false.  A planted presentation-identity failure now preserves the raw
+marker-bound analysis bundle while leaving paper promotion and automatic
+outcome re-query closed.
 
 \paragraph{Privacy, load, and release tiers.}
 Capture records exclude prompts and completions.  Owned experiments use a fixed

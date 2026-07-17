@@ -348,3 +348,12 @@ missingness fields all pass. Synthetic LaTeX and figure rendering plus the full
 `65e1425` against the same immutable revision and again recorded
 `outcomes_queried=false`. The renderer is hashed into the remote first-access
 marker through the H81 study specification.
+
+An outcome-blind transaction audit then identified that a strict renderer error
+could abort after the irreversible marker but before bundle publication. Commit
+`d4d2b19` preserves the already-written raw analysis bundle in that state while
+keeping paper promotion and automatic outcome re-query closed. The planted
+identity-violation test and full 574-test suite pass. Exact-head audit
+`29575626677` checked out that commit, pinned revision `df74e296828b`,
+reproduced H81 counts 34/31/29 and H95 support 7/120, and recorded
+`outcomes_queried=false` for both studies.

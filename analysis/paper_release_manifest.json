@@ -1,17 +1,17 @@
 {
   "authoritative_dataset": "t4run/openrouter-market-history",
-  "authoritative_revision": "60d5a02005d553b956c903c1a8bd0b30df2d1636",
-  "evidence_freeze_utc": "2026-07-17T10:51:04Z",
+  "authoritative_revision": "df74e296828b5d1d8f80e6925f1260e09a8c0fb3",
+  "evidence_freeze_utc": "2026-07-17T11:04:57Z",
   "files": [
     {
-      "bytes": 28092,
+      "bytes": 28686,
       "path": "config/paper_evidence_registry.toml",
-      "sha256": "2d5577d55bed80679133ff8011534f2f52bb7111a9c2c6bbbe9ab22bff78c652"
+      "sha256": "12a1b1383a8e399455a3d7dfbac14f284169d273052be0f0db17595bda52a21b"
     },
     {
-      "bytes": 21023,
+      "bytes": 21591,
       "path": "docs/confirmatory-release-protocol-2026-07-17.md",
-      "sha256": "15344ba5b2385e1774c25e7897d500274ccc3ccf7a67c3227120f4fc25f6c359"
+      "sha256": "c8ea6c9864eed25bfa741c7b426be2d1d02b8df871ebbec2b140c874c6dff771"
     },
     {
       "bytes": 3183,
@@ -49,9 +49,9 @@
       "sha256": "137b85bc9341693e0981799fd3d185fc1bf0df15309daec79edd7bf4fa358e77"
     },
     {
-      "bytes": 24513,
+      "bytes": 25139,
       "path": "docs/paper-evidence-amendment-ledger-2026-07-17.md",
-      "sha256": "85063d95e7c13e8d40e120485cdbd686a4670d3ec267b82507a7641c4dbc7c95"
+      "sha256": "0a2e1ba0863b4e24266644a710bccc63881b04c536dc1892da06e296fca67d68"
     },
     {
       "bytes": 7347,
@@ -74,9 +74,9 @@
       "sha256": "9db1706417ca407d89930a9cc1dd1d245773021a3587f203f42543c80105b6b3"
     },
     {
-      "bytes": 4765,
+      "bytes": 5225,
       "path": "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-release-report.md",
-      "sha256": "66255b0a0c462f559e24cdeffe2aed72d38386a453675866282e9f1f0895e661"
+      "sha256": "8ae9615b58919d05d4909a9d6993dc5dfb0b825754e466ca6a2158304502a2b6"
     },
     {
       "bytes": 9496,
@@ -159,9 +159,9 @@
       "sha256": "199ea7b6288b525db3dcfdefe4f1a7398b928397ac8adc3bcb11fd4b9b216643"
     },
     {
-      "bytes": 136635,
+      "bytes": 137049,
       "path": "paper/inference-market-microstructure/main.tex",
-      "sha256": "157ce5ee0ace4dcf7869c805de5946d7e8a57f1f001af5d58b2b01dba8290454"
+      "sha256": "56f70d0a5a0ca4d41b9eb7985929288049efb23279caa0be6fee81a8088106f4"
     },
     {
       "bytes": 8867,
@@ -349,8 +349,8 @@
       "sha256": "28fe964519ae7d4dec1ac3c2c191d3f518b5fab567a4a2af591d610686da580e"
     }
   ],
-  "gate_event_count": 20,
-  "generated_at_utc": "2026-07-17T11:03:44.786296+00:00",
+  "gate_event_count": 21,
+  "generated_at_utc": "2026-07-17T11:06:58.127960+00:00",
   "paper_theorem_count": 9,
   "paper_track": "ACM EC / TEAC",
   "registered_claim_count": 16,

@@ -31,6 +31,9 @@ The July 17, 2026 revision:
 - freezes the one-time H81 result table, decomposition forest plot, neutral
   manuscript paragraph, and fail-closed algebraic validator before outcome
   access, with a synthetic LaTeX/render audit and exact-head remote proof;
+- preserves the raw marker-bound H81 result if that paper-facing renderer fails
+  after first access, while still forbidding paper promotion and outcome
+  re-query;
 - hardens the still-blinded H95 replication with nuisance-conditioned pairwise
   Fisher inference, simultaneous bounded-outcome design intervals, explicit
   structural and measurement missingness, provider-control coverage,
@@ -41,11 +44,12 @@ The July 17, 2026 revision:
   moving price-atom diagnostics and proofs to Appendix A without deleting them.
 
 The latest adversarial assessment is
-[`../docs/manuscript-review-round-29-2026-07-17.md`](../docs/manuscript-review-round-29-2026-07-17.md).
+[`../docs/manuscript-review-round-30-2026-07-17.md`](../docs/manuscript-review-round-30-2026-07-17.md).
 It treats the H81 and H95 pairwise-reference-law defects, confidence-theorem
 mismatches, H95 within-triplet carryover sensitivity, and H81 post-assignment
 compliance selection as repaired before outcome access, closes the H81
-prospective-plan deployment item, and verifies the frozen release presentation.
+prospective-plan deployment item, verifies the frozen release presentation, and
+closes the post-marker presentation-failure data-loss path.
 The remaining promotion gates are unreleased H81/H95 outcomes and the unopened
 30-completed-day PM1 holdout.
 

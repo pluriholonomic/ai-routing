@@ -3,8 +3,8 @@ schema_version = 1
 paper_path = "paper/inference-market-microstructure/main.tex"
 paper_track = "ACM EC / TEAC"
 authoritative_dataset = "t4run/openrouter-market-history"
-authoritative_revision = "60d5a02005d553b956c903c1a8bd0b30df2d1636"
-evidence_freeze_utc = "2026-07-17T10:51:04Z"
+authoritative_revision = "df74e296828b5d1d8f80e6925f1260e09a8c0fb3"
+evidence_freeze_utc = "2026-07-17T11:04:57Z"
 status = "outcome-safe refresh with H81 and H95 accruing; clean remote first-access release armed; focal outcomes blinded"
 amendment_ledger = "docs/paper-evidence-amendment-ledger-2026-07-17.md"
 
@@ -390,6 +390,16 @@ target_per_arm = 40
 event = "deterministic result table, figure, neutral manuscript paragraph, and algebraic release validator frozen before outcome access"
 outcome_visibility = "exact-head audit 29574825052 pinned revision 60d5a02005d553b956c903c1a8bd0b30df2d1636, reported counts 34, 31, and 29, and outcomes_queried=false"
 classification = "outcome-blind pre-release presentation freeze"
+
+[[gate_event]]
+study_id = "H81"
+effective_utc = "2026-07-17T11:04:57Z"
+commit = "d4d2b19d07d03c19573de7f58c67c1e3e0dd7f31"
+gate_version = "v1-post-marker-presentation-preservation"
+target_per_arm = 40
+event = "paper-facing validation remains fail-closed while a post-marker renderer failure preserves the raw immutable bundle and forbids outcome re-query"
+outcome_visibility = "exact-head audit 29575626677 pinned revision df74e296828b5d1d8f80e6925f1260e09a8c0fb3, reported counts 34, 31, and 29, and outcomes_queried=false"
+classification = "outcome-blind first-access transaction hardening"
 
 [[gate_event]]
 study_id = "H95"
