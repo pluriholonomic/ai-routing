@@ -3,6 +3,7 @@
 # positive result.
 
 [population]
+eligible_after_utc = "2026-07-17T04:30:20Z"
 require_unique_official_model_suffix = true
 require_hugging_face_link = true
 require_same_normalized_provider = true
@@ -34,4 +35,3 @@ placebo_minimum_snapshots = 8
 bootstrap_draws = 5000
 seed = 20260717
 familywise_method = "holm"
-

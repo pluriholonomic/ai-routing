@@ -2,6 +2,9 @@
 
 Frozen: 2026-07-17, after one simultaneous catalog cross-section and before the
 first observed longitudinal price transition in the new three-router panel.
+The future-only activation cutoff is `2026-07-17T04:30:20Z`, the timestamp of
+commit `6017dae`. The earlier 03:30 UTC discovery cross-section is excluded from
+every H94 event, elapsed-time, and promotion-gate calculation.
 
 ## Question
 
@@ -82,4 +85,3 @@ H94 measures public posted-menu synchronization. It cannot identify private
 eligibility, actual order flow, fill firmness, provider profit, user welfare, or
 literal front-running. Realized-routing validation requires budget-capped owned
 requests with selected provider, retries, cost, latency, and completion status.
-

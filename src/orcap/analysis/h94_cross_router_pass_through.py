@@ -63,11 +63,13 @@ def _configuration() -> tuple[dict[str, Any], str | None]:
 
 def _settings() -> dict[str, Any]:
     config, _ = _configuration()
+    population = config.get("population", {})
     event = config.get("event", {})
     promotion = config.get("promotion", {})
     inference = config.get("inference", {})
     allocation = config.get("allocation_consequence", {})
     return {
+        "eligible_after_utc": population.get("eligible_after_utc"),
         "max_gap_hours": float(event.get("maximum_adjacent_capture_gap_hours", 2.5)),
         "atol": float(event.get("exact_component_price_atol", 1e-12)),
         "rtol": float(event.get("exact_component_price_rtol", 1e-12)),
@@ -119,7 +121,14 @@ def primary_quote_panel(panel: pd.DataFrame) -> pd.DataFrame:
     if missing := required.difference(panel.columns):
         raise ValueError(f"H94 panel missing columns: {sorted(missing)}")
 
-    frame = panel.copy()
+    settings = _settings()
+    source = panel.copy()
+    source["ts"] = pd.to_datetime(source["ts"], errors="coerce", utc=True)
+    eligible_after = settings.get("eligible_after_utc")
+    if eligible_after:
+        cutoff = pd.to_datetime(eligible_after, errors="raise", utc=True)
+        source = source.loc[source["ts"].ge(cutoff)].copy()
+    frame = source.copy()
     for column in ["price_input_usd_per_mtok", "price_output_usd_per_mtok"]:
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
     frame = frame.loc[
@@ -156,7 +165,7 @@ def primary_quote_panel(panel: pd.DataFrame) -> pd.DataFrame:
     # the previous appearance of this product. This excludes disappearance and
     # re-entry from the transition estimand.
     snapshots = (
-        panel.loc[panel["ts"].notna(), ["router", "ts"]]
+        source.loc[source["ts"].notna(), ["router", "ts"]]
         .drop_duplicates()
         .sort_values(["router", "ts"])
     )

@@ -9,6 +9,7 @@ NOW = datetime(2026, 7, 13, 12, 0, tzinfo=UTC)
 def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["probes.yml"] == 180
     assert WORKFLOWS["decomposition-probes.yml"] == 180
+    assert WORKFLOWS["decomposition-replication.yml"] == 180
     assert WORKFLOWS["capacity-policy-probes.yml"] == 180
     assert WORKFLOWS["hf-policy-probes.yml"] == 180
     assert WORKFLOWS["akash-close-events.yml"] == 1800
@@ -18,10 +19,12 @@ def test_confirmatory_probe_workflows_share_concurrency_lock():
     workflows = Path(__file__).parents[1] / ".github" / "workflows"
     h80 = (workflows / "probes.yml").read_text(encoding="utf-8")
     h81 = (workflows / "decomposition-probes.yml").read_text(encoding="utf-8")
+    h95 = (workflows / "decomposition-replication.yml").read_text(encoding="utf-8")
     h87 = (workflows / "capacity-policy-probes.yml").read_text(encoding="utf-8")
     lock = "group: randomized-routing-probes"
     assert lock in h80
     assert lock in h81
+    assert lock in h95
     assert lock in h87
 
 

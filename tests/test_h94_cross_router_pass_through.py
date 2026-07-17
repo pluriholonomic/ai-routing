@@ -11,11 +11,11 @@ from orcap.analysis.h94_cross_router_pass_through import (
 
 
 def _quote_panel() -> pd.DataFrame:
-    base = pd.Timestamp("2026-07-17T00:00:00Z")
+    base = pd.Timestamp("2026-07-17T05:00:00Z")
     rows: list[dict[str, object]] = []
     times = {
-        "router-a": [base, pd.Timestamp("2026-07-17T00:15:00Z")],
-        "router-b": [base, pd.Timestamp("2026-07-17T00:30:00Z")],
+        "router-a": [base, pd.Timestamp("2026-07-17T05:15:00Z")],
+        "router-b": [base, pd.Timestamp("2026-07-17T05:30:00Z")],
     }
     for router, captures in times.items():
         for capture_index, ts in enumerate(captures):

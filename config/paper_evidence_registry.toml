@@ -204,14 +204,30 @@ tex_label = ""
 title = "Cross-router quote pass-through holdout"
 disposition = "future holdout"
 identification = "prospective event-time panel"
-status = "draft only; not active or preregistered"
+status = "prospective protocol activated at 6017dae; the earlier discovery cross section is excluded"
 source_tables = ["router_public_quote_snapshots"]
 analyzers = ["src/orcap/analysis/h94_cross_router_pass_through.py"]
 collectors = ["src/orcap/capture_router_catalogs.py"]
 tests = ["tests/test_h94_cross_router_pass_through.py"]
 protocols = ["docs/h94-cross-router-pass-through-preregistration-2026-07-17.md"]
 validation_methods = ["source-specific price events", "distributed lags", "negative controls", "simulated route switching"]
-claim_boundary = "No result exists. Activation requires a recorded freeze before additional longitudinal outcomes are inspected."
+claim_boundary = "No prospective result exists yet. Only snapshots after 2026-07-17T04:30:20Z are eligible for H94 dynamic inference."
+
+[[claim]]
+claim_id = "E-H95"
+kind = "empirical"
+tex_label = ""
+title = "Fixed-horizon multi-model delegation replication"
+disposition = "future independent replication"
+identification = "blocked randomized first-position ITT over 120 planned triplets"
+status = "protocol, collector, analyzer, and remote workflow frozen before the first request"
+source_tables = ["router_route_attempts", "router_replication_eligibility"]
+analyzers = ["src/orcap/analysis/h95_delegation_replication.py"]
+collectors = ["src/orcap/capture_decomposition_replication.py"]
+tests = ["tests/test_capture_decomposition_replication.py", "tests/test_h95_delegation_replication.py", "tests/test_remote_pipeline_health.py"]
+protocols = ["experiments/h95-delegation-replication-v1/preregistration.md"]
+validation_methods = ["fixed 120-triplet horizon", "exact within-triplet arm balance", "seed replay", "blocked randomization inference", "missing attempts coded as failure", "support and license audit"]
+claim_boundary = "H95 is separate from H81 and identifies owned-account policy effects over sampled eligible Hugging Face-linked models; it does not identify market-wide flow or welfare."
 
 [[gate_event]]
 study_id = "H80"
@@ -282,3 +298,23 @@ target_per_arm = 40
 event = "exclude the gate-hitting terminal block and condition randomization inference on the preterminal arm counts"
 outcome_visibility = "dedicated analyzer remained gated; raw-source analyst blinding is not guaranteed"
 classification = "post-collection pre-release identification correction"
+
+[[gate_event]]
+study_id = "H94"
+effective_utc = "2026-07-17T04:30:20Z"
+commit = "6017dae"
+gate_version = "v1-future-only"
+target_per_arm = 0
+event = "prospective cross-router pass-through protocol frozen; the existing 03:30 discovery cross section is excluded"
+outcome_visibility = "one earlier public cross section known; no future longitudinal event observed"
+classification = "prospective future-only activation"
+
+[[gate_event]]
+study_id = "H95"
+effective_utc = "2026-07-17T04:42:39Z"
+commit = "working-tree"
+gate_version = "v1-fixed-120-triplets"
+target_per_arm = 120
+event = "fixed-horizon blocked replication protocol, collector, analyzer, and remote workflow frozen"
+outcome_visibility = "before first H95 inference request"
+classification = "original preregistration"

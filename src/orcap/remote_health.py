@@ -17,6 +17,7 @@ WORKFLOWS = {
     "enforcement-policy-probes.yml": 180,
     "capture.yml": 150,
     "decomposition-probes.yml": 180,
+    "decomposition-replication.yml": 180,
     "gpu.yml": 180,
     "hf-router.yml": 180,
     "hf-policy-probes.yml": 180,
