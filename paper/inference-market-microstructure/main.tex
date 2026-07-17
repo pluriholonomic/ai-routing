@@ -151,8 +151,12 @@ they are not evidence for the focal clearing claim.
   \item \textbf{Identification and design.}  We prove the accounting
   decomposition and, after removing the gate-hitting terminal block, the
   conditional design-unbiasedness of the fixed-count arm means (equivalently,
-  conditional Horvitz--Thompson contrasts).  Newcombe intervals are descriptive
-  companions.
+  conditional Horvitz--Thompson contrasts).  The frozen release reports
+  fixed-count randomization tests with Holm adjustment, marginal Newcombe
+  intervals, and Bonferroni--Newcombe intervals simultaneous over the two
+  registered components.  Unknown or malformed outcomes are not failures:
+  they suppress point inference and enter $[0,1]$ worst-case bounds together
+  with missing or noncompliant treatment records.
   We also characterize what coarsened public timing cannot identify.  The design
   implication is execution-contingent procurement---prices, eligibility,
   fallback, and reliability must be evaluated jointly---not a claim that the
@@ -879,6 +883,21 @@ by permuting the observed preterminal label multiset.  Independently drawing new
 labels with probability $1/3$ would fail to condition on the stopped design.  The
 proof and a simulation-validation protocol appear in \cref{app:h81-proof}.
 
+The two directional components form one family.  Their one-sided conditional
+randomization tests receive Holm adjustment, and their confidence columns also
+include Bonferroni--Newcombe intervals with 95\% familywise coverage under the
+usual two-sample binomial interpretation.  We label the latter descriptive,
+not randomization inversions.  The point estimate, interval, and randomization
+test are emitted only when every verified request has a binary outcome:
+\texttt{succeeded} is one, \texttt{failed} or \texttt{cancelled} is zero, and
+\texttt{unknown}, missing, or malformed values remain missing.  Arm-level
+$[0,1]$ bounds then propagate to each contrast.  A second, wider sensitivity
+reconstructs the intended first policy from the frozen seed for every candidate
+block before the terminal gate block and assigns both missing/noncompliant
+treatment records and missing outcomes to their two worst-case endpoints.  An
+unreconstructable policy widens the contrast to $[-1,1]$.  These are intended-
+assignment attrition bounds, not a per-protocol treatment effect.
+
 \subsection{Frozen gate, current support, and amendment history}
 
 The original H81 protocol releases the earliest chronological prefix with at
@@ -889,7 +908,10 @@ are 31, 23, and 26.  Assignment replay and treatment-metadata checks pass for al
 80 verified blocks, so outcomes remain physically unqueried by the public
 pre-gate analysis.  When the gate opens, the analysis will exclude its terminal
 block and condition on the remaining arm counts; this correction was frozen
-before the first H81 outcome release.  The candidate funnel is narrow: 74 eligibility records cover
+before the first H81 outcome release.  Commit \texttt{4d66fda}, also before
+release, freezes the simultaneous intervals and the outcome/treatment
+missingness rules above; synthetic unknown-outcome and noncompliance adversaries
+and the full 539-test suite pass.  The candidate funnel is narrow: 74 eligibility records cover
 two models at ranking positions five and six; both models are eligible in every
 recorded run and adjacent eligible support never changes.  The experiment will
 therefore identify a finite-sample policy effect for those model--time blocks,
@@ -1240,8 +1262,11 @@ the production assignment algorithm through the balance stopping time, and
 verify both the bias of the uncorrected terminal-inclusive estimator and the
 unbiasedness and nominal size of the conditional preterminal estimator.  Third,
 adversarial missingness simulations must
-confirm that success remains defined for every attempted request while spend,
-latency, and provider identity are either fully observed or reported with their
+confirm that unknown outcome codes are never coerced to failure; incomplete
+binary outcomes must suppress point inference and enter $[0,1]$ bounds.  The
+same audit reconstructs intended first-policy assignments and sends missing or
+noncompliant treatment records to both worst-case endpoints.  Spend, latency,
+and provider identity are either fully observed or reported with their
 protocol-valid worst-case bounds.  Passing these checks validates the estimator
 implementation; it does not solve transport from the two-model collection
 support to the broader marketplace.
@@ -1256,6 +1281,13 @@ only one block is contaminated, but its sign and size depend on the unobserved
 time path and therefore cannot be assumed away.  In 2,000 heterogeneous
 sharp-null experiments, the fixed-count test rejects at 5.05\% (Monte Carlo
 standard error 0.49 percentage points).
+The pre-release implementation test then replaces a verified success with an
+unknown code and confirms that the point contrast and randomization $p$-value
+disappear while the true contrast remains inside the reported bounds.  A second
+adversary corrupts one treatment-control record, accrues a valid replacement,
+and confirms that the omitted record reappears in the intended-assignment
+worst-case interval.  These tests were committed in \texttt{4d66fda} before any
+H81 outcome release.
 
 \begin{figure}[H]
 \centering
@@ -1700,7 +1732,7 @@ identifiable when bids, acceptance, and termination are public.
 \toprule
 Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
-H81 fallback and hidden selection & 80 verified blocks; counts 31, 23, 26; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm release gate; terminal block excluded \\
+H81 fallback and hidden selection & 80 verified blocks; counts 31, 23, 26; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm gate; terminal excluded; Holm tests, familywise intervals, and worst-case treatment/outcome bounds frozen \\
 H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
 H95 fixed-horizon replication & Three compliant triplets, nine blocks, eight unique models; no outcome released & 120 written triplets and broad audited model support & Fixed 120-triplet horizon; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
@@ -1750,7 +1782,10 @@ assignment fields only while H81 or H95 is below its frozen gate.  Once a gate
 opens, the runner first commits a timestamped access marker containing the code,
 input, and environment hashes; only then can the dedicated analyzer read outcome
 fields.  A non-publishing invocation remains preflight-only even after a gate
-opens.  The remote path publishes a content-hashed bundle exactly once and refuses automatic
+opens.  The H81 release analyzer at commit \texttt{4d66fda} distinguishes
+binary failures from unknown outcomes, refuses complete-data inference under
+outcome attrition, and emits both arm-specific and intended-assignment
+worst-case bounds; its full repository test run has 539 passes.  The remote path publishes a content-hashed bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
 run \texttt{29560437241} reproduced H81 counts 31/23/26 and H95 support 3/120 at
 their separate outcome-free revision \texttt{1311e5e513c6}, with both

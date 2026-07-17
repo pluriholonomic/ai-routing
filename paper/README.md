@@ -19,7 +19,7 @@ The July 17, 2026 revision:
   moving price-atom diagnostics and proofs to Appendix A without deleting them.
 
 The latest adversarial assessment is
-[`../docs/manuscript-review-round-19-2026-07-17.md`](../docs/manuscript-review-round-19-2026-07-17.md).
+[`../docs/manuscript-review-round-20-2026-07-17.md`](../docs/manuscript-review-round-20-2026-07-17.md).
 It treats the structural paper objection as resolved; the remaining promotion
 gates are unreleased H81/H95 outcomes and the unopened 30-completed-day PM1
 holdout.

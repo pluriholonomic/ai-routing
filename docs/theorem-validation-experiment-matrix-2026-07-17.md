@@ -47,8 +47,8 @@ delegation as both an estimand and estimator identity.
    - Pass rule: 100% replay and treatment compliance. Any failure invalidates
      the affected block and triggers a collector incident, not an outcome-based
      exclusion.
-   - Current result: 78/78 for both checks at revision `08a2a183`; arm counts
-     are 30, 23, and 25 and outcomes remain unqueried.
+   - Current result: 80/80 for both checks at revision `1311e5e`; arm counts
+     are 31, 23, and 26 and outcomes remain unqueried.
 
 2. **Stopped-design Monte Carlo**
    - Fix heterogeneous, policy-specific, time-varying potential outcomes.
@@ -71,13 +71,23 @@ delegation as both an estimand and estimator identity.
      0.49 percentage points), inside the declared tolerance.
 
 4. **Missingness adversary**
-   - Delete spend, latency, and selected-provider fields by treatment, success,
-     and quote level under worst-case patterns.
-   - Verify that request success is never conditioned on accounting completion;
-     explicit-order spend bounds use only protocol-valid quote caps; delegated
+   - Replace a verified binary outcome with `unknown`; delete spend, latency,
+     and selected-provider fields by treatment, success, and quote level; and
+     corrupt a treatment-control record before a valid replacement reaches the
+     gate.
+   - Verify that unknown outcomes are never coded as failure, incomplete binary
+     outcomes suppress point/randomization inference, and `[0,1]` arm bounds
+     propagate to every contrast. Reconstruct intended first policies from
+     their seeds and send missing/noncompliant treatment records to both
+     endpoints; any unreconstructable arm must yield `[-1,1]`.
+   - Explicit-order spend bounds use only protocol-valid quote caps; delegated
      default receives no invalid public-set upper cap.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
+   - Current result: implemented before outcome access in commit `4d66fda`.
+     Both adversarial tests and the full 539-test suite pass. The two primary
+     intervals additionally receive Bonferroni-Newcombe familywise adjustment;
+     their conditional randomization p-values retain the registered Holm family.
 
 5. **External-support and leave-one-model-out audit**
    - Report model dominance, effective model count, support turnover, arm balance
@@ -103,8 +113,9 @@ randomization inference permutes labels within triplet and Holm-adjusts the two
 directional primary tests.
 
 The design uses a fixed horizon rather than the H81 arm-balance stopping rule and
-is never pooled with H81. The first compliant triplet has accrued with three
-distinct models, perfect plan compliance and replay, and no outcome query. No H95
+is never pooled with H81. Three compliant triplets have accrued: nine blocks over
+eight unique models, effective model count 7.36, perfect plan compliance and
+replay, and no outcome query. No H95
 outcome is queried before 120 plans exist. Broad
 transport additionally requires at least eight audited model ids, effective
 model count five, no model above 35% of plans, no six-hour bin above 20%, and both
