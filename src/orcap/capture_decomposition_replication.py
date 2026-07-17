@@ -96,9 +96,7 @@ def ranked_open_weight_candidates(
 ) -> list[dict[str, Any]]:
     """Return ranked API ids with a nonempty OpenRouter Hugging Face link."""
     catalog = {
-        str(model["id"]): model
-        for model in (models or {}).get("data") or []
-        if model.get("id")
+        str(model["id"]): model for model in (models or {}).get("data") or [] if model.get("id")
     }
     ranked = hot_model_ids(rankings, models, n=max_rank)
     candidates: list[dict[str, Any]] = []
@@ -171,9 +169,7 @@ def build_replication_plan(
         order_hash = hashlib.sha256(
             json.dumps(provider_order, separators=(",", ":")).encode()
         ).hexdigest()
-        is_eligible = (
-            endpoint_audit["endpoint_fetch_status"] == "ok" and len(provider_order) >= 2
-        )
+        is_eligible = endpoint_audit["endpoint_fetch_status"] == "ok" and len(provider_order) >= 2
         if endpoint_audit["endpoint_fetch_status"] != "ok":
             reason = str(endpoint_audit["endpoint_fetch_status"])
         elif len(provider_order) < 2:
@@ -196,13 +192,9 @@ def build_replication_plan(
             "provider_order": provider_order,
             "provider_order_sha256": order_hash,
             "endpoints": endpoints,
-            "public_min_completion_price": (
-                float(endpoints[0]["price"]) if endpoints else None
-            ),
+            "public_min_completion_price": (float(endpoints[0]["price"]) if endpoints else None),
             "public_max_completion_price": (
-                max(float(endpoint["price"]) for endpoint in endpoints)
-                if endpoints
-                else None
+                max(float(endpoint["price"]) for endpoint in endpoints) if endpoints else None
             ),
             "public_quote_cost_cap_usd": quote_cost_cap,
         }
@@ -274,9 +266,7 @@ def build_replication_plan(
                 "public_quote_cost_cap_usd": row["public_quote_cost_cap_usd"],
                 "quote_cap_input_tokens": QUOTE_CAP_INPUT_TOKENS,
                 "request_timeout_ms": REQUEST_TIMEOUT_MS,
-                "block_id": (
-                    f"{triplet_id}|{row['model_id']}" if assignment is not None else None
-                ),
+                "block_id": (f"{triplet_id}|{row['model_id']}" if assignment is not None else None),
                 "block_seed": str(assignment[2]) if assignment else None,
                 "run_seed": str(run_seed),
             }
@@ -355,13 +345,13 @@ def execute_replication_plan(
                     "ranking_position": block["ranking_position"],
                     "hugging_face_id": block["hugging_face_id"],
                     "open_weight_screen": "nonempty_openrouter_hugging_face_id",
+                    "requested_order_length": len(order) if order else 0,
+                    "provider_only_count": len(task["provider_only"] or []),
                     "allow_fallbacks": bool(task["allow_fallbacks"]),
                 },
             )
             if completion is None:
-                record["event_id"] = (
-                    f"{block['block_id']}|{position}|{task['policy']}"
-                )
+                record["event_id"] = f"{block['block_id']}|{position}|{task['policy']}"
             selected = record.get("selected_provider")
             record["fallback_triggered"] = bool(
                 first_provider and selected and selected != first_provider
@@ -380,10 +370,7 @@ def write_replication_eligibility(
     if not records:
         return None
     dt = dt or dt_partition()
-    rows = [
-        record | {"payload_retained": False, "run_ts": run_ts, "dt": dt}
-        for record in records
-    ]
+    rows = [record | {"payload_retained": False, "run_ts": run_ts, "dt": dt} for record in records]
     return write_partition(
         pa.Table.from_pylist(rows, schema=REPLICATION_ELIGIBILITY_SCHEMA),
         "router_replication_eligibility",

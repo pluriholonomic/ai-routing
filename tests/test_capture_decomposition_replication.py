@@ -14,9 +14,7 @@ def _catalog(n: int = 12):
             {
                 "id": f"org/model-{index}",
                 "canonical_slug": f"org/model-{index}",
-                "hugging_face_id": (
-                    f"org/model-{index}" if index not in {8, 10} else ""
-                ),
+                "hugging_face_id": (f"org/model-{index}" if index not in {8, 10} else ""),
             }
             for index in range(1, n + 1)
         ]
@@ -149,3 +147,51 @@ def test_replication_eligibility_writer_preserves_assignment_without_payload(
     assert frame["payload_retained"].eq(False).all()  # noqa: E712
     assert frame["selected_for_triplet"].sum() == 3
     assert frame.loc[frame["selected_for_triplet"], "assigned_first_policy"].nunique() == 3
+
+
+def test_execution_records_provider_control_lengths_for_treatment_audit(
+    monkeypatch,
+) -> None:
+    endpoints = _endpoints()
+    tasks = replication.tasks_with_assigned_first(
+        endpoints, "price_order_fallback", random.Random(7)
+    )
+    counter = iter(range(3))
+
+    def fake_send(*args, **kwargs):
+        index = next(counter)
+        return (
+            {"id": f"generation-{index}", "usage": {"completion_tokens": 1}},
+            {"data": {"provider_name": "cheap", "latency": 10}},
+            None,
+            200,
+        )
+
+    monkeypatch.setattr(replication, "_send_probe", fake_send)
+    plan = [
+        {
+            "endpoints": endpoints,
+            "provider_order": ["cheap", "backup"],
+            "model_id": "org/model-7",
+            "triplet_id": "triplet-1",
+            "triplet_position": 0,
+            "block_id": "triplet-1|org/model-7",
+            "assigned_first_policy": "price_order_fallback",
+            "block_seed": 7,
+            "provider_order_sha256": "hash",
+            "public_quote_cost_cap_usd": 1e-5,
+            "ranking_position": 7,
+            "hugging_face_id": "org/model-7",
+            "tasks": tasks,
+        }
+    ]
+
+    records = replication.execute_replication_plan(object(), plan, run_seed=11)
+    metadata = {record["policy"]: record["metadata"] for record in records}
+
+    assert metadata["delegated_default"]["requested_order_length"] == 0
+    assert metadata["delegated_default"]["provider_only_count"] == 0
+    assert metadata["price_only_no_fallback"]["requested_order_length"] == 1
+    assert metadata["price_only_no_fallback"]["provider_only_count"] == 1
+    assert metadata["price_order_fallback"]["requested_order_length"] == 2
+    assert metadata["price_order_fallback"]["provider_only_count"] == 2

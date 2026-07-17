@@ -16,6 +16,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy.stats import t as student_t
 from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.proportion import proportion_confint
 
@@ -27,6 +28,7 @@ from ..capture_decomposition_replication import (
 )
 from . import data
 from .common import DEFAULT_OUT, save, save_json
+from .h81_delegation_decomposition import verify_treatment_metadata
 
 COMPARISONS = (
     (
@@ -49,6 +51,19 @@ COMPARISONS = (
     ),
 )
 RANDOMIZATION_DRAWS = 100_000
+RANDOMIZATION_MC_AUDIT_TOLERANCE = 0.01
+PRIMARY_FWER_ALPHA = 0.05
+BINARY_OUTCOME_VALUES = {
+    "succeeded": 1.0,
+    "failed": 0.0,
+    "cancelled": 0.0,
+}
+TREATMENT_METADATA_FIELDS = (
+    "requested_order_length",
+    "provider_only_count",
+    "public_provider_count",
+    "allow_fallbacks",
+)
 
 
 def _metadata(value: Any) -> dict[str, Any]:
@@ -85,13 +100,24 @@ def prepare_assignment_attempts(frame: pd.DataFrame) -> pd.DataFrame:
         "ranking_position": None,
         "hugging_face_id": None,
         "public_provider_order": None,
+        "public_provider_count": None,
+        "requested_order_length": None,
+        "provider_only_count": None,
+        "allow_fallbacks": None,
         "assignment_probability_first": None,
     }
     for field, default in fields.items():
         out[field] = metadata.map(
             lambda item, field=field, default=default: item.get(field, default)
         )
-    for field in ["policy_order", "ranking_position", "assignment_probability_first"]:
+    for field in [
+        "policy_order",
+        "ranking_position",
+        "assignment_probability_first",
+        "public_provider_count",
+        "requested_order_length",
+        "provider_only_count",
+    ]:
         out[field] = pd.to_numeric(out[field], errors="coerce")
     return out
 
@@ -101,6 +127,7 @@ def prepare_plans(eligibility: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame
         columns=[
             "triplet_id",
             "triplet_sequence",
+            "planned_at",
             "run_id",
             "model_id",
             "assigned_first_policy",
@@ -125,9 +152,7 @@ def prepare_plans(eligibility: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame
     for field in ["selected_for_triplet", "eligible"]:
         frame[field] = frame[field].fillna(False).astype(bool)
     selected = frame.loc[
-        frame["selected_for_triplet"]
-        & frame["eligible"]
-        & frame["triplet_id"].notna()
+        frame["selected_for_triplet"] & frame["eligible"] & frame["triplet_id"].notna()
     ].copy()
     valid_ids: list[str] = []
     triplet_rows: list[dict[str, Any]] = []
@@ -154,7 +179,7 @@ def prepare_plans(eligibility: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame
         triplets = triplets.sort_values(["planned_at", "triplet_id"]).reset_index(drop=True)
         triplets["triplet_sequence"] = np.arange(1, len(triplets) + 1)
         selected = selected.merge(
-            triplets[["triplet_id", "triplet_sequence"]],
+            triplets[["triplet_id", "triplet_sequence", "planned_at"]],
             on="triplet_id",
             how="inner",
             validate="many_to_one",
@@ -186,6 +211,31 @@ def _replay_block(group: pd.DataFrame) -> bool:
     return observed == [task["policy"] for task in expected]
 
 
+def treatment_metadata_auditable(row: pd.Series) -> bool:
+    """Return whether a row contains every provider-control audit field.
+
+    The first H95 triplets predate row-level order-length fields.  Those rows
+    are retained under the prospective intent-to-treat horizon and are marked
+    legacy-unverified rather than silently passed or discarded.
+    """
+    return all(field in row.index and pd.notna(row[field]) for field in TREATMENT_METADATA_FIELDS)
+
+
+def _annotate_treatment_metadata(first: pd.DataFrame) -> pd.DataFrame:
+    out = first.copy()
+    if out.empty:
+        out["treatment_metadata_auditable"] = pd.Series(dtype=bool)
+        out["treatment_metadata_pass"] = pd.Series(dtype="boolean")
+        return out
+    out["treatment_metadata_auditable"] = out.apply(treatment_metadata_auditable, axis=1)
+    out["treatment_metadata_pass"] = pd.Series(pd.NA, index=out.index, dtype="boolean")
+    auditable = out["treatment_metadata_auditable"]
+    out.loc[auditable, "treatment_metadata_pass"] = out.loc[auditable].apply(
+        verify_treatment_metadata, axis=1
+    )
+    return out
+
+
 def assignment_audit(
     attempts: pd.DataFrame,
     selected_plans: pd.DataFrame,
@@ -200,10 +250,16 @@ def assignment_audit(
         "plan_compliance",
         "replay_passes",
         "replay_blocks",
+        "treatment_metadata_auditable_blocks",
+        "treatment_metadata_passes",
+        "treatment_metadata_failures",
+        "legacy_unverified_blocks",
+        "recorded_first_position_blocks",
     ]
     if selected_plans.empty:
         return pd.DataFrame(columns=columns), pd.DataFrame()
     first = attempts.loc[attempts["policy_order"].eq(0)].copy() if not attempts.empty else attempts
+    first = _annotate_treatment_metadata(first)
     records: list[dict[str, Any]] = []
     for triplet_id, plan in selected_plans.groupby("triplet_id", sort=False):
         observed = attempts.loc[attempts["triplet_id"].astype(str).eq(str(triplet_id))]
@@ -235,6 +291,10 @@ def assignment_audit(
                 for _, group in observed.groupby("block_id", sort=False)
             )
         )
+        auditable = int(observed_first["treatment_metadata_auditable"].sum())
+        treatment_passes = int(
+            observed_first["treatment_metadata_pass"].fillna(False).astype(bool).sum()
+        )
         records.append(
             {
                 "triplet_id": str(triplet_id),
@@ -242,11 +302,15 @@ def assignment_audit(
                 "planned_models": int(plan["model_id"].nunique()),
                 "recorded_blocks": int(observed["block_id"].nunique()),
                 "complete_assignment": bool(complete),
-                "first_policy_balance": set(observed_first["policy"].astype(str))
-                == set(POLICIES),
+                "first_policy_balance": set(observed_first["policy"].astype(str)) == set(POLICIES),
                 "plan_compliance": observed_pairs == expected_pairs,
                 "replay_passes": int(sum(replay)),
                 "replay_blocks": len(replay),
+                "treatment_metadata_auditable_blocks": auditable,
+                "treatment_metadata_passes": treatment_passes,
+                "treatment_metadata_failures": auditable - treatment_passes,
+                "legacy_unverified_blocks": int(len(observed_first) - auditable),
+                "recorded_first_position_blocks": int(len(observed_first)),
             }
         )
     return pd.DataFrame(records, columns=columns), first
@@ -259,15 +323,47 @@ def _support_summary(plans: pd.DataFrame, eligibility: pd.DataFrame) -> dict[str
             "unique_models": 0,
             "effective_model_count": 0.0,
             "model_dominance": None,
+            "unique_hugging_face_ids": 0,
+            "six_hour_bins": 0,
+            "max_six_hour_triplet_share": None,
+            "structural_transport_gates_pass": False,
         }
     counts = plans["model_id"].astype(str).value_counts()
     shares = counts / counts.sum()
+    triplet_times = plans[["triplet_id", "planned_at"]].drop_duplicates("triplet_id")
+    triplet_times["planned_at"] = pd.to_datetime(
+        triplet_times["planned_at"], errors="coerce", utc=True
+    )
+    valid_times = triplet_times["planned_at"].dropna()
+    six_hour_counts = valid_times.dt.floor("6h").value_counts()
+    max_six_hour_share = (
+        float(six_hour_counts.max() / len(triplet_times))
+        if len(six_hour_counts) and len(valid_times) == len(triplet_times)
+        else None
+    )
+    unique_hugging_face_ids = int(plans["hugging_face_id"].dropna().astype(str).nunique())
+    effective_model_count = float(1.0 / np.square(shares).sum())
+    model_dominance = float(shares.max())
+    structural_gates = {
+        "at_least_eight_models": len(counts) >= 8,
+        "effective_model_count_at_least_five": effective_model_count >= 5.0,
+        "model_dominance_at_most_35pct": model_dominance <= 0.35,
+        "at_least_eight_hugging_face_ids": unique_hugging_face_ids >= 8,
+        "six_hour_concentration_at_most_20pct": (
+            max_six_hour_share is not None and max_six_hour_share <= 0.20
+        ),
+    }
     return {
         "selected_blocks": int(len(plans)),
         "unique_models": int(len(counts)),
-        "effective_model_count": float(1.0 / np.square(shares).sum()),
-        "model_dominance": float(shares.max()),
-        "unique_hugging_face_ids": int(plans["hugging_face_id"].nunique()),
+        "effective_model_count": effective_model_count,
+        "model_dominance": model_dominance,
+        "unique_hugging_face_ids": unique_hugging_face_ids,
+        "six_hour_bins": int(len(six_hour_counts)),
+        "max_six_hour_triplets": int(six_hour_counts.max()) if len(six_hour_counts) else 0,
+        "max_six_hour_triplet_share": max_six_hour_share,
+        "structural_transport_gates": structural_gates,
+        "structural_transport_gates_pass": all(structural_gates.values()),
         "ranking_position_min": int(pd.to_numeric(plans["ranking_position"]).min()),
         "ranking_position_max": int(pd.to_numeric(plans["ranking_position"]).max()),
         "candidate_rows": int(len(eligibility)),
@@ -276,6 +372,7 @@ def _support_summary(plans: pd.DataFrame, eligibility: pd.DataFrame) -> dict[str
             "Support uses nonempty OpenRouter Hugging Face ids. A separate license audit is "
             "required before calling every selected model open source."
         ),
+        "open_source_language_ready": False,
     }
 
 
@@ -298,6 +395,16 @@ def gate_summary(
     audit, first = assignment_audit(attempts, selected)
     ready = len(triplets) >= TARGET_TRIPLETS
     horizon_audit = audit.loc[audit["triplet_sequence"].le(TARGET_TRIPLETS)].copy()
+    planned_horizon_blocks = int(len(horizon_audit) * len(POLICIES))
+    metadata_auditable = (
+        int(horizon_audit["treatment_metadata_auditable_blocks"].sum()) if len(horizon_audit) else 0
+    )
+    metadata_passes = (
+        int(horizon_audit["treatment_metadata_passes"].sum()) if len(horizon_audit) else 0
+    )
+    recorded_first_blocks = (
+        int(horizon_audit["recorded_first_position_blocks"].sum()) if len(horizon_audit) else 0
+    )
     summary = {
         "study_id": STUDY_ID,
         "evidence_status": (
@@ -316,9 +423,7 @@ def gate_summary(
         "complete_assignment_triplets": int(audit["complete_assignment"].sum())
         if len(audit)
         else 0,
-        "horizon_complete_assignment_triplets": int(
-            horizon_audit["complete_assignment"].sum()
-        )
+        "horizon_complete_assignment_triplets": int(horizon_audit["complete_assignment"].sum())
         if len(horizon_audit)
         else 0,
         "horizon_plan_compliance_rate": float(horizon_audit["plan_compliance"].mean())
@@ -328,6 +433,23 @@ def gate_summary(
             float(horizon_audit["replay_passes"].sum() / horizon_audit["replay_blocks"].sum())
             if len(horizon_audit) and horizon_audit["replay_blocks"].sum()
             else None
+        ),
+        "horizon_recorded_first_position_blocks": recorded_first_blocks,
+        "horizon_treatment_metadata_auditable_blocks": metadata_auditable,
+        "horizon_treatment_metadata_audit_coverage": (
+            metadata_auditable / planned_horizon_blocks if planned_horizon_blocks else None
+        ),
+        "horizon_treatment_metadata_passes": metadata_passes,
+        "horizon_treatment_metadata_pass_rate_among_auditable": (
+            metadata_passes / metadata_auditable if metadata_auditable else None
+        ),
+        "horizon_legacy_treatment_metadata_unverified_blocks": int(
+            horizon_audit["legacy_unverified_blocks"].sum()
+        )
+        if len(horizon_audit)
+        else 0,
+        "horizon_missing_first_position_records": max(
+            0, planned_horizon_blocks - recorded_first_blocks
         ),
         "support": _support_summary(horizon_plans if ready else selected, all_plans),
         "randomization_draws": simulations,
@@ -340,45 +462,163 @@ def gate_summary(
             "The result identifies owned-account policy effects for sampled eligible models. "
             "It does not identify market-wide flow, router intent, provider cost, or welfare."
         ),
+        "legacy_metadata_boundary": (
+            "Early triplets without row-level provider-order lengths remain in the fixed "
+            "horizon and are reported as legacy-unverified; future collector rows carry all "
+            "provider-control counts."
+        ),
     }
     return summary, audit, first, horizon_plans
 
 
-def _randomization_pvalues(
+def _triplet_outcome_matrix(outcomes: pd.DataFrame) -> np.ndarray:
+    """Return one fixed three-unit outcome vector per randomized triplet."""
+    vectors: list[np.ndarray] = []
+    for _, group in outcomes.groupby("triplet_id", sort=False):
+        if len(group) != len(POLICIES):
+            raise RuntimeError("H95 triplet does not contain exactly three planned units")
+        if set(group["assigned_first_policy"].astype(str)) != set(POLICIES):
+            raise RuntimeError("H95 triplet does not contain one assignment per policy")
+        values = group.sort_values("model_id")["primary_success"].to_numpy(dtype=float)
+        if not np.isfinite(values).all() or not np.isin(values, (0.0, 1.0)).all():
+            raise RuntimeError("exact H95 inference requires complete binary outcomes")
+        vectors.append(values)
+    return np.stack(vectors) if vectors else np.empty((0, len(POLICIES)))
+
+
+def _exact_blocked_randomization_pvalues(
+    outcomes: pd.DataFrame,
+) -> dict[str, tuple[float, float]]:
+    """Enumerate each block's six assignments and convolve their exact laws."""
+    values = _triplet_outcome_matrix(outcomes)
+    if not len(values):
+        return {name: (np.nan, np.nan) for name, *_ in COMPARISONS}
+    permutations = np.asarray(list(itertools.permutations(range(3))), dtype=np.int8)
+    policy_index = {policy: index for index, policy in enumerate(POLICIES)}
+    tolerance = 1e-15
+    results: dict[str, tuple[float, float]] = {}
+    for name, positive, negative, _ in COMPARISONS:
+        distribution = np.asarray([1.0])
+        pos_index = policy_index[positive]
+        neg_index = policy_index[negative]
+        for vector in values:
+            local = vector[permutations[:, pos_index]] - vector[permutations[:, neg_index]]
+            kernel = np.asarray([np.mean(local == value) for value in (-1.0, 0.0, 1.0)])
+            distribution = np.convolve(distribution, kernel)
+        support = np.arange(-len(values), len(values) + 1)
+        observed_sum = float(
+            outcomes.loc[outcomes["assigned_first_policy"].eq(positive), "primary_success"].sum()
+            - outcomes.loc[outcomes["assigned_first_policy"].eq(negative), "primary_success"].sum()
+        )
+        support_mass = float(math.fsum(distribution.tolist()))
+        if not math.isclose(support_mass, 1.0, rel_tol=0.0, abs_tol=1e-12):
+            raise RuntimeError(f"exact H95 randomization support has mass {support_mass}")
+        greater = float(math.fsum(distribution[support >= observed_sum - tolerance].tolist()))
+        two_sided = float(
+            math.fsum(distribution[np.abs(support) >= abs(observed_sum) - tolerance].tolist())
+        )
+        results[name] = greater, two_sided
+    return results
+
+
+def _monte_carlo_randomization_pvalues(
     outcomes: pd.DataFrame,
     *,
     simulations: int,
     seed: int = 20260717,
 ) -> dict[str, tuple[float, float]]:
-    triplet_ids = outcomes["triplet_id"].drop_duplicates().tolist()
-    model_outcomes: list[np.ndarray] = []
-    for triplet_id in triplet_ids:
-        group = outcomes.loc[outcomes["triplet_id"].eq(triplet_id)].sort_values("model_id")
-        model_outcomes.append(group["success"].to_numpy(dtype=float))
-    values = np.stack(model_outcomes)
+    """Retain a fixed Monte Carlo audit without using it for published tails."""
+    if simulations <= 0:
+        return {name: (np.nan, np.nan) for name, *_ in COMPARISONS}
+    values = _triplet_outcome_matrix(outcomes)
     permutations = np.asarray(list(itertools.permutations(range(3))), dtype=np.int8)
     rng = np.random.default_rng(seed)
-    draws = rng.integers(0, len(permutations), size=(simulations, len(values)))
-    policy_sums = np.zeros((simulations, 3), dtype=float)
-    for triplet_index in range(len(values)):
-        mapping = permutations[draws[:, triplet_index]]
-        for policy_index in range(3):
-            policy_sums[:, policy_index] += values[
-                triplet_index, mapping[:, policy_index]
-            ]
+    policy_sums = np.zeros((simulations, len(POLICIES)), dtype=float)
+    for vector in values:
+        mapping = permutations[rng.integers(0, len(permutations), size=simulations)]
+        policy_sums += vector[mapping]
     policy_means = policy_sums / len(values)
     policy_index = {policy: index for index, policy in enumerate(POLICIES)}
     results: dict[str, tuple[float, float]] = {}
     for name, positive, negative, _ in COMPARISONS:
-        observed = (
-            outcomes.loc[outcomes["assigned_first_policy"].eq(positive), "success"].mean()
-            - outcomes.loc[outcomes["assigned_first_policy"].eq(negative), "success"].mean()
+        observed = float(
+            outcomes.loc[outcomes["assigned_first_policy"].eq(positive), "primary_success"].mean()
+            - outcomes.loc[outcomes["assigned_first_policy"].eq(negative), "primary_success"].mean()
         )
         null = policy_means[:, policy_index[positive]] - policy_means[:, policy_index[negative]]
-        greater = float((1 + np.sum(null >= observed)) / (simulations + 1))
-        two_sided = float((1 + np.sum(np.abs(null) >= abs(observed))) / (simulations + 1))
+        greater = float((1 + np.sum(null >= observed - 1e-15)) / (simulations + 1))
+        two_sided = float((1 + np.sum(np.abs(null) >= abs(observed) - 1e-15)) / (simulations + 1))
         results[name] = greater, two_sided
     return results
+
+
+def _paired_interval(
+    differences: pd.Series,
+    *,
+    alpha: float,
+) -> tuple[float, float, float, float]:
+    values = pd.to_numeric(differences, errors="coerce")
+    if len(values) < 2 or values.isna().any():
+        return np.nan, np.nan, np.nan, np.nan
+    estimate = float(values.mean())
+    standard_error = float(values.std(ddof=1) / math.sqrt(len(values)))
+    critical = float(student_t.ppf(1.0 - alpha / 2.0, df=len(values) - 1))
+    return (
+        estimate,
+        standard_error,
+        estimate - critical * standard_error,
+        estimate + critical * standard_error,
+    )
+
+
+def _leave_one_model_out(
+    outcomes: pd.DataFrame,
+    contrasts: pd.DataFrame,
+) -> pd.DataFrame:
+    """Drop every triplet containing a model, preserving randomized blocks."""
+    rows: list[dict[str, Any]] = []
+    full_estimates = contrasts.set_index("estimand")["success_difference"].to_dict()
+    for model_id in sorted(outcomes["model_id"].astype(str).unique()):
+        omitted_triplets = set(
+            outcomes.loc[outcomes["model_id"].astype(str).eq(model_id), "triplet_id"]
+            .astype(str)
+            .tolist()
+        )
+        retained = outcomes.loc[~outcomes["triplet_id"].astype(str).isin(omitted_triplets)]
+        wide = retained.pivot(
+            index="triplet_id",
+            columns="assigned_first_policy",
+            values="primary_success",
+        )
+        for name, positive, negative, primary in COMPARISONS:
+            differences = wide[positive] - wide[negative] if len(wide) else pd.Series(dtype=float)
+            estimate = (
+                float(differences.mean())
+                if len(differences) and not differences.isna().any()
+                else np.nan
+            )
+            full = float(full_estimates.get(name, np.nan))
+            if np.isfinite(full) and np.isfinite(estimate):
+                sign_stable = bool(
+                    (full > 0 and estimate > 0)
+                    or (full < 0 and estimate < 0)
+                    or (full == 0 and estimate == 0)
+                )
+            else:
+                sign_stable = False
+            rows.append(
+                {
+                    "estimand": name,
+                    "primary": primary,
+                    "omitted_model_id": model_id,
+                    "omitted_triplets": len(omitted_triplets),
+                    "retained_triplets": int(len(wide)),
+                    "full_success_difference": full,
+                    "lomo_success_difference": estimate,
+                    "sign_stable": sign_stable,
+                }
+            )
+    return pd.DataFrame(rows)
 
 
 def analyze_released(
@@ -387,17 +627,46 @@ def analyze_released(
     summary: dict[str, Any],
     *,
     simulations: int = RANDOMIZATION_DRAWS,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    dict[str, Any],
+]:
     attempts = prepare_assignment_attempts(outcome_attempts)
-    attempts["success_recorded"] = attempts["outcome"].astype(str).eq("succeeded")
-    first = attempts.loc[attempts["policy_order"].eq(0)].copy()
-    observed = first[
-        ["triplet_id", "model_id", "policy", "success_recorded", "event_id"]
-    ].rename(columns={"policy": "observed_first_policy"})
+    if "outcome" not in attempts:
+        attempts["outcome"] = pd.NA
+    first = _annotate_treatment_metadata(attempts.loc[attempts["policy_order"].eq(0)].copy())
+    primary_keys = ["triplet_id", "model_id"]
+    if len(first):
+        first["duplicate_primary_records"] = first.groupby(primary_keys)["event_id"].transform(
+            "size"
+        )
+        first = first.sort_values(["_observed", "event_id"]).drop_duplicates(
+            primary_keys, keep="first"
+        )
+    else:
+        first["duplicate_primary_records"] = pd.Series(dtype=int)
+    observed_columns = [
+        "triplet_id",
+        "model_id",
+        "policy",
+        "outcome",
+        "event_id",
+        "duplicate_primary_records",
+        "treatment_metadata_auditable",
+        "treatment_metadata_pass",
+    ]
+    observed = first.reindex(columns=observed_columns).rename(
+        columns={"policy": "observed_first_policy", "outcome": "recorded_outcome"}
+    )
     plan = horizon_plans[
         [
             "triplet_id",
             "triplet_sequence",
+            "planned_at",
             "model_id",
             "assigned_first_policy",
             "hugging_face_id",
@@ -411,48 +680,135 @@ def analyze_released(
         validate="one_to_one",
     )
     outcomes["attempt_recorded"] = outcomes["event_id"].notna()
-    outcomes["assignment_compliant"] = outcomes["observed_first_policy"].eq(
-        outcomes["assigned_first_policy"]
+    outcomes["assignment_compliant"] = (
+        outcomes["observed_first_policy"].eq(outcomes["assigned_first_policy"]).fillna(False)
     )
-    outcomes["success"] = (
-        outcomes["success_recorded"].fillna(False) & outcomes["assignment_compliant"]
-    ).astype(int)
+    outcomes["duplicate_primary_record"] = outcomes["duplicate_primary_records"].fillna(0).gt(1)
+    outcomes["treatment_metadata_auditable"] = (
+        outcomes["treatment_metadata_auditable"].astype("boolean").fillna(False).astype(bool)
+    )
+    outcomes["treatment_metadata_pass"] = outcomes["treatment_metadata_pass"].astype("boolean")
+    outcomes["treatment_metadata_failure"] = outcomes["treatment_metadata_auditable"] & ~outcomes[
+        "treatment_metadata_pass"
+    ].fillna(False).astype(bool)
+    outcomes["legacy_treatment_metadata_unverified"] = (
+        outcomes["attempt_recorded"]
+        & outcomes["assignment_compliant"]
+        & ~outcomes["treatment_metadata_auditable"]
+    )
     outcomes["missing_primary_attempt"] = ~outcomes["attempt_recorded"]
+    outcomes["structural_failure"] = (
+        outcomes["missing_primary_attempt"]
+        | ~outcomes["assignment_compliant"]
+        | outcomes["duplicate_primary_record"]
+        | outcomes["treatment_metadata_failure"]
+    )
+    outcomes["recorded_outcome"] = outcomes["recorded_outcome"].astype("string").str.lower()
+    outcomes["binary_recorded_outcome"] = outcomes["recorded_outcome"].map(BINARY_OUTCOME_VALUES)
+    outcomes["measurement_missing"] = (
+        ~outcomes["structural_failure"] & outcomes["binary_recorded_outcome"].isna()
+    )
+    outcomes["primary_success"] = outcomes["binary_recorded_outcome"].astype(float)
+    outcomes.loc[outcomes["structural_failure"], "primary_success"] = 0.0
+    complete_binary_outcomes = not outcomes["primary_success"].isna().any()
 
     panel_rows: list[dict[str, Any]] = []
     for policy in POLICIES:
         arm = outcomes.loc[outcomes["assigned_first_policy"].eq(policy)]
-        successes = int(arm["success"].sum())
+        successes = int(arm["primary_success"].fillna(0.0).sum())
         n = len(arm)
-        low, high = proportion_confint(successes, n, method="wilson")
-        missing = int(arm["missing_primary_attempt"].sum())
+        measurement_missing = int(arm["measurement_missing"].sum())
+        arm_complete = measurement_missing == 0
+        low, high = (
+            proportion_confint(successes, n, method="wilson")
+            if arm_complete and n
+            else (np.nan, np.nan)
+        )
+        missing_records = int(arm["missing_primary_attempt"].sum())
+        legacy = arm["legacy_treatment_metadata_unverified"]
+        sensitivity_unknown = arm["measurement_missing"] | legacy
+        verified_successes = float(
+            arm.loc[~sensitivity_unknown, "primary_success"].fillna(0.0).sum()
+        )
         panel_rows.append(
             {
                 "policy": policy,
                 "assigned_blocks": n,
-                "successes_missing_as_failure": successes,
-                "success_rate_missing_as_failure": successes / n,
+                "successes_itt_known": successes,
+                "success_rate_itt": successes / n if arm_complete else np.nan,
                 "success_ci_low": float(low),
                 "success_ci_high": float(high),
-                "missing_primary_attempts": missing,
-                "success_rate_lower_bound": successes / n,
-                "success_rate_upper_bound": (successes + missing) / n,
+                "measurement_missing_outcomes": measurement_missing,
+                "missing_primary_attempts": missing_records,
+                "structural_failures": int(arm["structural_failure"].sum()),
+                "success_rate_measurement_lower_bound": successes / n,
+                "success_rate_measurement_upper_bound": (successes + measurement_missing) / n,
+                "missing_record_sensitivity_lower_bound": successes / n,
+                "missing_record_sensitivity_upper_bound": (
+                    successes + measurement_missing + missing_records
+                )
+                / n,
+                "treatment_verification_lower_bound": verified_successes / n,
+                "treatment_verification_upper_bound": (
+                    verified_successes + int(sensitivity_unknown.sum())
+                )
+                / n,
                 "assignment_compliance_rate": float(arm["assignment_compliant"].mean()),
+                "treatment_metadata_audit_coverage": float(
+                    arm["treatment_metadata_auditable"].mean()
+                ),
+                "treatment_metadata_pass_rate_among_auditable": (
+                    float(
+                        arm.loc[
+                            arm["treatment_metadata_auditable"],
+                            "treatment_metadata_pass",
+                        ]
+                        .astype(bool)
+                        .mean()
+                    )
+                    if arm["treatment_metadata_auditable"].any()
+                    else np.nan
+                ),
+                "legacy_treatment_metadata_unverified": int(legacy.sum()),
             }
         )
     panel = pd.DataFrame(panel_rows)
-    pvalues = _randomization_pvalues(outcomes, simulations=simulations)
+    exact_pvalues = (
+        _exact_blocked_randomization_pvalues(outcomes)
+        if complete_binary_outcomes
+        else {name: (np.nan, np.nan) for name, *_ in COMPARISONS}
+    )
+    monte_carlo_pvalues = (
+        _monte_carlo_randomization_pvalues(outcomes, simulations=simulations)
+        if complete_binary_outcomes and simulations
+        else {name: (np.nan, np.nan) for name, *_ in COMPARISONS}
+    )
     contrast_rows: list[dict[str, Any]] = []
+    wide = outcomes.pivot(
+        index="triplet_id", columns="assigned_first_policy", values="primary_success"
+    )
     for name, positive, negative, primary in COMPARISONS:
-        wide = outcomes.pivot(
-            index="triplet_id", columns="assigned_first_policy", values="success"
-        )
         differences = wide[positive] - wide[negative]
-        estimate = float(differences.mean())
-        standard_error = float(differences.std(ddof=1) / math.sqrt(len(differences)))
+        if complete_binary_outcomes:
+            estimate, standard_error, ci_low, ci_high = _paired_interval(
+                differences, alpha=PRIMARY_FWER_ALPHA
+            )
+            _, _, simultaneous_low, simultaneous_high = _paired_interval(
+                differences,
+                alpha=(PRIMARY_FWER_ALPHA / 2.0) if primary else PRIMARY_FWER_ALPHA,
+            )
+        else:
+            estimate = standard_error = ci_low = ci_high = np.nan
+            simultaneous_low = simultaneous_high = np.nan
         pos = panel.loc[panel["policy"].eq(positive)].iloc[0]
         neg = panel.loc[panel["policy"].eq(negative)].iloc[0]
-        greater, two_sided = pvalues[name]
+        greater, two_sided = exact_pvalues[name]
+        greater_mc, two_sided_mc = monte_carlo_pvalues[name]
+        mc_error = (
+            float(max(abs(greater_mc - greater), abs(two_sided_mc - two_sided)))
+            if np.isfinite(greater_mc) and np.isfinite(greater)
+            else np.nan
+        )
         contrast_rows.append(
             {
                 "estimand": name,
@@ -462,53 +818,173 @@ def analyze_released(
                 "triplets": len(differences),
                 "success_difference": estimate,
                 "paired_standard_error": standard_error,
-                "normal_ci_low": estimate - 1.96 * standard_error,
-                "normal_ci_high": estimate + 1.96 * standard_error,
-                "missingness_lower_bound": (
-                    pos["success_rate_lower_bound"] - neg["success_rate_upper_bound"]
+                "paired_t_ci_low": ci_low,
+                "paired_t_ci_high": ci_high,
+                "paired_t_simultaneous_ci_low": simultaneous_low if primary else np.nan,
+                "paired_t_simultaneous_ci_high": simultaneous_high if primary else np.nan,
+                "measurement_missingness_lower_bound": (
+                    pos["success_rate_measurement_lower_bound"]
+                    - neg["success_rate_measurement_upper_bound"]
                 ),
-                "missingness_upper_bound": (
-                    pos["success_rate_upper_bound"] - neg["success_rate_lower_bound"]
+                "measurement_missingness_upper_bound": (
+                    pos["success_rate_measurement_upper_bound"]
+                    - neg["success_rate_measurement_lower_bound"]
+                ),
+                "missing_record_sensitivity_lower_bound": (
+                    pos["missing_record_sensitivity_lower_bound"]
+                    - neg["missing_record_sensitivity_upper_bound"]
+                ),
+                "missing_record_sensitivity_upper_bound": (
+                    pos["missing_record_sensitivity_upper_bound"]
+                    - neg["missing_record_sensitivity_lower_bound"]
+                ),
+                "treatment_verification_lower_bound": (
+                    pos["treatment_verification_lower_bound"]
+                    - neg["treatment_verification_upper_bound"]
+                ),
+                "treatment_verification_upper_bound": (
+                    pos["treatment_verification_upper_bound"]
+                    - neg["treatment_verification_lower_bound"]
                 ),
                 "randomization_p_greater": greater,
                 "randomization_p_two_sided": two_sided,
+                "randomization_p_greater_mc_check": greater_mc,
+                "randomization_p_two_sided_mc_check": two_sided_mc,
+                "randomization_mc_max_abs_error": mc_error,
+                "randomization_mc_audit_pass": (
+                    bool(mc_error <= RANDOMIZATION_MC_AUDIT_TOLERANCE)
+                    if np.isfinite(mc_error)
+                    else np.nan
+                ),
             }
         )
     contrasts = pd.DataFrame(contrast_rows)
     primary_mask = contrasts["primary"]
     contrasts["holm_p_greater"] = np.nan
-    contrasts.loc[primary_mask, "holm_p_greater"] = multipletests(
-        contrasts.loc[primary_mask, "randomization_p_greater"], method="holm"
-    )[1]
+    primary_pvalues = contrasts.loc[primary_mask, "randomization_p_greater"]
+    if primary_pvalues.notna().all():
+        contrasts.loc[primary_mask, "holm_p_greater"] = multipletests(
+            primary_pvalues, method="holm"
+        )[1]
+    if simulations >= RANDOMIZATION_DRAWS and complete_binary_outcomes:
+        audit_pass = contrasts["randomization_mc_audit_pass"].fillna(False).astype(bool)
+        if not audit_pass.all():
+            worst = float(contrasts["randomization_mc_max_abs_error"].max())
+            raise RuntimeError(
+                "exact-versus-Monte-Carlo H95 randomization audit failed: "
+                f"max absolute error {worst:.6f} exceeds "
+                f"{RANDOMIZATION_MC_AUDIT_TOLERANCE:.6f}"
+            )
 
     model_rates = (
         outcomes.groupby(["model_id", "assigned_first_policy"], as_index=False)
         .agg(
-            assigned_blocks=("success", "size"),
-            success_rate=("success", "mean"),
+            assigned_blocks=("primary_success", "size"),
+            successes_known=("primary_success", lambda values: values.fillna(0.0).sum()),
+            success_rate=(
+                "primary_success",
+                lambda values: values.mean() if values.notna().all() else np.nan,
+            ),
+            measurement_missing_outcomes=("measurement_missing", "sum"),
             missing_primary_attempts=("missing_primary_attempt", "sum"),
+            structural_failures=("structural_failure", "sum"),
+            legacy_treatment_metadata_unverified=(
+                "legacy_treatment_metadata_unverified",
+                "sum",
+            ),
         )
         .rename(columns={"assigned_first_policy": "policy"})
+    )
+    lomo = _leave_one_model_out(outcomes, contrasts)
+    primary_lomo = lomo.loc[lomo["primary"]].copy()
+    lomo_direction_stability = {
+        name: bool(group["sign_stable"].all())
+        for name, group in primary_lomo.groupby("estimand", sort=False)
+    }
+    lomo_gate_pass = len(lomo_direction_stability) == 2 and all(lomo_direction_stability.values())
+    support = dict(summary.get("support") or {})
+    support["lomo_primary_direction_stability"] = lomo_direction_stability
+    support["lomo_primary_direction_stability_pass"] = lomo_gate_pass
+    support["broad_multi_model_transport_ready"] = bool(
+        support.get("structural_transport_gates_pass") and lomo_gate_pass
     )
     summary = summary | {
         "evidence_status": "fixed_horizon_outcomes_released",
         "outcomes_released": True,
         "primary_missing_attempts": int(outcomes["missing_primary_attempt"].sum()),
-        "primary_assignment_compliance_rate": float(
-            outcomes["assignment_compliant"].mean()
+        "primary_measurement_missing_outcomes": int(outcomes["measurement_missing"].sum()),
+        "complete_binary_outcomes": complete_binary_outcomes,
+        "point_inference_suppressed_for_measurement_missingness": bool(
+            not complete_binary_outcomes
         ),
+        "primary_assignment_compliance_rate": float(outcomes["assignment_compliant"].mean()),
+        "primary_treatment_metadata_audit_coverage": float(
+            outcomes["treatment_metadata_auditable"].mean()
+        ),
+        "primary_treatment_metadata_pass_rate_among_auditable": (
+            float(
+                outcomes.loc[
+                    outcomes["treatment_metadata_auditable"],
+                    "treatment_metadata_pass",
+                ]
+                .astype(bool)
+                .mean()
+            )
+            if outcomes["treatment_metadata_auditable"].any()
+            else None
+        ),
+        "primary_legacy_treatment_metadata_unverified": int(
+            outcomes["legacy_treatment_metadata_unverified"].sum()
+        ),
+        "randomization_inference": (
+            "exact Fisher sharp-null tails from convolution of each triplet's six "
+            "allowed assignments; Monte Carlo is an implementation audit only"
+        ),
+        "randomization_mc_audit_tolerance": RANDOMIZATION_MC_AUDIT_TOLERANCE,
+        "randomization_mc_audit_enforced": bool(
+            simulations >= RANDOMIZATION_DRAWS and complete_binary_outcomes
+        ),
+        "descriptive_uncertainty": (
+            "paired t intervals over realized triplets; Bonferroni 95% familywise "
+            "intervals over the two primary contrasts; not randomization-CI inversion"
+        ),
+        "support": support,
     }
-    return panel, model_rates, contrasts, summary
+    audit_columns = [
+        "triplet_id",
+        "triplet_sequence",
+        "planned_at",
+        "model_id",
+        "assigned_first_policy",
+        "observed_first_policy",
+        "recorded_outcome",
+        "attempt_recorded",
+        "assignment_compliant",
+        "duplicate_primary_record",
+        "treatment_metadata_auditable",
+        "treatment_metadata_pass",
+        "legacy_treatment_metadata_unverified",
+        "structural_failure",
+        "measurement_missing",
+        "primary_success",
+    ]
+    return panel, model_rates, contrasts, lomo, outcomes[audit_columns], summary
 
 
-def _blinded_outputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def _blinded_outputs() -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+]:
     panel = pd.DataFrame(
         [
             {
                 "policy": policy,
                 "assigned_blocks": np.nan,
-                "successes_missing_as_failure": np.nan,
-                "success_rate_missing_as_failure": np.nan,
+                "successes_itt_known": np.nan,
+                "success_rate_itt": np.nan,
             }
             for policy in POLICIES
         ]
@@ -526,7 +1002,7 @@ def _blinded_outputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             for name, positive, negative, primary in COMPARISONS
         ]
     )
-    return panel, pd.DataFrame(), contrasts
+    return panel, pd.DataFrame(), contrasts, pd.DataFrame(), pd.DataFrame()
 
 
 def run(out_dir: Path = DEFAULT_OUT, *, simulations: int = RANDOMIZATION_DRAWS) -> dict[str, Any]:
@@ -566,11 +1042,9 @@ def run(out_dir: Path = DEFAULT_OUT, *, simulations: int = RANDOMIZATION_DRAWS) 
             ]
         )
     prepared = prepare_assignment_attempts(assignment_attempts)
-    summary, audit, _, horizon_plans = gate_summary(
-        prepared, eligibility, simulations=simulations
-    )
+    summary, audit, _, horizon_plans = gate_summary(prepared, eligibility, simulations=simulations)
     if not summary["release_ready"]:
-        panel, model_rates, contrasts = _blinded_outputs()
+        panel, model_rates, contrasts, lomo, outcome_audit = _blinded_outputs()
     else:
         outcome_attempts = data.q(
             f"""
@@ -580,7 +1054,7 @@ def run(out_dir: Path = DEFAULT_OUT, *, simulations: int = RANDOMIZATION_DRAWS) 
             ) where study_id = '{STUDY_ID}'
             """
         ).df()
-        panel, model_rates, contrasts, summary = analyze_released(
+        panel, model_rates, contrasts, lomo, outcome_audit, summary = analyze_released(
             outcome_attempts,
             horizon_plans,
             summary,
@@ -590,5 +1064,7 @@ def run(out_dir: Path = DEFAULT_OUT, *, simulations: int = RANDOMIZATION_DRAWS) 
     save(panel, out_dir, "h95_policy_panel")
     save(model_rates, out_dir, "h95_model_policy_panel")
     save(contrasts, out_dir, "h95_contrasts")
+    save(lomo, out_dir, "h95_leave_one_model_out")
+    save(outcome_audit, out_dir, "h95_primary_outcome_audit")
     save_json(summary, out_dir, "h95_summary")
     return summary

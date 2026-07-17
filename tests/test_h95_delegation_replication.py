@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import itertools
 import json
 import random
 from datetime import UTC, datetime, timedelta
 
 import pandas as pd
+import pytest
 
 import orcap.analysis.h95_delegation_replication as h95
 from orcap.capture_decomposition_probes import POLICIES
@@ -21,9 +23,7 @@ def _frames(triplets: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     ]
     for triplet_index in range(triplets):
         triplet_id = f"{STUDY_ID}|triplet-{triplet_index:03d}"
-        observed_at = datetime(2026, 7, 17, 5, tzinfo=UTC) + timedelta(
-            hours=triplet_index
-        )
+        observed_at = datetime(2026, 7, 17, 5, tzinfo=UTC) + timedelta(hours=triplet_index)
         for position, policy in enumerate(POLICIES):
             model_id = f"org/model-{(triplet_index + position) % 9}"
             block_id = f"{triplet_id}|{model_id}"
@@ -44,9 +44,7 @@ def _frames(triplets: int) -> tuple[pd.DataFrame, pd.DataFrame]:
                     "block_id": block_id,
                 }
             )
-            tasks = tasks_with_assigned_first(
-                endpoints, policy, random.Random(block_seed)
-            )
+            tasks = tasks_with_assigned_first(endpoints, policy, random.Random(block_seed))
             for policy_order, task in enumerate(tasks):
                 metadata = {
                     "triplet_id": triplet_id,
@@ -57,6 +55,10 @@ def _frames(triplets: int) -> tuple[pd.DataFrame, pd.DataFrame]:
                     "ranking_position": 7 + (triplet_index + position) % 24,
                     "hugging_face_id": model_id,
                     "public_provider_order": provider_order,
+                    "public_provider_count": len(provider_order),
+                    "requested_order_length": len(task["provider_order"] or []),
+                    "provider_only_count": len(task["provider_only"] or []),
+                    "allow_fallbacks": task["allow_fallbacks"],
                     "assignment_probability_first": 1 / 3,
                 }
                 attempts.append(
@@ -64,9 +66,7 @@ def _frames(triplets: int) -> tuple[pd.DataFrame, pd.DataFrame]:
                         "source": "openrouter_generation",
                         "event_id": f"{block_id}|{policy_order}",
                         "run_ts": observed_at.strftime("%Y%m%dT%H%M%SZ"),
-                        "observed_at": (
-                            observed_at + timedelta(seconds=policy_order)
-                        ).isoformat(),
+                        "observed_at": (observed_at + timedelta(seconds=policy_order)).isoformat(),
                         "study_id": STUDY_ID,
                         "model_id": model_id,
                         "policy": task["policy"],
@@ -83,12 +83,8 @@ def _frames(triplets: int) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def test_gate_is_assignment_only_before_fixed_horizon() -> None:
     eligibility, attempts = _frames(4)
-    prepared = h95.prepare_assignment_attempts(
-        attempts.drop(columns=["outcome"])
-    )
-    summary, audit, _, plans = h95.gate_summary(
-        prepared, eligibility, simulations=200
-    )
+    prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
+    summary, audit, _, plans = h95.gate_summary(prepared, eligibility, simulations=200)
 
     assert summary["release_ready"] is False
     assert summary["outcome_access"] == "not_queried_by_fixed_horizon_gate"
@@ -103,14 +99,12 @@ def test_gate_is_assignment_only_before_fixed_horizon() -> None:
 def test_fixed_horizon_releases_exact_balance_and_blocked_contrasts() -> None:
     eligibility, attempts = _frames(h95.TARGET_TRIPLETS)
     prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
-    summary, audit, _, plans = h95.gate_summary(
-        prepared, eligibility, simulations=500
-    )
+    summary, audit, _, plans = h95.gate_summary(prepared, eligibility, simulations=500)
     assert summary["release_ready"] is True
     assert len(plans) == 360
     assert audit["complete_assignment"].all()
 
-    panel, models, contrasts, released = h95.analyze_released(
+    panel, models, contrasts, lomo, outcome_audit, released = h95.analyze_released(
         attempts, plans, summary, simulations=500
     )
 
@@ -123,7 +117,173 @@ def test_fixed_horizon_releases_exact_balance_and_blocked_contrasts() -> None:
     assert estimates["total_delegation_value"] == 1.0
     assert released["primary_missing_attempts"] == 0
     assert released["primary_assignment_compliance_rate"] == 1.0
+    assert released["primary_treatment_metadata_audit_coverage"] == 1.0
+    assert released["support"]["broad_multi_model_transport_ready"] is True
     assert models["model_id"].nunique() == 9
+    assert not lomo.empty
+    assert len(outcome_audit) == 360
+
+
+def test_exact_randomization_matches_brute_force_for_two_triplets() -> None:
+    outcomes = pd.DataFrame(
+        [
+            {
+                "triplet_id": triplet,
+                "model_id": f"model-{triplet}-{model}",
+                "assigned_first_policy": policy,
+                "primary_success": value,
+            }
+            for triplet, values in (("a", (1, 0, 1)), ("b", (0, 0, 1)))
+            for model, (policy, value) in enumerate(zip(POLICIES, values, strict=True))
+        ]
+    )
+    exact = h95._exact_blocked_randomization_pvalues(outcomes)
+    vectors = [
+        group.sort_values("model_id")["primary_success"].to_numpy()
+        for _, group in outcomes.groupby("triplet_id", sort=False)
+    ]
+    permutations = list(itertools.permutations(range(3)))
+    policy_index = {policy: index for index, policy in enumerate(POLICIES)}
+    for name, positive, negative, _ in h95.COMPARISONS:
+        observed = (
+            outcomes.loc[outcomes["assigned_first_policy"].eq(positive), "primary_success"].sum()
+            - outcomes.loc[outcomes["assigned_first_policy"].eq(negative), "primary_success"].sum()
+        )
+        null = []
+        for assignments in itertools.product(permutations, repeat=2):
+            null.append(
+                sum(
+                    vector[assignment[policy_index[positive]]]
+                    - vector[assignment[policy_index[negative]]]
+                    for vector, assignment in zip(vectors, assignments, strict=True)
+                )
+            )
+        greater = sum(value >= observed for value in null) / len(null)
+        two_sided = sum(abs(value) >= abs(observed) for value in null) / len(null)
+        assert exact[name][0] == pytest.approx(greater)
+        assert exact[name][1] == pytest.approx(two_sided)
+
+
+def test_unknown_recorded_outcome_is_not_silently_coded_as_failure() -> None:
+    eligibility, attempts = _frames(h95.TARGET_TRIPLETS)
+    prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
+    summary, _, _, plans = h95.gate_summary(prepared, eligibility, simulations=500)
+    first_index = attempts.index[attempts["event_id"].str.endswith("|0")][0]
+    attempts.loc[first_index, "outcome"] = "unknown"
+
+    panel, _, contrasts, _, outcome_audit, released = h95.analyze_released(
+        attempts, plans, summary, simulations=500
+    )
+
+    assert released["primary_measurement_missing_outcomes"] == 1
+    assert released["point_inference_suppressed_for_measurement_missingness"] is True
+    assert contrasts["success_difference"].isna().all()
+    assert contrasts["randomization_p_greater"].isna().all()
+    assert int(outcome_audit["measurement_missing"].sum()) == 1
+    affected_policy = outcome_audit.loc[
+        outcome_audit["measurement_missing"], "assigned_first_policy"
+    ].iloc[0]
+    affected_arm = panel.set_index("policy").loc[affected_policy]
+    assert (
+        affected_arm["success_rate_measurement_upper_bound"]
+        - affected_arm["success_rate_measurement_lower_bound"]
+    ) == pytest.approx(1 / h95.TARGET_TRIPLETS)
+
+
+def test_missing_and_noncompliant_first_requests_remain_structural_itt_zeros() -> None:
+    eligibility, attempts = _frames(h95.TARGET_TRIPLETS)
+    prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
+    summary, _, _, plans = h95.gate_summary(prepared, eligibility, simulations=500)
+    first_indices = attempts.index[attempts["event_id"].str.endswith("|0")].tolist()
+    attempts = attempts.drop(index=first_indices[0]).copy()
+    attempts.loc[first_indices[1], "policy"] = "not_the_assigned_policy"
+
+    _, _, contrasts, _, outcome_audit, released = h95.analyze_released(
+        attempts, plans, summary, simulations=500
+    )
+
+    assert released["primary_missing_attempts"] == 1
+    assert released["primary_measurement_missing_outcomes"] == 0
+    assert int(outcome_audit["structural_failure"].sum()) == 2
+    assert outcome_audit.loc[outcome_audit["structural_failure"], "primary_success"].eq(0.0).all()
+    assert contrasts["success_difference"].notna().all()
+
+
+def test_production_monte_carlo_audit_passes_and_transport_is_reported() -> None:
+    eligibility, attempts = _frames(h95.TARGET_TRIPLETS)
+    prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
+    summary, _, _, plans = h95.gate_summary(
+        prepared, eligibility, simulations=h95.RANDOMIZATION_DRAWS
+    )
+    _, _, contrasts, lomo, _, released = h95.analyze_released(
+        attempts,
+        plans,
+        summary,
+        simulations=h95.RANDOMIZATION_DRAWS,
+    )
+
+    assert bool(contrasts["randomization_mc_audit_pass"].astype(bool).all())
+    assert released["randomization_mc_audit_enforced"] is True
+    assert released["support"]["max_six_hour_triplet_share"] <= 0.20
+    assert released["support"]["lomo_primary_direction_stability_pass"] is True
+    assert lomo["retained_triplets"].min() > 0
+
+
+def test_corrupt_treatment_metadata_is_a_structural_zero() -> None:
+    eligibility, attempts = _frames(h95.TARGET_TRIPLETS)
+    prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
+    summary, _, _, plans = h95.gate_summary(prepared, eligibility, simulations=500)
+    first_index = attempts.index[attempts["event_id"].str.endswith("|0")][0]
+    metadata = json.loads(attempts.loc[first_index, "metadata_json"])
+    metadata["requested_order_length"] = 99
+    attempts.loc[first_index, "metadata_json"] = json.dumps(metadata)
+
+    _, _, _, _, outcome_audit, released = h95.analyze_released(
+        attempts, plans, summary, simulations=500
+    )
+
+    corrupt = outcome_audit.loc[
+        outcome_audit["treatment_metadata_auditable"]
+        & ~outcome_audit["treatment_metadata_pass"].astype(bool)
+    ]
+    assert len(corrupt) == 1
+    assert bool(corrupt["structural_failure"].iloc[0]) is True
+    assert corrupt["primary_success"].iloc[0] == 0.0
+    assert released["primary_treatment_metadata_pass_rate_among_auditable"] < 1.0
+
+
+def test_production_randomization_audit_fails_closed_on_drift(monkeypatch) -> None:
+    eligibility, attempts = _frames(h95.TARGET_TRIPLETS)
+    prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
+    summary, _, _, plans = h95.gate_summary(
+        prepared, eligibility, simulations=h95.RANDOMIZATION_DRAWS
+    )
+
+    monkeypatch.setattr(
+        h95,
+        "_monte_carlo_randomization_pvalues",
+        lambda *args, **kwargs: {name: (0.5, 0.5) for name, *_ in h95.COMPARISONS},
+    )
+    with pytest.raises(RuntimeError, match="randomization audit failed"):
+        h95.analyze_released(
+            attempts,
+            plans,
+            summary,
+            simulations=h95.RANDOMIZATION_DRAWS,
+        )
+
+
+def test_six_hour_concentration_gate_uses_triplets_not_blocks() -> None:
+    eligibility, attempts = _frames(h95.TARGET_TRIPLETS)
+    eligibility["observed_at"] = "2026-07-17T05:00:00+00:00"
+    eligibility["run_ts"] = "20260717T050000Z"
+    prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
+
+    summary, _, _, _ = h95.gate_summary(prepared, eligibility, simulations=0)
+
+    assert summary["support"]["max_six_hour_triplets"] == h95.TARGET_TRIPLETS
+    assert summary["support"]["max_six_hour_triplet_share"] == 1.0
+    assert summary["support"]["structural_transport_gates_pass"] is False
 
 
 def test_run_never_queries_outcomes_while_gate_is_closed(monkeypatch, tmp_path) -> None:
