@@ -1,0 +1,368 @@
+{
+  "conflict_totals": {
+    "availability_conflict_groups": 8388,
+    "capability_conflict_groups": 0,
+    "price_conflict_groups": 0,
+    "raw_conflict_groups": 8388
+  },
+  "daily": [
+    {
+      "capture_runs": 119,
+      "distinct_source_records": 103423,
+      "dt": "2026-07-07",
+      "listing_keys": 103415,
+      "physical_rows": 104367
+    },
+    {
+      "capture_runs": 243,
+      "distinct_source_records": 212237,
+      "dt": "2026-07-08",
+      "listing_keys": 212233,
+      "physical_rows": 214177
+    },
+    {
+      "capture_runs": 187,
+      "distinct_source_records": 170739,
+      "dt": "2026-07-09",
+      "listing_keys": 170579,
+      "physical_rows": 172827
+    },
+    {
+      "capture_runs": 200,
+      "distinct_source_records": 194181,
+      "dt": "2026-07-10",
+      "listing_keys": 193101,
+      "physical_rows": 196301
+    },
+    {
+      "capture_runs": 242,
+      "distinct_source_records": 235311,
+      "dt": "2026-07-11",
+      "listing_keys": 233836,
+      "physical_rows": 237708
+    },
+    {
+      "capture_runs": 242,
+      "distinct_source_records": 235717,
+      "dt": "2026-07-12",
+      "listing_keys": 234465,
+      "physical_rows": 523002
+    },
+    {
+      "capture_runs": 198,
+      "distinct_source_records": 192785,
+      "dt": "2026-07-13",
+      "listing_keys": 191842,
+      "physical_rows": 364410
+    },
+    {
+      "capture_runs": 216,
+      "distinct_source_records": 210898,
+      "dt": "2026-07-14",
+      "listing_keys": 209666,
+      "physical_rows": 855148
+    },
+    {
+      "capture_runs": 205,
+      "distinct_source_records": 199943,
+      "dt": "2026-07-15",
+      "listing_keys": 198823,
+      "physical_rows": 202103
+    },
+    {
+      "capture_runs": 227,
+      "distinct_source_records": 222295,
+      "dt": "2026-07-16",
+      "listing_keys": 220719,
+      "physical_rows": 640449
+    },
+    {
+      "capture_runs": 37,
+      "distinct_source_records": 36337,
+      "dt": "2026-07-17",
+      "listing_keys": 36001,
+      "physical_rows": 36593
+    }
+  ],
+  "daily_conflicts": [
+    {
+      "availability_conflict_groups": 8,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-07",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 8
+    },
+    {
+      "availability_conflict_groups": 4,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-08",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 4
+    },
+    {
+      "availability_conflict_groups": 152,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-09",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 152
+    },
+    {
+      "availability_conflict_groups": 1008,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-10",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1008
+    },
+    {
+      "availability_conflict_groups": 1405,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-11",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1405
+    },
+    {
+      "availability_conflict_groups": 1188,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-12",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1188
+    },
+    {
+      "availability_conflict_groups": 879,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-13",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 879
+    },
+    {
+      "availability_conflict_groups": 1128,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-14",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1128
+    },
+    {
+      "availability_conflict_groups": 1000,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-15",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1000
+    },
+    {
+      "availability_conflict_groups": 1360,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-16",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1360
+    },
+    {
+      "availability_conflict_groups": 256,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-17",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 256
+    }
+  ],
+  "deduplication_unit": [
+    "run_ts",
+    "model_id",
+    "provider_name",
+    "tag",
+    "endpoint_fingerprint",
+    "record_json"
+  ],
+  "input_revision": "9cbed9f25ddf05c26de8fbf91374e6dd6adc26f1",
+  "listing_unit": [
+    "run_ts",
+    "model_id",
+    "provider_name",
+    "tag",
+    "endpoint_fingerprint"
+  ],
+  "pricing_event_rebuild": {
+    "derived_dates": [
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15",
+      "2026-07-16"
+    ],
+    "exact_set_match": false,
+    "missing_by_date": {
+      "2026-07-10": 1
+    },
+    "missing_by_field": {
+      "__endpoint_removed__": 1
+    },
+    "missing_from_observed": 1,
+    "missing_sample": [
+      {
+        "changed_at_run_ts": "20260710T235719Z",
+        "dt": "2026-07-10",
+        "endpoint_fingerprint": "0b78292ed3c8",
+        "field": "__endpoint_removed__",
+        "model_id": "z-ai/glm-5.2",
+        "new_value": null,
+        "old_value": "{\"price_completion\": 4.4e-06, \"price_discount\": 0.0, \"price_image\": null, \"price_input_cache_read\": 7e-07, \"price_input_cache_write\": null, \"price_prompt\": 1.4e-06, \"price_request\": null}",
+        "provider_name": "Phala",
+        "tag": "phala"
+      }
+    ],
+    "observed_events": 4015,
+    "observed_unique_events": 4015,
+    "rebuilt_events": 3219,
+    "rebuilt_unique_events": 3219,
+    "unexpected_by_date": {
+      "2026-07-09": 38,
+      "2026-07-10": 566,
+      "2026-07-12": 30,
+      "2026-07-13": 113,
+      "2026-07-14": 21,
+      "2026-07-16": 29
+    },
+    "unexpected_by_field": {
+      "__endpoint_added__": 347,
+      "__endpoint_removed__": 232,
+      "price_completion": 60,
+      "price_discount": 19,
+      "price_input_cache_read": 59,
+      "price_input_cache_write": 13,
+      "price_prompt": 67
+    },
+    "unexpected_in_observed": 797,
+    "unexpected_sample": [
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "0b7ce5daefe6",
+        "field": "__endpoint_added__",
+        "model_id": "x-ai/grok-4.5",
+        "new_value": "{\"price_completion\": 6e-06, \"price_discount\": 0.0, \"price_image\": null, \"price_input_cache_read\": 5e-07, \"price_input_cache_write\": null, \"price_prompt\": 2e-06, \"price_request\": null}",
+        "old_value": null,
+        "provider_name": "xAI",
+        "tag": "xai"
+      },
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "0b7ce5daefe6",
+        "field": "__endpoint_added__",
+        "model_id": "x-ai/grok-4.5",
+        "new_value": "{\"price_completion\": 6e-06, \"price_discount\": 0.0, \"price_image\": null, \"price_input_cache_read\": 5e-07, \"price_input_cache_write\": null, \"price_prompt\": 2e-06, \"price_request\": null}",
+        "old_value": null,
+        "provider_name": "xAI",
+        "tag": "xai/zdr"
+      },
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "27eb182c8db3",
+        "field": "price_prompt",
+        "model_id": "z-ai/glm-5.2",
+        "new_value": "9e-07",
+        "old_value": "9.7e-07",
+        "provider_name": "Inceptron",
+        "tag": "inceptron/fp4"
+      },
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "2faa88f65221",
+        "field": "price_completion",
+        "model_id": "z-ai/glm-5.2",
+        "new_value": "4.5375e-06",
+        "old_value": "4.125e-06",
+        "provider_name": "Io Net",
+        "tag": "io-net/fp8"
+      },
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "2faa88f65221",
+        "field": "price_input_cache_read",
+        "model_id": "z-ai/glm-5.2",
+        "new_value": "7.26e-07",
+        "old_value": "7e-07",
+        "provider_name": "Io Net",
+        "tag": "io-net/fp8"
+      },
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "2faa88f65221",
+        "field": "price_prompt",
+        "model_id": "z-ai/glm-5.2",
+        "new_value": "1.452e-06",
+        "old_value": "1.32e-06",
+        "provider_name": "Io Net",
+        "tag": "io-net/fp8"
+      },
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "3ede5477da3e",
+        "field": "price_prompt",
+        "model_id": "deepseek/deepseek-v4-pro",
+        "new_value": "1.50162e-06",
+        "old_value": "1.6e-06",
+        "provider_name": "SiliconFlow",
+        "tag": "siliconflow/fp8"
+      },
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "465c83484944",
+        "field": "price_completion",
+        "model_id": "moonshotai/kimi-k2.7-code",
+        "new_value": "3.75e-06",
+        "old_value": "4e-06",
+        "provider_name": "ModelRun",
+        "tag": "modelrun/fp4"
+      },
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "465c83484944",
+        "field": "price_input_cache_read",
+        "model_id": "moonshotai/kimi-k2.7-code",
+        "new_value": "1.6e-07",
+        "old_value": "1.9e-07",
+        "provider_name": "ModelRun",
+        "tag": "modelrun/fp4"
+      },
+      {
+        "changed_at_run_ts": "20260709T000325Z",
+        "dt": "2026-07-09",
+        "endpoint_fingerprint": "465c83484944",
+        "field": "price_prompt",
+        "model_id": "moonshotai/kimi-k2.7-code",
+        "new_value": "8.5e-07",
+        "old_value": "9.2e-07",
+        "provider_name": "ModelRun",
+        "tag": "modelrun/fp4"
+      }
+    ]
+  },
+  "schema_version": 1,
+  "totals": {
+    "capture_runs": 2116,
+    "distinct_source_records": 2013866,
+    "exact_duplicate_rows": 1533219,
+    "listing_keys": 2004680,
+    "physical_rows": 3547085,
+    "same_listing_raw_variants": 9186
+  },
+  "verdict": {
+    "availability_variants_present": true,
+    "capability_conflicts_present": false,
+    "derived_pricing_events_reproducible": false,
+    "exact_overlap_present": true,
+    "price_conflicts_present": false,
+    "safe_to_deduplicate_exact_source_records": true
+  }
+}

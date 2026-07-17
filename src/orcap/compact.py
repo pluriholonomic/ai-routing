@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from .config import CURATED_DIR, DATA_DIR, HF_DATASET_REPO
@@ -43,6 +44,16 @@ TRACKED_PRICE_FIELDS = [
 
 DERIVED_DIR = DATA_DIR / "derived"
 PRICING_CURRENT = DERIVED_DIR / "pricing_current.parquet"
+PRICING_STATE_TABLE = "pricing_state"
+
+ENDPOINT_LISTING_KEY = [
+    "run_ts",
+    "model_id",
+    "provider_name",
+    "tag",
+    "endpoint_fingerprint",
+]
+ENDPOINT_SOURCE_RECORD_KEY = [*ENDPOINT_LISTING_KEY, "record_json"]
 
 
 def yesterday_utc() -> str:
@@ -50,6 +61,102 @@ def yesterday_utc() -> str:
 
 
 # ------------------------------------------------------------- repartitioning
+
+
+def _take_first_by_key(table: pa.Table, key_fields: list[str]) -> pa.Table:
+    """Return the first row for each key while preserving source row order."""
+    missing = [field for field in key_fields if field not in table.column_names]
+    if missing:
+        raise ValueError(f"table is missing deduplication fields: {missing}")
+    if not table.num_rows:
+        return table
+
+    indexed = table.append_column("__source_row", pa.array(range(table.num_rows)))
+    grouped = indexed.group_by(key_fields).aggregate([("__source_row", "min")])
+    first_rows = grouped["__source_row_min"]
+    ordered = pc.take(first_rows, pc.sort_indices(first_rows))
+    return indexed.drop(["__source_row"]).take(ordered)
+
+
+def deduplicate_endpoint_records(table: pa.Table) -> tuple[pa.Table, dict[str, int]]:
+    """Remove repeat copies of one raw endpoint record, never distinct variants.
+
+    Artifact overlap can place the same capture file in both ``part-0`` and the
+    next ``buffered-part``.  ``record_json`` is the source-record boundary: two
+    rows with different raw payloads remain separate even when their public
+    listing key is identical.  A repeated source payload must normalize to the
+    same scalar fields; otherwise the partition is internally inconsistent and
+    compaction fails rather than choosing a version silently.
+    """
+    if not table.num_rows:
+        return table, {
+            "physical_rows": 0,
+            "distinct_source_records": 0,
+            "duplicate_rows_removed": 0,
+        }
+
+    missing = [field for field in ENDPOINT_SOURCE_RECORD_KEY if field not in table.column_names]
+    if missing:
+        raise ValueError(f"endpoint table is missing source-record fields: {missing}")
+
+    # Lists are represented inside record_json already.  Every remaining field
+    # is scalar and should be a deterministic normalization of that payload.
+    scalar_fields = [
+        field
+        for field in table.column_names
+        if field not in ENDPOINT_SOURCE_RECORD_KEY and field != "supported_parameters"
+    ]
+    source_records = table.select(ENDPOINT_SOURCE_RECORD_KEY).group_by(
+        ENDPOINT_SOURCE_RECORD_KEY
+    ).aggregate([])
+    normalized_records = table.select([*ENDPOINT_SOURCE_RECORD_KEY, *scalar_fields]).group_by(
+        [*ENDPOINT_SOURCE_RECORD_KEY, *scalar_fields]
+    ).aggregate([])
+    if normalized_records.num_rows != source_records.num_rows:
+        raise RuntimeError(
+            "identical endpoint source records produced conflicting normalized fields: "
+            f"{normalized_records.num_rows} normalized variants for "
+            f"{source_records.num_rows} source records"
+        )
+
+    deduplicated = _take_first_by_key(table, ENDPOINT_SOURCE_RECORD_KEY)
+    audit = {
+        "physical_rows": table.num_rows,
+        "distinct_source_records": deduplicated.num_rows,
+        "duplicate_rows_removed": table.num_rows - deduplicated.num_rows,
+    }
+    return deduplicated, audit
+
+
+def canonicalize_pricing_endpoints(table: pa.Table) -> pa.Table:
+    """Return one price record per listing/time, rejecting ambiguous quotes."""
+    if "endpoint_fingerprint" not in table.column_names:  # pre-fingerprint captures
+        table = table.append_column(
+            "endpoint_fingerprint", pa.array([""] * table.num_rows, pa.string())
+        )
+    if not table.num_rows:
+        return table
+
+    missing = [
+        field
+        for field in [*ENDPOINT_LISTING_KEY, *TRACKED_PRICE_FIELDS]
+        if field not in table.column_names
+    ]
+    if missing:
+        raise ValueError(f"endpoint table is missing pricing fields: {missing}")
+
+    listing_count = table.select(ENDPOINT_LISTING_KEY).group_by(ENDPOINT_LISTING_KEY).aggregate(
+        []
+    ).num_rows
+    price_variant_count = table.select(
+        [*ENDPOINT_LISTING_KEY, *TRACKED_PRICE_FIELDS]
+    ).group_by([*ENDPOINT_LISTING_KEY, *TRACKED_PRICE_FIELDS]).aggregate([]).num_rows
+    if price_variant_count != listing_count:
+        raise RuntimeError(
+            "conflicting prices for one endpoint listing and capture time: "
+            f"{price_variant_count} price variants for {listing_count} listing keys"
+        )
+    return _take_first_by_key(table, ENDPOINT_LISTING_KEY)
 
 
 def consolidate_table_day(table_dir: Path) -> tuple[Path | None, list[Path]]:
@@ -68,6 +175,9 @@ def consolidate_table_day(table_dir: Path) -> tuple[Path | None, list[Path]]:
     tables = [pq.ParquetFile(f).read() for f in files]
     # permissive: schema inference can flap int64/double across runs for stat columns
     merged = pa.concat_tables(tables, promote_options="permissive")
+    if table_dir.parent.name == "endpoints_snapshots":
+        merged, audit = deduplicate_endpoint_records(merged)
+        log.info("endpoint consolidation deduplication: %s", audit)
     pq.write_table(merged, out, compression="zstd")
     return out, per_run
 
@@ -93,6 +203,7 @@ def bundle_curated_partitions(
 
     curated = data_dir / "curated"
     row_counts: dict[str, int] = {}
+    duplicate_rows_removed: dict[str, int] = {}
     files_removed = 0
     for table_dir in sorted(curated.glob("*/dt=*")):
         dt = table_dir.name.removeprefix("dt=")
@@ -103,6 +214,11 @@ def bundle_curated_partitions(
             continue
         tables = [pq.ParquetFile(path).read() for path in files]
         merged = pa.concat_tables(tables, promote_options="permissive")
+        if table_dir.parent.name == "endpoints_snapshots":
+            merged, audit = deduplicate_endpoint_records(merged)
+            duplicate_rows_removed[f"{table_dir.parent.name}/{table_dir.name}"] = audit[
+                "duplicate_rows_removed"
+            ]
         target = table_dir / bundle_name
         temporary = table_dir / f".{bundle_name}.tmp"
         pq.write_table(merged, temporary, compression="zstd")
@@ -118,6 +234,7 @@ def bundle_curated_partitions(
         "bundle_name": bundle_name,
         "partitions": row_counts,
         "source_files_removed": files_removed,
+        "endpoint_duplicate_rows_removed": duplicate_rows_removed,
     }
     log.info("artifact bundle summary: %s", summary)
     return summary
@@ -191,10 +308,7 @@ def fold_pricing_changes(
     {run_ts, model_id, provider_name, tag, <price fields>}.
     """
     events: list[dict[str, Any]] = []
-    if "endpoint_fingerprint" not in endpoints_day.column_names:  # pre-fingerprint captures
-        endpoints_day = endpoints_day.append_column(
-            "endpoint_fingerprint", pa.array([""] * endpoints_day.num_rows, pa.string())
-        )
+    endpoints_day = canonicalize_pricing_endpoints(endpoints_day)
     cols = [
         "run_ts",
         "model_id",
@@ -288,6 +402,10 @@ def save_state(state: dict[str, dict[str, Any]], path: Path = PRICING_CURRENT) -
     )
 
 
+def _state_max_run_ts(state: dict[str, dict[str, Any]]) -> str:
+    return max((str(row.get("run_ts") or "") for row in state.values()), default="")
+
+
 CHANGES_SCHEMA = pa.schema(
     [
         pa.field("dt", pa.string()),
@@ -307,7 +425,12 @@ CHANGES_SCHEMA = pa.schema(
 
 
 def compact_local(
-    dt: str, data_dir: Path = DATA_DIR, tables: set[str] | None = None
+    dt: str,
+    data_dir: Path = DATA_DIR,
+    tables: set[str] | None = None,
+    *,
+    prior_state_path: Path | None = None,
+    require_prior_state: bool = False,
 ) -> dict[str, Any]:
     """Compact one day in a local data dir. Returns summary incl. deleted files."""
     curated = data_dir / "curated" if data_dir != DATA_DIR else CURATED_DIR
@@ -331,25 +454,34 @@ def compact_local(
 
     events: list[dict[str, Any]] = []
     if endpoints_day is not None and endpoints_day.num_rows:
-        state_path = data_dir / "derived" / "pricing_current.parquet"
-        state = load_state(state_path)
+        if prior_state_path is not None and prior_state_path.exists():
+            state = load_state(prior_state_path)
+        elif require_prior_state:
+            raise RuntimeError(
+                f"no immutable prior-day pricing state is available before {dt}; "
+                "run the chronological pricing-state rebuild before compacting this day"
+            )
+        else:
+            state = {}
         events, state = fold_pricing_changes(endpoints_day, state)
+        state_path = data_dir / "derived" / PRICING_STATE_TABLE / f"dt={dt}" / "part-0.parquet"
         save_state(state, state_path)
         changes_dir = data_dir / "derived" / "pricing_changes" / f"dt={dt}"
         changes_dir.mkdir(parents=True, exist_ok=True)
         changes_path = changes_dir / "part-0.parquet"
         event_rows = [{"dt": dt, **e} for e in events]
-        # a re-run of an already-folded day computes few/no events (state has
-        # absorbed them); merge with the existing file so events aren't lost
-        if changes_path.exists():
-            existing = pq.ParquetFile(changes_path).read().to_pylist()
-            merged = {json.dumps(r, sort_keys=True): r for r in existing + event_rows}
-            event_rows = list(merged.values())
+        # The day is a pure function of its endpoint partition and immutable
+        # prior-day state. Replace, never merge: merging lets stale events from
+        # an out-of-order re-run survive forever.
         pq.write_table(
             pa.Table.from_pylist(event_rows, schema=CHANGES_SCHEMA),
             changes_path,
             compression="zstd",
         )
+        current_path = data_dir / "derived" / "pricing_current.parquet"
+        current_state = load_state(current_path)
+        if _state_max_run_ts(state) >= _state_max_run_ts(current_state):
+            save_state(state, current_path)
 
     summary = {
         "dt": dt,
@@ -357,6 +489,8 @@ def compact_local(
         "consolidated_files_removed": len(deleted),
         "pricing_change_events": len(events),
         "price_field_changes": sum(1 for e in events if not e["field"].startswith("__")),
+        "prior_pricing_state": str(prior_state_path) if prior_state_path else None,
+        "pricing_state_written": bool(endpoints_day is not None and endpoints_day.num_rows),
     }
     log.info("compaction summary: %s", summary)
     return summary
@@ -399,9 +533,10 @@ def compact_hf(
     workdir = workdir or Path(tempfile.mkdtemp(prefix="orcap-compact-"))
     prefix = "curated/"
     marker = f"/dt={dt}/"
+    repo_files = api.list_repo_files(repo_id=repo_id, repo_type="dataset")
     table_names = [
         path[len(prefix) :].split("/", 1)[0]
-        for path in api.list_repo_files(repo_id=repo_id, repo_type="dataset")
+        for path in repo_files
         if path.startswith(prefix) and marker in path and path.endswith(".parquet")
     ]
     excluded_tables = set(exclude_tables or ())
@@ -430,6 +565,36 @@ def compact_hf(
     # make the memo job's snapshot_download (one request per file) hang on rate
     # limits. Days whose endpoints partition is already a lone part-0 skip the
     # pricing fold entirely, so re-running old days cannot corrupt the SCD-2 state.
+    prior_state_repo_path: str | None = None
+    require_prior_state = False
+    if "endpoints_snapshots" in selected_tables:
+        endpoint_dates = sorted(
+            {
+                path.split("/dt=", 1)[1].split("/", 1)[0]
+                for path in repo_files
+                if path.startswith("curated/endpoints_snapshots/dt=")
+                and path.endswith(".parquet")
+            }
+        )
+        require_prior_state = any(candidate < dt for candidate in endpoint_dates)
+        state_candidates = sorted(
+            (
+                path.split("/dt=", 1)[1].split("/", 1)[0],
+                path,
+            )
+            for path in repo_files
+            if path.startswith(f"derived/{PRICING_STATE_TABLE}/dt=")
+            and path.endswith(".parquet")
+            and path.split("/dt=", 1)[1].split("/", 1)[0] < dt
+        )
+        if state_candidates:
+            _, prior_state_repo_path = state_candidates[-1]
+        if require_prior_state and prior_state_repo_path is None:
+            raise RuntimeError(
+                f"endpoint history predates {dt}, but no immutable prior-day pricing state exists; "
+                "run the chronological pricing-state rebuild"
+            )
+
     snapshot_download(
         repo_id=repo_id,
         repo_type="dataset",
@@ -439,6 +604,7 @@ def compact_hf(
             [
                 "derived/pricing_current.parquet",
                 f"derived/pricing_changes/dt={dt}/*",
+                *([prior_state_repo_path] if prior_state_repo_path else []),
             ]
             if "endpoints_snapshots" in selected_tables
             else []
@@ -458,7 +624,13 @@ def compact_hf(
         }
 
     before = _snapshot()
-    summary = compact_local(dt, data_dir=workdir, tables=set(selected_tables))
+    summary = compact_local(
+        dt,
+        data_dir=workdir,
+        tables=set(selected_tables),
+        prior_state_path=(workdir / prior_state_repo_path if prior_state_repo_path else None),
+        require_prior_state=require_prior_state,
+    )
     summary["selected_tables"] = selected_tables
     summary["excluded_tables"] = sorted(excluded_tables)
     summary["shard_index"] = shard_index

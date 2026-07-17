@@ -6,6 +6,10 @@ from orcap.compact import (
     _shard_tables,
     build_source_runs_baseline,
     bundle_curated_partitions,
+    canonicalize_pricing_endpoints,
+    compact_local,
+    consolidate_table_day,
+    deduplicate_endpoint_records,
     fold_pricing_changes,
 )
 
@@ -68,6 +72,141 @@ def test_removed_endpoint_emits_removed_event():
     assert len(removed) == 1
     assert removed[0]["tag"] == "b/fp8"
     assert len(state) == 1
+
+
+def test_endpoint_source_record_dedup_preserves_distinct_raw_variants():
+    first = _row("20260101T000000Z") | {"record_json": '{"status":0}', "status": 0}
+    second = first | {"record_json": '{"status":-2}', "status": -2}
+    table = pa.Table.from_pylist([first, first, second])
+
+    result, audit = deduplicate_endpoint_records(table)
+
+    assert result.num_rows == 2
+    assert result["status"].to_pylist() == [0, -2]
+    assert audit == {
+        "physical_rows": 3,
+        "distinct_source_records": 2,
+        "duplicate_rows_removed": 1,
+    }
+
+
+def test_endpoint_source_record_dedup_rejects_normalization_conflict():
+    first = _row("20260101T000000Z") | {"record_json": '{"status":0}', "status": 0}
+    conflicting = first | {"price_prompt": 9e-7}
+
+    with pytest.raises(RuntimeError, match="conflicting normalized fields"):
+        deduplicate_endpoint_records(pa.Table.from_pylist([first, conflicting]))
+
+
+def test_pricing_fold_collapses_availability_variants_with_identical_quote():
+    first = _row("20260101T000000Z") | {"status": 0}
+    second = first | {"status": -2}
+
+    canonical = canonicalize_pricing_endpoints(pa.Table.from_pylist([first, second]))
+    events, state = fold_pricing_changes(pa.Table.from_pylist([first, second]), {})
+
+    assert canonical.num_rows == 1
+    assert [event["field"] for event in events] == ["__endpoint_added__"]
+    assert len(state) == 1
+
+
+def test_pricing_fold_rejects_same_listing_time_with_conflicting_quote():
+    first = _row("20260101T000000Z", prompt=1e-7)
+    second = _row("20260101T000000Z", prompt=2e-7)
+
+    with pytest.raises(RuntimeError, match="conflicting prices"):
+        fold_pricing_changes(pa.Table.from_pylist([first, second]), {})
+
+
+def test_endpoint_consolidation_is_idempotent_under_buffer_overlap(tmp_path):
+    import pyarrow.parquet as pq
+
+    day = tmp_path / "curated" / "endpoints_snapshots" / "dt=2026-07-16"
+    day.mkdir(parents=True)
+    first = _row("20260716T000000Z") | {"record_json": '{"status":0}', "status": 0}
+    second = _row("20260716T000000Z", provider="Q") | {
+        "record_json": '{"status":0,"provider":"Q"}',
+        "status": 0,
+    }
+    pq.write_table(pa.Table.from_pylist([first, second]), day / "part-0.parquet")
+    pq.write_table(pa.Table.from_pylist([first, second]), day / "buffered-part.parquet")
+
+    out, inputs = consolidate_table_day(day)
+
+    assert out == day / "part-0.parquet"
+    assert inputs == [day / "buffered-part.parquet"]
+    assert pq.ParquetFile(out).read().num_rows == 2
+
+    # The caller removes folded inputs; adding the same buffer again must still
+    # leave exactly one copy of each source record.
+    for path in inputs:
+        path.unlink()
+    pq.write_table(pa.Table.from_pylist([first, second]), day / "buffered-part.parquet")
+    out, _ = consolidate_table_day(day)
+    assert pq.ParquetFile(out).read().num_rows == 2
+
+
+def test_compaction_requires_prior_state_when_history_exists(tmp_path):
+    import pyarrow.parquet as pq
+
+    day = tmp_path / "curated" / "endpoints_snapshots" / "dt=2026-07-08"
+    day.mkdir(parents=True)
+    row = _row("20260708T000000Z") | {"record_json": '{"status":0}', "status": 0}
+    pq.write_table(pa.Table.from_pylist([row]), day / "capture.parquet")
+
+    with pytest.raises(RuntimeError, match="no immutable prior-day pricing state"):
+        compact_local(
+            "2026-07-08",
+            data_dir=tmp_path,
+            tables={"endpoints_snapshots"},
+            require_prior_state=True,
+        )
+
+
+def test_pricing_day_is_reproducible_from_immutable_prior_state(tmp_path):
+    import pyarrow.parquet as pq
+
+    first_day = tmp_path / "curated" / "endpoints_snapshots" / "dt=2026-07-07"
+    first_day.mkdir(parents=True)
+    initial = _row("20260707T235500Z", prompt=1e-7) | {
+        "record_json": '{"prompt":"0.0000001"}',
+        "status": 0,
+    }
+    pq.write_table(pa.Table.from_pylist([initial]), first_day / "capture.parquet")
+    compact_local("2026-07-07", data_dir=tmp_path, tables={"endpoints_snapshots"})
+    prior = tmp_path / "derived" / "pricing_state" / "dt=2026-07-07" / "part-0.parquet"
+
+    second_day = tmp_path / "curated" / "endpoints_snapshots" / "dt=2026-07-08"
+    second_day.mkdir(parents=True)
+    changed = _row("20260708T000500Z", prompt=2e-7) | {
+        "record_json": '{"prompt":"0.0000002"}',
+        "status": 0,
+    }
+    pq.write_table(pa.Table.from_pylist([changed]), second_day / "capture.parquet")
+    compact_local(
+        "2026-07-08",
+        data_dir=tmp_path,
+        tables={"endpoints_snapshots"},
+        prior_state_path=prior,
+        require_prior_state=True,
+    )
+    changes_path = (
+        tmp_path / "derived" / "pricing_changes" / "dt=2026-07-08" / "part-0.parquet"
+    )
+    expected = pq.ParquetFile(changes_path).read().to_pylist()
+    assert [row["field"] for row in expected] == ["price_prompt"]
+
+    # Reintroducing the same source buffer re-runs the day from the prior state,
+    # replacing the derived partition with the identical event set.
+    pq.write_table(pa.Table.from_pylist([changed]), second_day / "buffered-part.parquet")
+    compact_local(
+        "2026-07-08",
+        data_dir=tmp_path,
+        tables={"endpoints_snapshots"},
+        prior_state_path=prior,
+        require_prior_state=True,
+    )
+    assert pq.ParquetFile(changes_path).read().to_pylist() == expected
 
 
 def test_consolidate_merges_int64_double_schema_flap(tmp_path):

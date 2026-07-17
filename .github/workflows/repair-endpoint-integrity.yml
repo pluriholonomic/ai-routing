@@ -1,0 +1,47 @@
+name: repair-endpoint-integrity
+
+on:
+  workflow_dispatch:
+    inputs:
+      through:
+        description: "last completed UTC endpoint date to repair (YYYY-MM-DD)"
+        required: true
+
+concurrency:
+  group: compact
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync
+      - name: verify repair invariants
+        run: >-
+          uv run pytest -q
+          tests/test_compact.py
+          tests/test_endpoint_integrity_repair.py
+      - name: pin, repair, rebuild, and publish
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run python scripts/repair_endpoint_integrity.py
+          --through "${{ inputs.through }}"
+          --publish
+          --output-manifest endpoint-integrity-repair.json
+      - name: retain repair manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: endpoint-integrity-repair-${{ github.run_id }}
+          path: endpoint-integrity-repair.json
+          if-no-files-found: error
+          retention-days: 90

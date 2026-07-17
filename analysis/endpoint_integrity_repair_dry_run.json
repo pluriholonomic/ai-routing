@@ -1,0 +1,289 @@
+{
+  "code_commit": "0e4c1c6e64362e649bde9c344816c1b420fb7c73",
+  "created_at_utc": "2026-07-17T05:47:22.951918+00:00",
+  "daily": [
+    {
+      "distinct_source_records": 103423,
+      "dt": "2026-07-07",
+      "duplicate_rows_removed": 944,
+      "listing_keys": 103415,
+      "physical_rows": 104367,
+      "price_field_changes": 35,
+      "pricing_events": 932,
+      "same_listing_raw_variants": 8,
+      "source_files": 1
+    },
+    {
+      "distinct_source_records": 212237,
+      "dt": "2026-07-08",
+      "duplicate_rows_removed": 1940,
+      "listing_keys": 212233,
+      "physical_rows": 214177,
+      "price_field_changes": 59,
+      "pricing_events": 71,
+      "same_listing_raw_variants": 4,
+      "source_files": 1
+    },
+    {
+      "distinct_source_records": 170739,
+      "dt": "2026-07-09",
+      "duplicate_rows_removed": 2088,
+      "listing_keys": 170579,
+      "physical_rows": 172827,
+      "price_field_changes": 135,
+      "pricing_events": 786,
+      "same_listing_raw_variants": 160,
+      "source_files": 1
+    },
+    {
+      "distinct_source_records": 194181,
+      "dt": "2026-07-10",
+      "duplicate_rows_removed": 2120,
+      "listing_keys": 193101,
+      "physical_rows": 196301,
+      "price_field_changes": 140,
+      "pricing_events": 174,
+      "same_listing_raw_variants": 1080,
+      "source_files": 1
+    },
+    {
+      "distinct_source_records": 235311,
+      "dt": "2026-07-11",
+      "duplicate_rows_removed": 2397,
+      "listing_keys": 233836,
+      "physical_rows": 237708,
+      "price_field_changes": 89,
+      "pricing_events": 102,
+      "same_listing_raw_variants": 1475,
+      "source_files": 1
+    },
+    {
+      "distinct_source_records": 235717,
+      "dt": "2026-07-12",
+      "duplicate_rows_removed": 287285,
+      "listing_keys": 234465,
+      "physical_rows": 523002,
+      "price_field_changes": 73,
+      "pricing_events": 81,
+      "same_listing_raw_variants": 1252,
+      "source_files": 1
+    },
+    {
+      "distinct_source_records": 192785,
+      "dt": "2026-07-13",
+      "duplicate_rows_removed": 171625,
+      "listing_keys": 191842,
+      "physical_rows": 364410,
+      "price_field_changes": 168,
+      "pricing_events": 206,
+      "same_listing_raw_variants": 943,
+      "source_files": 1
+    },
+    {
+      "distinct_source_records": 210898,
+      "dt": "2026-07-14",
+      "duplicate_rows_removed": 644250,
+      "listing_keys": 209666,
+      "physical_rows": 855148,
+      "price_field_changes": 77,
+      "pricing_events": 93,
+      "same_listing_raw_variants": 1232,
+      "source_files": 1
+    },
+    {
+      "distinct_source_records": 199943,
+      "dt": "2026-07-15",
+      "duplicate_rows_removed": 2160,
+      "listing_keys": 198823,
+      "physical_rows": 202103,
+      "price_field_changes": 353,
+      "pricing_events": 384,
+      "same_listing_raw_variants": 1120,
+      "source_files": 1
+    },
+    {
+      "distinct_source_records": 222295,
+      "dt": "2026-07-16",
+      "duplicate_rows_removed": 418154,
+      "listing_keys": 220719,
+      "physical_rows": 640449,
+      "price_field_changes": 377,
+      "pricing_events": 390,
+      "same_listing_raw_variants": 1576,
+      "source_files": 1
+    }
+  ],
+  "dates": [
+    "2026-07-07",
+    "2026-07-08",
+    "2026-07-09",
+    "2026-07-10",
+    "2026-07-11",
+    "2026-07-12",
+    "2026-07-13",
+    "2026-07-14",
+    "2026-07-15",
+    "2026-07-16"
+  ],
+  "deduplication_unit": [
+    "run_ts",
+    "model_id",
+    "provider_name",
+    "tag",
+    "endpoint_fingerprint",
+    "record_json"
+  ],
+  "event_fields": {
+    "__endpoint_added__": 1343,
+    "__endpoint_removed__": 370,
+    "price_completion": 404,
+    "price_discount": 253,
+    "price_input_cache_read": 389,
+    "price_input_cache_write": 32,
+    "price_prompt": 428
+  },
+  "input_revision": "9cbed9f25ddf05c26de8fbf91374e6dd6adc26f1",
+  "invariants": {
+    "chronological_daily_state_chain": true,
+    "daily_event_partitions_replaced_not_merged": true,
+    "exact_source_records_unique": true,
+    "same_listing_price_conflicts": 0
+  },
+  "manifest_path": "quality/endpoint-integrity-repair-v1.json",
+  "output_files": {
+    "curated/endpoints_snapshots/dt=2026-07-07/part-0.parquet": {
+      "bytes": 9247753,
+      "sha256": "a4df10733d93370cca256d6ab4ddc6095a2eedae0a660654aab3314051f34457"
+    },
+    "curated/endpoints_snapshots/dt=2026-07-08/part-0.parquet": {
+      "bytes": 18775042,
+      "sha256": "bfd376065baec72ece6a6f7a8391652bed3943cb1e2f28b0497fa63c0e255424"
+    },
+    "curated/endpoints_snapshots/dt=2026-07-09/part-0.parquet": {
+      "bytes": 14946159,
+      "sha256": "15d6cd4eac02e702184929276b17ff1484fcb55f40d8bb17fab35e6498f68d20"
+    },
+    "curated/endpoints_snapshots/dt=2026-07-10/part-0.parquet": {
+      "bytes": 16513743,
+      "sha256": "17a7e42f56f64662e75805e9779c1aa60808d8bc0e8280355d2db4918231ab3e"
+    },
+    "curated/endpoints_snapshots/dt=2026-07-11/part-0.parquet": {
+      "bytes": 19575613,
+      "sha256": "912a00988cee1608aee6d58ee9da8001f4720de71b46bbdb4fbc072dd3b75543"
+    },
+    "curated/endpoints_snapshots/dt=2026-07-12/part-0.parquet": {
+      "bytes": 19639763,
+      "sha256": "0c3e89cf7500753ee58a7b49274aaef4613f4be41b0764720311a44c3d2b736d"
+    },
+    "curated/endpoints_snapshots/dt=2026-07-13/part-0.parquet": {
+      "bytes": 16526639,
+      "sha256": "63150205b48c85d461b19e1f6f0e596ca82c897c0a950386e54da52b5d4e5135"
+    },
+    "curated/endpoints_snapshots/dt=2026-07-14/part-0.parquet": {
+      "bytes": 18300276,
+      "sha256": "f7c70b8693051711792e79310f2d90ec2d68a01fb65a7364c26b3ca675d2b203"
+    },
+    "curated/endpoints_snapshots/dt=2026-07-15/part-0.parquet": {
+      "bytes": 17520559,
+      "sha256": "0c0f6217df05ebfcab5f13bb196ea412fefdfaba68b5a862d136a68b3631c057"
+    },
+    "curated/endpoints_snapshots/dt=2026-07-16/part-0.parquet": {
+      "bytes": 19365993,
+      "sha256": "eb7c56b2197e3097e0b8d54a1c9b6192d71dff376d129478230b8ba80ba04f0a"
+    },
+    "derived/pricing_changes/dt=2026-07-07/part-0.parquet": {
+      "bytes": 24526,
+      "sha256": "5435031bb7c8ad6138fb71dfc174f2a4aa38b2c8a1f5dd05914822ff4edd6857"
+    },
+    "derived/pricing_changes/dt=2026-07-08/part-0.parquet": {
+      "bytes": 5728,
+      "sha256": "c1bbf75f76d2f82c61f14e2c630c44b12d4a384e5cc24c742f7b98aa39e8f0ae"
+    },
+    "derived/pricing_changes/dt=2026-07-09/part-0.parquet": {
+      "bytes": 17569,
+      "sha256": "5ebebdfc8f05b9e13816c7b3515ba036246108e8d488543965751cfc97e785ad"
+    },
+    "derived/pricing_changes/dt=2026-07-10/part-0.parquet": {
+      "bytes": 7296,
+      "sha256": "f164d6c4e056c705a97e7a46877181624c048e1440177455145cf79b9544bd83"
+    },
+    "derived/pricing_changes/dt=2026-07-11/part-0.parquet": {
+      "bytes": 6044,
+      "sha256": "aafeb6666007013b5417a41187203e3068f5642d5d7a50aa1e34c6f0b309bda4"
+    },
+    "derived/pricing_changes/dt=2026-07-12/part-0.parquet": {
+      "bytes": 5466,
+      "sha256": "f1095cef47e479488eebba66f67b5d8cfe8253a7dc8717b226383bf6ece70e1e"
+    },
+    "derived/pricing_changes/dt=2026-07-13/part-0.parquet": {
+      "bytes": 7682,
+      "sha256": "289820b78e20f4fd19095e0be8c0c1b8ee37d0417e832d24afbd9d3d702754ae"
+    },
+    "derived/pricing_changes/dt=2026-07-14/part-0.parquet": {
+      "bytes": 5852,
+      "sha256": "27d89f4f54fb1fad6b0df3346e4f124c3dae9666ddd3cfa90ce632e09bed915b"
+    },
+    "derived/pricing_changes/dt=2026-07-15/part-0.parquet": {
+      "bytes": 9195,
+      "sha256": "4a311ec8cf31398fb390f0448b4f7c095312ad6f6e56c2c5cec4f78a7619148f"
+    },
+    "derived/pricing_changes/dt=2026-07-16/part-0.parquet": {
+      "bytes": 8588,
+      "sha256": "fe7695408d1b143771f65b752c4833600395ea9012c8d2b08201c497b752dd2e"
+    },
+    "derived/pricing_current.parquet": {
+      "bytes": 22898,
+      "sha256": "a8cc847fb25eae67a80757aea381aa35dbcf1e8a90aa63792c73074fd5927aa9"
+    },
+    "derived/pricing_state/dt=2026-07-07/part-0.parquet": {
+      "bytes": 21231,
+      "sha256": "83a7976a2ead7381a4749e18e142c85242a804ae32f3ac57ccfbfc7174d4747c"
+    },
+    "derived/pricing_state/dt=2026-07-08/part-0.parquet": {
+      "bytes": 21256,
+      "sha256": "20282e6bb967006e53aaca1fc7a31bec21555660fa1c084f1d236517ddb5000f"
+    },
+    "derived/pricing_state/dt=2026-07-09/part-0.parquet": {
+      "bytes": 22330,
+      "sha256": "4af1a990d08d39f91acacb26045891e46f5d3627b47e4d2f246c90f2628707c0"
+    },
+    "derived/pricing_state/dt=2026-07-10/part-0.parquet": {
+      "bytes": 22348,
+      "sha256": "74bd5974c727faf22443d30463687a377639205f5be4dc27e8d09608c4f0633e"
+    },
+    "derived/pricing_state/dt=2026-07-11/part-0.parquet": {
+      "bytes": 22426,
+      "sha256": "d3549d8feb84397f4cf22c57cfe0601e028845d9a404146d5b2b9429e6fd5fe3"
+    },
+    "derived/pricing_state/dt=2026-07-12/part-0.parquet": {
+      "bytes": 22472,
+      "sha256": "fefd525b9265a97273782469b5feb0ba5d19102884af27daab4d108214ebd234"
+    },
+    "derived/pricing_state/dt=2026-07-13/part-0.parquet": {
+      "bytes": 22686,
+      "sha256": "7209320a418b7aaf751dc270bba2831f18be633b22a8048c8a259a27db9bc42b"
+    },
+    "derived/pricing_state/dt=2026-07-14/part-0.parquet": {
+      "bytes": 22640,
+      "sha256": "c36546f180a3e638777f59332bb99c9b32f49a5db91d8861761dacf3246cc501"
+    },
+    "derived/pricing_state/dt=2026-07-15/part-0.parquet": {
+      "bytes": 22796,
+      "sha256": "59e43c182b6ff34602557dbc199ff8ba1f9af722c58273b355a5070dc5153f80"
+    },
+    "derived/pricing_state/dt=2026-07-16/part-0.parquet": {
+      "bytes": 22898,
+      "sha256": "a8cc847fb25eae67a80757aea381aa35dbcf1e8a90aa63792c73074fd5927aa9"
+    }
+  },
+  "schema_version": 1,
+  "totals": {
+    "distinct_source_records": 1977529,
+    "duplicate_rows_removed": 1532963,
+    "listing_keys": 1968679,
+    "physical_rows": 3510492,
+    "price_field_changes": 1506,
+    "pricing_events": 3219,
+    "same_listing_raw_variants": 8850
+  }
+}
