@@ -142,9 +142,9 @@ seed. Any failed plan or legacy-run replay closes the assignment-integrity gate.
 Missing requests, recorded-policy
 mismatches, duplicates, and treatment-control failures remain in their intended
 arms. The gate therefore counts assignment rather than realized treatment, and
-the primary estimand is assigned-policy ITT. At the latest pinned gate all 92
+the primary estimand is assigned-policy ITT. At the latest pinned gate all 94
 blocks pass first-row, replay, reconstruction, and treatment-fidelity checks;
-the counts are 33/31/28, including four explicit prospective pre-request plans.
+the counts are 34/31/29, including six explicit prospective pre-request plans.
 
 In 3,000 sharp-null experiments at each of five outcome-dependent compliance
 strengths, the ITT estimate stays within 0.0022 of zero and its false-rejection
@@ -324,3 +324,19 @@ integrity with 100% reconstruction, replay, first-row observation, and treatment
 fidelity. H95 advanced to 7/120. Both studies again reported
 `outcomes_queried=false`; the artifact contained only `release_status.json` and
 the two assignment-only gate files.
+
+The next scheduled plan-first run entered early compaction `29573860829`,
+which passed the full suite, durable publication, and all eight shards.
+Automatic child audit `29574322884` pinned revision `60d5a02005d` and
+reported H81 counts 34/31/29 over 94 intended blocks, six explicit plans, and
+100% reconstruction, replay, first-row observation, and treatment fidelity.
+
+Before outcome access, commit `65e1425` added a deterministic H81 release
+table, two-panel figure, neutral LaTeX paragraph, and validation manifest. The
+renderer fails closed unless the ITT/HT equality, decomposition identity, exact
+Holm family, terminal exclusion, complete binary outcomes, and registered
+missingness fields all pass. Synthetic LaTeX and figure rendering plus the full
+573-test suite pass. Exact-head audit `29574825052` then checked out
+`65e1425` against the same immutable revision and again recorded
+`outcomes_queried=false`. The renderer is hashed into the remote first-access
+marker through the H81 study specification.

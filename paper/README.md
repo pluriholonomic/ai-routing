@@ -27,7 +27,10 @@ The July 17, 2026 revision:
   sharp-null size failure;
 - verifies that plan-first design remotely with a separate outcome-free artifact,
   redacted collector logs, successful durable compaction, and an automatic
-  assignment-only gate at 92 intended blocks without querying outcomes;
+  assignment-only gate at 94 intended blocks without querying outcomes;
+- freezes the one-time H81 result table, decomposition forest plot, neutral
+  manuscript paragraph, and fail-closed algebraic validator before outcome
+  access, with a synthetic LaTeX/render audit and exact-head remote proof;
 - hardens the still-blinded H95 replication with nuisance-conditioned pairwise
   Fisher inference, simultaneous bounded-outcome design intervals, explicit
   structural and measurement missingness, provider-control coverage,
@@ -38,12 +41,13 @@ The July 17, 2026 revision:
   moving price-atom diagnostics and proofs to Appendix A without deleting them.
 
 The latest adversarial assessment is
-[`../docs/manuscript-review-round-28-2026-07-17.md`](../docs/manuscript-review-round-28-2026-07-17.md).
+[`../docs/manuscript-review-round-29-2026-07-17.md`](../docs/manuscript-review-round-29-2026-07-17.md).
 It treats the H81 and H95 pairwise-reference-law defects, confidence-theorem
 mismatches, H95 within-triplet carryover sensitivity, and H81 post-assignment
-compliance selection as repaired before outcome access, and closes the H81
-prospective-plan deployment item. The remaining promotion gates are unreleased
-H81/H95 outcomes and the unopened 30-completed-day PM1 holdout.
+compliance selection as repaired before outcome access, closes the H81
+prospective-plan deployment item, and verifies the frozen release presentation.
+The remaining promotion gates are unreleased H81/H95 outcomes and the unopened
+30-completed-day PM1 holdout.
 
 This directory contains three non-concurrent manuscripts built from the reviewed
 research drafts:

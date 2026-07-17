@@ -1,17 +1,17 @@
 {
   "authoritative_dataset": "t4run/openrouter-market-history",
-  "authoritative_revision": "18ea5aa245cc931d5f49b452785a175f358db240",
-  "evidence_freeze_utc": "2026-07-17T10:23:05Z",
+  "authoritative_revision": "60d5a02005d553b956c903c1a8bd0b30df2d1636",
+  "evidence_freeze_utc": "2026-07-17T10:51:04Z",
   "files": [
     {
-      "bytes": 27032,
+      "bytes": 28004,
       "path": "config/paper_evidence_registry.toml",
-      "sha256": "4de4711900a426241ee2425303e883fc02a19ec9fdf79fcd0db3198bbaffea5b"
+      "sha256": "063e61d2ef3e1f3ac210c38d42f9ac2505029bba6289962e9324e141800596ec"
     },
     {
-      "bytes": 19489,
+      "bytes": 20503,
       "path": "docs/confirmatory-release-protocol-2026-07-17.md",
-      "sha256": "1e086985dc64e745959edcf879ef9adf9051a2e624e0e3d6fd6894260b01e522"
+      "sha256": "e8ec777446e074b319787a3a70b10e3e222d756a0c63e2602be13dc21c1d33ab"
     },
     {
       "bytes": 3183,
@@ -19,9 +19,9 @@
       "sha256": "6b12ee4deb662821bc9ea350f89bdb334ad721221d817bc2054f2e617d878433"
     },
     {
-      "bytes": 3688,
+      "bytes": 4861,
       "path": "docs/h81-plan-deployment-evidence-2026-07-17.md",
-      "sha256": "30291391fc7862fd512291d66d975a61d75c261ff0d5af8741259c21955aee89"
+      "sha256": "b61293d736fd6ec1526270109d6dd50d71455ad1731edfc31bfae6c1db38fc8e"
     },
     {
       "bytes": 7924,
@@ -49,9 +49,9 @@
       "sha256": "137b85bc9341693e0981799fd3d185fc1bf0df15309daec79edd7bf4fa358e77"
     },
     {
-      "bytes": 23966,
+      "bytes": 24513,
       "path": "docs/paper-evidence-amendment-ledger-2026-07-17.md",
-      "sha256": "8edfc2e5d8557aef5a498b0131fc9f3cd3b69413c245c54cd5f3579f3fc22101"
+      "sha256": "85063d95e7c13e8d40e120485cdbd686a4670d3ec267b82507a7641c4dbc7c95"
     },
     {
       "bytes": 7347,
@@ -72,6 +72,11 @@
       "bytes": 4165,
       "path": "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md",
       "sha256": "9db1706417ca407d89930a9cc1dd1d245773021a3587f203f42543c80105b6b3"
+    },
+    {
+      "bytes": 3523,
+      "path": "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-release-report.md",
+      "sha256": "f85c42a6d2c233f571c35018f8b585f020cc6c300c1619a30dcbb17079fcb667"
     },
     {
       "bytes": 9496,
@@ -154,9 +159,9 @@
       "sha256": "199ea7b6288b525db3dcfdefe4f1a7398b928397ac8adc3bcb11fd4b9b216643"
     },
     {
-      "bytes": 135045,
+      "bytes": 136099,
       "path": "paper/inference-market-microstructure/main.tex",
-      "sha256": "74013131894f6026f2a8fa3b3422e8e46497b76ccc66da4ddb4f3a1db4e79718"
+      "sha256": "689c40de28ea0951225eb2f7caed13cc69a9df4db13fff4bcd292db77d25551b"
     },
     {
       "bytes": 8867,
@@ -174,9 +179,14 @@
       "sha256": "e9b9179a526ae2e5ce747214fef1a286e394d49dc9d3a4b4d941db8efd9aa183"
     },
     {
-      "bytes": 82933,
+      "bytes": 83351,
       "path": "src/orcap/analysis/h81_delegation_decomposition.py",
-      "sha256": "cef406026b5b3372be112b28b9efea16e46c0b8049c536eae79635e70c1aa0c8"
+      "sha256": "74ae9f588c6adc9064e73b4150527fc5d80caa09d3523b67088a0b630a643cdb"
+    },
+    {
+      "bytes": 18357,
+      "path": "src/orcap/analysis/h81_release_report.py",
+      "sha256": "c6e218df5bf82167d7eb641cc3fd881a11b2ed590fe577f5d12cfe6248981958"
     },
     {
       "bytes": 52948,
@@ -249,9 +259,9 @@
       "sha256": "90859a66006d1c3d0830af22af5c08570d360d8631fa3885cd4ac97ce79f747c"
     },
     {
-      "bytes": 15703,
+      "bytes": 15858,
       "path": "src/orcap/confirmatory_release.py",
-      "sha256": "e144ce8cbfba66eefe2d32f6115808f718021ed019f57170f7bb1c369a9a30e9"
+      "sha256": "bf6a85e38d2396990c2bd5d30d4a20800a3bc2ccfe3764459750c41b600ba82e"
     },
     {
       "bytes": 3157,
@@ -269,9 +279,9 @@
       "sha256": "06b6e1897956a6844725905d153515ef1298368251ffa443be2671c57f636a78"
     },
     {
-      "bytes": 7728,
+      "bytes": 7792,
       "path": "tests/test_confirmatory_release.py",
-      "sha256": "b93c748f2bd21769324e71bfa2724cd101a2866d9463f07d52cc318c360bbee1"
+      "sha256": "c8350fdece52c76433a97306e0863b49b5122743c32e4b41cb6391a3f60996f5"
     },
     {
       "bytes": 12951,
@@ -279,9 +289,9 @@
       "sha256": "63524e8f2b14489cc0e2a83f243b2d7beacd3f47de19bf867d26f22232b9137c"
     },
     {
-      "bytes": 20670,
+      "bytes": 22753,
       "path": "tests/test_h81_delegation_decomposition.py",
-      "sha256": "762c456595b7d55593f7df357fe2b55a5872a91576905898f5c45fa8cf64e6e8"
+      "sha256": "38d231449deabb76e3135af14125795118407668e27e28c9e5d9ad273244c9b4"
     },
     {
       "bytes": 4144,
@@ -339,8 +349,8 @@
       "sha256": "28fe964519ae7d4dec1ac3c2c191d3f518b5fab567a4a2af591d610686da580e"
     }
   ],
-  "gate_event_count": 19,
-  "generated_at_utc": "2026-07-17T10:29:46.890037+00:00",
+  "gate_event_count": 20,
+  "generated_at_utc": "2026-07-17T10:55:59.873433+00:00",
   "paper_theorem_count": 9,
   "paper_track": "ACM EC / TEAC",
   "registered_claim_count": 16,

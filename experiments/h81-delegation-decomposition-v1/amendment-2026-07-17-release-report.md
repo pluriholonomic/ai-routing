@@ -8,6 +8,13 @@ pinned immutable dataset revision
 `60d5a02005d553b956c903c1a8bd0b30df2d1636`, reported arm counts 34/31/29,
 and recorded `outcomes_queried=false`.
 
+The implemented template was then committed as
+`65e142526962a61a3101edacb16af61caa21d46d`. Exact-head assignment-only audit
+`29574825052` checked out that commit against the same immutable revision,
+reproduced counts 34/31/29 and the passing assignment-integrity gate, and again
+recorded `outcomes_queried=false`. This is the provenance point that ties the
+code below, its tests, and this amendment to the pre-outcome state.
+
 ## Motivation
 
 The analysis code already freezes the estimands, stopped prefix, exact tests,

@@ -3,8 +3,8 @@ schema_version = 1
 paper_path = "paper/inference-market-microstructure/main.tex"
 paper_track = "ACM EC / TEAC"
 authoritative_dataset = "t4run/openrouter-market-history"
-authoritative_revision = "18ea5aa245cc931d5f49b452785a175f358db240"
-evidence_freeze_utc = "2026-07-17T10:23:05Z"
+authoritative_revision = "60d5a02005d553b956c903c1a8bd0b30df2d1636"
+evidence_freeze_utc = "2026-07-17T10:51:04Z"
 status = "outcome-safe refresh with H81 and H95 accruing; clean remote first-access release armed; focal outcomes blinded"
 amendment_ledger = "docs/paper-evidence-amendment-ledger-2026-07-17.md"
 
@@ -110,11 +110,11 @@ disposition = "main"
 identification = "finite-population randomized ITT decomposition"
 status = "theorem, proof, and stopped-design simulation validation present; H81 outcomes gated"
 source_tables = ["router_route_attempts", "router_probe_eligibility", "router_decomposition_plans"]
-analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py", "src/orcap/analysis/h81_theorem_validation.py"]
+analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py", "src/orcap/analysis/h81_theorem_validation.py", "src/orcap/analysis/h81_release_report.py"]
 collectors = ["src/orcap/capture_decomposition_probes.py"]
 tests = ["tests/test_capture_probes.py", "tests/test_h81_delegation_decomposition.py", "tests/test_h81_theorem_validation.py", "tests/test_blinded_study_isolation.py"]
-protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-intention-to-treat.md", "docs/h81-plan-deployment-evidence-2026-07-17.md"]
-validation_methods = ["randomization algebra", "pre-request plan integrity", "remote outcome-free plan commitment", "historical eligibility RNG reconstruction", "Monte Carlo design recovery", "pairwise nuisance-arm size stress test", "post-assignment compliance-selection stress test", "exact Bernoulli scenario power", "exact joint Holm power", "finite-population simultaneous Hoeffding-Serfling intervals", "fixed-schedule interval coverage audit", "missingness bounds", "leave-one-model-out sensitivity"]
+protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-intention-to-treat.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-release-report.md", "docs/h81-plan-deployment-evidence-2026-07-17.md"]
+validation_methods = ["randomization algebra", "pre-request plan integrity", "remote outcome-free plan commitment", "historical eligibility RNG reconstruction", "Monte Carlo design recovery", "pairwise nuisance-arm size stress test", "post-assignment compliance-selection stress test", "exact Bernoulli scenario power", "exact joint Holm power", "finite-population simultaneous Hoeffding-Serfling intervals", "fixed-schedule interval coverage audit", "missingness bounds", "leave-one-model-out sensitivity", "frozen release-table algebra audit", "synthetic LaTeX and figure render"]
 claim_boundary = "After removing the gate-hitting block, intended-assignment fixed-count arm means and conditional HT contrasts identify assignment-policy ITT effects for the owned account and preterminal eligible blocks. Treatment fidelity is diagnostic and is not an analysis-sample filter; the design does not identify router intent or social welfare."
 
 [[claim]]
@@ -124,13 +124,13 @@ tex_label = ""
 title = "Owned randomized fallback and hidden-selection experiment"
 disposition = "main"
 identification = "randomized first-position ITT"
-status = "power-gated; 92 intended blocks, 100% observed/replayed/reconstructed/treatment-fidelity support, four explicit pre-request plans, and arm counts 33/31/28 at the pinned revision"
+status = "power-gated; 94 intended blocks, 100% observed/replayed/reconstructed/treatment-fidelity support, six explicit pre-request plans, and arm counts 34/31/29 at the pinned revision"
 source_tables = ["router_route_attempts", "router_probe_eligibility", "router_decomposition_plans"]
-analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py", "src/orcap/confirmatory_release.py"]
+analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py", "src/orcap/analysis/h81_release_report.py", "src/orcap/confirmatory_release.py"]
 collectors = ["src/orcap/capture_decomposition_probes.py"]
 tests = ["tests/test_capture_probes.py", "tests/test_h81_delegation_decomposition.py", "tests/test_blinded_study_isolation.py", "tests/test_confirmatory_release.py"]
-protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-intention-to-treat.md", "docs/confirmatory-release-protocol-2026-07-17.md", "docs/h81-plan-deployment-evidence-2026-07-17.md"]
-validation_methods = ["plan-first assignment ledger", "remote outcome-free plan commitment", "historical eligibility RNG reconstruction", "seed replay", "assignment-integrity fail-closed gate", "treatment-fidelity reporting", "pairwise conditional randomization inference", "nuisance-arm size stress test", "post-assignment compliance-selection stress test", "exact joint Holm power", "Newcombe interval", "finite-population simultaneous Hoeffding-Serfling interval", "fixed-schedule interval coverage audit", "support audit"]
+protocols = ["experiments/h81-delegation-decomposition-v1/preregistration.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-pairwise-fisher.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-design-intervals.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-intention-to-treat.md", "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-release-report.md", "docs/confirmatory-release-protocol-2026-07-17.md", "docs/h81-plan-deployment-evidence-2026-07-17.md"]
+validation_methods = ["plan-first assignment ledger", "remote outcome-free plan commitment", "historical eligibility RNG reconstruction", "seed replay", "assignment-integrity fail-closed gate", "treatment-fidelity reporting", "pairwise conditional randomization inference", "nuisance-arm size stress test", "post-assignment compliance-selection stress test", "exact joint Holm power", "Newcombe interval", "finite-population simultaneous Hoeffding-Serfling interval", "fixed-schedule interval coverage audit", "support audit", "frozen release presentation", "decomposition identity fail-closed check"]
 claim_boundary = "Current support is two repeatedly eligible models with no adjacent support turnover. The primary estimand is assigned-policy ITT, not a per-protocol effect; no outcome may be promoted before the frozen 40-intended-assignments-per-arm gate."
 
 [[claim]]
@@ -380,6 +380,16 @@ target_per_arm = 120
 event = "first prospective H95 workflow completed and preserved eligibility and attempt telemetry"
 outcome_visibility = "workflow status only; logs and request outcomes not queried"
 classification = "outcome-blinded operational verification"
+
+[[gate_event]]
+study_id = "H81"
+effective_utc = "2026-07-17T10:51:04Z"
+commit = "65e142526962a61a3101edacb16af61caa21d46d"
+gate_version = "v1-frozen-release-presentation"
+target_per_arm = 40
+event = "deterministic result table, figure, neutral manuscript paragraph, and algebraic release validator frozen before outcome access"
+outcome_visibility = "exact-head audit 29574825052 pinned revision 60d5a02005d553b956c903c1a8bd0b30df2d1636, reported counts 34, 31, and 29, and outcomes_queried=false"
+classification = "outcome-blind pre-release presentation freeze"
 
 [[gate_event]]
 study_id = "H95"

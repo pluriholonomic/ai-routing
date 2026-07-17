@@ -1,0 +1,54 @@
+{
+  "checked_at_utc": "2026-07-17T10:51:04.293767+00:00",
+  "code_commit": "65e142526962a61a3101edacb16af61caa21d46d",
+  "dataset": {
+    "path": "hf://datasets/t4run/openrouter-market-history@60d5a02005d553b956c903c1a8bd0b30df2d1636",
+    "repo_id": "t4run/openrouter-market-history",
+    "resolution": "dataset_head_at_run_start",
+    "revision": "60d5a02005d553b956c903c1a8bd0b30df2d1636",
+    "source": "huggingface"
+  },
+  "gate": {
+    "assignment_integrity_pass": true,
+    "assignment_plan_coverage": 0.9574468085106383,
+    "assignment_plan_replay_rate": 1.0,
+    "assignment_plan_sources": {
+      "combined_unique_plans": 90,
+      "explicit_pre_request_plans": 6,
+      "legacy_reconstruction": {
+        "candidate_runs": 45,
+        "eligible_blocks": 90,
+        "failed_runs": 0,
+        "reconstructed_blocks": 90,
+        "replayed_runs": 45
+      }
+    },
+    "assignment_reconstruction_rate": 1.0,
+    "assignment_replay_rate": 1.0,
+    "balance_gate_ready": false,
+    "confirmatory_cutoff": null,
+    "first_position_counts": {
+      "delegated_default": 34,
+      "price_only_no_fallback": 31,
+      "price_order_fallback": 29
+    },
+    "first_row_observation_rate": 1.0,
+    "intended_first_position_blocks": 94,
+    "outcome_access": "not_queried_by_40_per_arm_gate",
+    "outcomes_queried": false,
+    "release_gate_prefix_blocks": 0,
+    "release_ready": false,
+    "remaining_by_policy": {
+      "delegated_default": 6,
+      "price_only_no_fallback": 9,
+      "price_order_fallback": 11
+    },
+    "study_id": "openrouter-fallback-selection-decomposition-v1",
+    "target_per_policy": 40,
+    "treatment_metadata_pass_rate": 1.0,
+    "verified_first_position_blocks": 94
+  },
+  "protocol_version": "confirmatory-release-v1",
+  "study": "h81",
+  "study_id": "openrouter-fallback-selection-decomposition-v1"
+}

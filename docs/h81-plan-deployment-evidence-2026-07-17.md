@@ -75,3 +75,23 @@ It reports:
 This closes the operational deployment item from review round 27. It does not
 open the outcome gate or strengthen transport beyond the two repeated H81
 models.
+
+## Latest accrual and frozen release presentation
+
+Scheduled collector run `29573436177` added two more prospectively planned
+blocks. Compaction `29573860829` checked out paper head `5633f1d`, passed
+the then-current full suite, published the buffered artifacts, and completed all
+eight shards. Automatic audit `29574322884` pinned immutable revision
+`60d5a02005d553b956c903c1a8bd0b30df2d1636` and advanced H81 to 94 intended
+blocks with counts 34/31/29, six explicit plans, 90 combined plan/reconstruction
+rows, and all integrity and fidelity rates equal to one.
+
+Commit `65e142526962a61a3101edacb16af61caa21d46d` then froze a deterministic
+release table, two-panel figure, neutral LaTeX paragraph, and fail-closed
+algebraic validator. The synthetic package compiles and renders, and the full
+suite now has 573 passes. Exact-head audit `29574825052` checked out that
+commit against the same immutable revision and again recorded
+`outcomes_queried=false`. Its checked-in H81 gate artifact is
+`analysis/h81_assignment_only_gate_29574825052.json`, with SHA-256
+`de9a2fd9a5db6c752868f3caca6ae66246649bf821cd469f8ee3153cc07f9e90`.
+The remaining arm deficits are 6, 9, and 11.

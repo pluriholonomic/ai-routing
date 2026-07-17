@@ -142,8 +142,8 @@ they are not evidence for the focal clearing claim.
   explicitly intention-to-treat: a plan written before each future first request,
   or the frozen seed for historical blocks, fixes the intended arm without
   filtering on request realization or treatment fidelity.  At the pinned data
-  revision all 92 intended assignments are observed, replayed, and compliant;
-  the arm counts are 33, 31, and 28, below the original 40-per-arm release gate,
+  revision all 94 intended assignments are observed, replayed, and compliant;
+  the arm counts are 34, 31, and 29, below the original 40-per-arm release gate,
   and no H81 outcome is
   reported.  The eligible support currently contains only two repeated models,
   which limits transport even after release.  We therefore froze H95 before its
@@ -289,10 +289,10 @@ provider--model listing observations from 2,116 capture runs on 11 UTC dates,
 count is 2,013,866; the difference preserves 9,186 same-listing raw variants,
 all due to availability state rather than price or capability conflicts.  The
 outcome-free randomized-design status is separately pinned at revision
-\texttt{18ea5aa245c}: H81 contains 92 intended first-position assignments, with
-arm counts 33, 31, and 28 and 100\% first-row observation, assignment replay,
+\texttt{60d5a02005d}: H81 contains 94 intended first-position assignments, with
+arm counts 34, 31, and 29 and 100\% first-row observation, assignment replay,
 assignment reconstruction, and treatment-metadata fidelity.  Its eligibility
-audit contains 88 eligible candidate rows across 44 runs; H80 remains a separate study
+audit contains 90 eligible candidate rows across 45 runs; H80 remains a separate study
 with 156 verified first-position blocks over 40.7 hours.  The public cross-router
 collector has two snapshots per router over 0.054 days.  Its latest catalog has
 107 Glama rows, 114 NemoRouter rows, and 563 Requesty rows, but no price event.
@@ -327,8 +327,8 @@ Panel & Rows / attempts & Span & Primary role \\
 \midrule
 Endpoint acquisition cut & 2,004,680 listings & 11 UTC dates & Current prices and public enforcement state \\
 Frozen pricing discovery cut & 1,747,960 listings / 313 changes & 9 days & Price atoms, hazards, and cadence screens \\
-H81 first-position assignments & 92 & ongoing & Fallback/selection release-gate support \\
-H81 candidate eligibility & 88 eligible rows & 44 runs & External-support and exclusion funnel \\
+H81 first-position assignments & 94 & ongoing & Fallback/selection release-gate support \\
+H81 candidate eligibility & 90 eligible rows & 45 runs & External-support and exclusion funnel \\
 H80 first-position assignments & 156 & 40.7 hours & Separate four-arm replication support \\
 Cross-router public catalogs & 2 snapshots/router & 0.054 days & Coverage and exact price equality only \\
 H95 prospective replication & 7 triplets / 21 blocks (12 legacy-control rows) & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
@@ -978,28 +978,32 @@ implementation-fidelity bounds, not a complier or per-protocol effect.
 
 The amended H81 protocol releases the earliest chronological prefix with at
 least 40 intended first-position assignments in every arm, regardless of sign.
-At the outcome-free release revision \texttt{18ea5aa245c} (the full immutable
+At the outcome-free release revision \texttt{60d5a02005d} (the full immutable
 hash appears in the release manifest), the arm counts
-are 33, 31, and 28.  First-row observation, assignment replay, assignment
-reconstruction, and treatment-metadata checks pass for all 92 intended blocks,
+are 34, 31, and 29.  First-row observation, assignment replay, assignment
+reconstruction, and treatment-metadata checks pass for all 94 intended blocks,
 so outcomes remain physically
 unqueried by the pre-gate analysis.  When the gate opens, the analysis excludes
 the terminal block and conditions on the remaining arm counts.  The combined
-plan/eligibility ledger covers 88 of 92 blocks, including four explicit
+plan/eligibility ledger covers 90 of 94 blocks, including six explicit
 prospective plans; the four earliest blocks predate both ledgers and use their
 recorded block seeds, so assignment reconstruction is nevertheless 100\%.  The current
 reference experiment, uncertainty family, and missingness rules were all frozen
 in outcome-blind audits; their dated genealogy is reported in
 \cref{app:h81-proof} and the release ledger rather than treated as empirical
-results.  At the minimum gate counts, 80\% worst-terminal-policy Holm power on
+results.  The result table, forest plot, and neutral reporting paragraph are
+also frozen before outcome access.  Their validator requires the ITT/HT equality,
+the component-sum identity, the complete Holm family, the terminal exclusion,
+and the registered missingness fields before rendering.  At the minimum gate
+counts, 80\% worst-terminal-policy Holm power on
 the frozen grid requires a 35-point component wedge, so the design is not an
 equivalence test.
 
-The candidate funnel is narrow: 88 eligible records cover two models at
+The candidate funnel is narrow: 90 eligible records cover two models at
 ranking positions five and six; both models are eligible in every recorded run
 and adjacent eligible support never changes.  The experiment therefore
 identifies a finite-population assigned-policy effect for those model--time
-blocks, not a market-wide average.  Current arm deficits are 7, 9, and 12.
+blocks, not a market-wide average.  Current arm deficits are 6, 9, and 11.
 Calendar-time forecasts are omitted because eligibility and workflow failures
 make short-run accrual nonstationary.
 
@@ -1041,7 +1045,7 @@ prerelease inference and telemetry audit was frozen in commit \texttt{f170d89}
 with the outcome gate still closed.  A second proof audit corrected the pairwise
 reference law and interval interpretation after exact-head run
 \texttt{29568434722} again reported \texttt{outcomes\_queried=false}.  At
-revision \texttt{18ea5aa245c}, the
+revision \texttt{60d5a02005d}, the
 outcome-free support is seven compliant triplets, 21 blocks, nine unique models,
 effective model count 7.74, perfect plan replay, and zero missing first records.
 The first 12 first-position rows predate row-level provider-order lengths and
@@ -1504,7 +1508,7 @@ formal guarantee comes from \cref{eq:h81-hoeffding-means}, not that simulation.
 Thus H81 can detect large wedges but cannot interpret nonsignificance as
 equivalence.  The
 100,000-draw pairwise tail remains solely a discrepancy audit, and the release
-fails closed above one percentage point.  The full repository suite has 571
+fails closed above one percentage point.  The full repository suite has 573
 passes.
 
 The compliance-selection adversary holds every direct policy outcome equal and
@@ -1736,7 +1740,7 @@ Separate adversaries replace a valid outcome with
 \texttt{unknown}, delete and mismatch planned first requests, corrupt a
 provider-control length, concentrate every triplet in one six-hour bin, and
 verify that leave-one-model-out analysis drops whole triplets.  The full
-repository suite has 571 passes.  These checks validate the release code and
+repository suite has 573 passes.  These checks validate the release code and
 claim boundary.  They are not H95 outcome evidence: the fixed horizon remains
 seven of 120 at the pinned outcome-free revision.
 
@@ -2203,7 +2207,7 @@ identifiable when bids, acceptance, and termination are public.
 \toprule
 Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
-H81 fallback and hidden selection & 92 intended blocks; counts 33, 31, 28; 100\% first-row, replay, reconstruction, and treatment fidelity; four explicit pre-request plans; no outcome released & Precision and transport beyond two repeated models & Amended 40-intended-assignments-per-arm ITT gate; terminal excluded; Holm tests, familywise intervals, and fidelity/missing-outcome bounds frozen \\
+H81 fallback and hidden selection & 94 intended blocks; counts 34, 31, 29; 100\% first-row, replay, reconstruction, and treatment fidelity; six explicit pre-request plans; no outcome released & Precision and transport beyond two repeated models & Amended 40-intended-assignments-per-arm ITT gate; terminal excluded; Holm tests, familywise intervals, fidelity/missing-outcome bounds, and release presentation frozen \\
 H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
 H95 fixed-horizon replication & Seven compliant triplets, 21 blocks, nine unique models; 12 legacy-unverified and nine passing auditable control records; no outcome released & 120 written triplets, row-level control coverage, broad audited model/time support, and cross-position robustness & Fixed 120-triplet horizon; nuisance-conditioned pairwise Fisher law, simultaneous design intervals, and lower-precision position-zero sensitivity; whole-triplet LOMO; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
@@ -2281,8 +2285,8 @@ Hoeffding--Serfling intervals, and planted-carryover bias audit without changing
 the primary horizon or family.  The full repository test run has 551 passes at the initial
 H95 freeze, 557 after the H81 interval audit, 561 after the H95 pairwise-
 interval audit, 563 after the H95 position-zero interference audit, 570
-after the H81 intended-assignment ITT audit, and 571 after the outcome-free
-remote-plan artifact audit.  The
+after the H81 intended-assignment ITT audit, 571 after the outcome-free
+remote-plan artifact audit, and 573 after the frozen release-presentation audit.  The
 remote path publishes a content-hashed
 bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
@@ -2337,6 +2341,16 @@ Its automatic assignment-only audit \texttt{29573258132} pinned revision
 \texttt{18ea5aa245c}, found four explicit pre-request plans, reconstructed every
 intended assignment, and reported H81 counts 33/31/28 and H95 support 7/120.
 Both outcome-query flags remained false.
+The next scheduled H81 run was consolidated by workflow
+\texttt{29573860829}, which passed the 573-test suite, durable publication, and
+all eight shards.  Automatic audit \texttt{29574322884} pinned revision
+\texttt{60d5a02005d} and advanced H81 to 94 assignments with counts 34/31/29,
+six explicit pre-request plans, and 100\% reconstruction, replay, first-row
+observation, and treatment fidelity.  Exact-head audit
+\texttt{29574825052} then checked out release-template commit
+\texttt{65e1425} against the same immutable revision and again left both outcome
+flags false.  The deterministic table, figure, neutral paragraph, and their
+algebraic validator were therefore frozen before outcome access.
 
 \paragraph{Privacy, load, and release tiers.}
 Capture records exclude prompts and completions.  Owned experiments use a fixed

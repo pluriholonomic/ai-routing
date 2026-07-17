@@ -54,10 +54,10 @@ never filters this reference experiment.
      recorded blocks predate both plan and eligibility ledgers. A missing, mismatched, or
      noncompliant request remains in its intended arm and triggers fidelity and
      missingness flags rather than changing the gate or sample.
-   - Current result: 92/92 first rows, assignment reconstructions, assignment
-     replays, and treatment checks at revision `18ea5aa2`; arm counts are 33,
-     31, and 28 and outcomes remain unqueried. Four explicit pre-request plans
-     are present. Plan-ledger coverage is 88/92, while the four earliest blocks
+   - Current result: 94/94 first rows, assignment reconstructions, assignment
+     replays, and treatment checks at revision `60d5a020`; arm counts are 34,
+     31, and 29 and outcomes remain unqueried. Six explicit pre-request plans
+     are present. Plan-ledger coverage is 90/94, while the four earliest blocks
      use their recorded block seeds; assignment integrity passes.
 
 2. **Post-assignment compliance-selection adversary**
@@ -153,7 +153,7 @@ never filters this reference experiment.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
    - Current result: implemented before outcome access in commit `4d66fda`.
-     All adversarial tests and the current full 571-test suite pass. The two primary
+     All adversarial tests and the current full 573-test suite pass. The two primary
      intervals additionally receive Bonferroni-Newcombe familywise adjustment;
      their exact conditional Fisher p-values retain the registered Holm family.
 
