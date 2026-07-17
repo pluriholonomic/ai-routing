@@ -132,6 +132,7 @@ def test_h81_release_hashes_intention_to_treat_amendment() -> None:
     assert (
         "experiments/h81-delegation-decomposition-v1/amendment-2026-07-17-intention-to-treat.md"
     ) in hashes
+    assert "src/orcap/analysis/h81_release_report.py" in hashes
 
 
 def test_remote_marker_precedes_first_outcome_runner(monkeypatch, tmp_path):

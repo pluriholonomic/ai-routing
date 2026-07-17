@@ -16,6 +16,7 @@ from orcap.analysis.h81_delegation_decomposition import (
     first_position_sample,
     reconstruct_legacy_plans,
 )
+from orcap.analysis.h81_release_report import build_release_report, validate_release_outputs
 
 
 def _seed_for_first(policy: str, start: int) -> int:
@@ -504,3 +505,48 @@ def test_eligibility_funnel_reports_exclusions_and_support_turnover():
         "eligible": 3,
         "fewer_than_two_distinct_positive_price_providers": 1,
     }
+
+
+def test_frozen_release_report_renders_complete_neutral_package(tmp_path):
+    panel, model_panel, contrasts, summary = analyze(_balanced_frame(), simulations=500)
+
+    report = build_release_report(
+        panel,
+        model_panel,
+        contrasts,
+        summary,
+        out_dir=tmp_path,
+    )
+
+    assert report["schema_version"] == "h81-release-report-v1"
+    assert abs(report["decomposition_identity_error"]) < 1e-12
+    assert report["model_count"] == 2
+    for filename in report["files"] + ["h81_release_report.json"]:
+        assert (tmp_path / filename).exists()
+        assert (tmp_path / filename).stat().st_size > 0
+    paragraph = (tmp_path / "h81_release_result_paragraph.tex").read_text()
+    assert "nonsignificant" in paragraph
+    assert "not evidence of equivalence" in paragraph
+    assert "does not identify" in paragraph
+    table = (tmp_path / "h81_release_result_table.tex").read_text()
+    assert "Fallback option" in table
+    assert "Hidden selection" in table
+    assert "Total delegation" in table
+    table_rows = [line for line in table.splitlines() if " & " in line]
+    assert all(line.endswith("\\\\") for line in table_rows)
+    assert all(not line.endswith("\\\\\\\\") for line in table_rows)
+    assert "50.0\\%" in paragraph
+    assert "50.0\\\\%" not in paragraph
+
+
+def test_release_report_refuses_blinded_or_algebraically_incoherent_outputs():
+    panel, _, contrasts, summary = analyze(_balanced_frame(), simulations=500)
+    blinded = dict(summary, outcomes_released=False)
+    with pytest.raises(ValueError, match="outcomes_released"):
+        validate_release_outputs(panel, contrasts, blinded)
+
+    broken = contrasts.copy()
+    broken.loc[broken["estimand"].eq("total_delegation"), "success_difference_hajek"] += 0.1
+    broken.loc[broken["estimand"].eq("total_delegation"), "success_difference_ht"] += 0.1
+    with pytest.raises(ValueError, match="decomposition identity"):
+        validate_release_outputs(panel, broken, summary)

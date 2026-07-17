@@ -1920,4 +1920,16 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict[str, Any]:
     save(eligibility_models, out_dir, "h81_eligibility_models")
     save(eligibility_runs, out_dir, "h81_eligibility_runs")
     save_json(summary, out_dir, "h81_summary")
+    if summary.get("outcomes_released"):
+        # Imported only at the open gate so blinded accrual runs do not create a
+        # result-looking artifact. The report contains no estimator choices.
+        from .h81_release_report import build_release_report
+
+        build_release_report(
+            panel,
+            model_panel,
+            contrasts,
+            summary,
+            out_dir=out_dir,
+        )
     return summary

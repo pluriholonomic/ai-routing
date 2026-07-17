@@ -56,6 +56,7 @@ class StudySpec:
     analyzer_path: str
     gate: Callable[[], dict[str, Any]]
     runner: Callable[..., dict[str, Any]]
+    supporting_paths: tuple[str, ...] = ()
 
 
 def _empty_assignment_frame() -> pd.DataFrame:
@@ -201,6 +202,7 @@ STUDIES: dict[str, StudySpec] = {
         analyzer_path="src/orcap/analysis/h81_delegation_decomposition.py",
         gate=h81_gate_status,
         runner=h81.run,
+        supporting_paths=("src/orcap/analysis/h81_release_report.py",),
     ),
     "h95": StudySpec(
         key="h95",
@@ -240,6 +242,7 @@ def _code_hashes(spec: StudySpec) -> dict[str, str]:
         spec.analyzer_path,
         spec.preregistration,
     ]
+    paths.extend(spec.supporting_paths)
     protocol_dir = (ROOT / spec.preregistration).parent
     paths.extend(
         path.relative_to(ROOT).as_posix() for path in sorted(protocol_dir.glob("amendment-*.md"))
