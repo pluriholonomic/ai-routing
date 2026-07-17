@@ -125,23 +125,41 @@ two-test Holm family at counts 39/40/40 requires a 35-point component effect for
 80% worst-terminal-policy power on the preregistered grid. These remain planning
 and implementation facts, not H81 outcomes.
 
-H95's prerelease analyzer was hardened in commit `f170d89` while its fixed
-horizon remained 4/120 and before any H95 outcome field was queried. Its Fisher
-tails are exact: each triplet contributes a six-assignment local contrast law,
+H95's prerelease analyzer was first hardened in commit `f170d89` while its fixed
+horizon remained 4/120 and before any H95 outcome field was queried. A second
+outcome-blind proof audit found that the six-assignment local law is exact only
+under the global three-policy sharp null. Each registered elementary hypothesis
+is pairwise and leaves the nuisance third policy unrestricted. The production
+test now conditions in every triplet on the model assigned the nuisance policy
+and swaps only the two focal labels. Each triplet contributes a two-point law,
 and the analyzer convolves those laws across the 120 independent triplets. A
-100,000-draw permutation is an implementation audit only; exact support mass
-must equal one within `1e-12`, and a tail discrepancy above 0.01 stops the
-release. A two-triplet test agrees with all 36 brute-force assignments.
+100,000-draw conditional-swap audit is implementation-only; exact support mass
+must equal one within `1e-12`, and a tail discrepancy above 0.01 stops release.
+A two-triplet test agrees with all four conditional assignments.
+
+In 5,000 fixed-schedule experiments under each mixed pairwise null, the corrected
+law rejects the true elementary null at at most 4.06%, whereas the superseded
+all-policy law reaches 8.12%; the same rates obtain for false rejection of the
+remaining true null after Holm in the adversarial schedules. H95 also gains a
+design-valid bounded-outcome interval. Each triplet contrast lies in `[-1,1]`,
+has expectation equal to its triplet-average finite-population effect, and is
+independent across written triplets. Hoeffding's inequality plus a union bound
+over the two primary contrasts gives simultaneous 95% coverage with radius
+`sqrt(2 log(4 / 0.05) / 120) = 0.27025`. Five fixed-schedule audits give worst
+observed design-family coverage 99.90% and mean width 0.540, versus 95.52% and
+mean width 0.290 for the descriptive Bonferroni paired-t family. The inequality,
+not the simulated coverage, supplies the design guarantee.
 
 H95 preserves the original structural intent-to-treat zeros for a missing
 planned first request or noncompliant first policy. It also codes duplicate
 first records and an auditable provider-control mismatch as structural zeros.
 By contrast, `unknown`, missing, or malformed outcomes on a structurally valid
 record are measurement missing: they suppress all complete-data point estimates,
-paired intervals, and randomization tests and enter `[0,1]` bounds. Paired-t
-intervals are descriptive, and the two primary contrasts receive Bonferroni 95%
-familywise paired-t intervals in addition to Holm-adjusted exact one-sided
-tests.
+paired intervals, design intervals, and randomization tests and enter `[0,1]`
+bounds. Paired-t intervals are descriptive, and the two primary contrasts
+receive both Bonferroni 95% familywise paired-t intervals and simultaneous
+design-Hoeffding intervals in addition to Holm-adjusted exact conditional
+one-sided tests.
 
 Collector rows after `f170d89` record requested-order length, provider-only
 count, public-provider count, and fallback state. The first four triplets lack
@@ -176,8 +194,11 @@ provider intent, collusion, or social welfare.
   inference;
 - H95 missing requests, noncompliant policies, duplicate rows, and auditable
   provider-control failures retain their structural intent-to-treat coding;
-- exact H95 tails match brute force, while production exact-versus-simulated
-  drift fails closed;
+- exact nuisance-conditioned H95 tails match brute force, the superseded
+  all-policy law is anti-conservative in mixed-null stress tests, and production
+  exact-versus-simulated drift fails closed;
+- H95 design-Hoeffding intervals cover the two finite-population primary
+  contrasts simultaneously over fixed-schedule adversaries;
 - H95 time concentration and whole-triplet leave-one-model-out gates use their
   registered units;
 - the H95 position-by-policy panel exposes the sequential-block interference
@@ -213,3 +234,9 @@ pinned revision `42334a840dc8088cc8cde441ebe3649cfa041b5e`, reproduced the same
 H81 counts and H95 support, and again reported `outcomes_queried=false` for both
 studies. This is the outcome-blind provenance point for the finite-population
 interval and joint-Holm amendment.
+
+Published-paper audit `29568434722` checked out head `973f900`, pinned revision
+`30b430e2a095d069015f45dbf9b3fca9a4f7e1ce`, and again reported H81 counts
+32/24/28, H95 support 5/120, perfect replay and compliance, and
+`outcomes_queried=false` for both studies. This is the outcome-blind provenance
+point for the H95 pairwise-reference-law and design-interval amendment.

@@ -493,7 +493,54 @@ def _triplet_outcome_matrix(outcomes: pd.DataFrame) -> np.ndarray:
 def _exact_blocked_randomization_pvalues(
     outcomes: pd.DataFrame,
 ) -> dict[str, tuple[float, float]]:
-    """Enumerate each block's six assignments and convolve their exact laws."""
+    """Convolve nuisance-conditioned two-policy laws for each contrast.
+
+    For a contrast between policies p and q, condition within every triplet on
+    the model block assigned the nuisance third policy.  Under the pairwise
+    sharp null, the two remaining observed outcomes are fixed and p/q are a
+    fair swap.  This reference experiment is exact for the elementary null
+    even when the nuisance policy has an arbitrary effect.
+    """
+    if outcomes.empty:
+        return {name: (np.nan, np.nan) for name, *_ in COMPARISONS}
+    wide = outcomes.pivot(
+        index="triplet_id", columns="assigned_first_policy", values="primary_success"
+    )
+    if set(wide.columns) != set(POLICIES) or wide.isna().any().any():
+        raise RuntimeError("exact H95 inference requires one complete outcome per policy")
+    if not np.isin(wide.to_numpy(dtype=float), (0.0, 1.0)).all():
+        raise RuntimeError("exact H95 inference requires complete binary outcomes")
+
+    tolerance = 1e-15
+    results: dict[str, tuple[float, float]] = {}
+    for name, positive, negative, _ in COMPARISONS:
+        observed_differences = wide[positive].to_numpy(dtype=float) - wide[negative].to_numpy(
+            dtype=float
+        )
+        distribution = np.asarray([1.0])
+        for difference in observed_differences:
+            if math.isclose(float(difference), 0.0, rel_tol=0.0, abs_tol=tolerance):
+                kernel = np.asarray([0.0, 1.0, 0.0])
+            else:
+                kernel = np.asarray([0.5, 0.0, 0.5])
+            distribution = np.convolve(distribution, kernel)
+        support = np.arange(-len(observed_differences), len(observed_differences) + 1)
+        observed_sum = float(observed_differences.sum())
+        support_mass = float(math.fsum(distribution.tolist()))
+        if not math.isclose(support_mass, 1.0, rel_tol=0.0, abs_tol=1e-12):
+            raise RuntimeError(f"exact H95 randomization support has mass {support_mass}")
+        greater = float(math.fsum(distribution[support >= observed_sum - tolerance].tolist()))
+        two_sided = float(
+            math.fsum(distribution[np.abs(support) >= abs(observed_sum) - tolerance].tolist())
+        )
+        results[name] = greater, two_sided
+    return results
+
+
+def _all_policy_sharp_null_pvalues(
+    outcomes: pd.DataFrame,
+) -> dict[str, tuple[float, float]]:
+    """Retain the superseded six-assignment law for adversarial comparison."""
     values = _triplet_outcome_matrix(outcomes)
     if not len(values):
         return {name: (np.nan, np.nan) for name, *_ in COMPARISONS}
@@ -531,27 +578,31 @@ def _monte_carlo_randomization_pvalues(
     simulations: int,
     seed: int = 20260717,
 ) -> dict[str, tuple[float, float]]:
-    """Retain a fixed Monte Carlo audit without using it for published tails."""
+    """Audit the conditional pairwise laws with independent fair swaps."""
     if simulations <= 0:
         return {name: (np.nan, np.nan) for name, *_ in COMPARISONS}
-    values = _triplet_outcome_matrix(outcomes)
-    permutations = np.asarray(list(itertools.permutations(range(3))), dtype=np.int8)
+    wide = outcomes.pivot(
+        index="triplet_id", columns="assigned_first_policy", values="primary_success"
+    )
+    if set(wide.columns) != set(POLICIES) or wide.isna().any().any():
+        raise RuntimeError("H95 Monte Carlo audit requires one complete outcome per policy")
     rng = np.random.default_rng(seed)
-    policy_sums = np.zeros((simulations, len(POLICIES)), dtype=float)
-    for vector in values:
-        mapping = permutations[rng.integers(0, len(permutations), size=simulations)]
-        policy_sums += vector[mapping]
-    policy_means = policy_sums / len(values)
-    policy_index = {policy: index for index, policy in enumerate(POLICIES)}
     results: dict[str, tuple[float, float]] = {}
     for name, positive, negative, _ in COMPARISONS:
-        observed = float(
-            outcomes.loc[outcomes["assigned_first_policy"].eq(positive), "primary_success"].mean()
-            - outcomes.loc[outcomes["assigned_first_policy"].eq(negative), "primary_success"].mean()
+        observed_differences = wide[positive].to_numpy(dtype=float) - wide[negative].to_numpy(
+            dtype=float
         )
-        null = policy_means[:, policy_index[positive]] - policy_means[:, policy_index[negative]]
-        greater = float((1 + np.sum(null >= observed - 1e-15)) / (simulations + 1))
-        two_sided = float((1 + np.sum(np.abs(null) >= abs(observed) - 1e-15)) / (simulations + 1))
+        observed_sum = float(observed_differences.sum())
+        nonzero = int(np.count_nonzero(observed_differences))
+        null = (
+            (2 * rng.integers(0, 2, size=(simulations, nonzero)) - 1).sum(axis=1)
+            if nonzero
+            else np.zeros(simulations, dtype=int)
+        )
+        greater = float((1 + np.sum(null >= observed_sum - 1e-15)) / (simulations + 1))
+        two_sided = float(
+            (1 + np.sum(np.abs(null) >= abs(observed_sum) - 1e-15)) / (simulations + 1)
+        )
         results[name] = greater, two_sided
     return results
 
@@ -573,6 +624,22 @@ def _paired_interval(
         estimate - critical * standard_error,
         estimate + critical * standard_error,
     )
+
+
+def _blocked_design_radius(
+    triplets: int,
+    *,
+    alpha: float = PRIMARY_FWER_ALPHA,
+    family_size: int = 2,
+) -> float:
+    """Hoeffding radius for independent triplet contrasts in [-1, 1]."""
+    if triplets <= 0:
+        return np.nan
+    if not 0 < alpha < 1:
+        raise ValueError("alpha must lie strictly between zero and one")
+    if family_size <= 0:
+        raise ValueError("family_size must be positive")
+    return float(math.sqrt(2.0 * math.log(2.0 * family_size / alpha) / triplets))
 
 
 def _leave_one_model_out(
@@ -824,9 +891,19 @@ def analyze_released(
                 differences,
                 alpha=(PRIMARY_FWER_ALPHA / 2.0) if primary else PRIMARY_FWER_ALPHA,
             )
+            design_family_size = 2 if primary else 1
+            design_radius = _blocked_design_radius(
+                len(differences),
+                alpha=PRIMARY_FWER_ALPHA,
+                family_size=design_family_size,
+            )
+            design_low = max(-1.0, estimate - design_radius)
+            design_high = min(1.0, estimate + design_radius)
         else:
             estimate = standard_error = ci_low = ci_high = np.nan
             simultaneous_low = simultaneous_high = np.nan
+            design_family_size = 2 if primary else 1
+            design_radius = design_low = design_high = np.nan
         pos = panel.loc[panel["policy"].eq(positive)].iloc[0]
         neg = panel.loc[panel["policy"].eq(negative)].iloc[0]
         greater, two_sided = exact_pvalues[name]
@@ -849,6 +926,10 @@ def analyze_released(
                 "paired_t_ci_high": ci_high,
                 "paired_t_simultaneous_ci_low": simultaneous_low if primary else np.nan,
                 "paired_t_simultaneous_ci_high": simultaneous_high if primary else np.nan,
+                "design_hoeffding_ci_low": design_low,
+                "design_hoeffding_ci_high": design_high,
+                "design_hoeffding_radius": design_radius,
+                "design_hoeffding_family_size": design_family_size,
                 "measurement_missingness_lower_bound": (
                     pos["success_rate_measurement_lower_bound"]
                     - neg["success_rate_measurement_upper_bound"]
@@ -964,8 +1045,9 @@ def analyze_released(
             outcomes["legacy_treatment_metadata_unverified"].sum()
         ),
         "randomization_inference": (
-            "exact Fisher sharp-null tails from convolution of each triplet's six "
-            "allowed assignments; Monte Carlo is an implementation audit only"
+            "exact pairwise Fisher sharp-null tails conditional on each triplet's "
+            "nuisance-policy assignment; two allowed focal-policy swaps per triplet; "
+            "Monte Carlo is an implementation audit only"
         ),
         "randomization_mc_audit_tolerance": RANDOMIZATION_MC_AUDIT_TOLERANCE,
         "randomization_mc_audit_enforced": bool(
@@ -974,6 +1056,11 @@ def analyze_released(
         "descriptive_uncertainty": (
             "paired t intervals over realized triplets; Bonferroni 95% familywise "
             "intervals over the two primary contrasts; not randomization-CI inversion"
+        ),
+        "design_uncertainty": (
+            "Hoeffding intervals for independent bounded triplet contrasts; simultaneous "
+            "95% coverage over the two primary contrasts by a union bound; marginal 95% "
+            "coverage for the secondary total contrast"
         ),
         "cross_model_interference_boundary": (
             "Policy-position randomization absorbs position-only drift. A direct-policy "

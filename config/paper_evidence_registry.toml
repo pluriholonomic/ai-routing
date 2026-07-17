@@ -3,8 +3,8 @@ schema_version = 1
 paper_path = "paper/inference-market-microstructure/main.tex"
 paper_track = "ACM EC / TEAC"
 authoritative_dataset = "t4run/openrouter-market-history"
-authoritative_revision = "42334a840dc8088cc8cde441ebe3649cfa041b5e"
-evidence_freeze_utc = "2026-07-17T08:35:10Z"
+authoritative_revision = "30b430e2a095d069015f45dbf9b3fca9a4f7e1ce"
+evidence_freeze_utc = "2026-07-17T09:01:10Z"
 status = "outcome-safe refresh with H81 and H95 accruing; clean remote first-access release armed; focal outcomes blinded"
 amendment_ledger = "docs/paper-evidence-amendment-ledger-2026-07-17.md"
 
@@ -217,16 +217,16 @@ claim_boundary = "No prospective result exists yet. Only snapshots after 2026-07
 claim_id = "T-H95-FIXED-HORIZON"
 kind = "theorem"
 tex_label = "prop:h95-fixed-horizon"
-title = "Fixed-horizon blocked identification and exact Fisher law"
+title = "Fixed-horizon blocked identification, pairwise Fisher law, and design interval"
 disposition = "appendix"
 identification = "finite-population blocked randomized ITT over written triplets"
-status = "theorem, proof, exact convolution, and adversarial implementation validation present; H95 outcomes gated"
+status = "theorem, proof, nuisance-conditioned exact convolution, simultaneous design interval, and adversarial validation present; H95 outcomes gated"
 source_tables = ["router_route_attempts", "router_replication_eligibility"]
-analyzers = ["src/orcap/analysis/h95_delegation_replication.py"]
+analyzers = ["src/orcap/analysis/h95_delegation_replication.py", "src/orcap/analysis/h95_theorem_validation.py"]
 collectors = ["src/orcap/capture_decomposition_replication.py"]
-tests = ["tests/test_capture_decomposition_replication.py", "tests/test_h95_delegation_replication.py"]
-protocols = ["experiments/h95-delegation-replication-v1/preregistration.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md"]
-validation_methods = ["randomization algebra", "exact six-assignment convolution", "36-assignment brute-force audit", "structural-versus-measurement missingness adversaries", "whole-triplet leave-one-model-out", "position-by-policy interference diagnostic"]
+tests = ["tests/test_capture_decomposition_replication.py", "tests/test_h95_delegation_replication.py", "tests/test_h95_theorem_validation.py"]
+protocols = ["experiments/h95-delegation-replication-v1/preregistration.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17-pairwise-intervals.md"]
+validation_methods = ["randomization algebra", "nuisance-conditioned two-swap convolution", "four-assignment brute-force audit", "mixed-null strong-FWER stress test", "fixed-schedule interval coverage", "structural-versus-measurement missingness adversaries", "whole-triplet leave-one-model-out", "position-by-policy interference diagnostic"]
 claim_boundary = "The theorem identifies policy effects over the first 120 written eligible triplets under consistency and no treatment-dependent cross-model interference; it does not identify market-wide routing, provider intent, or welfare."
 
 [[claim]]
@@ -238,11 +238,11 @@ disposition = "future independent replication"
 identification = "blocked randomized first-position ITT over 120 planned triplets"
 status = "five compliant planned triplets accrued; 115 of 120 triplets remain; outcomes unqueried"
 source_tables = ["router_route_attempts", "router_replication_eligibility"]
-analyzers = ["src/orcap/analysis/h95_delegation_replication.py", "src/orcap/confirmatory_release.py"]
+analyzers = ["src/orcap/analysis/h95_delegation_replication.py", "src/orcap/analysis/h95_theorem_validation.py", "src/orcap/confirmatory_release.py"]
 collectors = ["src/orcap/capture_decomposition_replication.py"]
-tests = ["tests/test_capture_decomposition_replication.py", "tests/test_h95_delegation_replication.py", "tests/test_remote_pipeline_health.py", "tests/test_confirmatory_release.py"]
-protocols = ["experiments/h95-delegation-replication-v1/preregistration.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md", "docs/confirmatory-release-protocol-2026-07-17.md"]
-validation_methods = ["fixed 120-triplet horizon", "exact within-triplet arm balance", "seed replay", "exact blocked randomization inference", "structural-versus-measurement missingness audit", "row-level treatment-control coverage", "time and whole-triplet transport diagnostics", "position-by-policy interference diagnostic"]
+tests = ["tests/test_capture_decomposition_replication.py", "tests/test_h95_delegation_replication.py", "tests/test_h95_theorem_validation.py", "tests/test_remote_pipeline_health.py", "tests/test_confirmatory_release.py"]
+protocols = ["experiments/h95-delegation-replication-v1/preregistration.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17.md", "experiments/h95-delegation-replication-v1/amendment-2026-07-17-pairwise-intervals.md", "docs/confirmatory-release-protocol-2026-07-17.md"]
+validation_methods = ["fixed 120-triplet horizon", "exact within-triplet arm balance", "seed replay", "nuisance-conditioned pairwise exact inference", "simultaneous bounded-outcome design intervals", "structural-versus-measurement missingness audit", "row-level treatment-control coverage", "time and whole-triplet transport diagnostics", "position-by-policy interference diagnostic"]
 claim_boundary = "H95 is separate from H81 and identifies owned-account policy effects over sampled eligible Hugging Face-linked models; it does not identify market-wide flow or welfare."
 
 [[gate_event]]

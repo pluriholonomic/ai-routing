@@ -1,0 +1,20 @@
+{
+  "hypothesis": "H95 fixed-horizon randomization validation",
+  "outcome_status": "synthetic fixed-schedule audit; no H95 outcome queried",
+  "triplets": 120,
+  "pairwise_nuisance_size": {
+    "worst_corrected_raw_rejection_rate": 0.0406,
+    "worst_corrected_holm_true_null_rejection_rate": 0.0406,
+    "worst_superseded_raw_rejection_rate": 0.0812,
+    "worst_superseded_holm_true_null_rejection_rate": 0.0812
+  },
+  "interval_coverage": {
+    "worst_paired_t_family_coverage": 0.9552,
+    "worst_design_hoeffding_family_coverage": 0.999,
+    "maximum_absolute_monte_carlo_bias": 0.0016633333333333333,
+    "mean_paired_t_width": 0.2897715020351885,
+    "mean_design_hoeffding_width": 0.5404952441772811,
+    "design_radius_at_120_triplets": 0.27024762208864056
+  },
+  "claim_boundary": "The audit validates the registered assignment law and bounded-outcome reporting rule. It does not reveal an H95 outcome, prove no cross-model interference, or identify market-wide routing or welfare."
+}

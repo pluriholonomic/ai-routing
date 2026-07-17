@@ -21,20 +21,19 @@ The July 17, 2026 revision:
 - adds a conditional finite-population Hoeffding--Serfling confidence set, fixed-schedule
   interval-coverage stress tests, and exact joint power for the registered
   two-test Holm family while H81 outcomes remain unopened;
-- hardens the still-blinded H95 replication with exact within-triplet Fisher
-  inference, explicit structural and measurement missingness, provider-control
-  coverage, time/whole-triplet transport gates, and a sequential-position
-  interference diagnostic; and
+- hardens the still-blinded H95 replication with nuisance-conditioned pairwise
+  Fisher inference, simultaneous bounded-outcome design intervals, explicit
+  structural and measurement missingness, provider-control coverage,
+  time/whole-triplet transport gates, and a sequential-position interference
+  diagnostic; and
 - compresses the main empirical argument to 15 pages through the references,
   moving price-atom diagnostics and proofs to Appendix A without deleting them.
 
 The latest adversarial assessment is
-[`../docs/manuscript-review-round-24-2026-07-17.md`](../docs/manuscript-review-round-24-2026-07-17.md).
-It treats the H81 pairwise randomization defect and confidence-theorem mismatch
-as repaired before outcome access, quantifies a 35-point worst-terminal joint
-Holm power boundary, and makes the design-only precision cost explicit. The
-remaining promotion gates are unreleased H81/H95 outcomes and the unopened
-30-completed-day PM1 holdout.
+[`../docs/manuscript-review-round-25-2026-07-17.md`](../docs/manuscript-review-round-25-2026-07-17.md).
+It treats the H81 and H95 pairwise-reference-law defects and confidence-theorem
+mismatches as repaired before outcome access. The remaining promotion gates are
+unreleased H81/H95 outcomes and the unopened 30-completed-day PM1 holdout.
 
 This directory contains three non-concurrent manuscripts built from the reviewed
 research drafts:

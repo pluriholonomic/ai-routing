@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import math
 import random
 from datetime import UTC, datetime, timedelta
 
@@ -149,30 +150,37 @@ def test_exact_randomization_matches_brute_force_for_two_triplets() -> None:
         ]
     )
     exact = h95._exact_blocked_randomization_pvalues(outcomes)
-    vectors = [
-        group.sort_values("model_id")["primary_success"].to_numpy()
-        for _, group in outcomes.groupby("triplet_id", sort=False)
-    ]
-    permutations = list(itertools.permutations(range(3)))
-    policy_index = {policy: index for index, policy in enumerate(POLICIES)}
+    wide = outcomes.pivot(
+        index="triplet_id", columns="assigned_first_policy", values="primary_success"
+    )
     for name, positive, negative, _ in h95.COMPARISONS:
-        observed = (
-            outcomes.loc[outcomes["assigned_first_policy"].eq(positive), "primary_success"].sum()
-            - outcomes.loc[outcomes["assigned_first_policy"].eq(negative), "primary_success"].sum()
-        )
-        null = []
-        for assignments in itertools.product(permutations, repeat=2):
-            null.append(
-                sum(
-                    vector[assignment[policy_index[positive]]]
-                    - vector[assignment[policy_index[negative]]]
-                    for vector, assignment in zip(vectors, assignments, strict=True)
-                )
+        observed_differences = (wide[positive] - wide[negative]).to_numpy()
+        observed = observed_differences.sum()
+        null = [
+            sum(
+                sign * abs(difference)
+                for sign, difference in zip(signs, observed_differences, strict=True)
             )
+            for signs in itertools.product((-1, 1), repeat=2)
+        ]
         greater = sum(value >= observed for value in null) / len(null)
         two_sided = sum(abs(value) >= abs(observed) for value in null) / len(null)
         assert exact[name][0] == pytest.approx(greater)
         assert exact[name][1] == pytest.approx(two_sided)
+
+
+def test_design_interval_uses_two_contrast_family_radius() -> None:
+    radius = h95._blocked_design_radius(h95.TARGET_TRIPLETS, family_size=2)
+    expected = (2 * math.log(4 / h95.PRIMARY_FWER_ALPHA) / h95.TARGET_TRIPLETS) ** 0.5
+    assert radius == pytest.approx(expected)
+
+    eligibility, attempts = _frames(h95.TARGET_TRIPLETS)
+    prepared = h95.prepare_assignment_attempts(attempts.drop(columns=["outcome"]))
+    summary, _, _, plans = h95.gate_summary(prepared, eligibility, simulations=0)
+    _, _, contrasts, _, _, _, _ = h95.analyze_released(attempts, plans, summary, simulations=0)
+    primary = contrasts.loc[contrasts["primary"]]
+    assert primary["design_hoeffding_radius"].eq(radius).all()
+    assert primary["design_hoeffding_family_size"].eq(2).all()
 
 
 def test_unknown_recorded_outcome_is_not_silently_coded_as_failure() -> None:
@@ -190,6 +198,8 @@ def test_unknown_recorded_outcome_is_not_silently_coded_as_failure() -> None:
     assert released["point_inference_suppressed_for_measurement_missingness"] is True
     assert contrasts["success_difference"].isna().all()
     assert contrasts["randomization_p_greater"].isna().all()
+    assert contrasts["design_hoeffding_ci_low"].isna().all()
+    assert contrasts["design_hoeffding_ci_high"].isna().all()
     assert int(outcome_audit["measurement_missing"].sum()) == 1
     affected_policy = outcome_audit.loc[
         outcome_audit["measurement_missing"], "assigned_first_policy"

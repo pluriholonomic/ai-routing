@@ -130,7 +130,7 @@ delegation as both an estimand and estimator identity.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
    - Current result: implemented before outcome access in commit `4d66fda`.
-     Both adversarial tests and the current full 557-test suite pass. The two primary
+     Both adversarial tests and the current full 561-test suite pass. The two primary
      intervals additionally receive Bonferroni-Newcombe familywise adjustment;
      their exact conditional Fisher p-values retain the registered Holm family.
 
@@ -158,17 +158,27 @@ an unknown or malformed outcome on an otherwise compliant recorded request is
 measurement missing and cannot be silently converted to failure.
 
 A prerelease red-team amendment in commit `f170d89` was deployed while the
-fixed horizon was 4/120 and before any H95 outcome field was queried. Published
-Fisher tails now convolve the exact six-assignment law within each triplet;
-100,000 permutations are retained only as an implementation audit, and the
-release fails closed above a 0.01 tail discrepancy. Exact two-triplet results
-match brute-force enumeration of all 36 joint assignments. Unknown measurement
+fixed horizon was 4/120 and before any H95 outcome field was queried. A second
+outcome-blind audit at 5/120 found that the six-assignment law tests the global
+three-policy sharp null, not either registered pairwise null with an unrestricted
+nuisance policy. Published Fisher tails now condition on each triplet's nuisance
+assignment and convolve the two allowed focal-policy swaps. The 100,000-draw
+conditional-swap audit is implementation-only, and the release fails closed
+above a 0.01 tail discrepancy. Exact two-triplet results match brute-force
+enumeration of all four conditional assignments. Unknown measurement
 outcomes suppress every complete-data point estimate and randomization test and
 enter `[0,1]` bounds. Missing planned requests, assignment noncompliance,
 duplicate first records, and auditable provider-control failures remain
 structural intent-to-treat zeros under the original protocol. The two primary
-tests receive Holm adjustment; paired Student-t intervals are descriptive, with
-Bonferroni 95% familywise intervals over the two primary contrasts.
+tests receive Holm adjustment. In two mixed-null 5,000-experiment schedules,
+the corrected law's worst elementary and Holm true-null rejection is 4.06%,
+versus 8.12% for the superseded law. Paired Student-t intervals remain
+descriptive, with Bonferroni 95% familywise intervals over the two primary
+contrasts. A bounded-outcome Hoeffding interval adds design-valid simultaneous
+coverage over the two primary contrasts; its radius at 120 triplets is 0.270.
+Across five fixed schedules, worst observed design-family coverage is 99.90%
+and mean width 0.540, versus paired-t family coverage 95.52% and mean width
+0.290. The inequality, not simulation, gives the design guarantee.
 
 The three model blocks are sequential. Random assignment of policy across
 models and positions absorbs position-only drift, but the direct-policy
@@ -178,7 +188,7 @@ cells have no preceding H95 block in the triplet. This is a falsification and
 sensitivity diagnostic, not a proof of no interference.
 
 The design uses a fixed horizon rather than the H81 arm-balance stopping rule and
-is never pooled with H81. At revision `42334a84`, five compliant triplets have
+is never pooled with H81. At revision `30b430e2`, five compliant triplets have
 accrued: 15 blocks over nine unique models, effective model count 7.76, perfect
 plan compliance and replay, no missing first record, and no outcome query. The
 first 12 first-position rows predate the new row-level order-length fields and
@@ -193,7 +203,7 @@ primary effect directions stable when each model's containing triplets are
 dropped whole. The current five-triplet support fails the time gate because its
 largest six-hour bin contains three of five triplets; this is an early-accrual
 diagnostic, not a causal-design failure. Adversarial H95 tests and the full
-551-test repository suite pass. The launch establishes prospective operation
+repository suite pass. The launch establishes prospective operation
 only; it is not an empirical effect result.
 
 ## T2. Asynchronous-menu observational equivalence
