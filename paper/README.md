@@ -13,8 +13,9 @@ The July 17, 2026 revision:
   reconstruction (3,219 of 3,219 completed-day events);
 - updates the outcome-blind H81 and H95 collection counts and immutable data
   revision;
-- freezes a leakage-resistant 15-day/15-day PM1 temporal validation before its
-  holdout exists; and
+- freezes a leakage-resistant 15-day/15-day PM1 temporal validation with fixed
+  ridge estimation and an events-per-parameter gate before its holdout exists;
+  and
 - compresses the main empirical argument to 15 pages through the references,
   moving price-atom diagnostics and proofs to Appendix A without deleting them.
 

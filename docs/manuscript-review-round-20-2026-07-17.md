@@ -47,8 +47,17 @@ gates.
    `4d66fda` was made while H81 remained at 31/23/26. Synthetic tests replace a
    success with `unknown` and corrupt one treatment record before accruing a
    valid replacement. Both failure modes widen or suppress inference as
-   promised. The complete repository suite passes 539 tests.
-6. **The rendered artifact is sound.** The rebuilt paper is 31 pages including
+   promised. The complete repository suite passes 540 tests after the PM1
+   amendment below.
+6. **The temporal estimator now matches its support.** The primary PM1 rung has
+   17 parameters, so the former 50-training-event gate was not credible and an
+   unpenalized logit could separate. Commit `1719ade`, made at 10/30 completed
+   dates without querying pricing outcomes, freezes training-standardized ridge
+   logistic regression (`C=1`, no holdout tuning). Promotion now requires 10
+   training events and nonevents per parameter, 50 test events and nonevents,
+   10 train/test event dates, and 10 test models. Complete separation remains
+   finite; insufficient support cannot select a smaller model post hoc.
+7. **The rendered artifact is sound.** The rebuilt paper is 31 pages including
    appendices, with the main argument ending on page 13 and references on pages
    14--15. The H81 analysis is legible in the main text and proof appendix; the
    claim ledger remains readable. There are no undefined references or overfull
@@ -76,7 +85,8 @@ The leakage-resistant PM1 test correctly waits for 30 completed UTC dates and
 uses the first 15 for training and the next 15 once. Only 10 completed dates
 were available at the pinned revision, so the paper cannot yet say that lagged
 market state predicts repricing out of sample. The older nine-day ladder remains
-an in-sample diagnostic.
+an in-sample diagnostic. The stricter events-per-parameter gate may correctly
+return insufficient support even after the calendar gate opens.
 
 ### 4. H81 transport will remain narrow even after release
 
@@ -102,7 +112,7 @@ H95 breadth.
 4. At 30 completed pricing dates, run PM1 once at one immutable revision and
    report the date-weighted holdout log-loss contrast, its registered sign-flip
    family, both cluster bootstraps, and leave-one-model-out sensitivity. A failed
-   event/support gate is a result.
+   event/support gate is a result and must not trigger a smaller post-hoc model.
 5. After these releases, replace the abstract's design-status sentence with the
    observed sign, magnitude, uncertainty, and transport boundary. Do not add a
    new observational section in lieu of the randomized result.

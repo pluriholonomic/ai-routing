@@ -346,6 +346,40 @@ model fixed effects, matched no-change controls, and simulated routing switches.
 Decoy events and impossible leads are falsification tests. The outcome is public
 quote pass-through, not realized allocation or markup.
 
+## E3. PM1 temporal repricing validation
+
+### Frozen split and leakage boundary
+
+Wait for 30 completed UTC quote dates, excluding the open date. Fit once on
+dates 1--15 and score dates 16--30 once. Every state, GPU, congestion, and rival
+feature is measured at the prior UTC close; the provider-activity control is
+estimated from training outcomes only. Before this gate, the readiness path may
+query represented dates but not the pricing-event table, coefficients,
+predictions, loss, or AUC.
+
+### Estimator audit and amendment
+
+The primary L3 rung contains 17 parameters including the intercept. The first
+implementation used an unpenalized logistic GLM and allowed promotion with 50
+training events, only 2.94 events per parameter. Before the holdout existed,
+commit `1719ade` replaced it with training-standardized L2 logistic regression,
+fixed `C=1`, no holdout tuning. A complete-separation adversary now produces
+finite probabilities.
+
+The minimum identification gate requires:
+
+- 10 training events and 10 training nonevents per L3 parameter;
+- 50 test events and 50 test nonevents;
+- events on at least 10 training and 10 test dates; and
+- at least 10 test models.
+
+Failure returns `insufficient_identifying_support`; it does not select a smaller
+post-hoc rung. The primary estimand remains the date-weighted paired holdout
+log-loss improvement of L3 over L2. Four adjacent contrasts receive Holm
+adjustment, with date- and model-cluster bootstrap intervals and
+leave-one-model-out sensitivity. This is predictive validation, not causal
+pricing-response identification.
+
 ## Additional public data acquisition
 
 1. **Router catalogs:** Glama, Requesty, NemoRouter, TokenRouter, and any public

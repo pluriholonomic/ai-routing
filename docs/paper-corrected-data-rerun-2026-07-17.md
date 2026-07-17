@@ -85,14 +85,18 @@ dates. It excludes the represented but open July 17 date and does not query the
 pricing-event table before the gate. At 30 completed dates it will fit on the
 first 15, score the next 15 once, use prior-close covariates and training-only
 provider controls, and apply Holm correction to the four adjacent-rung paired
-log-loss contrasts.
+log-loss contrasts. Commit `1719ade` additionally freezes training-standardized
+ridge logistic regression with `C=1` and no holdout tuning. The primary L3 rung
+has 17 parameters; promotion requires 10 training events and nonevents per
+parameter, 50 test events and nonevents, 10 train/test event dates, and 10 test
+models. A failed support gate remains an insufficient-support result.
 
 ## Verification
 
 - Ruff passed for the corrected PM2 analyzer, vintage test, and paper-rerun
   harness.
 - The focused provenance/vintage suite passed: 20 tests.
-- The full repository suite passed: 528 tests (warnings only).
-- The manuscript compiled successfully to a 30-page PDF.
+- The full repository suite passed: 540 tests (warnings only).
+- The manuscript compiled successfully to a 31-page PDF.
 - The updated sample table, hazard table, Brown-MacKay figure, and cross-router
   figure were rendered and visually inspected.

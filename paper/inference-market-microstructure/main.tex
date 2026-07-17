@@ -425,13 +425,20 @@ exists.  It excludes the open UTC date, waits for 30 completed quote dates, fits
 on dates 1--15, and evaluates once on dates 16--30.  The event-day outcome is
 predicted only from prior-close price gaps, GPU changes, congestion, and rival
 moves; the provider-activity control is estimated from the training prefix only.
+All rungs use training-standardized ridge logistic regression with $C=1$, fixed
+before the holdout and never tuned on it; this replaces an unpenalized fit that
+could separate.  The primary L3 rung has 17 parameters including its intercept.
+Promotion requires at least ten training events and ten nonevents per parameter,
+50 test events and nonevents, ten train/test event dates, and ten test models;
+a failure yields an insufficient-support verdict rather than a weaker model.
 The primary contrast is the date-weighted paired Bernoulli log-loss improvement
 of the lagged-state rung over the duration/calendar rung.  Four adjacent-rung
 one-sided sign-flip tests are Holm-adjusted, with date- and model-cluster
 bootstrap intervals and leave-one-model-out sensitivity.  At revision
 \texttt{1311e5e513c6}, 11 dates are represented but only 10 are complete; the
 open July 17 date is excluded, 20 completed dates remain, and the program does
-not query a pricing outcome before the gate.
+not query a pricing outcome before the gate.  These estimator and support rules
+were frozen in commit \texttt{1719ade} while the holdout remained inaccessible.
 
 \begin{table}[H]
 \centering

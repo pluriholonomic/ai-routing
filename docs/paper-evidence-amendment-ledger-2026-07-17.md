@@ -88,6 +88,7 @@ computer remaining online.
 | 2026-07-17 05:16 / `7c7c279`, run `29556911017` | H81/H95 | Installed and exercised a clean remote first-access transaction after successful compaction | Both gates closed; outcome fields unqueried | At a gate, the job first commits an immutable access marker, then runs the dedicated analyzer once, hashes the bundle, and publishes it. A completed manifest is idempotent; an orphan marker refuses automatic re-access. This changes release governance, not the estimand or stopping rule. |
 | 2026-07-17 05:20 / `93ad8ff` | H81/H95 | Red-team audit found that non-publishing mode would have invoked an analyzer after a future gate opened | Both real gates still closed; no outcome queried | Non-publishing mode is now permanently preflight-only, including at an open gate. Only the remote marker-first publication transaction can invoke an outcome analyzer. A synthetic-open-gate regression test enforces this boundary. |
 | 2026-07-17 / `4d66fda` | H81 | Pre-release missingness audit found that `unknown` or malformed outcomes were silently coerced to failure and that the two primary intervals were marginal only | H81 remained below 40 per arm; no dedicated outcome query occurred | Binary outcomes are now explicit; incomplete outcomes suppress point/randomization inference and enter `[0,1]` bounds. Intended arms are reconstructed from seeds for worst-case treatment/outcome attrition bounds, and the two primary intervals receive Bonferroni familywise adjustment. Unknown-outcome and noncompliance adversaries plus the full 539-test suite pass. |
+| 2026-07-17 / `1719ade` | PM1 temporal holdout | Pre-release audit found that the 17-parameter primary rung could pass with only 50 training events and that unpenalized logistic fits could separate | Only 10/30 completed dates existed; the event table and holdout remained unqueried | Every rung now uses training-standardized ridge logistic regression with fixed `C=1` and no holdout tuning. Promotion requires 10 training events and nonevents per primary parameter, 50 test events and nonevents, 10 train/test event dates, and 10 test models. Separation and low-support regression tests pass; the full suite has 540 passes. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
 
 ## H81 stopping-time correction
@@ -118,7 +119,9 @@ standard error 0.49 percentage points).
 5. H93 is a cross-sectional equality fact only; no pass-through or reaction
    result exists yet.
 6. H94 is active only for post-04:30:20 UTC snapshots and has no prospective
-   result yet. H95 has one of 120 planned triplets and no released outcome.
+   result yet. H95 has three of 120 planned triplets and no released outcome.
+   PM1 is result-blind at 10/30 completed dates and now has a fixed ridge
+   estimator plus an events-per-parameter promotion gate.
 7. No current design identifies literal front-running, provider intent,
    market-wide routed share, social welfare, or the welfare-maximizing entry
    count.
