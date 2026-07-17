@@ -536,21 +536,15 @@ def _finalize_gate_audit(
     audit.update(
         {
             "study_id": STUDY_ID,
-            "first_position_counts": {
-                key: int(value) for key, value in collection_counts.items()
-            },
+            "first_position_counts": {key: int(value) for key, value in collection_counts.items()},
             "confirmatory_prefix_counts": {
                 key: int(value) for key, value in analysis_counts.items()
             },
             "release_gate_prefix_counts": {
                 key: int(value) for key, value in release_gate_counts.items()
             },
-            "release_gate_prefix_blocks": (
-                int(len(release_gate_first)) if release_ready else 0
-            ),
-            "confirmatory_prefix_blocks": (
-                int(len(analysis_first)) if release_ready else 0
-            ),
+            "release_gate_prefix_blocks": (int(len(release_gate_first)) if release_ready else 0),
+            "confirmatory_prefix_blocks": (int(len(analysis_first)) if release_ready else 0),
             "confirmatory_cutoff": confirmatory_cutoff,
             "outcomes_released": release_ready,
             "outcome_access": (
@@ -624,6 +618,68 @@ def _fixed_count_randomizations(
     for draw in range(simulations):
         labels[draw] = rng.permutation(template)
     return labels
+
+
+def _exact_binary_randomization_pvalues(
+    outcomes: np.ndarray,
+    counts: pd.Series,
+    *,
+    positive: str,
+    negative: str,
+    observed_statistic: float,
+) -> tuple[float, float]:
+    """Return exact fixed-count Fisher tails for a binary arm-mean contrast.
+
+    Conditional on the stopped design's preterminal arm counts, the number of
+    successes assigned to the three arms is multivariate hypergeometric under
+    the Fisher sharp null.  Summing that finite support is exact up to ordinary
+    floating-point evaluation of integer probability ratios and avoids Monte
+    Carlo error in the published p-values.
+    """
+    values = np.asarray(outcomes, dtype=float)
+    n_total = int(counts.reindex(POLICIES, fill_value=0).sum())
+    n_positive = int(counts.get(positive, 0))
+    n_negative = int(counts.get(negative, 0))
+    n_other = n_total - n_positive - n_negative
+    if (
+        n_total <= 0
+        or len(values) != n_total
+        or n_positive <= 0
+        or n_negative <= 0
+        or n_other < 0
+        or not np.isfinite(values).all()
+        or not np.isfinite(observed_statistic)
+        or not np.isin(values, (0.0, 1.0)).all()
+    ):
+        return np.nan, np.nan
+
+    successes = int(values.sum())
+    denominator = math.comb(n_total, successes)
+    greater_probabilities: list[float] = []
+    two_sided_probabilities: list[float] = []
+    tolerance = 1e-15
+    positive_min = max(0, successes - n_negative - n_other)
+    positive_max = min(n_positive, successes)
+    for positive_successes in range(positive_min, positive_max + 1):
+        negative_min = max(0, successes - positive_successes - n_other)
+        negative_max = min(n_negative, successes - positive_successes)
+        for negative_successes in range(negative_min, negative_max + 1):
+            other_successes = successes - positive_successes - negative_successes
+            ways = (
+                math.comb(n_positive, positive_successes)
+                * math.comb(n_negative, negative_successes)
+                * math.comb(n_other, other_successes)
+            )
+            probability = ways / denominator
+            statistic = positive_successes / n_positive - negative_successes / n_negative
+            if statistic >= observed_statistic - tolerance:
+                greater_probabilities.append(probability)
+            if abs(statistic) >= abs(observed_statistic) - tolerance:
+                two_sided_probabilities.append(probability)
+    return (
+        float(math.fsum(greater_probabilities)),
+        float(math.fsum(two_sided_probabilities)),
+    )
 
 
 def _row_time(frame: pd.DataFrame) -> pd.Series:
@@ -767,9 +823,7 @@ def _accrual_projection(
     """Forecast the assignment-only balance gate under continued uniform draws."""
     if collection_first.empty:
         return {
-            "remaining_by_policy": {
-                policy: int(target_per_policy) for policy in POLICIES
-            },
+            "remaining_by_policy": {policy: int(target_per_policy) for policy in POLICIES},
             "completion_fraction_min_arm": 0.0,
             "forecast_boundary": "No assignments have accrued; no time forecast is available.",
         }
@@ -799,8 +853,7 @@ def _accrual_projection(
         extra[active_index] += 1
         active[active_index] = simulated[active_index].min(axis=1) < target_per_policy
     remaining = {
-        policy: max(0, int(target_per_policy - counts.get(policy, 0)))
-        for policy in POLICIES
+        policy: max(0, int(target_per_policy - counts.get(policy, 0))) for policy in POLICIES
     }
     return {
         "remaining_by_policy": remaining,
@@ -815,9 +868,7 @@ def _accrual_projection(
         "simulated_hours_to_gate_p90": (
             float(np.quantile(extra, 0.90) / blocks_per_hour) if blocks_per_hour else None
         ),
-        "first_assignment_at": (
-            timestamps.min().isoformat() if timestamps.notna().any() else None
-        ),
+        "first_assignment_at": (timestamps.min().isoformat() if timestamps.notna().any() else None),
         "latest_assignment_at": (
             timestamps.max().isoformat() if timestamps.notna().any() else None
         ),
@@ -873,9 +924,7 @@ def _blinded_outputs(
         ]
     )
     model_rows = []
-    for (model_id, policy), arm in collection_first.groupby(
-        ["model_id", "policy"], sort=True
-    ):
+    for (model_id, policy), arm in collection_first.groupby(["model_id", "policy"], sort=True):
         model_rows.append(
             {
                 "model_id": model_id,
@@ -934,6 +983,9 @@ def _blinded_outputs(
                 "success_difference_treatment_outcome_upper_bound": np.nan,
                 "randomization_p_greater": np.nan,
                 "randomization_p_two_sided": np.nan,
+                "randomization_p_greater_mc_check": np.nan,
+                "randomization_p_two_sided_mc_check": np.nan,
+                "randomization_mc_max_abs_error": np.nan,
                 "spend_complete_both_arms": np.nan,
                 "observed_spend_difference_usd": np.nan,
                 "spend_difference_lower_bound_usd": np.nan,
@@ -993,9 +1045,7 @@ def analyze(
     n_blocks = len(first)
     analysis_counts = first["policy"].value_counts().reindex(POLICIES, fill_value=0)
     analysis_probabilities = analysis_counts / n_blocks
-    first["analysis_assignment_probability"] = first["policy"].map(
-        analysis_probabilities
-    )
+    first["analysis_assignment_probability"] = first["policy"].map(analysis_probabilities)
     missingness_plan, treatment_outcome_sensitivity = preterminal_missingness_sensitivity(
         attempts,
         analysis_first=first,
@@ -1014,9 +1064,7 @@ def analyze(
             if n and not success_missing
             else (np.nan, np.nan)
         )
-        probability = pd.to_numeric(
-            arm.get("analysis_assignment_probability"), errors="coerce"
-        )
+        probability = pd.to_numeric(arm.get("analysis_assignment_probability"), errors="coerce")
         missingness = arm_missingness_bounds(arm, total_blocks=n_blocks)
         panel_rows.append(
             {
@@ -1056,9 +1104,7 @@ def analyze(
     if n_blocks:
         for (model_id, policy), arm in first.groupby(["model_id", "policy"], sort=True):
             model_blocks = int(first["model_id"].eq(model_id).sum())
-            probability = pd.to_numeric(
-                arm["analysis_assignment_probability"], errors="coerce"
-            )
+            probability = pd.to_numeric(arm["analysis_assignment_probability"], errors="coerce")
             model_success = pd.to_numeric(arm["success"], errors="coerce")
             model_missing = int(model_success.isna().sum())
             model_bounds = bounded_mean(model_success, lower=0.0, upper=1.0)
@@ -1068,9 +1114,7 @@ def analyze(
                     "policy": policy,
                     "model_blocks": model_blocks,
                     "attempts": len(arm),
-                    "success_rate": (
-                        float(model_success.mean()) if not model_missing else np.nan
-                    ),
+                    "success_rate": (float(model_success.mean()) if not model_missing else np.nan),
                     "success_outcomes_missing": model_missing,
                     "success_mean_lower_bound": model_bounds["mean_lower_bound"],
                     "success_mean_upper_bound": model_bounds["mean_upper_bound"],
@@ -1102,10 +1146,7 @@ def analyze(
         neg_success_missing = int(neg_success.isna().sum())
         raw = (
             float(pos_success.mean() - neg_success.mean())
-            if len(pos)
-            and len(neg)
-            and not pos_success_missing
-            and not neg_success_missing
+            if len(pos) and len(neg) and not pos_success_missing and not neg_success_missing
             else np.nan
         )
         if len(pos) and len(neg) and not pos_success_missing and not neg_success_missing:
@@ -1147,6 +1188,16 @@ def analyze(
             if n_blocks and complete_binary_outcomes
             else np.nan
         )
+        if n_blocks and complete_binary_outcomes:
+            p_greater, p_two_sided = _exact_binary_randomization_pvalues(
+                outcomes,
+                analysis_counts,
+                positive=positive,
+                negative=negative,
+                observed_statistic=ht,
+            )
+        else:
+            p_greater = p_two_sided = np.nan
         if n_blocks and simulations and complete_binary_outcomes:
             simulated = (
                 (labels == policy_index[positive])
@@ -1156,12 +1207,15 @@ def analyze(
                 * outcomes[None, :]
                 / analysis_probabilities[negative]
             ).sum(axis=1) / n_blocks
-            p_greater = float((1 + (simulated >= ht - 1e-15).sum()) / (simulations + 1))
-            p_two_sided = float(
+            p_greater_mc = float((1 + (simulated >= ht - 1e-15).sum()) / (simulations + 1))
+            p_two_sided_mc = float(
                 (1 + (np.abs(simulated) >= abs(ht) - 1e-15).sum()) / (simulations + 1)
             )
+            mc_max_abs_error = float(
+                max(abs(p_greater_mc - p_greater), abs(p_two_sided_mc - p_two_sided))
+            )
         else:
-            p_greater = p_two_sided = np.nan
+            p_greater_mc = p_two_sided_mc = mc_max_abs_error = np.nan
         spend_complete = bool(
             len(pos)
             and len(neg)
@@ -1289,6 +1343,9 @@ def analyze(
                 "success_difference_treatment_outcome_upper_bound": treatment_outcome_high,
                 "randomization_p_greater": p_greater,
                 "randomization_p_two_sided": p_two_sided,
+                "randomization_p_greater_mc_check": p_greater_mc,
+                "randomization_p_two_sided_mc_check": p_two_sided_mc,
+                "randomization_mc_max_abs_error": mc_max_abs_error,
                 "spend_complete_both_arms": spend_complete,
                 "observed_spend_difference_usd": spend_difference,
                 "spend_difference_lower_bound_usd": spend_bound_low,
@@ -1326,6 +1383,10 @@ def analyze(
     summary["terminal_gate_block_id"] = str(terminal_gate_block["block_id"])
     summary["primary_estimator"] = (
         "preterminal fixed-count arm-mean difference; identical to conditional HT"
+    )
+    summary["randomization_inference"] = (
+        "exact multivariate-hypergeometric Fisher sharp-null tails conditional on "
+        "preterminal arm counts; configured Monte Carlo draws are an audit check only"
     )
     summary["simultaneous_uncertainty"] = (
         "Bonferroni-Newcombe 95% familywise intervals over the two registered primary "

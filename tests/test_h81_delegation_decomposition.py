@@ -1,10 +1,13 @@
+import itertools
 import json
 import random
 
+import numpy as np
 import pandas as pd
 
 from orcap.analysis.h81_delegation_decomposition import (
     POLICIES,
+    _exact_binary_randomization_pvalues,
     analyze,
     eligibility_diagnostics,
 )
@@ -90,12 +93,14 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     frame = _balanced_frame()
     panel, model_panel, contrasts, summary = analyze(frame, simulations=5_000)
     indexed = contrasts.set_index("estimand")
-    assert abs(
-        indexed.loc["fallback_option", "success_difference_hajek"] - (32 / 39 - 20 / 40)
-    ) < 1e-12
-    assert abs(
-        indexed.loc["hidden_selection", "success_difference_hajek"] - (40 / 40 - 32 / 39)
-    ) < 1e-12
+    assert (
+        abs(indexed.loc["fallback_option", "success_difference_hajek"] - (32 / 39 - 20 / 40))
+        < 1e-12
+    )
+    assert (
+        abs(indexed.loc["hidden_selection", "success_difference_hajek"] - (40 / 40 - 32 / 39))
+        < 1e-12
+    )
     assert abs(indexed.loc["total_delegation", "success_difference_hajek"] - 0.5) < 1e-12
     assert abs(indexed.loc["total_delegation", "success_difference_ht"] - 0.5) < 1e-12
     assert indexed.loc[["fallback_option", "hidden_selection"], "holm_p_greater"].notna().all()
@@ -123,17 +128,57 @@ def test_randomized_decomposition_recovers_both_policy_wedges():
     assert summary["terminal_gate_block_excluded"] is True
     assert summary["terminal_gate_block_policy"] == "price_order_fallback"
     assert summary["analysis_randomization"].startswith("fixed-count")
+    assert summary["randomization_inference"].startswith("exact multivariate-hypergeometric")
     assert summary["simultaneous_uncertainty"].startswith("Bonferroni-Newcombe")
     sensitivity = summary["treatment_outcome_missingness_sensitivity"]
     assert sensitivity["treatment_missing_or_noncompliant"] == 0
     assert sensitivity["binary_outcome_missing_among_verified"] == 0
-    assert indexed.loc[
-        ["fallback_option", "hidden_selection"],
-        "success_difference_simultaneous_ci_low",
-    ].notna().all()
+    assert (
+        indexed.loc[
+            ["fallback_option", "hidden_selection"],
+            "success_difference_simultaneous_ci_low",
+        ]
+        .notna()
+        .all()
+    )
     assert indexed["success_difference_treatment_outcome_lower_bound"].notna().all()
     assert indexed["success_difference_treatment_outcome_upper_bound"].notna().all()
     assert summary["evidence_status"] == "randomized_decomposition_ready"
+
+
+def test_exact_binary_randomization_matches_brute_force_label_permutations():
+    outcomes = np.asarray([1.0, 1.0, 0.0, 1.0, 0.0])
+    counts = pd.Series(
+        {
+            "delegated_default": 2,
+            "price_only_no_fallback": 2,
+            "price_order_fallback": 1,
+        }
+    )
+    positive = "delegated_default"
+    negative = "price_only_no_fallback"
+    observed = 1.0 - 0.5
+    exact_greater, exact_two_sided = _exact_binary_randomization_pvalues(
+        outcomes,
+        counts,
+        positive=positive,
+        negative=negative,
+        observed_statistic=observed,
+    )
+
+    template = (0, 0, 1, 1, 2)
+    assignments = sorted(set(itertools.permutations(template)))
+    statistics = []
+    for assignment in assignments:
+        labels = np.asarray(assignment)
+        statistics.append(outcomes[labels == 0].mean() - outcomes[labels == 1].mean())
+    brute_greater = sum(value >= observed - 1e-15 for value in statistics) / len(statistics)
+    brute_two_sided = sum(abs(value) >= abs(observed) - 1e-15 for value in statistics) / len(
+        statistics
+    )
+
+    assert abs(exact_greater - brute_greater) < 1e-15
+    assert abs(exact_two_sided - brute_two_sided) < 1e-15
 
 
 def test_unknown_outcome_is_bounded_instead_of_silently_coded_as_failure():
@@ -182,12 +227,14 @@ def test_noncompliant_planned_block_enters_worst_case_treatment_bounds():
     assert sensitivity["treatment_missing_or_noncompliant"] == 1
     assert hidden["planned_positive_n"] == 41
     assert hidden["planned_positive_treatment_or_outcome_missing"] == 1
-    assert hidden["success_difference_treatment_outcome_lower_bound"] < hidden[
-        "success_difference_hajek"
-    ]
-    assert hidden["success_difference_treatment_outcome_upper_bound"] >= hidden[
-        "success_difference_hajek"
-    ]
+    assert (
+        hidden["success_difference_treatment_outcome_lower_bound"]
+        < hidden["success_difference_hajek"]
+    )
+    assert (
+        hidden["success_difference_treatment_outcome_upper_bound"]
+        >= hidden["success_difference_hajek"]
+    )
 
 
 def test_zero_randomization_draws_still_runs_blinded_design_audit():
