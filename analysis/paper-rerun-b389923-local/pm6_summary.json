@@ -1,0 +1,36 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_events": 203,
+  "by_initiator_sign": {
+    "cut": {
+      "punish_and_revert": 0.458,
+      "cut_withdrawn": 0.35,
+      "no_response": 0.183,
+      "reoptimize": 0.008
+    },
+    "raise": {
+      "followed_leadership": 0.53,
+      "unfollowed_raise_held": 0.361,
+      "failed_leadership": 0.108
+    }
+  },
+  "n_by_sign": {
+    "cut": 120,
+    "raise": 83
+  },
+  "low_volume_initiator_share": 0.433,
+  "low_volume_initiator_classes": {
+    "punish_and_revert": 0.284,
+    "followed_leadership": 0.273,
+    "cut_withdrawn": 0.261,
+    "unfollowed_raise_held": 0.159,
+    "no_response": 0.023
+  },
+  "reading_keys": {
+    "punish_and_revert": "Green-Porter candidate (cut held; rivals cut then re-raise)",
+    "cut_withdrawn": "initiator experimentation, NOT punishment",
+    "reoptimize": "Brown-MacKay/competitive",
+    "failed_leadership": "Byrne-de Roos initiation attempt"
+  },
+  "claim_boundary": "Windows 72h/96h; classes are event-level heuristics pending the pm8 regime model; volume shares from effective_pricing (missing for some providers); 'algo' = >=2 changes in panel."
+}

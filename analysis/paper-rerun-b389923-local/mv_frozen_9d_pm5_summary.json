@@ -1,0 +1,491 @@
+{
+  "claim_boundary": "Single-mover tie events only (multi-mover ticks skipped); author identity uses the shared provider-family alias crosswalk; both selected-tie and all-market author identity are tested against price-multiplicity-preserving label nulls; the 5-min grid leaves sub-tick sequencing unobserved.",
+  "evidence_status": "provisional_descriptive",
+  "focality": {
+    "author_identity_audit": {
+      "all_market_author_price_atom": {
+        "author_cluster_bootstrap_ci95": [
+          0.305783993702,
+          0.798041131229
+        ],
+        "author_cluster_bootstrap_draws": 20000,
+        "author_cluster_bootstrap_seed": 20260716,
+        "author_sign_test_p_one_sided": 0.019287109375,
+        "exact_match_share": 0.542553191489,
+        "exact_minus_placebo": 0.527873096422,
+        "leave_one_author_out_excess_range": [
+          0.471667512663,
+          0.642482411255
+        ],
+        "n_author_clusters": 12,
+        "n_models": 94,
+        "negative_author_clusters": 2,
+        "placebo_match_share": 0.014680095067,
+        "positive_author_clusters": 10,
+        "zero_author_clusters": 0
+      },
+      "author_anchor_randomization_benchmark": {
+        "author_minus_random_anchor": {
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            -0.090462836015,
+            0.160769000752
+          ],
+          "leave_one_cluster_out_range": [
+            -0.018703857512,
+            0.065154081079
+          ],
+          "mean": 0.007854837243,
+          "n_clusters": 12,
+          "n_observations": 94
+        },
+        "author_minus_third_party_anchor": {
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            -0.114988502288,
+            0.176357263785
+          ],
+          "leave_one_cluster_out_range": [
+            -0.027879773665,
+            0.070279263315
+          ],
+          "mean": 0.00227361229,
+          "n_clusters": 12,
+          "n_observations": 94
+        },
+        "interpretation": "This null preserves each model's complete realized price multiset. Failure to beat it means exact price mass is generic provider-price clustering, not evidence that author identity is the focal mechanism.",
+        "n_models": 94,
+        "observed_author_shared_count": 51,
+        "observed_author_shared_share": 0.542553191489,
+        "pair_density_difference": {
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            -0.088341696178,
+            0.120042816926
+          ],
+          "leave_one_cluster_out_range": [
+            -0.037206846301,
+            0.057853496803
+          ],
+          "mean": -0.00940380977,
+          "n_clusters": 10,
+          "n_observations": 48
+        },
+        "poisson_binomial_upper_tail_p": 0.465697809685,
+        "random_anchor_expected_count": 50.261645299145,
+        "random_anchor_expected_share": 0.534698354246
+      },
+      "claim_boundary": "The all-market atom rejects adjacent equally spaced levels, but the exact endpoint-label benchmark determines whether author identity is special. Failure against that harder null reclassifies the fact as generic provider price clustering rather than author focality.",
+      "confirmatory_gate": "Recompute without specification changes on the earliest 30-date prefixes of both frozen quote vintages; retain the exact endpoint-label null, author clustering, pair-density comparison, and all four grids.",
+      "evidence_status": "post_freeze_exploratory_hard_null_registered",
+      "latest_run_ts": "20260715T235716Z",
+      "max_offset_ticks_each_direction": 20,
+      "placebo_grid_sensitivity": {
+        "0.01": {
+          "exact_match_share": 0.542553191489,
+          "exact_minus_placebo": 0.532676469482,
+          "n_models": 94,
+          "placebo_match_share": 0.009876722008,
+          "placebo_tick_usd_per_million_tokens": 0.01
+        },
+        "0.1": {
+          "exact_match_share": 0.542553191489,
+          "exact_minus_placebo": 0.527873096422,
+          "n_models": 94,
+          "placebo_match_share": 0.014680095067,
+          "placebo_tick_usd_per_million_tokens": 0.1
+        },
+        "0.5": {
+          "exact_match_share": 0.542553191489,
+          "exact_minus_placebo": 0.535352460778,
+          "n_models": 94,
+          "placebo_match_share": 0.007200730711,
+          "placebo_tick_usd_per_million_tokens": 0.5
+        },
+        "1": {
+          "exact_match_share": 0.542553191489,
+          "exact_minus_placebo": 0.538824048292,
+          "n_models": 94,
+          "placebo_match_share": 0.003729143197,
+          "placebo_tick_usd_per_million_tokens": 1.0
+        }
+      },
+      "primary_placebo_tick_usd_per_million_tokens": 0.1,
+      "selected_tie_random_label_benchmark": {
+        "interpretation": "A high selected-tie match rate is non-discriminating when the random-label expectation is also high; it does not by itself identify an author focal point.",
+        "n_selected_tied_models": 50,
+        "observed_author_at_tied_min": 45,
+        "observed_share": 0.9,
+        "poisson_binomial_upper_tail_p": 0.913142857143,
+        "random_label_expected_count": 45.965079365079,
+        "random_label_expected_share": 0.919301587302
+      }
+    },
+    "author_identity_status": "non_discriminating_against_random_endpoint_anchor",
+    "n_tied_models_latest_tick": 145,
+    "n_tied_models_with_first_party_quote": 50,
+    "selected_tie_identity_status": "non_discriminating_against_random_label",
+    "share_tie_levels_round_tenth_mtok": 0.613793103448,
+    "share_ties_at_first_party_price": 0.9
+  },
+  "gap_density": {
+    "gap_bins_pct": {
+      "0.5_to_2": 0.019020942622,
+      "0_to_0.5": 0.006595749435,
+      "2_to_5": 0.015042199389,
+      "5_to_15": 0.140130101092,
+      "gt_15": 0.819211007462
+    },
+    "n_nonmin_obs": 760793,
+    "share_ticks_at_exact_min_excl_holder": 0.471893177327
+  },
+  "reference_price_landing": {
+    "claim_boundary": "An adjacent-grid atom alone cannot distinguish strategic following from a common discrete price menu updated asynchronously. The matched global-menu null preserves price scale, exact menu frequency, and rival-set size.",
+    "confirmatory_gate": "Recompute unchanged on the earliest 30-date vintage. Promote a lagged-price-landing claim only if the 1.25-band model-cluster interval excludes zero and leave-one-model-out estimates stay positive.",
+    "continuity_sensitivity": {
+      "10": {
+        "exact_lagged_rival_match_share": 0.205128205128,
+        "exact_minus_global_menu": 0.070375831152,
+        "max_gap_minutes": 10,
+        "model_cluster_ci95": [
+          -0.231452838756,
+          0.123065073967
+        ],
+        "n_events": 195
+      },
+      "15": {
+        "exact_lagged_rival_match_share": 0.204081632653,
+        "exact_minus_global_menu": 0.070016770789,
+        "max_gap_minutes": 15,
+        "model_cluster_ci95": [
+          -0.231452838756,
+          0.122291257508
+        ],
+        "n_events": 196
+      },
+      "30": {
+        "exact_lagged_rival_match_share": 0.208121827411,
+        "exact_minus_global_menu": 0.07473749784,
+        "max_gap_minutes": 30,
+        "model_cluster_ci95": [
+          -0.231452838756,
+          0.127692785693
+        ],
+        "n_events": 197
+      }
+    },
+    "evidence_status": "post_freeze_exploratory_hard_null_registered",
+    "global_menu_band_sensitivity": {
+      "1.25": {
+        "band_factor": 1.25,
+        "exact_minus_global_menu": 0.070016770789,
+        "global_menu_match_probability": 0.134064861864,
+        "model_cluster_ci95": [
+          -0.231452838756,
+          0.122291257508
+        ],
+        "n_events": 196
+      },
+      "1.5": {
+        "band_factor": 1.5,
+        "exact_minus_global_menu": 0.113486601262,
+        "global_menu_match_probability": 0.090595031391,
+        "model_cluster_ci95": [
+          -0.106640658232,
+          0.15501150995
+        ],
+        "n_events": 196
+      },
+      "10": {
+        "band_factor": 10.0,
+        "exact_minus_global_menu": 0.175738836975,
+        "global_menu_match_probability": 0.028342795678,
+        "model_cluster_ci95": [
+          0.006050904364,
+          0.213670189724
+        ],
+        "n_events": 196
+      },
+      "2": {
+        "band_factor": 2.0,
+        "exact_minus_global_menu": 0.141429025801,
+        "global_menu_match_probability": 0.062652606852,
+        "model_cluster_ci95": [
+          -0.048885543258,
+          0.179438082929
+        ],
+        "n_events": 196
+      },
+      "4": {
+        "band_factor": 4.0,
+        "exact_minus_global_menu": 0.16549291725,
+        "global_menu_match_probability": 0.038588715403,
+        "model_cluster_ci95": [
+          -0.006552557719,
+          0.202263873316
+        ],
+        "n_events": 196
+      }
+    },
+    "historical_model_menu_washout_hours": 24,
+    "primary": {
+      "adjacent_placebo_match_share": 0.009566326531,
+      "downward_share_of_exact_landings": 0.8,
+      "exact_lagged_rival_match_share": 0.204081632653,
+      "exact_lagged_rival_matches": 40,
+      "exact_minus_adjacent_placebo": 0.194515306122,
+      "exact_minus_global_menu": 0.070016770789,
+      "exact_minus_historical_menu": 0.143864439131,
+      "global_menu_match_probability": 0.134064861864,
+      "historical_menu_match_probability": 0.067775772509,
+      "largest_model_copy_share": 0.85,
+      "largest_model_event_share": 0.734693877551,
+      "largest_provider_copy_share": 0.55,
+      "largest_provider_event_share": 0.397959183673,
+      "model_cluster_adjacent_placebo": {
+        "bootstrap_draws": 20000,
+        "bootstrap_seed": 20260716,
+        "cluster_bootstrap_ci95": [
+          0.023528525868,
+          0.233433207418
+        ],
+        "leave_one_cluster_out_range": [
+          0.099038461538,
+          0.209478021978
+        ],
+        "mean": 0.194515306122,
+        "n_clusters": 18,
+        "n_observations": 196
+      },
+      "model_cluster_global_menu": {
+        "bootstrap_draws": 20000,
+        "bootstrap_seed": 20260716,
+        "cluster_bootstrap_ci95": [
+          -0.231452838756,
+          0.122291257508
+        ],
+        "leave_one_cluster_out_range": [
+          -0.104160915098,
+          0.096673277082
+        ],
+        "mean": 0.070016770789,
+        "n_clusters": 18,
+        "n_observations": 196
+      },
+      "model_cluster_historical_menu": {
+        "bootstrap_draws": 20000,
+        "bootstrap_seed": 20260716,
+        "cluster_bootstrap_ci95": [
+          -0.000672058821,
+          0.175181963717
+        ],
+        "leave_one_cluster_out_range": [
+          0.011085019904,
+          0.155478531061
+        ],
+        "mean": 0.143864439131,
+        "n_clusters": 16,
+        "n_observations": 189
+      },
+      "n_events": 196,
+      "n_global_menu_comparable_events": 196,
+      "n_historical_menu_comparable_events": 189,
+      "n_models": 18,
+      "n_providers": 15,
+      "provider_cluster_global_menu": {
+        "bootstrap_draws": 20000,
+        "bootstrap_seed": 20260716,
+        "cluster_bootstrap_ci95": [
+          -0.224169030729,
+          0.182422093262
+        ],
+        "leave_one_cluster_out_range": [
+          -0.026138647668,
+          0.101991376621
+        ],
+        "mean": 0.070016770789,
+        "n_clusters": 15,
+        "n_observations": 196
+      },
+      "provider_cluster_historical_menu": {
+        "bootstrap_draws": 20000,
+        "bootstrap_seed": 20260716,
+        "cluster_bootstrap_ci95": [
+          0.018960322396,
+          0.229696856872
+        ],
+        "leave_one_cluster_out_range": [
+          0.073454913786,
+          0.17899781733
+        ],
+        "mean": 0.143864439131,
+        "n_clusters": 13,
+        "n_observations": 189
+      }
+    },
+    "primary_global_menu_band_factor": 1.25,
+    "primary_max_gap_minutes": 15,
+    "same_provider_across_model_control": {
+      "claim_boundary": "Own-provider cross-model support identifies a public provider-menu alternative, not intent, collusion, or literal request front-running.",
+      "evidence_status": "post_nine_date_control_preregistered_before_estimation",
+      "four_cell_counts": {
+        "rival_0_own_0": 127,
+        "rival_0_own_1": 10,
+        "rival_1_own_0": 36,
+        "rival_1_own_1": 2
+      },
+      "largest_model_comparable_share": 0.76,
+      "largest_model_own_match_share": 0.583333333333,
+      "largest_provider_comparable_share": 0.445714285714,
+      "largest_provider_own_match_share": 0.416666666667,
+      "model_cluster_association": {
+        "bootstrap_draws": 20000,
+        "bootstrap_seed": 20260716,
+        "cluster_bootstrap_ci95": [
+          -0.310344827586,
+          0.009337327793
+        ],
+        "difference": -0.020361121783,
+        "group_one_mean": 0.052631578947,
+        "group_zero_mean": 0.07299270073,
+        "leave_one_cluster_out_range": [
+          -0.138888888889,
+          -0.01311012505
+        ],
+        "n_clusters": 18,
+        "n_observations": 175
+      },
+      "n_comparable_events": 175,
+      "n_own_menu_novel_events": 163,
+      "own_menu_exact_share": 0.068571428571,
+      "own_menu_novel_reference_landing": {
+        "adjacent_placebo_match_share": 0.008128834356,
+        "downward_share_of_exact_landings": 0.805555555556,
+        "exact_lagged_rival_match_share": 0.220858895706,
+        "exact_lagged_rival_matches": 36,
+        "exact_minus_adjacent_placebo": 0.21273006135,
+        "exact_minus_global_menu": 0.134389914808,
+        "exact_minus_historical_menu": 0.154139055811,
+        "global_menu_match_probability": 0.086468980898,
+        "historical_menu_match_probability": 0.070860944189,
+        "largest_model_copy_share": 0.833333333333,
+        "largest_model_event_share": 0.773006134969,
+        "largest_provider_copy_share": 0.555555555556,
+        "largest_provider_event_share": 0.447852760736,
+        "model_cluster_adjacent_placebo": {
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            0.039391233766,
+            0.318757440476
+          ],
+          "leave_one_cluster_out_range": [
+            0.143918918919,
+            0.232718120805
+          ],
+          "mean": 0.21273006135,
+          "n_clusters": 14,
+          "n_observations": 163
+        },
+        "model_cluster_global_menu": {
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            -0.114985265013,
+            0.185129825373
+          ],
+          "leave_one_cluster_out_range": [
+            0.014096949239,
+            0.151942832355
+          ],
+          "mean": 0.134389914808,
+          "n_clusters": 14,
+          "n_observations": 163
+        },
+        "model_cluster_historical_menu": {
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            -0.000781444251,
+            0.183624195127
+          ],
+          "leave_one_cluster_out_range": [
+            0.014671349873,
+            0.169045293628
+          ],
+          "mean": 0.154139055811,
+          "n_clusters": 14,
+          "n_observations": 160
+        },
+        "n_events": 163,
+        "n_global_menu_comparable_events": 163,
+        "n_historical_menu_comparable_events": 160,
+        "n_models": 14,
+        "n_providers": 13,
+        "provider_cluster_global_menu": {
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            -0.138341925363,
+            0.230267814475
+          ],
+          "leave_one_cluster_out_range": [
+            0.051834745294,
+            0.173753744258
+          ],
+          "mean": 0.134389914808,
+          "n_clusters": 13,
+          "n_observations": 163
+        },
+        "provider_cluster_historical_menu": {
+          "bootstrap_draws": 20000,
+          "bootstrap_seed": 20260716,
+          "cluster_bootstrap_ci95": [
+            0.0,
+            0.224707173084
+          ],
+          "leave_one_cluster_out_range": [
+            0.089045345424,
+            0.194232432654
+          ],
+          "mean": 0.154139055811,
+          "n_clusters": 12,
+          "n_observations": 160
+        }
+      },
+      "promotion_rule": "Strategic following survives only if the own-menu-novel exact-minus-global-menu model-cluster interval excludes zero and every leave-one-model-out estimate is positive.",
+      "provider_cluster_association": {
+        "bootstrap_draws": 20000,
+        "bootstrap_seed": 20260716,
+        "cluster_bootstrap_ci95": [
+          -0.277777777778,
+          0.062202611641
+        ],
+        "difference": -0.020361121783,
+        "group_one_mean": 0.052631578947,
+        "group_zero_mean": 0.07299270073,
+        "leave_one_cluster_out_range": [
+          -0.111111111111,
+          0.002645502646
+        ],
+        "n_clusters": 14,
+        "n_observations": 175
+      }
+    }
+  },
+  "signatures": {
+    "competition": "smooth small-undercut mass; ties formed downward; breaks downward",
+    "coordination": "atom at 0 + missing mass at small undercuts; ties formed by upward moves; strategic landing beyond the hard common-menu null; breaks upward"
+  },
+  "tie_break": {
+    "n": 43,
+    "share_broken_by_downward_move": 0.883720930233
+  },
+  "tie_formation": {
+    "n": 31,
+    "share_formed_by_downward_move": 0.741935483871
+  }
+}

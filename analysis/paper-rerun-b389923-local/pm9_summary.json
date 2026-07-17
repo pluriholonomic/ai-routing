@@ -1,0 +1,24 @@
+{
+  "evidence_status": "power_gated",
+  "n_author_moves_evaluated": 0,
+  "share_author_moves_matched_within_96h": null,
+  "match_lag_hours_median": null,
+  "third_party_changes_per_model_per_window_base": 4.026,
+  "read": "matched-share >> base activity = active anchoring (third parties track the author's price); ~0 = launch-and-forget (ties are listing fossils)",
+  "musolff_resetting_screen": {
+    "raises": {
+      "n": 100,
+      "normalized_entropy": 0.806,
+      "top_hour": 17,
+      "top_hour_share": 0.22
+    },
+    "cuts": {
+      "n": 304,
+      "normalized_entropy": 0.952,
+      "top_hour": 5,
+      "top_hour_share": 0.089
+    },
+    "read": "raises concentrated at one clock hour (low entropy) = algorithmic nightly resetting; symmetric entropy = no resetting"
+  },
+  "claim_boundary": "Author identification uses the shared provider-family alias crosswalk; exact-price matching at rtol 1e-6; base rate is a crude per-window activity level, not a matched counterfactual \u2014 the DiD version gates on more author moves."
+}

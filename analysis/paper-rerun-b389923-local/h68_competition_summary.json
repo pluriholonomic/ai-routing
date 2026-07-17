@@ -1,0 +1,126 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_models": 148,
+  "n_days": 11,
+  "loadings": {
+    "n_providers": 0.529,
+    "eff_providers": 0.449,
+    "dispersion": 0.899,
+    "span": 0.914,
+    "best_turnover": -0.43,
+    "cut_intensity": 0.214,
+    "cut_share": 0.105
+  },
+  "cronbach_alpha": 0.8232960771577821,
+  "split_half_spearman": 0.9691273068501719,
+  "top10": [
+    {
+      "rank": 1,
+      "model_id": "deepseek/deepseek-v3.2",
+      "competition_score": 2.6809362982997267,
+      "score_lo": 2.6702499007902842,
+      "score_hi": 2.6862132001205903
+    },
+    {
+      "rank": 2,
+      "model_id": "gryphe/mythomax-l2-13b",
+      "competition_score": 2.430321609935069,
+      "score_lo": 2.4224141807963417,
+      "score_hi": 2.4345715917650814
+    },
+    {
+      "rank": 3,
+      "model_id": "meta-llama/llama-3.1-8b-instruct",
+      "competition_score": 2.2500637230220963,
+      "score_lo": 2.1207454899467577,
+      "score_hi": 2.251279495130521
+    },
+    {
+      "rank": 4,
+      "model_id": "xiaomi/mimo-v2.5",
+      "competition_score": 2.1063823082821846,
+      "score_lo": 2.0006134858241285,
+      "score_hi": 2.1156379939305707
+    },
+    {
+      "rank": 5,
+      "model_id": "meta-llama/llama-3.3-70b-instruct",
+      "competition_score": 1.9921502714577148,
+      "score_lo": 1.9017358898428913,
+      "score_hi": 1.992909497022346
+    },
+    {
+      "rank": 6,
+      "model_id": "openai/gpt-oss-120b",
+      "competition_score": 1.903495781205233,
+      "score_lo": 1.8246788149899362,
+      "score_hi": 1.9045552245592159
+    },
+    {
+      "rank": 7,
+      "model_id": "qwen/qwen3-coder-30b-a3b-instruct",
+      "competition_score": 1.8465921510783903,
+      "score_lo": 1.7719315474755803,
+      "score_hi": 1.8480861611139636
+    },
+    {
+      "rank": 8,
+      "model_id": "mistralai/mistral-nemo",
+      "competition_score": 1.7750161868079712,
+      "score_lo": 1.705029483660401,
+      "score_hi": 1.7798663858626134
+    },
+    {
+      "rank": 9,
+      "model_id": "qwen/qwen3-235b-a22b-2507",
+      "competition_score": 1.6857226000752217,
+      "score_lo": 1.43372169611827,
+      "score_hi": 2.2189869369975415
+    },
+    {
+      "rank": 10,
+      "model_id": "qwen/qwen3-coder",
+      "competition_score": 1.6354277705339753,
+      "score_lo": 1.630137359916847,
+      "score_hi": 1.6924357139999404
+    }
+  ],
+  "bottom5": [
+    {
+      "rank": 144,
+      "model_id": "qwen/qwen-2.5-72b-instruct",
+      "competition_score": -1.282535734134582,
+      "score_lo": -1.2958675623464975,
+      "score_hi": -1.263554221609633
+    },
+    {
+      "rank": 145,
+      "model_id": "openai/gpt-4o-2024-05-13",
+      "competition_score": -1.2828400540359686,
+      "score_lo": -1.2962985163241951,
+      "score_hi": -1.2645266341591708
+    },
+    {
+      "rank": 146,
+      "model_id": "openai/gpt-4o-2024-08-06",
+      "competition_score": -1.2830546922122539,
+      "score_lo": -1.2961619213223978,
+      "score_hi": -1.2641370400656038
+    },
+    {
+      "rank": 147,
+      "model_id": "openai/gpt-5.2-chat",
+      "competition_score": -1.2831391513633001,
+      "score_lo": -1.2963961359763567,
+      "score_hi": -1.2641245233900091
+    },
+    {
+      "rank": 148,
+      "model_id": "openai/gpt-5.3-chat",
+      "competition_score": -1.2834252043226628,
+      "score_lo": -1.297074272219998,
+      "score_hi": -1.264601502127925
+    }
+  ],
+  "claim_boundary": "One latent factor over public quote/repricing/demand-share indicators on a short panel. It ranks markets by observable competitive activity; it does not identify conduct, markups over cost, or welfare, and dispersion's loading sign is a diagnostic, not an assumption."
+}

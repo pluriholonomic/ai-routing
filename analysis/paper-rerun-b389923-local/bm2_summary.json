@@ -1,0 +1,93 @@
+{
+  "evidence_status": "power_gated",
+  "n_independent_waves": 0,
+  "n_risk_pairs": 0,
+  "fast_response_after_slow_initiator": {
+    "n": 0,
+    "post_rate": null,
+    "placebo_rate": null,
+    "uplift": null,
+    "ci95": null
+  },
+  "slow_response_after_slow_initiator": {
+    "n": 0,
+    "post_rate": null,
+    "placebo_rate": null,
+    "uplift": null,
+    "ci95": null
+  },
+  "cadence_training_cutoff": "2026-07-15T17:55:59+00:00",
+  "cadence_training_fraction": 0.7,
+  "right_censored_response_windows_excluded": true,
+  "frozen_temporal": {
+    "evidence_status": "power_gated",
+    "n_independent_waves": 0,
+    "n_risk_pairs": 0,
+    "fast_response_after_slow_initiator": {
+      "n": 0,
+      "post_rate": null,
+      "placebo_rate": null,
+      "uplift": null,
+      "ci95": null
+    },
+    "slow_response_after_slow_initiator": {
+      "n": 0,
+      "post_rate": null,
+      "placebo_rate": null,
+      "uplift": null,
+      "ci95": null
+    },
+    "cadence_training_cutoff": "2026-07-15T17:55:59+00:00",
+    "cadence_training_fraction": 0.7,
+    "right_censored_response_windows_excluded": true
+  },
+  "full_panel_outcome_adaptive": {
+    "evidence_status": "power_gated",
+    "n_independent_waves": 98,
+    "n_risk_pairs": 1270,
+    "fast_response_after_slow_initiator": {
+      "n": 19,
+      "post_rate": 0.1053,
+      "placebo_rate": 0.0526,
+      "uplift": 0.0526,
+      "ci95": [
+        0.0,
+        0.1579
+      ]
+    },
+    "slow_response_after_slow_initiator": {
+      "n": 26,
+      "post_rate": 0.0,
+      "placebo_rate": 0.0,
+      "uplift": 0.0,
+      "ci95": [
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "gate": {
+    "min_independent_waves": 80,
+    "min_slow_risk_pairs": 30
+  },
+  "analysis_vintage": {
+    "observed_dates": [
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15",
+      "2026-07-16",
+      "2026-07-17"
+    ],
+    "n_observed_dates": 11,
+    "start_date": "2026-07-07",
+    "end_date": "2026-07-17"
+  },
+  "cadence_exposure_days": 11,
+  "claim_boundary": "The promoted screen freezes cadence classes on the first 70% of events, evaluates later waves, and excludes incomplete response windows. The full-panel classification is retained only as an outcome-adaptive sensitivity. Post-versus-pre movement remains noncausal: common cost, author-price, or demand news can move both providers."
+}

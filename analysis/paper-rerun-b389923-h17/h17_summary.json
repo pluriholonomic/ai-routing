@@ -1,0 +1,56 @@
+{
+  "n_live_events": 404,
+  "wayback": {
+    "n_changes": 1040,
+    "by_age": [
+      {
+        "age_days": "<1mo",
+        "n": 141,
+        "share_cuts": 0.6595744680851063,
+        "median_abs_dlog": 0.30870943964385644
+      },
+      {
+        "age_days": "1-3mo",
+        "n": 200,
+        "share_cuts": 0.665,
+        "median_abs_dlog": 0.22306355451403898
+      },
+      {
+        "age_days": "3-6mo",
+        "n": 268,
+        "share_cuts": 0.5783582089552238,
+        "median_abs_dlog": 0.2657031657330057
+      },
+      {
+        "age_days": "6-12mo",
+        "n": 280,
+        "share_cuts": 0.5571428571428572,
+        "median_abs_dlog": 0.2600966868847955
+      },
+      {
+        "age_days": ">1yr",
+        "n": 150,
+        "share_cuts": 0.38,
+        "median_abs_dlog": 0.287682072451781
+      }
+    ],
+    "top_wave_days": {
+      "20250812": 44,
+      "20250911": 43,
+      "20250916": 42,
+      "20260219": 40,
+      "20260107": 34
+    },
+    "share_of_changes_in_top5_snapshots": 0.1951923076923077
+  },
+  "live": {
+    "share_cuts": 0.7524752475247525,
+    "median_abs_dlog": 0.015504186535965424,
+    "share_provider_wave": 0.4628712871287129,
+    "share_reversal": 0.8688118811881188,
+    "share_competitor_reaction_48h": 0.8267326732673267,
+    "share_launch_experiment_lt30d": 0.6831683168316832,
+    "median_model_age_days_at_event": 29.171828703703703,
+    "pre_event_utilization_mean": 0.9816262554688386
+  }
+}

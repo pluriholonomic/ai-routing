@@ -1,0 +1,106 @@
+{
+  "predictions": [
+    {
+      "prediction": "R2 hidden router spread == 0",
+      "status": "accumulating",
+      "evidence": "exact-zero basis share 0.9450261780104712",
+      "source": "h13"
+    },
+    {
+      "prediction": "PM ladder: state-dependent + strategic, no congestion, not Calvo",
+      "status": "consistent",
+      "evidence": "|gap| coef 1.546; congestion rung p=6.00e-02; L2 vs Calvo p=6.36e-73",
+      "source": "pm1"
+    },
+    {
+      "prediction": "PM sufficient statistic: CalvoPlus mixture (1 < Kur < 6)",
+      "status": "inconsistent",
+      "evidence": "within-standardized kurtosis 8.97 (menu-cost 1, Calvo 6)",
+      "source": "pm2"
+    },
+    {
+      "prediction": "Exact price atoms are author-specific",
+      "status": "inconsistent",
+      "evidence": "adjacent-grid excess 53%, but author-minus-random-anchor 0.4% (exact upper-tail p=0.526); identity status non_discriminating_against_random_endpoint_anchor",
+      "source": "pm5"
+    },
+    {
+      "prediction": "Lagged rival-price landing exceeds a matched common-menu null",
+      "status": "inconsistent",
+      "evidence": "exact share 15.4%; matched-menu excess 5.2%; model-cluster CI [-0.22765131639282804, 0.08338506142434306]; past-only same-model excess 9.9%; own-menu-novel excess 0.09114934650419403; novel CI [-0.11498526501258986, 0.16830354815361878]; n=280",
+      "source": "pm5"
+    },
+    {
+      "prediction": "Same-provider cross-model menu support explains lagged landings",
+      "status": "inconsistent",
+      "evidence": "own-menu exact share 5.0%; landing-minus-nonlanding association 2.9%; model-cluster CI [-0.23809523809523808, 0.2777777777777778]; comparable n=258",
+      "source": "pm5"
+    },
+    {
+      "prediction": "Q reaction dynamics (reclassified)",
+      "status": "accumulating",
+      "evidence": "true punish-and-revert 46% vs initiator-withdrawn 35% of cut events; raises followed 53%",
+      "source": "pm6"
+    },
+    {
+      "prediction": "O1 harness markup >=15% through 2027",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "O2 explicit PFOF within 18mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "R1 router take <3% or >=15pt share migration by end-2027",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "R3 auction mechanism within 24mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "R4 2-4 routers >=85% within 24mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "P1 provisioned-capacity share rises (PJM path)",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "P2 time-varying pricing within 24mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "P3 futures basis <5% + two-sided OI",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "I1 divergence rises with discount",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    },
+    {
+      "prediction": "X2 >=3 cross-layer acquisitions within 24mo",
+      "status": "untested",
+      "evidence": "tracker not yet instrumented or window open",
+      "source": "phase-3"
+    }
+  ]
+}

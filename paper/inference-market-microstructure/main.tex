@@ -264,18 +264,22 @@ quote registry for lifecycle checks, public model-level token-allocation records
 and owned generation records for requests made with our study key.
 
 The paper release distinguishes the current acquisition cut from older frozen
-discovery vintages.  At immutable dataset revision
-\texttt{08a2a183d6df}, the endpoint panel contains 3,344,470 rows from 2,116
-capture runs on 11 UTC dates, 2026-07-07 through 2026-07-17.  H81 contains 78
-verified first-position blocks over 41.2 hours and 74 candidate-eligibility rows
-across 37 runs; H80 contains 156 verified first-position blocks over 40.7 hours.  The public
-cross-router collector has one simultaneous catalog cut: 107 Glama rows, 114
-NemoRouter rows, and 563 Requesty rows.  No repeated cross-router snapshot or
-cross-router price event exists at this revision.
+discovery vintages.  At immutable public-input revision
+\texttt{b389923ad771}, the endpoint panel contains 2,004,680 distinct
+provider--model listing observations from 2,116 capture runs on 11 UTC dates,
+2026-07-07 through 2026-07-17.  The corresponding exact-distinct raw-record
+count is 2,013,866; the difference preserves 9,186 same-listing raw variants,
+all due to availability state rather than price or capability conflicts.  The
+outcome-free randomized-design status remains separately pinned at revision
+\texttt{08a2a183d6df}: H81 contains 78 verified first-position blocks over 41.2
+hours and 74 candidate-eligibility rows across 37 runs, while H80 contains 156
+verified first-position blocks over 40.7 hours.  The public cross-router
+collector has two snapshots per router over 0.054 days.  Its latest catalog has
+107 Glama rows, 114 NemoRouter rows, and 563 Requesty rows, but no price event.
 
-H94 was activated as a future-only longitudinal protocol at 04:30:20 UTC; its
-sole 03:30 discovery cross-section is
-ineligible, leaving zero prospective snapshots or transitions at this cut.  H95
+H94 was activated as a future-only longitudinal protocol at 04:30:20 UTC.  Its
+03:30 discovery cross-section is ineligible; one later prospective snapshot per
+router is present, with zero price transitions or matched common shocks.  H95
 was frozen in commit \texttt{00351dd} at 04:44:10 UTC before its first request.
 Its first written triplet is present: all three first-position assignments replay
 and comply, the three selected models are distinct, and no outcome field was
@@ -292,18 +296,19 @@ from current-status claims.
 \centering
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.27\linewidth}r
->{\raggedright\arraybackslash}p{0.14\linewidth}
->{\raggedright\arraybackslash}p{0.33\linewidth}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.23\linewidth}
+>{\raggedleft\arraybackslash}p{0.18\linewidth}
+>{\raggedright\arraybackslash}p{0.12\linewidth}
+>{\raggedright\arraybackslash}p{0.32\linewidth}}
 \toprule
 Panel & Rows / attempts & Span & Primary role \\
 \midrule
-Endpoint acquisition cut & 3,344,470 & 11 UTC dates & Current prices and public enforcement state \\
-Frozen pricing discovery cut & 2,968,449 & 9 days & Price atoms, hazards, and cadence screens \\
+Endpoint acquisition cut & 2,004,680 listings & 11 UTC dates & Current prices and public enforcement state \\
+Frozen pricing discovery cut & 1,747,960 listings / 313 changes & 9 days & Price atoms, hazards, and cadence screens \\
 H81 first-position assignments & 78 & 41.2 hours & Fallback/selection release-gate support \\
 H81 candidate eligibility & 74 & 37 runs & External-support and exclusion funnel \\
 H80 first-position assignments & 156 & 40.7 hours & Separate four-arm replication support \\
-Cross-router public catalogs & 784 & 1 cross section & Coverage and exact price equality only \\
+Cross-router public catalogs & 2 snapshots/router & 0.054 days & Coverage and exact price equality only \\
 H95 prospective replication & 1 triplet / 3 blocks & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
 Historical quote registry & multi-year & 3 years & Lifecycle and duration sensitivity \\
 \bottomrule
@@ -316,11 +321,27 @@ remain frozen; outcome-gated studies expose assignment and support counts only.}
 \subsection{Cleaning and event construction}
 
 Prices are converted to dollars per million tokens before comparisons.  We use
-standard provider variants and remove exact duplicate captures.  A price event is
-the first observation at which either token price differs from the preceding
-observation for the same provider-model pair.  Five-minute timing creates interval
+standard provider variants and deduplicate exact source records by capture time,
+model, provider, tag, endpoint fingerprint, and raw record.  Distinct raw variants
+at the same listing and time are retained until price agreement is checked; a
+price or capability conflict fails closed.  We then collapse price-identical
+variants for listing-level analysis.  A price event is the first observation at
+which either token price differs from the preceding observation for the same
+provider-model pair.  Daily events are rebuilt chronologically from the strictly
+prior daily state and replace, rather than merge with, the old event partition.
+At the pinned revision, all 3,219 derived field-level events through July 16
+exactly match a clean chronological rebuild.  Five-minute timing creates interval
 censoring within a capture bin; we do not infer within-bin order.  The first price
 spell in a panel is left-censored and is excluded from moments that require age.
+
+A pre-publication integrity audit found that earlier daily recompactions could
+fold an old day against a later global state and then merge stale events.  It also
+found 1,532,963 exact duplicate physical rows in the pre-repair endpoint bundles.
+The repaired revision removes those overlaps from every completed date and
+rebuilds the event ledger.  The still-open July 17 buffer contains 256 physical
+duplicates; listing-level analyses deduplicate them and completed-day event
+claims stop on July 16.  Earlier draft statistics that do not reproduce from this
+ledger are superseded rather than grandfathered.
 
 Operational counters are router-published aggregates, not raw request logs.
 Their reporting can be intermittent.  Regressions that use utilization or
@@ -355,21 +376,21 @@ support is called power-gated, never a null result.
 
 \subsection{Frequency, size, and the clock}
 
-Only 2.8\% of provider-model-days contain a price change.  Across completed
-endpoint spells, the implied average duration is 26.7 days.  Conditional on a
-change, the median absolute log change is 0.134; two thirds are cuts.  Ninety-three
-percent of quotes lie on cent-per-million-token grids.  Twenty-six percent of cuts
-occur at 00:00 UTC, a concentration difficult to reconcile with a continuously
-clearing spot price and consistent with scheduled menu updates.
+The corrected frozen nine-day panel contains 313 nonzero completion-price
+changes, or 0.04257 changes per provider--model day.  The inverse-frequency
+duration is 23.5 days.  Conditional on a change, the median absolute log change
+is 0.095 and 70.3\% are cuts.  These are incidence and event-size diagnostics,
+not estimates of a continuous-time structural hazard.
 
-Raw pooled price-change kurtosis is 113 because providers and model scales differ.
-After standardizing changes within provider, kurtosis is 3.54; the provider median
-is 3.4 with interquartile range 2.1--4.9.  This statistic lies between a simple
-state-dependent menu-cost benchmark and the Calvo benchmark discussed by
-\citet{alvarezlebihanlippi2016}.  We use it as a sufficient-statistic diagnostic,
-not as a structural estimate: the short panel leaves many providers with too few
-changes for stable within-unit moments, and observation costs can mimic infrequent
-adjustment \cite{alvarezlippipaciello2011}.
+Raw pooled price-change kurtosis is 215.27 because providers and model scales
+differ.  After standardizing within provider for providers with at least three
+events, kurtosis is 6.23 over 307 changes, numerically close to the Calvo benchmark
+of six discussed by \citet{alvarezlebihanlippi2016}.  This corrected moment does
+not support the earlier draft's ``between menu cost and Calvo'' reading.  We use
+it only as a sufficient-statistic diagnostic: the short panel leaves many
+providers with too few changes for stable within-unit moments, provider-level
+standardization is coarser than endpoint-level standardization, and observation
+costs can mimic infrequent adjustment \cite{alvarezlippipaciello2011}.
 
 \subsection{A nested repricing hazard}
 
@@ -386,39 +407,41 @@ prior day.  The ladder adds these blocks sequentially.  Provider activity is
 included as a frailty proxy, but with only nine days we do not estimate a full
 unit-frailty duration model.
 
-The constant-hazard model is decisively rejected by duration and calendar terms.
-Adding price gaps improves fit ($p=1.0\times10^{-5}$); adding congestion does not
-($p=0.17$); adding rival moves improves in-sample likelihood ($p=0.0018$).
-Out-of-sample results are more disciplined.  On a day split, time dependence alone
-has AUC 0.525 and the state-dependent model has AUC 0.638.  The strategic model has
-AUC 0.555 on 36 test events.  Thus the gap channel survives temporal validation;
-the rival-reaction channel does not yet generalize.
+The corrected frozen ladder contains 7,352 pair-days and 112 events.  Duration
+and calendar terms improve the constant-hazard likelihood
+($p=3.45\times10^{-67}$).  Adding price gaps and GPU changes improves in-sample
+fit ($p=2.04\times10^{-6}$); adding congestion does not ($p=0.419$); adding
+rival moves again improves in-sample fit ($p=8.03\times10^{-5}$).  The checked-in
+analyzer produces in-sample AUC only.  We therefore retract the earlier draft's
+day-split AUCs and make no claim that any rung survives temporal validation.
 
 \begin{table}[H]
 \centering
 \small
 \begin{tabular}{lccc}
 \toprule
-Hazard rung & Added state & Incremental evidence & Day-split AUC \\
+Hazard rung & Added state & Incremental evidence & In-sample AUC \\
 \midrule
 Constant & none & baseline & 0.500 \\
-Time-dependent & duration, clock & rejects constant hazard & 0.525 \\
-State-dependent & own-rival gap, GPU change & LR $p=1.0\times10^{-5}$ & 0.638 \\
-Congestion & utilization, rate limits & LR $p=0.17$ & not promoted \\
-Strategic & rival moves & LR $p=0.0018$ in sample & 0.555 \\
+Time-dependent & duration, clock & LR $p=3.45\times10^{-67}$ & 0.876 \\
+State-dependent & own-rival gap, GPU change & LR $p=2.04\times10^{-6}$ & 0.879 \\
+Congestion & utilization, rate limits & LR $p=0.419$ & 0.882 \\
+Strategic & rival moves & LR $p=8.03\times10^{-5}$ & 0.884 \\
 \bottomrule
 \end{tabular}
-\caption{Nested repricing hazard.  The strategic rung is labeled in-sample-only;
-the 30-day both-vintage gate is preregistered.}
+\caption{Corrected frozen nine-day nested repricing hazard.  Every AUC and
+likelihood-ratio comparison is in-sample; the 30-day vintage and temporal
+validation remain closed.}
 \label{tab:hazard}
 \end{table}
 
 The appropriate conclusion is narrower than ``providers use pricing
-algorithms.''  Prices respond to their distance from the menu's competitive
-reference point and are updated on scheduled attention dates.  We call them
-administered menus because the money quote is set periodically while the physical
-state clears elsewhere.  Whether rival reactions reflect common costs,
-algorithmic competition, or coordinated behavior remains unresolved.
+algorithms.''  In this short panel, repricing is infrequent and its in-sample
+hazard is associated with duration, calendar state, and distance from a
+competitive reference price.  We call the quotes administered menus because the
+money price is revised intermittently while operational state clears elsewhere.
+Whether the associations generalize, or whether rival terms reflect common
+costs, algorithmic competition, or coordinated behavior, remains unresolved.
 
 \section{Fact 2: minimum prices exhibit exact atoms}
 \label{sec:anchors}
@@ -795,8 +818,8 @@ proof and a simulation-validation protocol appear in \cref{app:h81-proof}.
 
 The original H81 protocol releases the earliest chronological prefix with at
 least 40 verified first-position assignments in every arm, regardless of sign.
-At dataset revision \texttt{08a2a183d6df} (the full immutable hash appears in
-the release manifest), the outcome-free arm counts
+At the outcome-free release revision \texttt{08a2a183d6df} (the full immutable
+hash appears in the release manifest), the arm counts
 are 30, 23, and 25.  Assignment replay and treatment-metadata checks pass for all
 78 verified blocks, so outcomes remain physically unqueried by the public
 pre-gate analysis.  When the gate opens, the analysis will exclude its terminal
@@ -856,18 +879,22 @@ identify whether the rule protects quality or taxes undercutting.
 
 \paragraph{Pricing technology and timing.}
 Only 19 of 69 exposed providers reprice at least once.  Conditional on model-day,
-slow providers quote 10.1\% more than fast providers: the log-price coefficient
-is $-0.0964$ (provider-clustered standard error 0.0281, 95\% interval
-$[-0.1515,-0.0413]$).  The cadence association resembles
-\citet{brownmackay2023}; the mechanism does not.  A frozen temporal holdout has
-zero slow-initiator risk pairs, and state-only versus reaction-rule RMSE is
-0.23835 versus 0.23760.  The seven-model-cluster MSE-improvement interval
-$[-0.000972,0.008033]$ crosses zero.  Five-minute sampling also makes latent
-within-bin leaders interchangeable.  In the observed panel, 188 of 274 events
-have a unique strictly prior rival inside 72 hours, so the sharp share caused by
-that named rival remains $[0,68.6\%]$, with no positive lower bound.  Thus public
-quotes alone do not identify quote-surface front-running; the constructive result
-and full audit appear in \cref{app:coarsening-proof}.
+slow providers quote 8.9\% more than fast providers: the fast-provider log-price
+coefficient is $-0.0854$ (95\% interval $[-0.1454,-0.0254]$).  On the smaller
+public-quality sample, the coefficient is $-0.2906$ with interval
+$[-0.5493,-0.0319]$.  The cadence association resembles
+\citet{brownmackay2023}; the mechanism does not.  The frozen temporal design has
+only two independent waves and zero slow-initiator response comparisons.
+State-only versus reaction-rule holdout RMSE is 0.06856 versus 0.06204 over 82
+linked reactions.  The model-cluster bootstrap MSE-improvement interval is
+$[0.000220,0.026124]$, but it contains only two clusters and the exact sign-flip
+$p$-value is 0.25; the registered verdict remains predictively indistinguishable.
+Five-minute sampling also makes latent within-bin leaders interchangeable.  In
+the corrected frozen panel, 243 of 313 events have a unique strictly prior rival
+inside 72 hours, so the sharp share caused by that named rival remains
+$[0,77.6\%]$, with no positive lower bound.  Thus public quotes alone do not
+identify quote-surface front-running; the constructive result and full audit
+appear in \cref{app:coarsening-proof}.
 
 \paragraph{Revenue-share accounting.}
 On a common market-fixed-effect sample, the log quantity-share price coefficient
@@ -891,7 +918,12 @@ $[82.8\%,99.4\%]$); the one DeepSeek pair has a 296.6\% registered-workload wedg
 This is consistent with routers redistributing an upstream price book, but one
 cross-section cannot identify pass-through or staleness.  H94 is now prospectively
 active with a future-only cutoff of 2026-07-17 04:30:20 UTC; the discovery
-cross-section is excluded, and no prospective dynamic result exists.  Its gates
+cross-section is excluded.  One prospective snapshot per router is eligible, but
+there are zero prospective transitions or matched shocks, so no dynamic result
+exists.  Moreover, 28 of the 29 simultaneous pairs have at least one observed
+contract-term conflict, and region, SLA, rate limit, capacity, fallback, billing,
+cache, and priority terms remain partly unobserved.  Exact token prices therefore
+do not establish contract equivalence.  The dynamic gates
 require seven days, 48 snapshots per router, 30 transitions, 15 common shocks,
 and ten changing commodities.  The full plot and protocol summary are in
 \cref{app:secondary-details}.
@@ -1249,11 +1281,11 @@ empirical estimate of the number of providers.}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.98\linewidth]{figures/brown_mackay_audit.pdf}
-\caption{Frozen Brown--MacKay audit.  Negative cadence coefficients survive
-public-quality adjustment, while the slow-initiator support and incremental
-reaction-rule evidence do not identify the mechanism.  The 188 uniquely ordered
-candidates among 274 events imply the sharp named-rival response-share set
-$[0,68.6\%]$.}
+\caption{Corrected frozen Brown--MacKay audit.  Negative cadence coefficients
+survive public-quality adjustment, while two frozen waves, zero slow-initiator
+response comparisons, and only two predictive clusters do not identify the
+mechanism.  The 243 uniquely ordered candidates among 313 events imply the sharp
+named-rival response-share set $[0,77.6\%]$.}
 \label{fig:bmaudit}
 \end{figure}
 
@@ -1264,7 +1296,8 @@ $[0,68.6\%]$.}
 Hugging-Face-linked exact provider--model pairs, 28 have identical component
 prices.  The DeepSeek exception is cross-sectional; the right panel records the
 longitudinal gates.  H94 excludes this entire discovery cross-section and uses
-only snapshots after its 2026-07-17 04:30:20 UTC activation.}
+only snapshots after its 2026-07-17 04:30:20 UTC activation; one eligible
+snapshot per router is currently present and all event gates remain closed.}
 \label{fig:cross-router-price}
 \end{figure}
 
@@ -1602,7 +1635,7 @@ H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; out
 H95 fixed-horizon replication & One compliant triplet, three distinct models; no outcome released & 120 written triplets and broad audited model support & Fixed 120-triplet horizon; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
 Stale-cheap pickoff channel & H84 rejects its directional prediction; backward placebo nonzero & Prospective sample and realized fill linkage & Disjoint H85 holdout \\
-Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous discovery cross section, Wilson interval $[0.828,0.994]$ & Repeated changes, contract comparability, eligibility, and fills & H94 active prospectively after 2026-07-17 04:30:20 UTC; all dynamic gates closed \\
+Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous discovery cross section, Wilson interval $[0.828,0.994]$; 28/29 have an observed term conflict & Repeated changes, full contract comparability, eligibility, and fills & H94 has one prospective snapshot/router after 2026-07-17 04:30:20 UTC; all dynamic event gates closed \\
 Literal front-running & Coarsened-timing bounds only & Cross-user arrival and quote-update sequence & Negotiated router/provider event logs \\
 Global welfare loss & No identified estimate & Values, quality, costs, transfers, and capacity response & Structural measurement contract \\
 \bottomrule
@@ -1623,10 +1656,15 @@ preregistrations, claim boundaries, and machine-readable summaries.  The
 four-panel figure reads only frozen \texttt{paper\_estimates.json}, not the
 pre-randomization legacy H80 summary.  The manuscript release resolves the
 Hugging Face dataset head before its first query and pins every subsequent query
-to that immutable revision.  The present nine-date release uses commit
-\nolinkurl{600bb41fd15189c70f8f78fce8cf0a519fb8dd61}; an independent pinned replay
-reproduced all 16 published artifact hashes.  This distinction matters because a
-date window alone does not prevent a late backfill from changing an earlier date.
+to that immutable revision.  The corrected public-input release uses immutable
+dataset revision
+\nolinkurl{b389923ad7713bc230dd522f770aa306bf778806}.  A single local snapshot of
+that revision ran the fixed public-only manuscript panel: 26 modules completed in
+the main pass, and the historical-event module completed in a supplemental pass
+after its public Wayback input was added to the snapshot.  Prospective H80, H81,
+and H95 outcome analyzers are not members of this rerun list.  This distinction
+matters because a date window alone does not prevent a late backfill from changing
+an earlier date.
 The outcome-free
 \texttt{manuscript\_promotion\_gate\_summary.json} freezes the nine-day and
 earliest 30-day vintages and masks H80 outcomes until 500 first-position
@@ -1642,9 +1680,11 @@ fields.  A non-publishing invocation remains preflight-only even after a gate
 opens.  The remote path publishes a content-hashed bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
 run \texttt{29556911017} reproduced H81 counts 30/23/25 and H95 support 1/120 at
-revision \texttt{08a2a183d6df}, with both outcome-query flags false.  The paper is
-updated from that immutable bundle in a separate audited commit; the two studies
-are never pooled.
+their separate outcome-free revision \texttt{08a2a183d6df}, with both
+outcome-query flags false.  The public-input integrity repair ran remotely as
+workflow \texttt{29558374319}; the post-repair audit exactly reconstructed 3,219
+of 3,219 completed-day pricing events and found no price or capability conflict
+among same-listing raw variants.  The two prospective studies are never pooled.
 
 \paragraph{Privacy and platform load.}
 Capture records exclude prompts and completions.  The owned experiments use a

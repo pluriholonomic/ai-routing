@@ -1,0 +1,75 @@
+{
+  "analysis_vintage": {
+    "end_date": "2026-07-15",
+    "n_observed_dates": 9,
+    "observed_dates": [
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15"
+    ],
+    "start_date": "2026-07-07"
+  },
+  "base_daily_hazard": 0.0152,
+  "claim_boundary": "9-day panel: rungs are directional until the registered 30-day vintage; congestion covariates exist only for hot-panel pairs (cong_missing indicator); provider_rate is an endogenous frailty substitute.",
+  "evidence_status": "power_gated",
+  "gate": "9/30 panel days \u2014 age bins coarse, no unit frailty, in-sample AUC only",
+  "ladder": {
+    "L1": {
+      "auc_in_sample": 0.5,
+      "key_coefs": {},
+      "llf": -579.8,
+      "lr_p_vs_previous": null
+    },
+    "L2": {
+      "auc_in_sample": 0.876,
+      "key_coefs": {},
+      "llf": -407.5,
+      "lr_p_vs_previous": "3.45e-67"
+    },
+    "L3": {
+      "auc_in_sample": 0.879,
+      "key_coefs": {
+        "abs_gap": 1.389,
+        "abs_gpu_dlog": -0.283,
+        "gap_positive": -0.819
+      },
+      "llf": -392.9,
+      "lr_p_vs_previous": "2.04e-06"
+    },
+    "L4": {
+      "auc_in_sample": 0.882,
+      "key_coefs": {
+        "abs_gap": 1.336,
+        "abs_gpu_dlog": -0.289,
+        "gap_positive": -0.799,
+        "rl_share": -0.23,
+        "util": -0.034
+      },
+      "llf": -391.5,
+      "lr_p_vs_previous": "4.19e-01"
+    },
+    "L5": {
+      "auc_in_sample": 0.884,
+      "key_coefs": {
+        "abs_gap": 1.31,
+        "abs_gpu_dlog": -0.304,
+        "gap_positive": -0.62,
+        "rival_moves_1d": 0.381,
+        "rival_raises_1d": 0.013,
+        "rl_share": -0.117,
+        "util": 0.013
+      },
+      "llf": -382.1,
+      "lr_p_vs_previous": "8.03e-05"
+    }
+  },
+  "n_events": 112,
+  "n_pair_days": 7352,
+  "reading": "L2>L1 = duration/calendar dependence (anti-Calvo); L3 abs_gap>0 = state-dependent (menu cost); L4 util/rl>0 = congestion pricing (exclusion: should be ~0 given L3); L5 rival terms>0 = strategic"
+}

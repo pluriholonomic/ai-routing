@@ -1,0 +1,86 @@
+{
+  "analysis_vintage": {
+    "end_date": "2026-07-15",
+    "n_observed_dates": 9,
+    "observed_dates": [
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15"
+    ],
+    "start_date": "2026-07-07"
+  },
+  "brown_mackay_holdout": {
+    "coefficients": {
+      "fast_x_rival_dlog": 0.903121191051,
+      "gap_to_rival_new": -0.574206412194,
+      "is_fast": -0.006623446719,
+      "lag_hours": 0.00074670542,
+      "rival_dlog": -0.772746523066
+    },
+    "intercept": -0.016528977102,
+    "mae": 0.032990500476,
+    "n_test": 82,
+    "n_train": 161,
+    "rmse": 0.062037315604
+  },
+  "cadence_training_cutoff": "2026-07-14T12:24:20+00:00",
+  "cadence_training_events": 219,
+  "cadence_training_exposure_days": 8,
+  "cadence_training_fraction": 0.7,
+  "claim_boundary": "Cadence classes are frozen on the first 70% of events before the temporal holdout. Same-snapshot changes have no invented order and ambiguous most-recent rival moves are excluded. A Brown-MacKay predictive gain would not prove strategic observation; both models omit latent common shocks and costs.",
+  "evidence_status": "provisional_descriptive",
+  "min_linked_reactions": 100,
+  "n_linked_reactions": 243,
+  "n_provider_specific_slopes": 5,
+  "paired_predictive_test": {
+    "bootstrap_draws": 5000,
+    "cluster_equal_weight_mse_improvement": 0.013171745172,
+    "exact_sign_flip_p_positive": 0.25,
+    "mae_improvement": 0.005490638504,
+    "model_cluster_bootstrap_ci95": [
+      0.000219779372,
+      0.026123710971
+    ],
+    "mse_improvement": 0.000851582582,
+    "n_model_clusters": 2,
+    "n_test": 82,
+    "n_train": 161,
+    "probability_positive_gain": 1.0,
+    "verdict": "predictively_indistinguishable"
+  },
+  "predictive_verdict": "predictively_indistinguishable",
+  "state_only_holdout": {
+    "coefficients": {
+      "gap_to_rival_new": -0.570487707264
+    },
+    "intercept": -0.026894465929,
+    "mae": 0.038481138981,
+    "n_test": 82,
+    "n_train": 161,
+    "rmse": 0.068558085659
+  },
+  "timing_identification_audit": {
+    "ambiguous_within_bin_provider_pairs": 30,
+    "estimand": "Share of observed repricing events causally responding to their unique most-recent strictly prior named rival within the lookback window.",
+    "event_rows_in_multi_provider_batches": 51,
+    "events_with_tied_latest_prior": 8,
+    "events_with_unique_strict_prior_candidate": 243,
+    "events_without_prior_rival": 62,
+    "interpretation": "The lower endpoint schedules every candidate from latent state; the upper endpoint makes every uniquely ordered candidate reactive. Both reproduce the same snapshots under Proposition 1, so the interval is sharp without added timing or exclusion restrictions.",
+    "lookback_hours": 72.0,
+    "n_capture_batches": 286,
+    "n_event_rows": 313,
+    "n_multi_provider_batches": 24,
+    "sharp_named_rival_response_share_bounds": [
+      0.0,
+      0.776357827476
+    ],
+    "unique_prior_candidate_share": 0.776357827476
+  }
+}

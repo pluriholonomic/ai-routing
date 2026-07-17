@@ -1,0 +1,91 @@
+{
+  "analysis_vintage": {
+    "end_date": "2026-07-15",
+    "n_observed_dates": 9,
+    "observed_dates": [
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15"
+    ],
+    "start_date": "2026-07-07"
+  },
+  "cadence_exposure_days": 9,
+  "cadence_training_cutoff": "2026-07-14T12:24:20+00:00",
+  "cadence_training_fraction": 0.7,
+  "claim_boundary": "The promoted screen freezes cadence classes on the first 70% of events, evaluates later waves, and excludes incomplete response windows. The full-panel classification is retained only as an outcome-adaptive sensitivity. Post-versus-pre movement remains noncausal: common cost, author-price, or demand news can move both providers.",
+  "evidence_status": "power_gated",
+  "fast_response_after_slow_initiator": {
+    "ci95": null,
+    "n": 0,
+    "placebo_rate": null,
+    "post_rate": null,
+    "uplift": null
+  },
+  "frozen_temporal": {
+    "cadence_training_cutoff": "2026-07-14T12:24:20+00:00",
+    "cadence_training_fraction": 0.7,
+    "evidence_status": "power_gated",
+    "fast_response_after_slow_initiator": {
+      "ci95": null,
+      "n": 0,
+      "placebo_rate": null,
+      "post_rate": null,
+      "uplift": null
+    },
+    "n_independent_waves": 2,
+    "n_risk_pairs": 40,
+    "right_censored_response_windows_excluded": true,
+    "slow_response_after_slow_initiator": {
+      "ci95": null,
+      "n": 0,
+      "placebo_rate": null,
+      "post_rate": null,
+      "uplift": null
+    }
+  },
+  "full_panel_outcome_adaptive": {
+    "evidence_status": "power_gated",
+    "fast_response_after_slow_initiator": {
+      "ci95": [
+        0.0,
+        0.1579
+      ],
+      "n": 19,
+      "placebo_rate": 0.0526,
+      "post_rate": 0.1053,
+      "uplift": 0.0526
+    },
+    "n_independent_waves": 92,
+    "n_risk_pairs": 1193,
+    "slow_response_after_slow_initiator": {
+      "ci95": [
+        0.0,
+        0.0
+      ],
+      "n": 26,
+      "placebo_rate": 0.0,
+      "post_rate": 0.0,
+      "uplift": 0.0
+    }
+  },
+  "gate": {
+    "min_independent_waves": 80,
+    "min_slow_risk_pairs": 30
+  },
+  "n_independent_waves": 2,
+  "n_risk_pairs": 40,
+  "right_censored_response_windows_excluded": true,
+  "slow_response_after_slow_initiator": {
+    "ci95": null,
+    "n": 0,
+    "placebo_rate": null,
+    "post_rate": null,
+    "uplift": null
+  }
+}

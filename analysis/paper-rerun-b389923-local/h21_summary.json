@@ -1,0 +1,22 @@
+{
+  "phase3_readiness": {
+    "h21_follow_pairs": "24617/100",
+    "h22_events": "404/200",
+    "h25_cut_events": "304/30"
+  },
+  "n_events": 404,
+  "reactions": {
+    "n_follow_pairs": 24617,
+    "median_lag_hours": 59.87305555555555,
+    "share_within_24h": 0.2906934232440996,
+    "share_same_direction": 0.7308364138603404,
+    "fastest_followers": {
+      "Amazon Bedrock": 0.0,
+      "Google": 0.2,
+      "Baidu": 14.3,
+      "AtlasCloud": 14.5,
+      "SiliconFlow": 17.3,
+      "ModelRun": 23.1
+    }
+  }
+}

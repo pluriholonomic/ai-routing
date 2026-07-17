@@ -1,0 +1,35 @@
+{
+  "evidence_status": "power_gated",
+  "panel_span_days": 11.0,
+  "n_observed_quote_days": 11,
+  "required_panel_days": 30,
+  "n_price_changes": 404,
+  "n_quote_providers": 70,
+  "n_repricing_providers": 19,
+  "cadence_counts": {
+    "inactive": 51,
+    "daily": 9,
+    "intraday": 6,
+    "weekly": 3,
+    "episodic": 1
+  },
+  "analysis_vintage": {
+    "observed_dates": [
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15",
+      "2026-07-16",
+      "2026-07-17"
+    ],
+    "n_observed_dates": 11,
+    "start_date": "2026-07-07",
+    "end_date": "2026-07-17"
+  },
+  "claim_boundary": "Cadence is inferred from public quote changes, not a provider's internal repricing technology. Rates use observed quote days, not the span between the first and last price change. The live window left-censors slow providers and cannot identify adoption."
+}

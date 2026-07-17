@@ -1,48 +1,48 @@
 {
   "freeze": "earliest nine observed dates, 2026-07-07 through 2026-07-15",
-  "claim_boundary": "Cadence-price coefficients are associations. Same-snapshot price changes are not ordered. The reaction mechanism is not promoted because the model-cluster bootstrap interval crosses zero and the frozen design has no slow-initiator risk pairs.",
+  "claim_boundary": "Cadence-price coefficients are associations. Same-snapshot price changes are not ordered. The reaction mechanism is not promoted because the frozen design has only two independent waves, no slow-initiator response comparisons, and only two predictive model clusters.",
   "cadence_counts": {
     "Inactive or censored": 50,
-    "Intraday": 9,
+    "Intraday": 8,
     "Daily": 7,
-    "Weekly": 3
+    "Weekly": 4
   },
   "price_associations": [
     {
       "label": "Cadence only",
-      "beta_fast": -0.096366325,
-      "ci95": [-0.151466074744, -0.041266575256],
-      "observations": 5501,
-      "models": 127
+      "beta_fast": -0.085421752173,
+      "ci95": [-0.145447447653, -0.025396056694],
+      "observations": 5503,
+      "models": 128
     },
     {
       "label": "Quality adjusted",
-      "beta_fast": -0.389249493033,
-      "ci95": [-0.637372590117, -0.141126395948],
-      "observations": 423,
-      "models": 23
+      "beta_fast": -0.290610978407,
+      "ci95": [-0.549298510845, -0.03192344597],
+      "observations": 451,
+      "models": 25
     }
   ],
   "support_counts": {
-    "Unambiguous waves": 19,
+    "Unambiguous waves": 2,
     "Slow-initiator risk pairs": 0,
-    "Linked reactions": 188,
-    "Temporal holdout": 46
+    "Linked reactions": 243,
+    "Temporal holdout": 82
   },
   "timing_identification": {
-    "total_price_events": 274,
-    "unique_strict_prior_candidates": 188,
-    "sharp_named_rival_response_share_bounds": [0.0, 0.6861313868613139],
+    "total_price_events": 313,
+    "unique_strict_prior_candidates": 243,
+    "sharp_named_rival_response_share_bounds": [0.0, 0.776357827476],
     "estimand": "share of price events causally responding to their unique most-recent strictly prior named rival within 72 hours"
   },
   "predictive_test": {
-    "mse_improvement": 0.000354950594,
-    "model_cluster_bootstrap_ci95": [-0.000971777804, 0.008032695597],
-    "exact_sign_flip_p_positive": 0.0234375,
-    "model_clusters": 7,
-    "state_only_rmse": 0.238348229256,
-    "brown_mackay_rmse": 0.23760245747,
+    "mse_improvement": 0.000851582582,
+    "model_cluster_bootstrap_ci95": [0.000219779372, 0.026123710971],
+    "exact_sign_flip_p_positive": 0.25,
+    "model_clusters": 2,
+    "state_only_rmse": 0.068558085659,
+    "brown_mackay_rmse": 0.062037315604,
     "verdict": "predictively indistinguishable"
   },
-  "source": "manuscript_vintages frozen_9d release; metrics are rounded publication copies"
+  "source": "corrected-b389923-r2 manuscript_vintages frozen_9d release; metrics are rounded publication copies"
 }

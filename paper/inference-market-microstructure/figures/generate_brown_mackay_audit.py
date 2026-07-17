@@ -115,8 +115,8 @@ def render() -> None:
     axes[1, 1].text(
         0.03,
         0.12,
-        "Model-cluster 95% interval crosses zero\n"
-        f"7 clusters; exact sign-flip p={predictive['exact_sign_flip_p_positive']:.3f}\n"
+        "Cluster bootstrap interval is positive, but support is tiny\n"
+        f"{predictive['model_clusters']} clusters; exact sign-flip p={predictive['exact_sign_flip_p_positive']:.3f}\n"
         "Verdict: predictively indistinguishable",
         transform=axes[1, 1].transAxes,
         fontsize=9,

@@ -1,0 +1,56 @@
+{
+  "analysis_vintage": {
+    "end_date": "2026-07-15",
+    "n_observed_dates": 9,
+    "observed_dates": [
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15"
+    ],
+    "start_date": "2026-07-07"
+  },
+  "cadence_only": {
+    "all_coefficients": {
+      "is_fast_dm": -0.085421752173
+    },
+    "beta_fast": -0.085421752173,
+    "ci95": [
+      -0.145447447653,
+      -0.025396056694
+    ],
+    "n_models": 128,
+    "n_obs": 5503,
+    "r2_within": 0.016788005692,
+    "se": 0.030625354836,
+    "slow_over_fast_premium_pct": 8.917633232874
+  },
+  "claim_boundary": "The regression absorbs model-day price levels and public delivered latency, throughput, tool-call error, and structured-output error. It does not observe all endpoint fidelity, private discounts, costs, or endogenous adoption of fast repricing, so the coefficient is not a causal technology effect.",
+  "evidence_status": "power_gated",
+  "n_observed_quote_days": 9,
+  "panel_span_days": 9.0,
+  "quality_adjusted": {
+    "all_coefficients": {
+      "is_fast_dm": -0.290610978407,
+      "log_latency_dm": 0.110406068324,
+      "log_throughput_dm": 0.08043971751,
+      "struct_err_dm": 0.007765062996,
+      "tool_err_dm": -0.003996055206
+    },
+    "beta_fast": -0.290610978407,
+    "ci95": [
+      -0.549298510845,
+      -0.03192344597
+    ],
+    "n_models": 25,
+    "n_obs": 451,
+    "r2_within": 0.20583390956,
+    "se": 0.131983434917,
+    "slow_over_fast_premium_pct": 33.724426585482
+  }
+}

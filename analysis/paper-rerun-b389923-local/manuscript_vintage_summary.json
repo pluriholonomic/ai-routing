@@ -1,0 +1,234 @@
+{
+  "evidence_status": "frozen_vintage_only",
+  "source_snapshot": {
+    "source": "local",
+    "repo_id": null,
+    "revision": null,
+    "path": "/Users/tchitra/repos/ai-routing/tmp/paper-rerun-b389923-data",
+    "resolution": "caller_managed_local_snapshot"
+  },
+  "vintages": {
+    "frozen_9d": {
+      "label": "frozen_9d",
+      "ready": true,
+      "target_days": 9,
+      "observed_days": 11,
+      "remaining_days": 0,
+      "dates": [
+        "2026-07-07",
+        "2026-07-08",
+        "2026-07-09",
+        "2026-07-10",
+        "2026-07-11",
+        "2026-07-12",
+        "2026-07-13",
+        "2026-07-14",
+        "2026-07-15"
+      ],
+      "start_date": "2026-07-07",
+      "end_date": "2026-07-15",
+      "metrics": {
+        "pm1_pair_days": 7352,
+        "pm1_events": 112,
+        "pm1_base_daily_hazard": 0.0152,
+        "pm1_abs_gap_coef": 1.389,
+        "bm1_price_changes": 313,
+        "bm1_repricing_providers": 19,
+        "bm1_fast_share_active": 0.7894736842105263,
+        "bm2_independent_waves": 2,
+        "bm2_slow_risk_pairs": 0,
+        "bm2_fast_after_slow_uplift": null,
+        "bm2_fast_after_slow_ci95": null,
+        "bm3_cadence_beta_fast": -0.085421752173,
+        "bm3_cadence_ci95": [
+          -0.145447447653,
+          -0.025396056694
+        ],
+        "bm3_quality_beta_fast": -0.290610978407,
+        "bm3_quality_ci95": [
+          -0.549298510845,
+          -0.03192344597
+        ],
+        "bm4_linked_reactions": 243,
+        "bm4_paired_mse_improvement": 0.000851582582,
+        "bm4_paired_mse_ci95": [
+          0.000219779372,
+          0.026123710971
+        ],
+        "bm4_exact_sign_flip_p_positive": 0.25,
+        "bm4_predictive_verdict": "predictively_indistinguishable",
+        "bm4_state_only_rmse": 0.068558085659,
+        "bm4_brown_mackay_rmse": 0.062037315604,
+        "bm4_brown_mackay_rmse_gain": 0.006520770055,
+        "pm5_author_atom_models": 94,
+        "pm5_author_clusters": 12,
+        "pm5_author_exact_match_share": 0.542553191489,
+        "pm5_author_placebo_match_share": 0.014680095067,
+        "pm5_author_atom_excess": 0.527873096422,
+        "pm5_author_atom_ci95": [
+          0.305783993702,
+          0.798041131229
+        ],
+        "pm5_author_random_anchor_excess": 0.007854837243,
+        "pm5_author_random_anchor_ci95": [
+          -0.090462836015,
+          0.160769000752
+        ],
+        "pm5_author_random_anchor_upper_tail_p": 0.465697809685,
+        "pm5_selected_tie_observed_share": 0.9,
+        "pm5_selected_tie_random_label_share": 0.919301587302,
+        "pm5_selected_tie_upper_tail_p": 0.913142857143,
+        "pm5_lagged_landing_events": 196,
+        "pm5_lagged_landing_exact_share": 0.204081632653,
+        "pm5_lagged_landing_global_menu_probability": 0.134064861864,
+        "pm5_lagged_landing_global_menu_excess": 0.070016770789,
+        "pm5_lagged_landing_model_ci95": [
+          -0.231452838756,
+          0.122291257508
+        ],
+        "pm5_lagged_landing_provider_ci95": [
+          -0.224169030729,
+          0.182422093262
+        ],
+        "pm5_lagged_landing_model_loo_range": [
+          -0.104160915098,
+          0.096673277082
+        ],
+        "pm5_lagged_landing_historical_menu_probability": 0.067775772509,
+        "pm5_lagged_landing_historical_menu_excess": 0.143864439131,
+        "pm5_lagged_landing_historical_model_ci95": [
+          -0.000672058821,
+          0.175181963717
+        ],
+        "pm5_own_menu_comparable_events": 175,
+        "pm5_own_menu_exact_share": 0.068571428571,
+        "pm5_own_menu_association": -0.020361121783,
+        "pm5_own_menu_association_model_ci95": [
+          -0.310344827586,
+          0.009337327793
+        ],
+        "pm5_own_menu_novel_events": 163,
+        "pm5_own_menu_novel_global_menu_excess": 0.134389914808,
+        "pm5_own_menu_novel_model_ci95": [
+          -0.114985265013,
+          0.185129825373
+        ],
+        "pm5_own_menu_novel_provider_ci95": [
+          -0.138341925363,
+          0.230267814475
+        ],
+        "pm5_own_menu_novel_model_loo_range": [
+          0.014096949239,
+          0.151942832355
+        ]
+      },
+      "artifacts": [
+        {
+          "path": "mv_frozen_9d_bm1_provider_cadence.parquet",
+          "sha256": "c15a1e730bede752a87d564c842e50b41aa3a820d7683106decab4f3ae8d03f9",
+          "bytes": 8049
+        },
+        {
+          "path": "mv_frozen_9d_bm1_summary.json",
+          "sha256": "07814013277c5c17590c44be2f4d7fdc70bc5c4840db8dce681c26ed37f9e7f2",
+          "bytes": 910
+        },
+        {
+          "path": "mv_frozen_9d_bm2_frozen_cadence_reaction_panel.parquet",
+          "sha256": "cf54891b441edb4c0f0f8fee3d7e4b9055fd8b09660f392e88b358b63f730c80",
+          "bytes": 7449
+        },
+        {
+          "path": "mv_frozen_9d_bm2_reaction_panel.parquet",
+          "sha256": "e028a8408ee2c77411ed1f0a765e8cedb30b0b1549396238a7eed9b402c1088e",
+          "bytes": 11712
+        },
+        {
+          "path": "mv_frozen_9d_bm2_summary.json",
+          "sha256": "d31e581b7385c3346c7605db56455c21aa4f72822f9ea7949b321c23cdf46252",
+          "bytes": 2425
+        },
+        {
+          "path": "mv_frozen_9d_bm3_premium_coefficients.parquet",
+          "sha256": "b5183ede13702459831e0aec972a2c5e7003dda0470b649d321ef663c26a571d",
+          "bytes": 5389
+        },
+        {
+          "path": "mv_frozen_9d_bm3_summary.json",
+          "sha256": "1e6eeef058b5e9eabc046edf06d3e3bbeee6a6eea193a58628a7639f2a0c4887",
+          "bytes": 1588
+        },
+        {
+          "path": "mv_frozen_9d_bm4_provider_slopes.parquet",
+          "sha256": "8ab47168ca5a2550ebb6a91bf83e69b1fcab7e63746239d1d3827df8d98e660e",
+          "bytes": 2625
+        },
+        {
+          "path": "mv_frozen_9d_bm4_reaction_rules.parquet",
+          "sha256": "819e7bc1f9bd7766d39d69d1bd49d27939a159821ade832053172dcb75d6675f",
+          "bytes": 16992
+        },
+        {
+          "path": "mv_frozen_9d_bm4_summary.json",
+          "sha256": "b74e229435d6de42118d3c59af4666d03f661a3b7760a9ca971e364b9ddbd2a7",
+          "bytes": 3074
+        },
+        {
+          "path": "mv_frozen_9d_pm1_ladder.parquet",
+          "sha256": "5c76a11ede6a31f9b5daade7e7362cb5a0c3e9f2346936fd3bfcdeac29ccac7a",
+          "bytes": 4132
+        },
+        {
+          "path": "mv_frozen_9d_pm1_summary.json",
+          "sha256": "1562e143915541dea3c655d905e6498ff61f651258b94c3a43ff7d61a8a96b92",
+          "bytes": 2078
+        },
+        {
+          "path": "mv_frozen_9d_pm5_author_anchor_symmetry.parquet",
+          "sha256": "402cf7d9bd39e747759c869ee160649997c0af04037c138bd151622c3b641c2d",
+          "bytes": 12174
+        },
+        {
+          "path": "mv_frozen_9d_pm5_author_price_atom.parquet",
+          "sha256": "aed8b9932d7a7276aa8212998d3e12e492c89536545af7c2e0086ecd445f953e",
+          "bytes": 8269
+        },
+        {
+          "path": "mv_frozen_9d_pm5_reference_price_landing.parquet",
+          "sha256": "1652881efd5e757af821b190dee228b1c73ae4b86cba2c8b579e69edfcef47df",
+          "bytes": 27843
+        },
+        {
+          "path": "mv_frozen_9d_pm5_summary.json",
+          "sha256": "7a260fb9d5b038117601459e343f0e3af18408b44a1db22a103cba66db52fd1a",
+          "bytes": 17483
+        }
+      ]
+    },
+    "confirmatory_30d": {
+      "label": "confirmatory_30d",
+      "ready": false,
+      "target_days": 30,
+      "observed_days": 11,
+      "remaining_days": 19,
+      "dates": [],
+      "start_date": null,
+      "end_date": null
+    }
+  },
+  "comparison": [],
+  "registered_sign_metrics": {
+    "pm1_abs_gap_coef": "positive",
+    "bm2_fast_after_slow_uplift": "positive",
+    "bm3_cadence_beta_fast": "negative",
+    "bm3_quality_beta_fast": "negative",
+    "bm4_paired_mse_improvement": "positive",
+    "bm4_brown_mackay_rmse_gain": "positive",
+    "pm5_author_random_anchor_excess": "positive",
+    "pm5_lagged_landing_global_menu_excess": "positive",
+    "pm5_lagged_landing_historical_menu_excess": "positive",
+    "pm5_own_menu_novel_global_menu_excess": "positive"
+  },
+  "selection_rule": "Run the same six analysis programs on the earliest nine observed quote dates and the earliest 30 observed quote dates. Later dates are continuation data.",
+  "claim_boundary": "The nine-day vintage is descriptive. No 30-day estimate is computed before the calendar gate, and the fixed comparison table cannot add metrics after seeing the confirmatory vintage. Each release is pinned to one immutable dataset revision before any input query runs."
+}

@@ -1,0 +1,58 @@
+{
+  "analysis_source": {
+    "kind": "local_snapshot_of_huggingface_revision",
+    "path": "/Users/tchitra/repos/ai-routing/tmp/paper-rerun-b389923-data",
+    "patterns": [
+      "curated/endpoints_snapshots/*/*.parquet",
+      "derived/pricing_changes/*/*.parquet",
+      "curated/models_snapshots/*/*.parquet",
+      "curated/gpu_offers_snapshots/*/*.parquet",
+      "curated/congestion_intraday/*/*.parquet",
+      "curated/event_bursts_congestion/*/*.parquet",
+      "curated/direct_prices_daily/*/*.parquet",
+      "curated/endpoint_stats_daily/*/*.parquet",
+      "curated/perf_comparisons_daily/*/*.parquet",
+      "curated/effective_pricing_daily/*/*.parquet",
+      "curated/router_public_quote_snapshots/*/*.parquet",
+      "curated/routing_simulation/*/*.parquet",
+      "curated/model_activity_daily/*/*.parquet",
+      "backfill/models_snapshots_wayback/*/*.parquet"
+    ]
+  },
+  "created_at_utc": "2026-07-17T06:08:31.464836+00:00",
+  "failures": [],
+  "input_revision": "b389923ad7713bc230dd522f770aa306bf778806",
+  "modules": [
+    {
+      "artifacts": [
+        "h17_events.parquet",
+        "h17_summary.json",
+        "h17_wayback_ages.parquet"
+      ],
+      "claim_boundary": null,
+      "error": null,
+      "evidence_status": null,
+      "module": "h17_events",
+      "status": "ok"
+    }
+  ],
+  "output_files": {
+    "h17_events.parquet": {
+      "bytes": 36134,
+      "sha256": "78e00dfb4283bf9be03338d28abd406d2c0c005c7eca22bb6422a33e9c099810"
+    },
+    "h17_summary.json": {
+      "bytes": 1438,
+      "sha256": "29b74f0857756902ee37f207dbbbc7c03c56e68dd786619fc016c1181399f8b3"
+    },
+    "h17_wayback_ages.parquet": {
+      "bytes": 24231,
+      "sha256": "1e046c813380533b13e6e4514c0109f6ce84a1875a8a301313e20fd961110a24"
+    }
+  },
+  "prospective_owned_outcomes_queried": false,
+  "schema_version": 1,
+  "selected_modules": [
+    "h17_events"
+  ]
+}

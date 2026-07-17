@@ -1,0 +1,195 @@
+{
+  "evidence_status": "descriptive_enforcement_substitution_power_gated",
+  "preregistration": "docs/h82-enforcement-substitution-preregistration.md",
+  "analysis_cutoff_utc": "2026-07-15T11:33:02+00:00",
+  "observed_span_days": 7.658842592592593,
+  "n_panel_rows": 490542,
+  "n_candidate_high_onsets": 2187,
+  "n_eligible_high_onsets": 333,
+  "n_complete_high_events": 225,
+  "n_complete_low_events": 1172,
+  "n_matched_high_low_pairs": 215,
+  "high_event_models": 22,
+  "high_event_providers": 37,
+  "provider_event_dominance": 0.1511111111111111,
+  "price_sticky_share": 1.0,
+  "primary_results": {
+    "endpoint_success_share": {
+      "high_event_delta": {
+        "n_events": 225,
+        "n_clusters": 108,
+        "mean": -0.021051660913703092,
+        "ci95": [
+          -0.03274243978008113,
+          -0.011623838372610037
+        ],
+        "bootstrap_sign_p": 0.0
+      },
+      "early_vs_late_pre_placebo": {
+        "n_events": 225,
+        "n_clusters": 108,
+        "mean": 0.006091137296815246,
+        "ci95": [
+          3.0349341456727866e-05,
+          0.012929567167962392
+        ],
+        "bootstrap_sign_p": 0.047
+      },
+      "placebo_to_effect_abs_ratio": 0.2893423621910213,
+      "model_equal_weighted_delta": -0.024495035227636554,
+      "matched_high_minus_low_delta": {
+        "n_events": 215,
+        "n_clusters": 105,
+        "mean": -0.02436012829299119,
+        "ci95": [
+          -0.03864474203395114,
+          -0.011348829309102505
+        ],
+        "bootstrap_sign_p": 0.001
+      },
+      "leave_one_provider_out": {
+        "n_omissions": 37,
+        "min": -0.023837722368600375,
+        "max": -0.01451166454659373
+      }
+    },
+    "provider_success_share": {
+      "high_event_delta": {
+        "n_events": 225,
+        "n_clusters": 108,
+        "mean": -0.021007558740218656,
+        "ci95": [
+          -0.031491277158117635,
+          -0.011268062720821367
+        ],
+        "bootstrap_sign_p": 0.0
+      },
+      "early_vs_late_pre_placebo": {
+        "n_events": 225,
+        "n_clusters": 108,
+        "mean": 0.006158050319408404,
+        "ci95": [
+          1.7038587965503418e-06,
+          0.013207356001996453
+        ],
+        "bootstrap_sign_p": 0.05
+      },
+      "placebo_to_effect_abs_ratio": 0.2931349803925055,
+      "model_equal_weighted_delta": -0.02444993073202747,
+      "matched_high_minus_low_delta": {
+        "n_events": 215,
+        "n_clusters": 105,
+        "mean": -0.024337676018351365,
+        "ci95": [
+          -0.04005782905799293,
+          -0.011016941713816562
+        ],
+        "bootstrap_sign_p": 0.0
+      },
+      "leave_one_provider_out": {
+        "n_omissions": 37,
+        "min": -0.02378955251892077,
+        "max": -0.0144597117244262
+      }
+    },
+    "log1p_other_provider_success": {
+      "high_event_delta": {
+        "n_events": 225,
+        "n_clusters": 108,
+        "mean": 0.04914504895739099,
+        "ci95": [
+          0.012246114886525964,
+          0.0885748179979514
+        ],
+        "bootstrap_sign_p": 0.009
+      },
+      "early_vs_late_pre_placebo": {
+        "n_events": 225,
+        "n_clusters": 108,
+        "mean": -0.05441820417960203,
+        "ci95": [
+          -0.11302821789832213,
+          -0.0088930797422444
+        ],
+        "bootstrap_sign_p": 0.01
+      },
+      "placebo_to_effect_abs_ratio": 1.1072977916205333,
+      "model_equal_weighted_delta": 0.10856160458094243,
+      "matched_high_minus_low_delta": {
+        "n_events": 215,
+        "n_clusters": 105,
+        "mean": 0.029337809111326885,
+        "ci95": [
+          -0.0198434635619711,
+          0.08782778848924894
+        ],
+        "bootstrap_sign_p": 0.254
+      },
+      "leave_one_provider_out": {
+        "n_omissions": 37,
+        "min": 0.030490772270683485,
+        "max": 0.06090971926811418
+      }
+    }
+  },
+  "flow_accounting": {
+    "success_5m": {
+      "mean_delta": -462.96933333333334,
+      "winsorized_mean_delta": -392.8684148148148
+    },
+    "same_provider_other_success_5m": {
+      "mean_delta": -0.057185185185185346,
+      "winsorized_mean_delta": 0.9099851851851766
+    },
+    "other_provider_success_5m": {
+      "mean_delta": -31.613333333333497,
+      "winsorized_mean_delta": 101.10196148148107
+    },
+    "model_success_5m": {
+      "mean_delta": -494.63985185185174,
+      "winsorized_mean_delta": -323.9671940740745
+    },
+    "joint_complete_events": 225,
+    "mean_identity_residual": 2.7711166694643907e-13,
+    "maximum_snapshot_identity_residual": 0.0,
+    "other_provider_diversion_ratio_when_focal_declines": -0.06828386041408105
+  },
+  "release_gate": {
+    "min_complete_high_events": {
+      "required": 100,
+      "observed": 225
+    },
+    "min_complete_days": {
+      "required": 28,
+      "observed": 7
+    },
+    "min_models": {
+      "required": 20,
+      "observed": 22
+    },
+    "min_providers": {
+      "required": 20,
+      "observed": 37
+    },
+    "max_provider_dominance": {
+      "required": 0.2,
+      "observed": 0.1511111111111111
+    },
+    "primary_placebo_passes": {
+      "endpoint_success_share": false,
+      "provider_success_share": false,
+      "log1p_other_provider_success": false
+    },
+    "matched_sign_passes": {
+      "endpoint_success_share": true,
+      "provider_success_share": true,
+      "log1p_other_provider_success": true
+    },
+    "accounting_residual_max": {
+      "required": 1e-09,
+      "observed": 0.0
+    },
+    "all_pass": false
+  },
+  "claim_boundary": "H82 is an observational event study of public rolling aggregates. Rate-limit onsets are endogenous to load and may share latent causes with routing volume. The data do not reveal request ordering, customer identity, private eligibility, router intent, front-running, or the welfare effect of capacity certification."
+}

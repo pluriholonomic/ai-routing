@@ -1,0 +1,41 @@
+{
+  "claim_boundary": "public data can measure quote/rank changes and rolling flow proxies; it cannot identify literal front-running, provider profit, or private order flow",
+  "data": {
+    "price_events": 404,
+    "event_quote_rows": 8589,
+    "focal_events_with_snapshot": 402,
+    "intraday_rows": 573786,
+    "events_eligible_quote": 336,
+    "events_eligible_intraday": 160
+  },
+  "r1_router_rule_threshold": {
+    "n_eligible_events": 336,
+    "n_rank_crossing_cuts": 107,
+    "near_best_band_log_width": 0.01,
+    "n_near_best": 138,
+    "n_just_below_best": 80,
+    "n_just_above_best": 14,
+    "power_gate": "needs >=150 rank-crossing events across >=40 markets",
+    "below_vs_above_binomial_pvalue": 2.120124047968334e-12
+  },
+  "r2_undercut_capture": {
+    "n_events_with_balanced_intraday_window": 10,
+    "power_gate": "needs >= 20 clean events with pre/post coverage",
+    "claim_boundary": "descriptive until stacked event study, pre-trends, and placebo tests pass",
+    "gated": "have 10/20 events"
+  },
+  "r3_stale_quote_capture": {
+    "n_events_with_balanced_intraday_window": 21,
+    "power_gate": "needs >= 20 clean events with pre/post coverage",
+    "claim_boundary": "descriptive until stacked event study, pre-trends, and placebo tests pass",
+    "mean_delta_request_share_30m": -0.011213277384699504,
+    "median_delta_request_share_30m": -0.0026230623395419664,
+    "mean_delta_reject_rate_30m": 0.03378016936756103,
+    "mean_delta_capacity_ceiling_rpm": -315.29986390150333
+  },
+  "r4_quote_and_ration": {
+    "status": "uses the R2 event cohort once it clears the R2 power gate",
+    "required_signature": "post-cut flow gain plus worse rejection/capacity/price-reversal outcome",
+    "current_h10_boundary": "cross-sectional cheap-quote rejection is not significant"
+  }
+}

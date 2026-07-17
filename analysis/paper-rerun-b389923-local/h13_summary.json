@@ -1,0 +1,94 @@
+{
+  "n_pairs": 1146,
+  "n_days": 11,
+  "providers": [
+    "baseten",
+    "cerebras",
+    "chutes",
+    "deepinfra",
+    "fireworks",
+    "novita",
+    "sambanova",
+    "together"
+  ],
+  "provider_pairs": {
+    "baseten": 19,
+    "cerebras": 7,
+    "chutes": 56,
+    "deepinfra": 609,
+    "fireworks": 7,
+    "novita": 301,
+    "sambanova": 35,
+    "together": 112
+  },
+  "source_types": {
+    "baseten": [
+      "published_ssr_pricing_catalog"
+    ],
+    "cerebras": [
+      "structured_public_api"
+    ],
+    "chutes": [
+      "structured_public_api"
+    ],
+    "deepinfra": [
+      "structured_public_api"
+    ],
+    "fireworks": [
+      "published_model_page"
+    ],
+    "novita": [
+      "published_ssr_pricing_catalog"
+    ],
+    "sambanova": [
+      "structured_public_api"
+    ],
+    "together": [
+      "published_docs_table"
+    ]
+  },
+  "share_exact_zero_basis": 0.9450261780104712,
+  "max_abs_basis_pct": 90.0,
+  "rfq_null": "basis \u2261 0 (quote passthrough); deviations = stale-quote windows",
+  "temporal_boundary": "daily matched posted quotes; this panel cannot identify intraday refresh latency",
+  "power_gate": {
+    "min_days": 7,
+    "min_pairs": 50,
+    "min_providers": 3,
+    "min_pairs_per_provider": 10
+  },
+  "evidence_status": "power_gated",
+  "gate_reasons": [
+    "providers below 10 pairs: cerebras, fireworks"
+  ],
+  "claim_boundary": "posted list-price comparison only; it does not identify executable fills, routing decisions, or market-wide quote passthrough",
+  "routed_quote_sources": {
+    "baseten": [
+      "api_endpoint_snapshot"
+    ],
+    "cerebras": [
+      "api_endpoint_snapshot"
+    ],
+    "chutes": [
+      "api_endpoint_snapshot"
+    ],
+    "deepinfra": [
+      "api_endpoint_snapshot",
+      "frontend_endpoint_stats"
+    ],
+    "fireworks": [
+      "frontend_endpoint_stats"
+    ],
+    "novita": [
+      "api_endpoint_snapshot"
+    ],
+    "sambanova": [
+      "api_endpoint_snapshot",
+      "frontend_endpoint_stats"
+    ],
+    "together": [
+      "frontend_endpoint_stats"
+    ]
+  },
+  "max_quote_time_gap_minutes": 37.583333333333336
+}

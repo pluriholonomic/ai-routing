@@ -1,0 +1,226 @@
+{
+  "conflict_totals": {
+    "availability_conflict_groups": 8388,
+    "capability_conflict_groups": 0,
+    "price_conflict_groups": 0,
+    "raw_conflict_groups": 8388
+  },
+  "daily": [
+    {
+      "capture_runs": 119,
+      "distinct_source_records": 103423,
+      "dt": "2026-07-07",
+      "listing_keys": 103415,
+      "physical_rows": 103423
+    },
+    {
+      "capture_runs": 243,
+      "distinct_source_records": 212237,
+      "dt": "2026-07-08",
+      "listing_keys": 212233,
+      "physical_rows": 212237
+    },
+    {
+      "capture_runs": 187,
+      "distinct_source_records": 170739,
+      "dt": "2026-07-09",
+      "listing_keys": 170579,
+      "physical_rows": 170739
+    },
+    {
+      "capture_runs": 200,
+      "distinct_source_records": 194181,
+      "dt": "2026-07-10",
+      "listing_keys": 193101,
+      "physical_rows": 194181
+    },
+    {
+      "capture_runs": 242,
+      "distinct_source_records": 235311,
+      "dt": "2026-07-11",
+      "listing_keys": 233836,
+      "physical_rows": 235311
+    },
+    {
+      "capture_runs": 242,
+      "distinct_source_records": 235717,
+      "dt": "2026-07-12",
+      "listing_keys": 234465,
+      "physical_rows": 235717
+    },
+    {
+      "capture_runs": 198,
+      "distinct_source_records": 192785,
+      "dt": "2026-07-13",
+      "listing_keys": 191842,
+      "physical_rows": 192785
+    },
+    {
+      "capture_runs": 216,
+      "distinct_source_records": 210898,
+      "dt": "2026-07-14",
+      "listing_keys": 209666,
+      "physical_rows": 210898
+    },
+    {
+      "capture_runs": 205,
+      "distinct_source_records": 199943,
+      "dt": "2026-07-15",
+      "listing_keys": 198823,
+      "physical_rows": 199943
+    },
+    {
+      "capture_runs": 227,
+      "distinct_source_records": 222295,
+      "dt": "2026-07-16",
+      "listing_keys": 220719,
+      "physical_rows": 222295
+    },
+    {
+      "capture_runs": 37,
+      "distinct_source_records": 36337,
+      "dt": "2026-07-17",
+      "listing_keys": 36001,
+      "physical_rows": 36593
+    }
+  ],
+  "daily_conflicts": [
+    {
+      "availability_conflict_groups": 8,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-07",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 8
+    },
+    {
+      "availability_conflict_groups": 4,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-08",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 4
+    },
+    {
+      "availability_conflict_groups": 152,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-09",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 152
+    },
+    {
+      "availability_conflict_groups": 1008,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-10",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1008
+    },
+    {
+      "availability_conflict_groups": 1405,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-11",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1405
+    },
+    {
+      "availability_conflict_groups": 1188,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-12",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1188
+    },
+    {
+      "availability_conflict_groups": 879,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-13",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 879
+    },
+    {
+      "availability_conflict_groups": 1128,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-14",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1128
+    },
+    {
+      "availability_conflict_groups": 1000,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-15",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1000
+    },
+    {
+      "availability_conflict_groups": 1360,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-16",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 1360
+    },
+    {
+      "availability_conflict_groups": 256,
+      "capability_conflict_groups": 0,
+      "dt": "2026-07-17",
+      "price_conflict_groups": 0,
+      "raw_conflict_groups": 256
+    }
+  ],
+  "deduplication_unit": [
+    "run_ts",
+    "model_id",
+    "provider_name",
+    "tag",
+    "endpoint_fingerprint",
+    "record_json"
+  ],
+  "input_revision": "b389923ad7713bc230dd522f770aa306bf778806",
+  "listing_unit": [
+    "run_ts",
+    "model_id",
+    "provider_name",
+    "tag",
+    "endpoint_fingerprint"
+  ],
+  "pricing_event_rebuild": {
+    "derived_dates": [
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15",
+      "2026-07-16"
+    ],
+    "exact_set_match": true,
+    "missing_by_date": {},
+    "missing_by_field": {},
+    "missing_from_observed": 0,
+    "missing_sample": [],
+    "observed_events": 3219,
+    "observed_unique_events": 3219,
+    "rebuilt_events": 3219,
+    "rebuilt_unique_events": 3219,
+    "unexpected_by_date": {},
+    "unexpected_by_field": {},
+    "unexpected_in_observed": 0,
+    "unexpected_sample": []
+  },
+  "schema_version": 1,
+  "totals": {
+    "capture_runs": 2116,
+    "distinct_source_records": 2013866,
+    "exact_duplicate_rows": 256,
+    "listing_keys": 2004680,
+    "physical_rows": 2014122,
+    "same_listing_raw_variants": 9186
+  },
+  "verdict": {
+    "availability_variants_present": true,
+    "capability_conflicts_present": false,
+    "derived_pricing_events_reproducible": true,
+    "exact_overlap_present": true,
+    "price_conflicts_present": false,
+    "safe_to_deduplicate_exact_source_records": true
+  }
+}

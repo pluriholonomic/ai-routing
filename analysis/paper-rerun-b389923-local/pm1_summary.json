@@ -1,0 +1,77 @@
+{
+  "evidence_status": "power_gated",
+  "gate": "11/30 panel days \u2014 age bins coarse, no unit frailty, in-sample AUC only",
+  "n_pair_days": 9001,
+  "n_events": 119,
+  "base_daily_hazard": 0.0132,
+  "analysis_vintage": {
+    "observed_dates": [
+      "2026-07-07",
+      "2026-07-08",
+      "2026-07-09",
+      "2026-07-10",
+      "2026-07-11",
+      "2026-07-12",
+      "2026-07-13",
+      "2026-07-14",
+      "2026-07-15",
+      "2026-07-16",
+      "2026-07-17"
+    ],
+    "n_observed_dates": 11,
+    "start_date": "2026-07-07",
+    "end_date": "2026-07-17"
+  },
+  "ladder": {
+    "L1": {
+      "llf": -633.0,
+      "auc_in_sample": 0.5,
+      "lr_p_vs_previous": null,
+      "key_coefs": {}
+    },
+    "L2": {
+      "llf": -447.2,
+      "auc_in_sample": 0.879,
+      "lr_p_vs_previous": "6.36e-73",
+      "key_coefs": {}
+    },
+    "L3": {
+      "llf": -425.7,
+      "auc_in_sample": 0.889,
+      "lr_p_vs_previous": "2.45e-09",
+      "key_coefs": {
+        "abs_gap": 1.546,
+        "gap_positive": -0.964,
+        "abs_gpu_dlog": -8.406
+      }
+    },
+    "L4": {
+      "llf": -422.0,
+      "auc_in_sample": 0.891,
+      "lr_p_vs_previous": "6.00e-02",
+      "key_coefs": {
+        "abs_gap": 1.447,
+        "gap_positive": -0.96,
+        "abs_gpu_dlog": -8.495,
+        "util": -0.043,
+        "rl_share": -0.209
+      }
+    },
+    "L5": {
+      "llf": -409.5,
+      "auc_in_sample": 0.894,
+      "lr_p_vs_previous": "4.00e-06",
+      "key_coefs": {
+        "abs_gap": 1.432,
+        "gap_positive": -0.772,
+        "abs_gpu_dlog": -8.014,
+        "util": 0.012,
+        "rl_share": -0.101,
+        "rival_moves_1d": 0.501,
+        "rival_raises_1d": -0.117
+      }
+    }
+  },
+  "reading": "L2>L1 = duration/calendar dependence (anti-Calvo); L3 abs_gap>0 = state-dependent (menu cost); L4 util/rl>0 = congestion pricing (exclusion: should be ~0 given L3); L5 rival terms>0 = strategic",
+  "claim_boundary": "11-day panel: rungs are directional until the registered 30-day vintage; congestion covariates exist only for hot-panel pairs (cong_missing indicator); provider_rate is an endogenous frailty substitute."
+}

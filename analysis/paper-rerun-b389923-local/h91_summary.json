@@ -1,0 +1,282 @@
+{
+  "evidence_status": "current_provider_model_fe_rejects_revenue_stationarity_but_not_causal",
+  "cross_sectional_revenue_foc": {
+    "specification": "effective_price_pooled_cross_section",
+    "elasticity": -1.0101456790719079,
+    "standard_error": 0.08863693021578516,
+    "ci95_low": -1.1838740622948467,
+    "ci95_high": -0.836417295848969,
+    "p_value": 4.355557804202869e-30,
+    "n_observations": 7058,
+    "n_groups": 1551.0,
+    "n_clusters": 1551,
+    "revenue_foc_target": -1.0,
+    "distance_to_revenue_foc": -0.010145679071907887,
+    "z_equal_revenue_foc": -0.11446333991044588,
+    "p_equal_revenue_foc": 0.9088705058660648,
+    "equivalence_margin": 0.25,
+    "equivalence_p": 0.0034046298307409562,
+    "equivalent_to_revenue_foc": true,
+    "p_equal_zero": 4.355557804202869e-30,
+    "p_equal_inverse_square": 5.880246177137726e-29,
+    "n_effects": NaN,
+    "n_market_time_effects": NaN,
+    "n_entity_effects": NaN,
+    "price_varying_entities": NaN,
+    "price_varying_entity_share": NaN,
+    "price_changing_clusters": NaN,
+    "residual_price_ss_share_from_varying_entities": NaN,
+    "largest_entity_residual_price_ss_share": NaN,
+    "top_five_entity_residual_price_ss_share": NaN,
+    "largest_cluster_residual_price_ss_share": NaN,
+    "residual_price_cluster_hhi": NaN,
+    "residual_price_sum_squares": NaN,
+    "raw_centered_price_sum_squares": NaN,
+    "residual_to_raw_price_ss_ratio": NaN,
+    "absorption_iterations": NaN,
+    "absorption_final_change": NaN
+  },
+  "daily_cross_section": {
+    "days": 11,
+    "elasticity_range": [
+      -1.194382937876887,
+      -0.8259261889516841
+    ],
+    "days_point_estimate_within_equivalence_band": 11
+  },
+  "effective_price_within_between": {
+    "between_elasticity": -1.0237283350332287,
+    "between_standard_error": 0.20264568665770555,
+    "between_ci95": [
+      -1.4209138808823316,
+      -0.6265427891841258
+    ],
+    "within_elasticity": -0.16386098092535845,
+    "within_standard_error": 0.37534189963341935,
+    "within_ci95": [
+      -0.8995311042068603,
+      0.5718091423561436
+    ],
+    "between_minus_within": -0.8598673541078703,
+    "difference_standard_error": 0.40805675264574376,
+    "difference_p_value": 0.035098088624268,
+    "n_observations": 7058,
+    "n_groups": 1551,
+    "n_entities": 673,
+    "n_clusters": 673,
+    "varying_entities": 626,
+    "varying_entity_share": 0.9301634472511144,
+    "within_price_variance_share": 0.002659370088493809
+  },
+  "listed_price_within_between": {
+    "between_elasticity": -1.6284124128255244,
+    "between_standard_error": 0.1780131843907809,
+    "between_ci95": [
+      -1.977318254231455,
+      -1.279506571419594
+    ],
+    "within_elasticity": 0.6400759478957747,
+    "within_standard_error": 0.4711230891420988,
+    "within_ci95": [
+      -0.28332530682273893,
+      1.5634772026142882
+    ],
+    "between_minus_within": -2.268488360721299,
+    "difference_standard_error": 0.45268356942364396,
+    "difference_p_value": 5.409137575979666e-07,
+    "n_observations": 3705,
+    "n_groups": 728,
+    "n_entities": 352,
+    "n_clusters": 36,
+    "varying_entities": 31,
+    "varying_entity_share": 0.08806818181818182,
+    "within_price_variance_share": 0.001826541521349866
+  },
+  "listed_price_definition": "daily median prompt price, open-weight models only",
+  "listed_prompt_open_weight_date_fe": {
+    "elasticity": -0.3397462865774462,
+    "standard_error": 0.11667974565205279,
+    "ci95_low": -0.5684385880554697,
+    "ci95_high": -0.11105398509942274,
+    "p_value": 0.0035937035941330507,
+    "n_observations": 3705,
+    "n_effects": 11,
+    "n_clusters": 36
+  },
+  "listed_prompt_open_weight_date_and_model_fe": {
+    "elasticity": -1.5465353089119038,
+    "standard_error": 0.27979237461434076,
+    "ci95_low": -2.094928363156012,
+    "ci95_high": -0.9981422546677959,
+    "p_value": 3.2493898271522056e-08,
+    "n_observations": 3705,
+    "n_market_time_effects": 11,
+    "n_entity_effects": 67,
+    "n_clusters": 36,
+    "price_varying_entities": 65,
+    "price_varying_entity_share": 0.9701492537313433,
+    "price_changing_clusters": 35,
+    "residual_price_ss_share_from_varying_entities": 0.999998957925239,
+    "largest_entity_residual_price_ss_share": 0.1325004059459589,
+    "top_five_entity_residual_price_ss_share": 0.41500646447727124,
+    "largest_cluster_residual_price_ss_share": 0.13064422229276232,
+    "residual_price_cluster_hhi": 0.06328366629714141,
+    "residual_price_sum_squares": 494.555371821784,
+    "raw_centered_price_sum_squares": 3652.2208605387414,
+    "residual_to_raw_price_ss_ratio": 0.13541223017625276,
+    "absorption_iterations": 6,
+    "absorption_final_change": 1.0826450846934677e-11
+  },
+  "listed_prompt_open_weight_two_way_fe": {
+    "elasticity": 0.20582413608223474,
+    "standard_error": 0.538851036676166,
+    "ci95_low": -0.8503238958030505,
+    "ci95_high": 1.26197216796752,
+    "p_value": 0.7024847105527159,
+    "n_observations": 3705,
+    "n_market_time_effects": 728,
+    "n_entity_effects": 352,
+    "n_clusters": 36,
+    "price_varying_entities": 31,
+    "price_varying_entity_share": 0.08806818181818182,
+    "price_changing_clusters": 13,
+    "residual_price_ss_share_from_varying_entities": 0.8825459685286066,
+    "largest_entity_residual_price_ss_share": 0.28425485863586003,
+    "top_five_entity_residual_price_ss_share": 0.6532047725783184,
+    "largest_cluster_residual_price_ss_share": 0.3531038968128108,
+    "residual_price_cluster_hhi": 0.2177742717890082,
+    "residual_price_sum_squares": 5.819394477838677,
+    "raw_centered_price_sum_squares": 3652.2208605387414,
+    "residual_to_raw_price_ss_ratio": 0.0015933851483944086,
+    "absorption_iterations": 19,
+    "absorption_final_change": 7.237133115012284e-11
+  },
+  "listed_prompt_open_weight_two_way_revenue_foc": {
+    "revenue_foc_target": -1.0,
+    "distance_to_revenue_foc": 1.2058241360822348,
+    "z_equal_revenue_foc": 2.2377689825377485,
+    "p_equal_revenue_foc": 0.02523612410842555,
+    "equivalence_margin": 0.25,
+    "equivalence_p": 0.961953441963597,
+    "equivalent_to_revenue_foc": false,
+    "p_equal_zero": 0.7024847105527159,
+    "p_equal_inverse_square": 4.2478278391841185e-05
+  },
+  "listed_prompt_two_way_lopo": {
+    "residual_price_support_clusters": 32,
+    "elasticity_range": [
+      -0.32755486258461153,
+      0.9434006135212085
+    ],
+    "all_point_estimates_less_elastic_than_published": true
+  },
+  "listed_completion_all_models_sensitivity": {
+    "between_elasticity": -1.731633720380386,
+    "between_standard_error": 0.24506297094364426,
+    "between_ci95": [
+      -2.2119571434299288,
+      -1.2513102973308432
+    ],
+    "within_elasticity": 0.4034923874013268,
+    "within_standard_error": 0.2348464444286327,
+    "within_ci95": [
+      -0.05680664367879329,
+      0.8637914184814469
+    ],
+    "between_minus_within": -2.135126107781713,
+    "difference_standard_error": 0.3233849370907191,
+    "difference_p_value": 4.0447483032217716e-11,
+    "n_observations": 4440,
+    "n_groups": 1080,
+    "n_entities": 442,
+    "n_clusters": 39,
+    "varying_entities": 32,
+    "varying_entity_share": 0.07239819004524888,
+    "within_price_variance_share": 0.002134643708072643
+  },
+  "published_2025_no_controls_benchmark": {
+    "source": "Demirer, Fradkin, Tadelis, and Peng (2025), Table OA-5 column 3",
+    "sample": "March-December 2025 open-source provider-model-days",
+    "elasticity": -1.02,
+    "standard_error": 0.13,
+    "n_observations": 48362,
+    "three_column_crosswalk": [
+      {
+        "specification": "date_fe",
+        "current_elasticity": -0.3397462865774462,
+        "current_standard_error": 0.11667974565205279,
+        "published_elasticity": -0.48,
+        "published_standard_error": 0.15,
+        "current_minus_published": 0.14025371342255377,
+        "difference_standard_error": 0.19003726751726285,
+        "difference_p_value": 0.46049459186919417,
+        "current_observations": 3705,
+        "published_observations": 48362
+      },
+      {
+        "specification": "date_and_model_fe",
+        "current_elasticity": -1.5465353089119038,
+        "current_standard_error": 0.27979237461434076,
+        "published_elasticity": -1.07,
+        "published_standard_error": 0.23,
+        "current_minus_published": -0.47653530891190377,
+        "difference_standard_error": 0.36219300502954443,
+        "difference_p_value": 0.1882766341078288,
+        "current_observations": 3705,
+        "published_observations": 48362
+      },
+      {
+        "specification": "date_model_and_provider_model_fe",
+        "current_elasticity": 0.20582413608223474,
+        "current_standard_error": 0.538851036676166,
+        "published_elasticity": -1.02,
+        "published_standard_error": 0.13,
+        "current_minus_published": 1.2258241360822348,
+        "difference_standard_error": 0.5543107790102758,
+        "difference_p_value": 0.02700549393546635,
+        "current_observations": 3705,
+        "published_observations": 48362
+      }
+    ],
+    "current_minus_benchmark": 1.2258241360822348,
+    "difference_standard_error": 0.5543107790102758,
+    "z_statistic": 2.211438388896115,
+    "p_value": 0.02700549393546635,
+    "current_sample_cluster_sign_flip_against_fixed_published_coefficient": {
+      "null_coefficient": -1.02,
+      "method": "monte_carlo",
+      "residual_price_support_clusters": 32,
+      "sign_patterns_or_draws": 99999,
+      "absolute_observed_cluster_score": 7.133554208316399,
+      "two_sided_p_value": 0.0003200032000320003,
+      "null_score_ci95": [
+        1.173035381559114,
+        6.07894598229697
+      ]
+    },
+    "claim_boundary": "The comparison treats the published and current estimates as independent. The data construction, calendar window, and available controls are not identical, so this is a replication benchmark rather than proof of a structural break."
+  },
+  "listed_price_event_support": {
+    "listed_price_change_threshold": 0.01,
+    "mover_events": 53,
+    "event_groups": 45,
+    "event_panel_rows": 520
+  },
+  "dynamic_promotion_gates": {
+    "panel_days": 11,
+    "minimum_panel_days": 30,
+    "listed_price_change_events": 53,
+    "minimum_listed_price_change_events": 200,
+    "listed_varying_entity_share": 0.08806818181818182,
+    "minimum_varying_entity_share": 0.25,
+    "effective_within_price_variance_share": 0.002659370088493809,
+    "listed_within_price_variance_share": 0.001826541521349866,
+    "minimum_within_price_variance_share": 0.02,
+    "within_effective_equivalent_to_revenue_foc": false,
+    "event_equivalent_to_revenue_foc": false
+  },
+  "dynamic_promotion_ready": false,
+  "unit_elasticity_mirage_screen": "pooled_unit_elasticity_rejected_by_exact_provider_model_fe",
+  "interpretation": "The pooled coefficient near -1 is exactly equivalent to a price-neutral public revenue-proxy share under the same fixed effects; it does not identify a residual-demand derivative. In the closest exact published specification, the current provider-model fixed-effect coefficient is near zero and rejects the gross-revenue FOC. This is a temporal replication discrepancy, not a causal demand estimate; the dynamic promotion gates remain closed.",
+  "claim_boundary": "H91 uses public aggregate provider token shares, transacted effective prices, and daily listed quotes. Prices are endogenous, provider quality and private discounts are incomplete, and only a small subset of provider/model entities changes listed price. Equivalence of a cross-sectional coefficient to -1 is not evidence that a provider maximizes revenue. Profit maximization additionally requires marginal cost."
+}

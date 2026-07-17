@@ -1,0 +1,296 @@
+{
+  "evidence_status": "retrospectively_preregistered_discovery",
+  "preregistration": "docs/h84-h85-stale-quote-adverse-selection-preregistration.md",
+  "observed_span_days": 7.658842592592593,
+  "support": {
+    "panel_rows": 490542,
+    "at_risk_rows": 270024,
+    "forward_choice_sets": 1197,
+    "backward_placebo_sets": 1109,
+    "models": 24,
+    "case_providers": 44
+  },
+  "primary_forward_contrast": {
+    "n_choice_sets": 1197,
+    "n_clusters": 141,
+    "mean": -0.11737396755354043,
+    "ci95": [
+      -0.18293366984013223,
+      -0.054860908567037875
+    ]
+  },
+  "backward_temporal_placebo": {
+    "n_choice_sets": 1109,
+    "n_clusters": 138,
+    "mean": -0.08296004416449511,
+    "ci95": [
+      -0.1383019730587459,
+      -0.028222315630994647
+    ]
+  },
+  "forward_exceeds_backward": false,
+  "permutation_reference": {
+    "draws": 10000,
+    "choice_sets": 1197,
+    "observed": -0.11737396755354043,
+    "null_mean": -0.0003257732089782634,
+    "one_sided_p": 1.0
+  },
+  "diagnostic_contrasts": {
+    "stale_cheap": {
+      "n_choice_sets": 1197,
+      "n_clusters": 141,
+      "mean": -0.11737396755354043,
+      "ci95": [
+        -0.18294036388699367,
+        -0.05668818016024723
+      ]
+    },
+    "log_quote_age": {
+      "n_choice_sets": 1197,
+      "n_clusters": 141,
+      "mean": 4.980536397058383e-05,
+      "ci95": [
+        -0.004267006331117516,
+        0.003595303742064769
+      ]
+    },
+    "cheapness": {
+      "n_choice_sets": 1197,
+      "n_clusters": 141,
+      "mean": -0.1460362031525115,
+      "ci95": [
+        -0.2228608302050567,
+        -0.07434727066986285
+      ]
+    },
+    "log1p_success": {
+      "n_choice_sets": 1197,
+      "n_clusters": 141,
+      "mean": -0.9781886583873491,
+      "ci95": [
+        -1.199428436975214,
+        -0.7394467353776248
+      ]
+    },
+    "capacity_load": {
+      "n_choice_sets": 869,
+      "n_clusters": 104,
+      "mean": 0.4218648832396607,
+      "ci95": [
+        0.1264173984959009,
+        0.8747538399760955
+      ]
+    },
+    "endpoint_success_share": {
+      "n_choice_sets": 1197,
+      "n_clusters": 141,
+      "mean": -0.06279644999672863,
+      "ci95": [
+        -0.08570146829969849,
+        -0.04120808882372272
+      ]
+    },
+    "prior_success_share_change": {
+      "n_choice_sets": 1145,
+      "n_clusters": 138,
+      "mean": 0.0024820500808385338,
+      "ci95": [
+        -0.0009898338196701446,
+        0.005761993786421487
+      ]
+    },
+    "stale_cheap_winsor": {
+      "n_choice_sets": 1197,
+      "n_clusters": 141,
+      "mean": -0.09065487351431989,
+      "ci95": [
+        -0.14507556585472278,
+        -0.04021318170328345
+      ]
+    }
+  },
+  "case_price_sticky_share": 0.9991645781119465,
+  "equal_model_weighted_primary": -0.04399050317695025,
+  "leave_one_provider_out": {
+    "n_omissions": 44,
+    "min": -0.13953695720577558,
+    "max": -0.07190343170181356
+  },
+  "leave_one_model_out": {
+    "n_omissions": 24,
+    "min": -0.13701238859794188,
+    "max": -0.06129994509660082
+  },
+  "non_left_censored_case_sensitivity": {
+    "n_choice_sets": 6,
+    "n_clusters": 3,
+    "mean": 0.13870394701410083,
+    "ci95": [
+      -0.12437610530895944,
+      0.19844654945335805
+    ]
+  },
+  "winsorized_age_price_sensitivity": {
+    "n_choice_sets": 1197,
+    "n_clusters": 141,
+    "mean": -0.09065487351431989,
+    "ci95": [
+      -0.14348670727484344,
+      -0.03911775897339891
+    ]
+  },
+  "cadence_bridge": {
+    "known_case_sets": 256,
+    "case_minus_rival_slow_or_unobserved_share": 0.0004761904761904766
+  },
+  "conditional_models": {
+    "surface_baseline": {
+      "model": "surface_baseline",
+      "features": [
+        "cheapness",
+        "log1p_capacity_ceiling_rpm"
+      ],
+      "n_train_choice_sets": 609,
+      "n_test_choice_sets": 261,
+      "temporal_split_ts": "2026-07-11T17:42:59+00:00",
+      "coefficients_standardized": {
+        "cheapness": -0.00141454767124045,
+        "log1p_capacity_ceiling_rpm": -1.3266657001216973
+      },
+      "standard_errors": {
+        "cheapness": 0.05148298175798319,
+        "log1p_capacity_ceiling_rpm": 0.08225985361005171
+      },
+      "odds_ratios_per_training_sd": {
+        "cheapness": 0.9985864523297447,
+        "log1p_capacity_ceiling_rpm": 0.26536057960568815
+      },
+      "heldout_log_loss": 1.4253607713900251,
+      "heldout_top_one_accuracy": 0.4367816091954023,
+      "heldout_mean_reciprocal_rank": 0.6312856258258558
+    },
+    "stale_quote": {
+      "model": "stale_quote",
+      "features": [
+        "cheapness",
+        "log1p_capacity_ceiling_rpm",
+        "log_quote_age",
+        "stale_cheap",
+        "spell_left_censored"
+      ],
+      "n_train_choice_sets": 609,
+      "n_test_choice_sets": 261,
+      "temporal_split_ts": "2026-07-11T17:42:59+00:00",
+      "coefficients_standardized": {
+        "cheapness": 0.038892378482343164,
+        "log1p_capacity_ceiling_rpm": -1.3308715321605296,
+        "log_quote_age": -0.07611902534513176,
+        "stale_cheap": -0.05029545218830641,
+        "spell_left_censored": -0.07950007353188107
+      },
+      "standard_errors": {
+        "cheapness": 0.09828001074345076,
+        "log1p_capacity_ceiling_rpm": 0.0823976225104307,
+        "log_quote_age": 0.6616295294947427,
+        "stale_cheap": 0.09789720950796849,
+        "spell_left_censored": 0.09085367600079229
+      },
+      "odds_ratios_per_training_sd": {
+        "cheapness": 1.0396585879939908,
+        "log1p_capacity_ceiling_rpm": 0.2642468612759714,
+        "log_quote_age": 0.9267058985053801,
+        "stale_cheap": 0.9509484231989327,
+        "spell_left_censored": 0.9235779520561798
+      },
+      "heldout_log_loss": 1.4259376205986338,
+      "heldout_top_one_accuracy": 0.42911877394636017,
+      "heldout_mean_reciprocal_rank": 0.6277444671122832
+    },
+    "stale_quote_log_loss_improvement": -0.0005768492086086763,
+    "stale_quote_operational_sample": {
+      "model": "stale_quote_operational_sample",
+      "features": [
+        "cheapness",
+        "log1p_capacity_ceiling_rpm",
+        "log_quote_age",
+        "stale_cheap",
+        "spell_left_censored"
+      ],
+      "n_train_choice_sets": 608,
+      "n_test_choice_sets": 261,
+      "temporal_split_ts": "2026-07-11T17:37:59+00:00",
+      "coefficients_standardized": {
+        "cheapness": 0.0375059512751225,
+        "log1p_capacity_ceiling_rpm": -1.3289636850223852,
+        "log_quote_age": -0.07609409617528813,
+        "stale_cheap": -0.04952112641331829,
+        "spell_left_censored": -0.0795133947618625
+      },
+      "standard_errors": {
+        "cheapness": 0.09836378731958899,
+        "log1p_capacity_ceiling_rpm": 0.08243850916436245,
+        "log_quote_age": 0.6612895528504384,
+        "stale_cheap": 0.09797214657710498,
+        "spell_left_censored": 0.09090834371922324
+      },
+      "odds_ratios_per_training_sd": {
+        "cheapness": 1.0382181757854407,
+        "log1p_capacity_ceiling_rpm": 0.26475148511352836,
+        "log_quote_age": 0.9267290008020784,
+        "stale_cheap": 0.9516850522323178,
+        "spell_left_censored": 0.9235656489438211
+      },
+      "heldout_log_loss": 1.4256723073190238,
+      "heldout_top_one_accuracy": 0.42528735632183906,
+      "heldout_mean_reciprocal_rank": 0.6258287583000226
+    },
+    "operational": {
+      "model": "operational",
+      "features": [
+        "cheapness",
+        "log1p_capacity_ceiling_rpm",
+        "log_quote_age",
+        "stale_cheap",
+        "spell_left_censored",
+        "log1p_success",
+        "capacity_load"
+      ],
+      "n_train_choice_sets": 608,
+      "n_test_choice_sets": 261,
+      "temporal_split_ts": "2026-07-11T17:37:59+00:00",
+      "coefficients_standardized": {
+        "cheapness": 0.04118709739189811,
+        "log1p_capacity_ceiling_rpm": -1.271182079254542,
+        "log_quote_age": -0.05558896925379654,
+        "stale_cheap": -0.04680350957622048,
+        "spell_left_censored": -0.0808775988834016,
+        "log1p_success": -0.06351864546326612,
+        "capacity_load": 0.037992977518092705
+      },
+      "standard_errors": {
+        "cheapness": 0.09844203871915547,
+        "log1p_capacity_ceiling_rpm": 0.10791272647829288,
+        "log_quote_age": 0.6637576016559049,
+        "stale_cheap": 0.09786945905264358,
+        "spell_left_censored": 0.0910778493557787,
+        "log1p_success": 0.08598986308596494,
+        "capacity_load": 0.04803343764332029
+      },
+      "odds_ratios_per_training_sd": {
+        "cheapness": 1.0420470515935505,
+        "log1p_capacity_ceiling_rpm": 0.2804998526715774,
+        "log_quote_age": 0.9459278614305875,
+        "stale_cheap": 0.954274885046588,
+        "spell_left_censored": 0.922306575890611,
+        "log1p_success": 0.9384566211790771,
+        "capacity_load": 1.0387239384328208
+      },
+      "heldout_log_loss": 1.431186515646249,
+      "heldout_top_one_accuracy": 0.41762452107279696,
+      "heldout_mean_reciprocal_rank": 0.6231467659628579
+    }
+  },
+  "claim_boundary": "This is a one-step-ahead within-model predictive association. It does not identify strategic quote staleness, provider intent, front-running, a causal router effect, or welfare loss.",
+  "analysis_cutoff_utc": "2026-07-15T11:33:02+00:00"
+}

@@ -1,0 +1,965 @@
+{
+  "analysis_source": {
+    "kind": "local_snapshot_of_huggingface_revision",
+    "path": "/Users/tchitra/repos/ai-routing/tmp/paper-rerun-b389923-data",
+    "patterns": [
+      "curated/endpoints_snapshots/*/*.parquet",
+      "derived/pricing_changes/*/*.parquet",
+      "curated/models_snapshots/*/*.parquet",
+      "curated/gpu_offers_snapshots/*/*.parquet",
+      "curated/congestion_intraday/*/*.parquet",
+      "curated/event_bursts_congestion/*/*.parquet",
+      "curated/direct_prices_daily/*/*.parquet",
+      "curated/endpoint_stats_daily/*/*.parquet",
+      "curated/perf_comparisons_daily/*/*.parquet",
+      "curated/effective_pricing_daily/*/*.parquet",
+      "curated/router_public_quote_snapshots/*/*.parquet",
+      "curated/routing_simulation/*/*.parquet",
+      "curated/model_activity_daily/*/*.parquet"
+    ]
+  },
+  "created_at_utc": "2026-07-17T06:07:29.318422+00:00",
+  "failures": [
+    "h17_events"
+  ],
+  "input_revision": "b389923ad7713bc230dd522f770aa306bf778806",
+  "modules": [
+    {
+      "artifacts": [
+        "pm1_ladder.parquet",
+        "pm1_summary.json"
+      ],
+      "claim_boundary": "11-day panel: rungs are directional until the registered 30-day vintage; congestion covariates exist only for hot-panel pairs (cong_missing indicator); provider_rate is an endogenous frailty substitute.",
+      "error": null,
+      "evidence_status": "power_gated",
+      "module": "pm1_hazard_baseline",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "pm2_changes.parquet",
+        "pm2_summary.json"
+      ],
+      "claim_boundary": "Panel-window spells only (first spells left-censored, excluded from the age moment); kurtosis pools heterogeneous endpoints \u2014 ALL theory wants within-unit standardization, which gates on more events per endpoint.",
+      "error": null,
+      "evidence_status": "provisional_descriptive",
+      "module": "pm2_sufficient_stats",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "pm5_author_anchor_symmetry.parquet",
+        "pm5_author_price_atom.parquet",
+        "pm5_reference_price_landing.parquet",
+        "pm5_summary.json"
+      ],
+      "claim_boundary": "Single-mover tie events only (multi-mover ticks skipped); author identity uses the shared provider-family alias crosswalk; both selected-tie and all-market author identity are tested against price-multiplicity-preserving label nulls; the 5-min grid leaves sub-tick sequencing unobserved.",
+      "error": null,
+      "evidence_status": "provisional_descriptive",
+      "module": "pm5_tie_microstructure",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "pm6_events.parquet",
+        "pm6_summary.json"
+      ],
+      "claim_boundary": "Windows 72h/96h; classes are event-level heuristics pending the pm8 regime model; volume shares from effective_pricing (missing for some providers); 'algo' = >=2 changes in panel.",
+      "error": null,
+      "evidence_status": "provisional_descriptive",
+      "module": "pm6_event_reclassification",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "pm9_summary.json"
+      ],
+      "claim_boundary": "Author identification uses the shared provider-family alias crosswalk; exact-price matching at rtol 1e-6; base rate is a crude per-window activity level, not a matched counterfactual \u2014 the DiD version gates on more author moves.",
+      "error": null,
+      "evidence_status": "power_gated",
+      "module": "pm9_author_anchor",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "bm1_provider_cadence.parquet",
+        "bm1_summary.json"
+      ],
+      "claim_boundary": "Cadence is inferred from public quote changes, not a provider's internal repricing technology. Rates use observed quote days, not the span between the first and last price change. The live window left-censors slow providers and cannot identify adoption.",
+      "error": null,
+      "evidence_status": "power_gated",
+      "module": "bm1_pricing_technology",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "bm2_frozen_cadence_reaction_panel.parquet",
+        "bm2_reaction_panel.parquet",
+        "bm2_summary.json"
+      ],
+      "claim_boundary": "The promoted screen freezes cadence classes on the first 70% of events, evaluates later waves, and excludes incomplete response windows. The full-panel classification is retained only as an outcome-adaptive sensitivity. Post-versus-pre movement remains noncausal: common cost, author-price, or demand news can move both providers.",
+      "error": null,
+      "evidence_status": "power_gated",
+      "module": "bm2_fast_slow_reactions",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "bm3_premium_coefficients.parquet",
+        "bm3_summary.json"
+      ],
+      "claim_boundary": "The regression absorbs model-day price levels and public delivered latency, throughput, tool-call error, and structured-output error. It does not observe all endpoint fidelity, private discounts, costs, or endogenous adoption of fast repricing, so the coefficient is not a causal technology effect.",
+      "error": null,
+      "evidence_status": "power_gated",
+      "module": "bm3_quality_adjusted_premium",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "bm4_provider_slopes.parquet",
+        "bm4_reaction_rules.parquet",
+        "bm4_summary.json"
+      ],
+      "claim_boundary": "Cadence classes are frozen on the first 70% of events before the temporal holdout. Same-snapshot changes have no invented order and ambiguous most-recent rival moves are excluded. A Brown-MacKay predictive gain would not prove strategic observation; both models omit latent common shocks and costs.",
+      "error": null,
+      "evidence_status": "provisional_descriptive",
+      "module": "bm4_reaction_rules",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "bm5_model_comparison.parquet",
+        "bm5_summary.json"
+      ],
+      "claim_boundary": "This screens competitive structural twins before collusion. It cannot identify profits, common pricing vendors, private signals, or tacit coordination.",
+      "error": null,
+      "evidence_status": "power_gated",
+      "module": "bm5_competitive_null",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "pm5_menu_simulation.pdf",
+        "pm5_menu_simulation.png",
+        "pm5_menu_simulation_summary.json",
+        "pm5_sim1_event_level_replications.parquet",
+        "pm5_sim1_summary.parquet",
+        "pm5_sim2_empirical_calibration.parquet",
+        "pm5_sim2_known_clock_replications.parquet",
+        "pm5_sim2_summary.parquet"
+      ],
+      "claim_boundary": "SIM1 measures finite-sample inference on a declared conditional design; SIM2 measures size and power only inside one registered known-clock menu family, which CAL1 rejects as an empirical calibration and therefore remains a stress-test counterexample. Neither identifies private request order, intent, collusion, or welfare loss.",
+      "error": null,
+      "evidence_status": "preregistered_post_nine_date_simulation_complete",
+      "module": "pm5_menu_simulation",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h13_basis.parquet",
+        "h13_provider_day.parquet",
+        "h13_summary.json"
+      ],
+      "claim_boundary": "posted list-price comparison only; it does not identify executable fills, routing decisions, or market-wide quote passthrough",
+      "error": null,
+      "evidence_status": "power_gated",
+      "module": "h13_venue_basis",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h17_events.parquet"
+      ],
+      "claim_boundary": null,
+      "error": "IOException: IO Error: No files found that match the pattern \"tmp/paper-rerun-b389923-data/backfill/models_snapshots_wayback/*/*.parquet\"",
+      "evidence_status": null,
+      "module": "h17_events",
+      "status": "error"
+    },
+    {
+      "artifacts": [
+        "h19_provider_features.parquet",
+        "h19_provider_types.parquet",
+        "h19_summary.json"
+      ],
+      "claim_boundary": null,
+      "error": null,
+      "evidence_status": null,
+      "module": "h19_provider_types",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h21_follow_pairs.parquet",
+        "h21_summary.json"
+      ],
+      "claim_boundary": null,
+      "error": null,
+      "evidence_status": null,
+      "module": "h21_reactions",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h42_event_effects.parquet",
+        "h42_routing_event_intraday.parquet",
+        "h42_routing_event_panel.parquet",
+        "h42_routing_event_quality.parquet",
+        "h42_summary.json"
+      ],
+      "claim_boundary": "public data can measure quote/rank changes and rolling flow proxies; it cannot identify literal front-running, provider profit, or private order flow",
+      "error": null,
+      "evidence_status": null,
+      "module": "h42_routing_mev",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h68_competition.parquet",
+        "h68_competition_summary.json"
+      ],
+      "claim_boundary": "One latent factor over public quote/repricing/demand-share indicators on a short panel. It ranks markets by observable competitive activity; it does not identify conduct, markups over cost, or welfare, and dispersion's loading sign is a diagnostic, not an assumption.",
+      "error": null,
+      "evidence_status": "provisional_descriptive",
+      "module": "h68_competition",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h82_enforcement_daily_coverage.parquet",
+        "h82_enforcement_event_effects.parquet",
+        "h82_enforcement_event_registry.parquet",
+        "h82_enforcement_event_time.parquet",
+        "h82_enforcement_negative_control_matches.parquet",
+        "h82_enforcement_substitution.pdf",
+        "h82_enforcement_substitution.png",
+        "h82_summary.json"
+      ],
+      "claim_boundary": "H82 is an observational event study of public rolling aggregates. Rate-limit onsets are endogenous to load and may share latent causes with routing volume. The data do not reveal request ordering, customer identity, private eligibility, router intent, front-running, or the welfare effect of capacity certification.",
+      "error": null,
+      "evidence_status": "descriptive_enforcement_substitution_power_gated",
+      "module": "h82_enforcement_substitution",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h84_backward_choice_contrasts.parquet",
+        "h84_backward_placebo_rows.parquet",
+        "h84_forward_choice_contrasts.parquet",
+        "h84_forward_choice_rows.parquet",
+        "h84_stale_quote_hazard.pdf",
+        "h84_stale_quote_hazard.png",
+        "h84_stale_quote_risk_panel.parquet",
+        "h84_summary.json"
+      ],
+      "claim_boundary": "This is a one-step-ahead within-model predictive association. It does not identify strategic quote staleness, provider intent, front-running, a causal router effect, or welfare loss.",
+      "error": null,
+      "evidence_status": "retrospectively_preregistered_discovery",
+      "module": "h84_stale_quote_hazard",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h91_daily_cross_section.parquet",
+        "h91_listed_price_event_specs.parquet",
+        "h91_listed_prompt_two_way_lopo.parquet",
+        "h91_oa5_replication_crosswalk.parquet",
+        "h91_revenue_foc_specs.parquet",
+        "h91_summary.json"
+      ],
+      "claim_boundary": "H91 uses public aggregate provider token shares, transacted effective prices, and daily listed quotes. Prices are endogenous, provider quality and private discounts are incomplete, and only a small subset of provider/model entities changes listed price. Equivalence of a cross-sectional coefficient to -1 is not evidence that a provider maximizes revenue. Profit maximization additionally requires marginal cost.",
+      "error": null,
+      "evidence_status": "current_provider_model_fe_rejects_revenue_stationarity_but_not_causal",
+      "module": "h91_revenue_stationarity",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h92_daily_revenue_share_identity.parquet",
+        "h92_price_label_permutation.parquet",
+        "h92_revenue_share_panel.parquet",
+        "h92_summary.json"
+      ],
+      "claim_boundary": "The revenue object is effective output price multiplied by total tokens, not provider billing or profit. The decomposition is an accounting identity and does not by itself explain why price and quantity assort negatively. Price labels are endogenous, and the permutation test rejects exchangeable matching rather than identifying routing causality.",
+      "error": null,
+      "evidence_status": "exact_accounting_decomposition_with_price_neutral_revenue_shares",
+      "module": "h92_revenue_share_identity",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h93_coincident_shocks.parquet",
+        "h93_coverage.parquet",
+        "h93_cross_router_price_policy_panel.html",
+        "h93_cross_router_price_policy_panel.pdf",
+        "h93_cross_router_price_policy_panel.png",
+        "h93_price_events.parquet",
+        "h93_simulated_routes.parquet",
+        "h93_simulated_switches.parquet",
+        "h93_simultaneous_basis.parquet",
+        "h93_summary.json"
+      ],
+      "claim_boundary": "H93 currently observes posted public catalog quotes and simulated cheapest-provider choices. It does not observe market-wide flow, private eligibility, or realized routing. A causal router-policy claim additionally requires repeated common shocks, pre-trends, and owned-route validation.",
+      "error": null,
+      "evidence_status": "initial_cross_sectional_coverage_only",
+      "module": "h93_cross_router_price_policy",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "h94_circular_shift_inference.parquet",
+        "h94_circular_shift_placebo.parquet",
+        "h94_common_shock_matches.parquet",
+        "h94_cross_router_pass_through_panel.html",
+        "h94_cross_router_pass_through_panel.pdf",
+        "h94_cross_router_pass_through_panel.png",
+        "h94_lead_lag_inference.parquet",
+        "h94_material_wedge_spells.parquet",
+        "h94_negative_control_matches.parquet",
+        "h94_price_transitions.parquet",
+        "h94_primary_quotes.parquet",
+        "h94_simulated_switch_links.parquet",
+        "h94_summary.json",
+        "h94_synchronous_pairs.parquet"
+      ],
+      "claim_boundary": "H94 measures synchronization of public posted menus and simulated cheapest-provider consequences. It does not identify identical contracts, executable firmness, private eligibility, market-wide flow, provider profit, user welfare, or literal front-running.",
+      "error": null,
+      "evidence_status": "prospective_gate_closed",
+      "module": "h94_cross_router_pass_through",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "wcv0_data_inventory.parquet",
+        "wcv0_summary.json"
+      ],
+      "claim_boundary": "Rows and dates establish coverage, not independence, causal variation, correctness, or representativeness. HF is the authoritative store; local files are outputs only.",
+      "error": null,
+      "evidence_status": "data_audit",
+      "module": "wcv0_data_audit",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "wcv6_provider_revenue_gap.parquet",
+        "wcv6_provider_revenue_scorecard.parquet",
+        "wcv6_revenue_gap_scenarios.parquet",
+        "wcv6_summary.json"
+      ],
+      "claim_boundary": "Each row is a bounded unilateral deviation around an observed public token share and posted completion-price proxy. It is not observed provider billing, profit, a causal demand curve, or a simultaneous equilibrium. Individual best-response revenue gains cannot be summed as an attainable market-wide revenue gain. Boundary optima mean the distance is unidentified beyond the registered grid.",
+      "error": null,
+      "evidence_status": "bounded_revenue_proxy_sensitivity",
+      "module": "wcv6_revenue_gap",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        "hypothesis_scorecard.json"
+      ],
+      "claim_boundary": null,
+      "error": null,
+      "evidence_status": null,
+      "module": "scorecard",
+      "status": "ok"
+    },
+    {
+      "artifacts": [
+        ".manuscript_vintages/frozen_9d/bm1_provider_cadence.parquet",
+        ".manuscript_vintages/frozen_9d/bm1_summary.json",
+        ".manuscript_vintages/frozen_9d/bm2_frozen_cadence_reaction_panel.parquet",
+        ".manuscript_vintages/frozen_9d/bm2_reaction_panel.parquet",
+        ".manuscript_vintages/frozen_9d/bm2_summary.json",
+        ".manuscript_vintages/frozen_9d/bm3_premium_coefficients.parquet",
+        ".manuscript_vintages/frozen_9d/bm3_summary.json",
+        ".manuscript_vintages/frozen_9d/bm4_provider_slopes.parquet",
+        ".manuscript_vintages/frozen_9d/bm4_reaction_rules.parquet",
+        ".manuscript_vintages/frozen_9d/bm4_summary.json",
+        ".manuscript_vintages/frozen_9d/pm1_ladder.parquet",
+        ".manuscript_vintages/frozen_9d/pm1_summary.json",
+        ".manuscript_vintages/frozen_9d/pm5_author_anchor_symmetry.parquet",
+        ".manuscript_vintages/frozen_9d/pm5_author_price_atom.parquet",
+        ".manuscript_vintages/frozen_9d/pm5_reference_price_landing.parquet",
+        ".manuscript_vintages/frozen_9d/pm5_summary.json",
+        "manuscript_vintage_comparison.parquet",
+        "manuscript_vintage_summary.json",
+        "mv_frozen_9d_bm1_provider_cadence.parquet",
+        "mv_frozen_9d_bm1_summary.json",
+        "mv_frozen_9d_bm2_frozen_cadence_reaction_panel.parquet",
+        "mv_frozen_9d_bm2_reaction_panel.parquet",
+        "mv_frozen_9d_bm2_summary.json",
+        "mv_frozen_9d_bm3_premium_coefficients.parquet",
+        "mv_frozen_9d_bm3_summary.json",
+        "mv_frozen_9d_bm4_provider_slopes.parquet",
+        "mv_frozen_9d_bm4_reaction_rules.parquet",
+        "mv_frozen_9d_bm4_summary.json",
+        "mv_frozen_9d_pm1_ladder.parquet",
+        "mv_frozen_9d_pm1_summary.json",
+        "mv_frozen_9d_pm5_author_anchor_symmetry.parquet",
+        "mv_frozen_9d_pm5_author_price_atom.parquet",
+        "mv_frozen_9d_pm5_reference_price_landing.parquet",
+        "mv_frozen_9d_pm5_summary.json"
+      ],
+      "claim_boundary": "The nine-day vintage is descriptive. No 30-day estimate is computed before the calendar gate, and the fixed comparison table cannot add metrics after seeing the confirmatory vintage. Each release is pinned to one immutable dataset revision before any input query runs.",
+      "error": null,
+      "evidence_status": "frozen_vintage_only",
+      "module": "manuscript_vintages",
+      "status": "ok"
+    }
+  ],
+  "output_files": {
+    ".manuscript_vintages/frozen_9d/bm1_provider_cadence.parquet": {
+      "bytes": 7964,
+      "sha256": "bc09e1f6c3ee602bfeb45c112877b22750083f08aa859ae2161a4f273b67133d"
+    },
+    ".manuscript_vintages/frozen_9d/bm1_summary.json": {
+      "bytes": 909,
+      "sha256": "908a5a7df2402c665ff94e2f31e82625c05b2fc11f224bf7e0da38399e4acdc4"
+    },
+    ".manuscript_vintages/frozen_9d/bm2_frozen_cadence_reaction_panel.parquet": {
+      "bytes": 7449,
+      "sha256": "256eb333f8a90de02b14de78a4b4918331c25c3b032a5da412f597172dfe321c"
+    },
+    ".manuscript_vintages/frozen_9d/bm2_reaction_panel.parquet": {
+      "bytes": 11711,
+      "sha256": "0cbce4b7605a006598965532867181f35af133c957b9842156b17af3c3dac939"
+    },
+    ".manuscript_vintages/frozen_9d/bm2_summary.json": {
+      "bytes": 2424,
+      "sha256": "7b58c7674927a668d243bdda0b4f6d2486891abb0c4c4721162c9c946cc93a71"
+    },
+    ".manuscript_vintages/frozen_9d/bm3_premium_coefficients.parquet": {
+      "bytes": 5389,
+      "sha256": "91bd2eff9eb146433abbd7099f144180a3cf1be7fab0d2a5131961990803a9c2"
+    },
+    ".manuscript_vintages/frozen_9d/bm3_summary.json": {
+      "bytes": 1677,
+      "sha256": "43f11aa6cb8cd7fa6a196bdac76f180a248f4172295dadaa2825433c592f941b"
+    },
+    ".manuscript_vintages/frozen_9d/bm4_provider_slopes.parquet": {
+      "bytes": 2625,
+      "sha256": "5adcbe3edfd6ed166e6e1e918d56dbc9ae61bf12b724301da7030b4149e27290"
+    },
+    ".manuscript_vintages/frozen_9d/bm4_reaction_rules.parquet": {
+      "bytes": 16938,
+      "sha256": "33d00fe36d6b6313776d9f924698f65ed33aad08d3856af0e4a3a8794f135e26"
+    },
+    ".manuscript_vintages/frozen_9d/bm4_summary.json": {
+      "bytes": 3171,
+      "sha256": "2c7fd942e234eac0ee6f9231872231acf50820f3dea0294a3d8661ee7bb151d3"
+    },
+    ".manuscript_vintages/frozen_9d/pm1_ladder.parquet": {
+      "bytes": 4211,
+      "sha256": "71ed3d6c1c4f04f64001d5e4368865549acf88a8194bb2933dbe36594f64036d"
+    },
+    ".manuscript_vintages/frozen_9d/pm1_summary.json": {
+      "bytes": 2077,
+      "sha256": "c8110783c8ee41ad5d9939c8c8fc18bfb92424a3bea999595fed52bf6d7c18aa"
+    },
+    ".manuscript_vintages/frozen_9d/pm5_author_anchor_symmetry.parquet": {
+      "bytes": 12103,
+      "sha256": "c1614ac6e91e612225d55772454bad897d5e7c32d3bbb3f2d5df1f7aba9610d5"
+    },
+    ".manuscript_vintages/frozen_9d/pm5_author_price_atom.parquet": {
+      "bytes": 8350,
+      "sha256": "38754670ef447d2835171a8fb7eddd48a5205160765f077586cb4bd226dac55d"
+    },
+    ".manuscript_vintages/frozen_9d/pm5_reference_price_landing.parquet": {
+      "bytes": 27972,
+      "sha256": "35195a4ba0b98978a5a9797fd6e68a452de11746242ca0d05ffcce98364fefa3"
+    },
+    ".manuscript_vintages/frozen_9d/pm5_summary.json": {
+      "bytes": 18304,
+      "sha256": "6ba5920a164754fbf9ed3947f32f992f2e2c0deb80bedeb72da905cc46def47e"
+    },
+    "bm1_provider_cadence.parquet": {
+      "bytes": 7989,
+      "sha256": "85106440e9ce19ad96ee33ff76c4b7d46de10395186813dbeb52043060729342"
+    },
+    "bm1_summary.json": {
+      "bytes": 971,
+      "sha256": "bd35d35ddbce61989cb7e2d9633dddd34530c802ac938c26e9b2a1e5d41ee737"
+    },
+    "bm2_frozen_cadence_reaction_panel.parquet": {
+      "bytes": 5393,
+      "sha256": "2f667a877d97ec5017c4ae0ca164272a6bf5292d5ef7797cb0815be347ff0184"
+    },
+    "bm2_reaction_panel.parquet": {
+      "bytes": 12173,
+      "sha256": "fc964579d980cda514c29f05a3f60f907ad0a53a913c60b0afa1e58ff074c050"
+    },
+    "bm2_summary.json": {
+      "bytes": 2464,
+      "sha256": "3159da5ba2a53ba74b494cf985ee607ac6e86fbbe80d1d9aefe42ab0323b7725"
+    },
+    "bm3_premium_coefficients.parquet": {
+      "bytes": 5389,
+      "sha256": "bf3b59f8756d0c11f1736ae78035dae808fd7be46684c717e2693cb63afb665e"
+    },
+    "bm3_summary.json": {
+      "bytes": 1717,
+      "sha256": "d2b785c0034e9be66d90fff1b68d5fc600709b9e7cbeb68367cbc8475ccc9f16"
+    },
+    "bm4_provider_slopes.parquet": {
+      "bytes": 2625,
+      "sha256": "b491d436446ef94227c6eda010a6aa233225eb3e9911cba5735e16fd034de113"
+    },
+    "bm4_reaction_rules.parquet": {
+      "bytes": 20580,
+      "sha256": "134ed976d6fbe0cdc6f6ae30687e0ee825805a7309eedec072a44cbcc3d3483b"
+    },
+    "bm4_summary.json": {
+      "bytes": 3219,
+      "sha256": "893312fbe898a84b1c1830b360682516a82de3a34e33e935aaab423c20133d22"
+    },
+    "bm5_model_comparison.parquet": {
+      "bytes": 3533,
+      "sha256": "b0bb202a0f59b57ad5ce9974ccb1c93d146692ff0421121c013b80381b8d0e74"
+    },
+    "bm5_summary.json": {
+      "bytes": 946,
+      "sha256": "0708a0be141ab7c89869cc1a2a257a05e767aa6b91992d7eea0712b6582b161f"
+    },
+    "h13_basis.parquet": {
+      "bytes": 22039,
+      "sha256": "bd2e0b21e71b21e6f30bc35a3851ac15ba9c099b9930cf7e0758f4f29e12e9c2"
+    },
+    "h13_provider_day.parquet": {
+      "bytes": 5247,
+      "sha256": "785de089184392fde4338ff2d968ad6faf78eb5285b3823ffef39ae2f48c40cf"
+    },
+    "h13_summary.json": {
+      "bytes": 2089,
+      "sha256": "73fd017905983b477bbc9139556c0001c39962fb5d6a80a98fcaecbbcd9adc84"
+    },
+    "h17_events.parquet": {
+      "bytes": 36134,
+      "sha256": "78e00dfb4283bf9be03338d28abd406d2c0c005c7eca22bb6422a33e9c099810"
+    },
+    "h19_provider_features.parquet": {
+      "bytes": 20248,
+      "sha256": "3de1551994d0c88e028d2c3b24c6e2afd05c888c9ae7e4c6d7bdcd63a6508a2c"
+    },
+    "h19_provider_types.parquet": {
+      "bytes": 20828,
+      "sha256": "08e76ed929efc365908af7986d3eb4e8e701d77d2ef0c4780c7bbc763b4afa77"
+    },
+    "h19_summary.json": {
+      "bytes": 3412,
+      "sha256": "09f5d639ffeb8a44d01e49684638706a62d69b8a0b89b3fbb1481abd13329a23"
+    },
+    "h21_follow_pairs.parquet": {
+      "bytes": 161394,
+      "sha256": "e43dd412fed29529d0915b07a510fb76dd0818092f5392c5ad74973ca27c9c95"
+    },
+    "h21_summary.json": {
+      "bytes": 513,
+      "sha256": "eba91e15980f88017ea1031a771afa3f78e8bdef51d3c59ce50acc65d58beb4f"
+    },
+    "h42_event_effects.parquet": {
+      "bytes": 13712,
+      "sha256": "0c8dd36293acf2e5c8d726ffb057de9f8da55daa83af13cc5140364866333272"
+    },
+    "h42_routing_event_intraday.parquet": {
+      "bytes": 3545290,
+      "sha256": "617e85679095b03212ed15473ddec6587136376134d707e046fc8a432ae9893c"
+    },
+    "h42_routing_event_panel.parquet": {
+      "bytes": 118130,
+      "sha256": "746f8452f93c625e4264df548274e5f3aaaa896d892087d858a18d575f3cacf2"
+    },
+    "h42_routing_event_quality.parquet": {
+      "bytes": 23459,
+      "sha256": "ede7c1e22a920f352d14769848424dbb2e100f239254f0f9d8fa40e61dabfc0b"
+    },
+    "h42_summary.json": {
+      "bytes": 1805,
+      "sha256": "c7da519768c51cef1bdf81cac07e0d81950f3d17729cce65b324d9cc666169fd"
+    },
+    "h68_competition.parquet": {
+      "bytes": 19111,
+      "sha256": "8eb8651ee6f7284209fad16b681f05e5d786f6e14e61a694d192a658f5667030"
+    },
+    "h68_competition_summary.json": {
+      "bytes": 3671,
+      "sha256": "715dcfad88f864acdbce8dfdcc7120c334e9519a416d2e9c718eed1f48988afa"
+    },
+    "h82_enforcement_daily_coverage.parquet": {
+      "bytes": 4193,
+      "sha256": "bed7dc2a95dae4832b7e3b936dec845a090bc1c4aabb45beffb4bb16a2712f41"
+    },
+    "h82_enforcement_event_effects.parquet": {
+      "bytes": 834161,
+      "sha256": "74de349b54594c3c5164f8f76d34358511ba6f2526efdef90f92ed18df691876"
+    },
+    "h82_enforcement_event_registry.parquet": {
+      "bytes": 593261,
+      "sha256": "5ab9fc8382cda0863bd717e67dc9d9b149cedb164689d305e4201de216a58186"
+    },
+    "h82_enforcement_event_time.parquet": {
+      "bytes": 2313327,
+      "sha256": "444efb48802d515f7ec1465b125bcdb4b2e5d49902368a138e089c353bc29482"
+    },
+    "h82_enforcement_negative_control_matches.parquet": {
+      "bytes": 30609,
+      "sha256": "77323e94b287d442608aec646c19533c3aec4cad6ebee528aa11efae8ca4c995"
+    },
+    "h82_enforcement_substitution.pdf": {
+      "bytes": 27243,
+      "sha256": "9aa77809ece3c17efc0326f769b0f4ba3c026b474fc9bf793f6ef71601311d05"
+    },
+    "h82_enforcement_substitution.png": {
+      "bytes": 325795,
+      "sha256": "654ded91fde2c442bbfa863190b9cd5653238072cdbbba44af8dd2fcac45d8a9"
+    },
+    "h82_summary.json": {
+      "bytes": 5788,
+      "sha256": "a486b1442fe35ac246953a18913f921ae7cd2ae7876684644bc34845339d8698"
+    },
+    "h84_backward_choice_contrasts.parquet": {
+      "bytes": 115244,
+      "sha256": "d7b31ca33f4236be0cfab94f0d33ffaa1fb449e9e6a51e5ed011c6e659ed3037"
+    },
+    "h84_backward_placebo_rows.parquet": {
+      "bytes": 1672992,
+      "sha256": "14c026a151e534671a894d1a019077273b3738b4f16626a310d0d2a2c8235090"
+    },
+    "h84_forward_choice_contrasts.parquet": {
+      "bytes": 118104,
+      "sha256": "9e80d9af4024d3350ac231873993db0932502d041c72b08ca3caec66d39a981b"
+    },
+    "h84_forward_choice_rows.parquet": {
+      "bytes": 1723806,
+      "sha256": "6878385587201ac9fc6123a71504b44a885226802b81989d0a52c037169eb3a7"
+    },
+    "h84_stale_quote_hazard.pdf": {
+      "bytes": 24712,
+      "sha256": "8487e59ee71a8a5fe497fafddc1ce4d7056d7b8b8b72deab4da2d5aef765a766"
+    },
+    "h84_stale_quote_hazard.png": {
+      "bytes": 116349,
+      "sha256": "e36c8e7e8aef502592ad2aae96f4748ba352e0f143240e80a99347527806d376"
+    },
+    "h84_stale_quote_risk_panel.parquet": {
+      "bytes": 30231936,
+      "sha256": "96055e57074f697fad7190a76738d3d78996724768a22d0980b62da5b2248623"
+    },
+    "h84_summary.json": {
+      "bytes": 9188,
+      "sha256": "9df93a0d8bda058cc5c0cb54c5aad5459a31d55a43b4ae695ef684db731e5b1c"
+    },
+    "h91_daily_cross_section.parquet": {
+      "bytes": 6465,
+      "sha256": "478678385e57868dc6c21f2b624231643555bca9680574b0b989d733a619ad64"
+    },
+    "h91_listed_price_event_specs.parquet": {
+      "bytes": 6165,
+      "sha256": "f73c8bbeada79186c52b895e8bd6b208df3b4d483a6a3e663efa142c1ec52460"
+    },
+    "h91_listed_prompt_two_way_lopo.parquet": {
+      "bytes": 20612,
+      "sha256": "e9f704b798de774e9f457b624556c3ab3bde3c223439e9ce9523ae6b9deb4642"
+    },
+    "h91_oa5_replication_crosswalk.parquet": {
+      "bytes": 7515,
+      "sha256": "14a541e8b029a706952e2da8ee87a8ec1438934c1ce99327d8f97dddf491f8bd"
+    },
+    "h91_revenue_foc_specs.parquet": {
+      "bytes": 24621,
+      "sha256": "a1aa0c3158115552da39affd4a37a5091de1c333e159618f649c72b5cd57bd17"
+    },
+    "h91_summary.json": {
+      "bytes": 11622,
+      "sha256": "1c39cb91045a58e1dd6db310b37054e10762dcf800a7c7966cf35e8845f1adf4"
+    },
+    "h92_daily_revenue_share_identity.parquet": {
+      "bytes": 6243,
+      "sha256": "26ba20c61749a0422b9138aa574dd7ac0b094d0de23f3ab1f8ff4171c4647930"
+    },
+    "h92_price_label_permutation.parquet": {
+      "bytes": 26473,
+      "sha256": "e41fe00701b3e024d6b276cd25df15a56b8634013ed82669a94b05c4609e657b"
+    },
+    "h92_revenue_share_panel.parquet": {
+      "bytes": 262334,
+      "sha256": "c4221b06879bd8bde38abbd24fd6f07892f31a5f4f2a095e3057efd86562492e"
+    },
+    "h92_summary.json": {
+      "bytes": 4018,
+      "sha256": "ddd4f57009edad0199567212f12440d3fde89e04c4a8fdef96d233d214bdca8c"
+    },
+    "h93_coincident_shocks.parquet": {
+      "bytes": 5122,
+      "sha256": "92c2b676b1b1405da4fb9b3455ba6cf1aa02fd63d71d51b09dc3c6d25bc2749d"
+    },
+    "h93_coverage.parquet": {
+      "bytes": 7888,
+      "sha256": "985a8f952fc10f8971e1d265f02c2cad69c2979ec165b80123620fdda06fef46"
+    },
+    "h93_cross_router_price_policy_panel.html": {
+      "bytes": 166694,
+      "sha256": "0d21d1736dbdc81658b99a4989ea19774c32e87e995e16a65144e285acc480df"
+    },
+    "h93_cross_router_price_policy_panel.pdf": {
+      "bytes": 31580,
+      "sha256": "4a01814f2ff4865a23eef438b8f1c588113312d1e9eb4b01b09f89e8738ca47c"
+    },
+    "h93_cross_router_price_policy_panel.png": {
+      "bytes": 122524,
+      "sha256": "0c32098fa982dc79afcc640f4991179fea33c197eaf9928a7f8e3e675e9e778c"
+    },
+    "h93_price_events.parquet": {
+      "bytes": 4757,
+      "sha256": "0f3aeab1f30791818b91f7de0cd0b985fb6a084d699190e2b897a5079de70c66"
+    },
+    "h93_simulated_routes.parquet": {
+      "bytes": 6590,
+      "sha256": "26d4f00e6ef731a471beffe56d1ac1d7d860dbe951ddbb4e27573064dd35a5d0"
+    },
+    "h93_simulated_switches.parquet": {
+      "bytes": 4567,
+      "sha256": "fffba21bb7d1c487c221cdca5fbca7e6b05c3bf0c33e0c169c3696f12254c97c"
+    },
+    "h93_simultaneous_basis.parquet": {
+      "bytes": 13065,
+      "sha256": "40509c023def9caa4081013dc10f403e42a9f4d1d82612a025ec0fa34561ee92"
+    },
+    "h93_summary.json": {
+      "bytes": 3254,
+      "sha256": "63c179f0543cca27277e07a46d4db0aae6b40a2a37014bb61d61425f62d47b82"
+    },
+    "h94_circular_shift_inference.parquet": {
+      "bytes": 4033,
+      "sha256": "552cffedcff0eaf9e9989791d2e2431333a1de9255cc9d463692bd77237c6af2"
+    },
+    "h94_circular_shift_placebo.parquet": {
+      "bytes": 3262,
+      "sha256": "1d440182beacb3e158c2a80e0c64a0ca36877e7a590672b2f9daf7906d26e360"
+    },
+    "h94_common_shock_matches.parquet": {
+      "bytes": 6535,
+      "sha256": "09b705694cc6010dbe78dda5a0c58586e48c82f90e7c2906609744f2fac0f33d"
+    },
+    "h94_cross_router_pass_through_panel.html": {
+      "bytes": 175358,
+      "sha256": "934d63b4715c2848ce1f3afc43b15095f613b3dee56a959995f985166464f22f"
+    },
+    "h94_cross_router_pass_through_panel.pdf": {
+      "bytes": 29163,
+      "sha256": "bf9ce59c64e1bbd1a7bd7a4a6707ad408dea683b5884b87b0b5d471f481c7227"
+    },
+    "h94_cross_router_pass_through_panel.png": {
+      "bytes": 130060,
+      "sha256": "e458c687842186da7cd0689c04e69a8f4438393bc48b9daba3e367a7c986d4ba"
+    },
+    "h94_lead_lag_inference.parquet": {
+      "bytes": 4939,
+      "sha256": "d543898e63577869a824afb9909954e553b2ec99f28417fa2b886843096771c1"
+    },
+    "h94_material_wedge_spells.parquet": {
+      "bytes": 8725,
+      "sha256": "47165f81df50533082296d86e5ffb50e0251e0ef02d1abe0a4af6935161b6ced"
+    },
+    "h94_negative_control_matches.parquet": {
+      "bytes": 6991,
+      "sha256": "a2c483a1c5b3e66f0656bcc56cc4f14f00f0710d879477d07d52c33bc013c117"
+    },
+    "h94_price_transitions.parquet": {
+      "bytes": 7107,
+      "sha256": "eb1cef63b509378a8f18d241b3b298bc9cf387a49132e8934a388f9ab592dbd4"
+    },
+    "h94_primary_quotes.parquet": {
+      "bytes": 36123,
+      "sha256": "d1ab18a2aea72bd4c76b141a184627ea2f8e99c8ad6c0170e03fc48f1d95e23b"
+    },
+    "h94_simulated_switch_links.parquet": {
+      "bytes": 4767,
+      "sha256": "43a4d8dc4df38985fee2bf185fe1b4e1a2313ccde7da837131cd5d2e69bee94b"
+    },
+    "h94_summary.json": {
+      "bytes": 3157,
+      "sha256": "29106560b1f406bd8114f2ffa6064165ee8f479994e856ab2025309788f2bed7"
+    },
+    "h94_synchronous_pairs.parquet": {
+      "bytes": 11623,
+      "sha256": "3e7232da25becaf2d595ec4258ec3ce76076743b41cee02501f2709ac7e4894b"
+    },
+    "hypothesis_scorecard.json": {
+      "bytes": 3891,
+      "sha256": "ce812ffa501ed25114f1b82c1ba1e7dd0498e0ca95394b467fcedbcbec6a6ef3"
+    },
+    "manuscript_vintage_comparison.parquet": {
+      "bytes": 636,
+      "sha256": "2e836d6adff325aede8989ffcbc87094563445f1d0a4ba61dd92764ecca42844"
+    },
+    "manuscript_vintage_summary.json": {
+      "bytes": 8514,
+      "sha256": "c76e78774a6949e2e5e33d365ae053724d538ab7c5e12b88966778b15813b7ea"
+    },
+    "mv_frozen_9d_bm1_provider_cadence.parquet": {
+      "bytes": 8049,
+      "sha256": "c15a1e730bede752a87d564c842e50b41aa3a820d7683106decab4f3ae8d03f9"
+    },
+    "mv_frozen_9d_bm1_summary.json": {
+      "bytes": 910,
+      "sha256": "07814013277c5c17590c44be2f4d7fdc70bc5c4840db8dce681c26ed37f9e7f2"
+    },
+    "mv_frozen_9d_bm2_frozen_cadence_reaction_panel.parquet": {
+      "bytes": 7449,
+      "sha256": "cf54891b441edb4c0f0f8fee3d7e4b9055fd8b09660f392e88b358b63f730c80"
+    },
+    "mv_frozen_9d_bm2_reaction_panel.parquet": {
+      "bytes": 11712,
+      "sha256": "e028a8408ee2c77411ed1f0a765e8cedb30b0b1549396238a7eed9b402c1088e"
+    },
+    "mv_frozen_9d_bm2_summary.json": {
+      "bytes": 2425,
+      "sha256": "d31e581b7385c3346c7605db56455c21aa4f72822f9ea7949b321c23cdf46252"
+    },
+    "mv_frozen_9d_bm3_premium_coefficients.parquet": {
+      "bytes": 5389,
+      "sha256": "b5183ede13702459831e0aec972a2c5e7003dda0470b649d321ef663c26a571d"
+    },
+    "mv_frozen_9d_bm3_summary.json": {
+      "bytes": 1588,
+      "sha256": "1e6eeef058b5e9eabc046edf06d3e3bbeee6a6eea193a58628a7639f2a0c4887"
+    },
+    "mv_frozen_9d_bm4_provider_slopes.parquet": {
+      "bytes": 2625,
+      "sha256": "8ab47168ca5a2550ebb6a91bf83e69b1fcab7e63746239d1d3827df8d98e660e"
+    },
+    "mv_frozen_9d_bm4_reaction_rules.parquet": {
+      "bytes": 16992,
+      "sha256": "819e7bc1f9bd7766d39d69d1bd49d27939a159821ade832053172dcb75d6675f"
+    },
+    "mv_frozen_9d_bm4_summary.json": {
+      "bytes": 3074,
+      "sha256": "b74e229435d6de42118d3c59af4666d03f661a3b7760a9ca971e364b9ddbd2a7"
+    },
+    "mv_frozen_9d_pm1_ladder.parquet": {
+      "bytes": 4132,
+      "sha256": "5c76a11ede6a31f9b5daade7e7362cb5a0c3e9f2346936fd3bfcdeac29ccac7a"
+    },
+    "mv_frozen_9d_pm1_summary.json": {
+      "bytes": 2078,
+      "sha256": "1562e143915541dea3c655d905e6498ff61f651258b94c3a43ff7d61a8a96b92"
+    },
+    "mv_frozen_9d_pm5_author_anchor_symmetry.parquet": {
+      "bytes": 12174,
+      "sha256": "402cf7d9bd39e747759c869ee160649997c0af04037c138bd151622c3b641c2d"
+    },
+    "mv_frozen_9d_pm5_author_price_atom.parquet": {
+      "bytes": 8269,
+      "sha256": "aed8b9932d7a7276aa8212998d3e12e492c89536545af7c2e0086ecd445f953e"
+    },
+    "mv_frozen_9d_pm5_reference_price_landing.parquet": {
+      "bytes": 27843,
+      "sha256": "1652881efd5e757af821b190dee228b1c73ae4b86cba2c8b579e69edfcef47df"
+    },
+    "mv_frozen_9d_pm5_summary.json": {
+      "bytes": 17483,
+      "sha256": "7a260fb9d5b038117601459e343f0e3af18408b44a1db22a103cba66db52fd1a"
+    },
+    "pm1_ladder.parquet": {
+      "bytes": 4211,
+      "sha256": "1c46eea2d544bdfaa7ef022f6352e87748faa0552ab806905df2fd6123803fe2"
+    },
+    "pm1_summary.json": {
+      "bytes": 2123,
+      "sha256": "b40ed729deadaac52eaecda60e74585feed11cc721d204c16ad3004f08f23b04"
+    },
+    "pm2_changes.parquet": {
+      "bytes": 26925,
+      "sha256": "dd3af7baa83c49b5c9a1b93b0e2ec84a1d11b5d27634ac3cb13a4a832dd3d28a"
+    },
+    "pm2_summary.json": {
+      "bytes": 823,
+      "sha256": "b02c9ba6d270c9eed8a6b8c0086a91eb4cc5673d710b70a97966233e5067d172"
+    },
+    "pm5_author_anchor_symmetry.parquet": {
+      "bytes": 12121,
+      "sha256": "50ddaf5608eb5dae6c01752bf0dc0e11b1b2c52ab3a5b889ade39ef55a33a3a3"
+    },
+    "pm5_author_price_atom.parquet": {
+      "bytes": 8350,
+      "sha256": "1a959baaf6a1637d128782b97a6ffeaf64f13738c626c4b874eebedf2287b1f5"
+    },
+    "pm5_menu_simulation.pdf": {
+      "bytes": 24551,
+      "sha256": "80ee39e1b67de714731e9d51381e45b5b68071e117def23c7408e1a9d2af68f3"
+    },
+    "pm5_menu_simulation.png": {
+      "bytes": 185363,
+      "sha256": "273842eda29a19589a825ce7d42cf78197ed711d0d2077e9b887137e1cb7433f"
+    },
+    "pm5_menu_simulation_summary.json": {
+      "bytes": 3685,
+      "sha256": "a127dc375ebb1ca47c32ed6c5a74220a854584f1e7bc54a8017ddc255f6c064b"
+    },
+    "pm5_reference_price_landing.parquet": {
+      "bytes": 31282,
+      "sha256": "8ca98cfce7c5bb3373e77112af5bab27cfaf883f1e43bf04d018bca690248a1c"
+    },
+    "pm5_sim1_event_level_replications.parquet": {
+      "bytes": 141830,
+      "sha256": "bdabf460dd4478517cd0d1497a6ea2882052e84a3d63d4da28f7d3d20c8869a2"
+    },
+    "pm5_sim1_summary.parquet": {
+      "bytes": 10035,
+      "sha256": "111b0b7689af170c28597b2e3169b2974882598d02080d24ba6810ce1725ce5f"
+    },
+    "pm5_sim2_empirical_calibration.parquet": {
+      "bytes": 5031,
+      "sha256": "62c5b17a17e78b1b1a937e4312cccc8f05c1a91330ac487d8844c21c099f07a9"
+    },
+    "pm5_sim2_known_clock_replications.parquet": {
+      "bytes": 146433,
+      "sha256": "4d722a929193285d1c778bd5b68f101d1d45f2b33c47b254e64a6d3bb261b020"
+    },
+    "pm5_sim2_summary.parquet": {
+      "bytes": 10178,
+      "sha256": "21a026f40245e5c73537d00f716328e69395ff68e45483d1615386995853f24c"
+    },
+    "pm5_summary.json": {
+      "bytes": 18377,
+      "sha256": "dfb6f5b646ba4d118c1767c113ecbe4f32a5c8b2c7792be26f7336e81c7bb71c"
+    },
+    "pm6_events.parquet": {
+      "bytes": 8292,
+      "sha256": "c6afcd5933a6628a4f8596846d6bc9512890b8de957f3e6ae529bdeb43db4ffc"
+    },
+    "pm6_summary.json": {
+      "bytes": 1140,
+      "sha256": "8f5aa342c72c0f14837d55f053e55c79a3814073503b08e05309fe3ab6e407ff"
+    },
+    "pm9_summary.json": {
+      "bytes": 1041,
+      "sha256": "189e3a3ae9716b5689c7e2ecc4abebacdde71edf0e6167c1baca5975b5340259"
+    },
+    "wcv0_data_inventory.parquet": {
+      "bytes": 8160,
+      "sha256": "2f77a86970d29baec1d69c222bf84712599a6fbf77f40c0eba96e3bc2106603c"
+    },
+    "wcv0_summary.json": {
+      "bytes": 5952,
+      "sha256": "3bb010c49ff99225e35e37d7b940cd5798e0ed20174bd73e875f4b234e7e14fb"
+    },
+    "wcv6_provider_revenue_gap.parquet": {
+      "bytes": 676059,
+      "sha256": "8e38a7982fbdeb0d7cc35d85bd3e312d68e8dab07bcacab38af13410d0e02cc3"
+    },
+    "wcv6_provider_revenue_scorecard.parquet": {
+      "bytes": 11376,
+      "sha256": "3c8712bb4daf468958e3347950721f73c5403ba2694387d09c705a2aae612208"
+    },
+    "wcv6_revenue_gap_scenarios.parquet": {
+      "bytes": 13920,
+      "sha256": "3ca5c731f91bd0c36976d183d4a7e64bea05b9dd5215f571b514e2d6dbe82439"
+    },
+    "wcv6_summary.json": {
+      "bytes": 5784,
+      "sha256": "351c44ba780450fe7debcb4f89de70183b34a599b70a0c5ed40cb2ae36be1a95"
+    }
+  },
+  "prospective_owned_outcomes_queried": false,
+  "schema_version": 1
+}
