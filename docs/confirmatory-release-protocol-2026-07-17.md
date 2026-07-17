@@ -142,9 +142,9 @@ seed. Any failed plan or legacy-run replay closes the assignment-integrity gate.
 Missing requests, recorded-policy
 mismatches, duplicates, and treatment-control failures remain in their intended
 arms. The gate therefore counts assignment rather than realized treatment, and
-the primary estimand is assigned-policy ITT. At the pinned provenance point all
-84 current blocks pass first-row, replay, and treatment-fidelity checks, so the
-32/24/28 counts are unchanged.
+the primary estimand is assigned-policy ITT. At the latest pinned gate all 92
+blocks pass first-row, replay, reconstruction, and treatment-fidelity checks;
+the counts are 33/31/28, including four explicit prospective pre-request plans.
 
 In 3,000 sharp-null experiments at each of five outcome-dependent compliance
 strengths, the ITT estimate stays within 0.0022 of zero and its false-rejection
@@ -310,3 +310,17 @@ again reported `outcomes_queried=false` for both studies. Its 8.8 KB artifact
 contained only `release_status.json` and the two `assignment_only_gate.json`
 files. This is the outcome-blind provenance point for the H81 intended-
 assignment ITT amendment.
+
+Prospective plan-first deployment run `29572631254` checked out head `c37fc6b`
+and published a separate outcome-free manifest committing to two plan rows. The
+manifest contains no request or forbidden outcome field, reports one-third
+first-policy assignment probabilities, and is checked in as
+`analysis/h81_plan_deployment_audit_29572631254.json`. Compaction workflow
+`29572789506` then passed 571 clean-runner tests, durable publication, and all
+eight shards. Its automatic child audit `29573258132` pinned revision
+`18ea5aa245cc931d5f49b452785a175f358db240`, reported H81 counts 33/31/28 over
+92 intended blocks, found four explicit prospective plans, and passed assignment
+integrity with 100% reconstruction, replay, first-row observation, and treatment
+fidelity. H95 advanced to 7/120. Both studies again reported
+`outcomes_queried=false`; the artifact contained only `release_status.json` and
+the two assignment-only gate files.

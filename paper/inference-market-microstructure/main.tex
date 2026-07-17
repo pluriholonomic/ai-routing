@@ -142,8 +142,8 @@ they are not evidence for the focal clearing claim.
   explicitly intention-to-treat: a plan written before each future first request,
   or the frozen seed for historical blocks, fixes the intended arm without
   filtering on request realization or treatment fidelity.  At the pinned data
-  revision all 84 intended assignments are observed, replayed, and compliant;
-  the arm counts are 32, 24, and 28, below the original 40-per-arm release gate,
+  revision all 92 intended assignments are observed, replayed, and compliant;
+  the arm counts are 33, 31, and 28, below the original 40-per-arm release gate,
   and no H81 outcome is
   reported.  The eligible support currently contains only two repeated models,
   which limits transport even after release.  We therefore froze H95 before its
@@ -289,10 +289,10 @@ provider--model listing observations from 2,116 capture runs on 11 UTC dates,
 count is 2,013,866; the difference preserves 9,186 same-listing raw variants,
 all due to availability state rather than price or capability conflicts.  The
 outcome-free randomized-design status is separately pinned at revision
-\texttt{f5b822812a8}: H81 contains 84 intended first-position assignments, with
-arm counts 32, 24, and 28 and 100\% first-row observation, assignment replay,
-and treatment-metadata fidelity.  Its earlier eligibility
-audit contains 74 candidate rows across 37 runs; H80 remains a separate study
+\texttt{18ea5aa245c}: H81 contains 92 intended first-position assignments, with
+arm counts 33, 31, and 28 and 100\% first-row observation, assignment replay,
+assignment reconstruction, and treatment-metadata fidelity.  Its eligibility
+audit contains 88 eligible candidate rows across 44 runs; H80 remains a separate study
 with 156 verified first-position blocks over 40.7 hours.  The public cross-router
 collector has two snapshots per router over 0.054 days.  Its latest catalog has
 107 Glama rows, 114 NemoRouter rows, and 563 Requesty rows, but no price event.
@@ -301,10 +301,10 @@ H94 was activated as a future-only longitudinal protocol at 04:30:20 UTC.  Its
 03:30 discovery cross-section is ineligible; one later prospective snapshot per
 router is present, with zero price transitions or matched common shocks.  H95
 was frozen in commit \texttt{00351dd} at 04:44:10 UTC before its first request.
-Five written triplets are now present: all 15 first-position assignments replay
-and comply, they cover nine unique models (effective model count 7.76), and no
-outcome field was queried.  The newest triplet's three provider-control records
-are auditable and all pass; the preceding 12 remain legacy-unverified.  Its
+Seven written triplets are now present: all 21 first-position assignments replay
+and comply, they cover nine unique models (effective model count 7.74), and no
+outcome field was queried.  The newest nine provider-control records are
+auditable and all pass; the preceding 12 remain legacy-unverified.  Its
 confirmatory horizon remains the first 120 written
 triplet plans, not a balance-based stopping time.
 
@@ -327,11 +327,11 @@ Panel & Rows / attempts & Span & Primary role \\
 \midrule
 Endpoint acquisition cut & 2,004,680 listings & 11 UTC dates & Current prices and public enforcement state \\
 Frozen pricing discovery cut & 1,747,960 listings / 313 changes & 9 days & Price atoms, hazards, and cadence screens \\
-H81 first-position assignments & 84 & ongoing & Fallback/selection release-gate support \\
-H81 candidate eligibility & 74 & 37 runs & External-support and exclusion funnel \\
+H81 first-position assignments & 92 & ongoing & Fallback/selection release-gate support \\
+H81 candidate eligibility & 88 eligible rows & 44 runs & External-support and exclusion funnel \\
 H80 first-position assignments & 156 & 40.7 hours & Separate four-arm replication support \\
 Cross-router public catalogs & 2 snapshots/router & 0.054 days & Coverage and exact price equality only \\
-H95 prospective replication & 5 triplets / 15 blocks (12 legacy-control rows) & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
+H95 prospective replication & 7 triplets / 21 blocks (12 legacy-control rows) & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
 Historical quote registry & multi-year & 3 years & Lifecycle and duration sensitivity \\
 \bottomrule
 \end{tabular}
@@ -974,41 +974,34 @@ records and missing outcomes as untrusted and assigns them to both endpoints.
 An unreconstructable intended arm widens the contrast to $[-1,1]$.  These are
 implementation-fidelity bounds, not a complier or per-protocol effect.
 
-\subsection{Frozen gate, current support, and amendment history}
+\subsection{Frozen gate and current support}
 
 The amended H81 protocol releases the earliest chronological prefix with at
 least 40 intended first-position assignments in every arm, regardless of sign.
-At the outcome-free release revision \texttt{f5b822812a8} (the full immutable
+At the outcome-free release revision \texttt{18ea5aa245c} (the full immutable
 hash appears in the release manifest), the arm counts
-are 32, 24, and 28.  First-row observation, assignment replay, and treatment-
-metadata checks pass for all 84 intended blocks, so outcomes remain physically
-unqueried by the public
-pre-gate analysis.  When the gate opens, the analysis will exclude its terminal
-block and condition on the remaining arm counts; this correction was frozen
-before the first H81 outcome release.  Commit \texttt{4d66fda}, also before
-release, freezes the simultaneous intervals and the outcome/treatment
-missingness rules above; synthetic unknown-outcome and noncompliance adversaries
-pass.  A later outcome-blind proof audit replaced an all-arm global-sharp-null
-permutation with the pairwise conditional law in
-\cref{eq:h81-exact-randomization}.  Its nuisance-effect size audit and exact
-power surface imply that the fixed gate is informative for large wedges but not
-an equivalence design.  A second outcome-blind amendment adds a simultaneous
-finite-population confidence set and exact joint-Holm power: on the frozen grid,
-80\% worst-terminal-policy power requires a 35-point component wedge.  A third
-outcome-blind amendment removes post-assignment treatment-fidelity filtering,
-adds the pre-request plan ledger and historical eligibility-RNG reconstruction,
-and fixes the primary estimand as assigned-
-policy ITT.  In a sharp-null stress test, outcome-dependent compliance leaves
-the ITT estimate within 0.0022 of zero and its false-rejection rate between
-2.83\% and 3.70\%, while the superseded filtered estimator reaches bias one and
-100\% false rejection.  Current H81 counts do not change because every recorded
-block passes fidelity.  The candidate funnel is narrow: 74 eligibility records cover
-two models at ranking positions five and six; both models are eligible in every
-recorded run and adjacent eligible support never changes.  The experiment will
-therefore identify a finite-sample policy effect for those model--time blocks,
-not a market-wide average.  The remaining arm deficits are 8, 16, and 12;
-calendar-time forecasts are deliberately omitted because eligibility and workflow
-failures make the short-run accrual rate nonstationary.
+are 33, 31, and 28.  First-row observation, assignment replay, assignment
+reconstruction, and treatment-metadata checks pass for all 92 intended blocks,
+so outcomes remain physically
+unqueried by the pre-gate analysis.  When the gate opens, the analysis excludes
+the terminal block and conditions on the remaining arm counts.  The combined
+plan/eligibility ledger covers 88 of 92 blocks, including four explicit
+prospective plans; the four earliest blocks predate both ledgers and use their
+recorded block seeds, so assignment reconstruction is nevertheless 100\%.  The current
+reference experiment, uncertainty family, and missingness rules were all frozen
+in outcome-blind audits; their dated genealogy is reported in
+\cref{app:h81-proof} and the release ledger rather than treated as empirical
+results.  At the minimum gate counts, 80\% worst-terminal-policy Holm power on
+the frozen grid requires a 35-point component wedge, so the design is not an
+equivalence test.
+
+The candidate funnel is narrow: 88 eligible records cover two models at
+ranking positions five and six; both models are eligible in every recorded run
+and adjacent eligible support never changes.  The experiment therefore
+identifies a finite-population assigned-policy effect for those model--time
+blocks, not a market-wide average.  Current arm deficits are 7, 9, and 12.
+Calendar-time forecasts are omitted because eligibility and workflow failures
+make short-run accrual nonstationary.
 
 H80 is a separate four-arm replication.  Its original protocol also specified
 40 observations per arm.  After its all-position aggregate outcomes were visible,
@@ -1048,13 +1041,13 @@ prerelease inference and telemetry audit was frozen in commit \texttt{f170d89}
 with the outcome gate still closed.  A second proof audit corrected the pairwise
 reference law and interval interpretation after exact-head run
 \texttt{29568434722} again reported \texttt{outcomes\_queried=false}.  At
-revision \texttt{30b430e2a09}, the
-outcome-free support is five compliant triplets, 15 blocks, nine unique models,
-effective model count 7.76, perfect plan replay, and zero missing first records.
+revision \texttt{18ea5aa245c}, the
+outcome-free support is seven compliant triplets, 21 blocks, nine unique models,
+effective model count 7.74, perfect plan replay, and zero missing first records.
 The first 12 first-position rows predate row-level provider-order lengths and
-remain legacy-unverified; all three records in the first hardened triplet are
-auditable and pass, for current audit coverage 20\% and conditional pass rate
-100\%.  Three of five triplets occupy the largest six-hour bin, so this early
+remain legacy-unverified; all nine later records are auditable and pass, for
+current audit coverage 42.9\% and conditional pass rate 100\%.  Four of seven
+triplets occupy the largest six-hour bin, so this early
 support fails the time-transport gate.  Because the three model blocks execute
 sequentially, a direct-policy interpretation also requires no treatment-dependent
 spillover from an earlier model block; the release includes a position-by-policy
@@ -1511,7 +1504,7 @@ formal guarantee comes from \cref{eq:h81-hoeffding-means}, not that simulation.
 Thus H81 can detect large wedges but cannot interpret nonsignificance as
 equivalence.  The
 100,000-draw pairwise tail remains solely a discrepancy audit, and the release
-fails closed above one percentage point.  The full repository suite has 570
+fails closed above one percentage point.  The full repository suite has 571
 passes.
 
 The compliance-selection adversary holds every direct policy outcome equal and
@@ -1743,9 +1736,9 @@ Separate adversaries replace a valid outcome with
 \texttt{unknown}, delete and mismatch planned first requests, corrupt a
 provider-control length, concentrate every triplet in one six-hour bin, and
 verify that leave-one-model-out analysis drops whole triplets.  The full
-repository suite has 570 passes.  These checks validate the release code and
+repository suite has 571 passes.  These checks validate the release code and
 claim boundary.  They are not H95 outcome evidence: the fixed horizon remains
-five of 120 at the pinned outcome-free revision.
+seven of 120 at the pinned outcome-free revision.
 
 \begin{figure}[H]
 \centering
@@ -2210,9 +2203,9 @@ identifiable when bids, acceptance, and termination are public.
 \toprule
 Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
-H81 fallback and hidden selection & 84 intended blocks; counts 32, 24, 28; 100\% first-row, replay, and treatment fidelity; no outcome released & Precision and transport beyond two repeated models & Amended 40-intended-assignments-per-arm ITT gate; terminal excluded; Holm tests, familywise intervals, and fidelity/missing-outcome bounds frozen \\
+H81 fallback and hidden selection & 92 intended blocks; counts 33, 31, 28; 100\% first-row, replay, reconstruction, and treatment fidelity; four explicit pre-request plans; no outcome released & Precision and transport beyond two repeated models & Amended 40-intended-assignments-per-arm ITT gate; terminal excluded; Holm tests, familywise intervals, and fidelity/missing-outcome bounds frozen \\
 H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
-H95 fixed-horizon replication & Five compliant triplets, 15 blocks, nine unique models; 12 legacy-unverified and three passing auditable control records; no outcome released & 120 written triplets, row-level control coverage, broad audited model/time support, and cross-position robustness & Fixed 120-triplet horizon; nuisance-conditioned pairwise Fisher law, simultaneous design intervals, and lower-precision position-zero sensitivity; whole-triplet LOMO; never pooled with H81 \\
+H95 fixed-horizon replication & Seven compliant triplets, 21 blocks, nine unique models; 12 legacy-unverified and nine passing auditable control records; no outcome released & 120 written triplets, row-level control coverage, broad audited model/time support, and cross-position robustness & Fixed 120-triplet horizon; nuisance-conditioned pairwise Fisher law, simultaneous design intervals, and lower-precision position-zero sensitivity; whole-triplet LOMO; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
 Stale-cheap pickoff channel & H84 rejects its directional prediction; backward placebo nonzero & Prospective sample and realized fill linkage & Disjoint H85 holdout \\
 Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous discovery cross section, Wilson interval $[0.828,0.994]$; 28/29 have an observed term conflict & Repeated changes, full contract comparability, eligibility, and fills & H94 has one prospective snapshot/router after 2026-07-17 04:30:20 UTC; all dynamic event gates closed \\
@@ -2287,8 +2280,9 @@ position-zero estimator, exact secondary pairwise family, simultaneous
 Hoeffding--Serfling intervals, and planted-carryover bias audit without changing
 the primary horizon or family.  The full repository test run has 551 passes at the initial
 H95 freeze, 557 after the H81 interval audit, 561 after the H95 pairwise-
-interval audit, 563 after the H95 position-zero interference audit, and 570
-after the H81 intended-assignment ITT audit.  The
+interval audit, 563 after the H95 position-zero interference audit, 570
+after the H81 intended-assignment ITT audit, and 571 after the outcome-free
+remote-plan artifact audit.  The
 remote path publishes a content-hashed
 bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
@@ -2334,6 +2328,15 @@ the position-zero carryover amendment.  Published position-zero audit
 revision, again reproduced H81 counts 32/24/28 and H95 support 5/120, and wrote
 only assignment-gate artifacts with both outcome-query flags false.  This is the
 provenance point for the H81 intended-assignment amendment.
+The prospective plan-first collector then ran at source head \texttt{c37fc6b} in
+workflow \texttt{29572631254}.  Its separate outcome-free artifact committed to
+two pre-request plan rows, contained no request or forbidden outcome field, and
+reported one-third first-policy assignment probabilities.  Compaction
+\texttt{29572789506} passed 571 tests, durable publication, and all eight shards.
+Its automatic assignment-only audit \texttt{29573258132} pinned revision
+\texttt{18ea5aa245c}, found four explicit pre-request plans, reconstructed every
+intended assignment, and reported H81 counts 33/31/28 and H95 support 7/120.
+Both outcome-query flags remained false.
 
 \paragraph{Privacy, load, and release tiers.}
 Capture records exclude prompts and completions.  Owned experiments use a fixed

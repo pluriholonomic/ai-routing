@@ -1,0 +1,45 @@
+{
+  "assignment_probability_first_all_one_third": true,
+  "audit_schema_version": 1,
+  "capture_log_outcome_fields": false,
+  "forbidden_fields_present": [],
+  "outcomes_included": false,
+  "payload_retained_all_false": true,
+  "plan_commitment_sha256": "641a6766ed8da387c3effc6acb65a653e235236796bbf9504bfac5baff9cb221",
+  "plan_file_count": 2,
+  "plan_persisted_before_probe_call_by_program_order": true,
+  "plan_row_count": 2,
+  "plan_run_ids": [
+    "20260717T101151Z"
+  ],
+  "plan_schema_fields": [
+    "assignment_probability_first",
+    "block_id",
+    "block_seed",
+    "dt",
+    "evaluation_order",
+    "first_policy_planned",
+    "model_id",
+    "payload_retained",
+    "plan_id",
+    "planned_at",
+    "public_provider_count",
+    "public_provider_order_sha256",
+    "randomized_order",
+    "ranking_position",
+    "run_id",
+    "run_ts",
+    "study_id"
+  ],
+  "plan_study_ids": [
+    "openrouter-fallback-selection-decomposition-v1"
+  ],
+  "randomized_order_all_true": true,
+  "request_records_included": false,
+  "run_id": "20260717T101151Z",
+  "run_id_match": true,
+  "source_commit": "c37fc6b6bca7521cda56d2765b8b144070392da7",
+  "study_id": "openrouter-fallback-selection-decomposition-v1",
+  "study_id_match": true,
+  "workflow_run_id": "29572631254"
+}

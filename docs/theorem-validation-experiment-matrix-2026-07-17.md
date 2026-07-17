@@ -49,13 +49,16 @@ never filters this reference experiment.
      intended first policy before the request; historical blocks reproduce the
      same policy from every 64-bit seed. Verify first-row realization, recorded-
      policy replay, and provider `order`, `only`, and `allow_fallbacks` fields.
-   - Pass rule: plan/seed integrity must be 100%. A missing, mismatched, or
+   - Pass rule: assignment reconstruction and replay integrity must be 100%;
+     plan-ledger coverage is reported separately because the four earliest
+     recorded blocks predate both plan and eligibility ledgers. A missing, mismatched, or
      noncompliant request remains in its intended arm and triggers fidelity and
      missingness flags rather than changing the gate or sample.
-   - Current result: 84/84 first rows, assignment replays, and treatment checks
-     at revision `f5b82281`; arm counts are 32, 24, and 28 and outcomes remain
-     unqueried. The pre-request plan table begins prospectively after this
-     amendment; historical rows remain seed-replayed.
+   - Current result: 92/92 first rows, assignment reconstructions, assignment
+     replays, and treatment checks at revision `18ea5aa2`; arm counts are 33,
+     31, and 28 and outcomes remain unqueried. Four explicit pre-request plans
+     are present. Plan-ledger coverage is 88/92, while the four earliest blocks
+     use their recorded block seeds; assignment integrity passes.
 
 2. **Post-assignment compliance-selection adversary**
    - Hold every direct policy outcome equal while allowing treatment fidelity
@@ -150,7 +153,7 @@ never filters this reference experiment.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
    - Current result: implemented before outcome access in commit `4d66fda`.
-     All adversarial tests and the current full 570-test suite pass. The two primary
+     All adversarial tests and the current full 571-test suite pass. The two primary
      intervals additionally receive Bonferroni-Newcombe familywise adjustment;
      their exact conditional Fisher p-values retain the registered Holm family.
 

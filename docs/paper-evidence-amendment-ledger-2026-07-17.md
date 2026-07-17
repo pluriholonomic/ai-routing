@@ -133,6 +133,7 @@ computer remaining online.
 | 2026-07-17 / H81 intended-assignment amendment | H81 | The prior gate and point sample filtered on post-assignment treatment metadata, so arm-dependent compliance could invalidate the fixed-count reference experiment and create a selected per-protocol comparison | Exact-head audit `29570676475` checked head `406a478` at revision `f5b82281`; H81 remained 32/24/28, all 84 rows passed replay and treatment fidelity, and `outcomes_queried=false` | The gate now counts every pre-request plan or historical seed-replayed intended assignment. Missing, mismatched, duplicate, and noncompliant requests remain in their randomized arms; the primary estimand is assigned-policy ITT and fidelity is diagnostic. A sharp-null adversary leaves ITT bias below 0.0022 and rejection at 2.83--3.70%, while the superseded filtered comparison reaches bias one and 100% false rejection at the same approximate retention rate. Current counts are unchanged. |
 | 2026-07-17 07:49 / run `29564165459` | H95 deployment | First scheduled collector run on the hardened metadata commit | Workflow succeeded on head `f170d89`; artifact not yet in the pinned revision; no outcome log inspected | Verifies remote deployment only. The manuscript retains 4/120 until compaction and an assignment-only gate audit prove another valid plan. |
 | 2026-07-17 08:06 / compaction `29564756681`, audit `29565268475` | H81/H95 | Fold the first hardened H95 artifact and verify the paper head remotely | Both gates closed; `outcomes_queried=false` | Head `14ba8c6` pinned revision `3efd953a`. H81 advanced to 84 blocks (32/24/28). H95 advanced to 5/120 with 15/15 first records, perfect replay/compliance, 12 legacy rows, and 3/3 newly auditable rows passing. This is assignment and deployment evidence only. |
+| 2026-07-17 10:11 / collector `29572631254`, compaction `29572789506`, audit `29573258132` | H81/H95 deployment | Verify the intended-assignment plan ledger prospectively without exposing the mixed request artifact or capture outcomes | Both gates closed; `outcomes_queried=false` | Head `c37fc6b` published a separate two-row outcome-free plan commitment with redacted logs. Compaction passed 571 tests, publication, and eight shards. The automatic audit pinned revision `18ea5aa2`: H81 advanced to 92 blocks (33/31/28), four explicit pre-request plans, 100% reconstruction/replay/first-row/fidelity, and a passing integrity gate; H95 advanced to 7/120. This closes deployment, not either outcome gate. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
 
 ## H81 stopping-time correction
@@ -161,8 +162,9 @@ effects at the conservative familywise threshold.
 ## Claim consequences for the rewrite
 
 1. H81 is the focal randomized ITT design, but no causal outcome is yet
-   reportable; the current outcome-free intended-assignment counts are 32, 24,
-   and 28, with 100% first-row, replay, and treatment-fidelity support.
+   reportable; the current outcome-free intended-assignment counts are 33, 31,
+   and 28, with 100% first-row, reconstruction, replay, and treatment-fidelity
+   support and four explicit prospective plans.
 2. H80 is a separate replication and must retain both its original 40-per-arm
    history and its later 500-per-arm promotion rule.
 3. H82 is descriptive because its frozen pretrends fail.
@@ -171,7 +173,7 @@ effects at the conservative familywise threshold.
 5. H93 is a cross-sectional equality fact only; no pass-through or reaction
    result exists yet.
 6. H94 is active only for post-04:30:20 UTC snapshots and has no prospective
-   result yet. H95 has five of 120 planned triplets and no released outcome.
+   result yet. H95 has seven of 120 planned triplets and no released outcome.
    Its exact inference and transport implementation are frozen, but its first
    12 rows remain transparently legacy-unverified for the newly added provider-
    control length fields.
