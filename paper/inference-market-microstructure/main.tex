@@ -1633,7 +1633,17 @@ earliest 30-day vintages and masks H80 outcomes until 500 first-position
 assignments per arm.  The companion \texttt{manuscript\_vintages} program runs
 PM1, PM5, and BM1--BM4 under both calendar cutoffs, canonicalizes every table, records
 SHA-256 hashes, and compares only the metrics fixed before the 30-day data exist.
-Each gate release updates estimates, source manifest, and PDF in one commit.
+For the focal experiments, a clean GitHub Actions runner executes after each
+successful data compaction.  It pins one immutable input revision and queries
+assignment fields only while H81 or H95 is below its frozen gate.  Once a gate
+opens, the runner first commits a timestamped access marker containing the code,
+input, and environment hashes; only then can the dedicated analyzer read outcome
+fields.  It publishes a content-hashed bundle exactly once and refuses automatic
+re-access if an orphan marker records an interrupted first run.  Live preflight
+run \texttt{29556911017} reproduced H81 counts 30/23/25 and H95 support 1/120 at
+revision \texttt{08a2a183d6df}, with both outcome-query flags false.  The paper is
+updated from that immutable bundle in a separate audited commit; the two studies
+are never pooled.
 
 \paragraph{Privacy and platform load.}
 Capture records exclude prompts and completions.  The owned experiments use a

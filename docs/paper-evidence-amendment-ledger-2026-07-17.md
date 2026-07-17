@@ -56,6 +56,10 @@ authoritative evidence for the rewrite.
   freeze and uploaded its eligibility and attempt telemetry. No workflow log,
   request outcome, selected provider, cost, or latency was inspected; the
   fixed 120-triplet outcome gate remains closed.
+- Clean release run `29556911017` completed remotely from commit `7c7c279` at
+  05:16 UTC. It pinned dataset revision `08a2a183`, reproduced H81 counts
+  30/23/25 and H95 support 1/120, wrote 90-day assignment-only artifacts, and
+  explicitly reported `outcomes_queried=false` for both studies.
 
 These workflows run on GitHub-hosted runners and do not depend on the local
 computer remaining online.
@@ -77,6 +81,7 @@ computer remaining online.
 | 2026-07-17 04:46 / run `29555584388` | H95 | First prospective remote workflow completed and preserved telemetry | Outcomes not queried or inspected | Confirms remote operation and prospective activation only; no effect or completion-rate result is available. |
 | 2026-07-17 04:52 / dataset `08a2a183` | H81/H95 | Outcome-free refresh records H81 counts 30/23/25 and the first compliant H95 triplet | Dedicated analyzers queried assignment and support fields only | Updates accrual and transport support without releasing any policy outcome. |
 | 2026-07-17 05:01 / `d5345e5` | H94 | Red-team audit found that primary transitions respected the activation cutoff but elapsed-time, snapshot, and simulated-route summaries still read the unfiltered discovery panel | Zero post-cutoff snapshots and zero prospective events existed | A shared fail-closed prospective filter now governs every gate, derived frame, and simulated outcome; regression tests exclude all-discovery panels and prevent bridging the first future snapshot to discovery. No empirical result changed. |
+| 2026-07-17 05:16 / `7c7c279`, run `29556911017` | H81/H95 | Installed and exercised a clean remote first-access transaction after successful compaction | Both gates closed; outcome fields unqueried | At a gate, the job first commits an immutable access marker, then runs the dedicated analyzer once, hashes the bundle, and publishes it. A completed manifest is idempotent; an orphan marker refuses automatic re-access. This changes release governance, not the estimand or stopping rule. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
 
 ## H81 stopping-time correction

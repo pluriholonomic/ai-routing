@@ -4,9 +4,14 @@
   "evidence_freeze_utc": "2026-07-17T04:52:33Z",
   "files": [
     {
-      "bytes": 18019,
+      "bytes": 19364,
       "path": "config/paper_evidence_registry.toml",
-      "sha256": "7293fd989b6c155308ca2d8ff9dbb74573b8ac16a348b66816134182c8093834"
+      "sha256": "9fe54aa595f78ba2e103b68f0150c9681c6b7cf2683a4336940e10c7234bdf87"
+    },
+    {
+      "bytes": 4058,
+      "path": "docs/confirmatory-release-protocol-2026-07-17.md",
+      "sha256": "89555dc8d3536232448c0b2eb2a56e74c3ba96bfbbe79f2207e8c591dacc350f"
     },
     {
       "bytes": 3183,
@@ -39,9 +44,9 @@
       "sha256": "137b85bc9341693e0981799fd3d185fc1bf0df15309daec79edd7bf4fa358e77"
     },
     {
-      "bytes": 9737,
+      "bytes": 10523,
       "path": "docs/paper-evidence-amendment-ledger-2026-07-17.md",
-      "sha256": "6554859c3145350e5c4d55c86d3775e672c7a193e8b3e0f849af5a0cf25718f1"
+      "sha256": "0c509475e80466bf5b88ca78032bab935b5b1b4499642b9247fa150970af56e3"
     },
     {
       "bytes": 7347,
@@ -89,9 +94,9 @@
       "sha256": "199ea7b6288b525db3dcfdefe4f1a7398b928397ac8adc3bcb11fd4b9b216643"
     },
     {
-      "bytes": 91219,
+      "bytes": 91962,
       "path": "paper/inference-market-microstructure/main.tex",
-      "sha256": "ccd78faeab1528a2fb05bd4af0cd0e6438688d2cd6c6cdbb7498fc2d224c2794"
+      "sha256": "417df51c14c91db81149a4cf2ee551b784d19b16f7568b76dfdd2c68c7c8a913"
     },
     {
       "bytes": 8244,
@@ -109,9 +114,9 @@
       "sha256": "e9b9179a526ae2e5ce747214fef1a286e394d49dc9d3a4b4d941db8efd9aa183"
     },
     {
-      "bytes": 43126,
+      "bytes": 43492,
       "path": "src/orcap/analysis/h81_delegation_decomposition.py",
-      "sha256": "e58249bee5da397b074ab411ec979d1a3bd8bcca7ec4d603a08ca6b0adf943ca"
+      "sha256": "3250383ef442d09964f0b011b008590a74912eb9423c469d02f315c563cb2194"
     },
     {
       "bytes": 10060,
@@ -144,9 +149,9 @@
       "sha256": "b5fcb59b2b9e697f83056b6b28f14450976139a692c1b48b095df03ca22ad71e"
     },
     {
-      "bytes": 22086,
+      "bytes": 22383,
       "path": "src/orcap/analysis/h95_delegation_replication.py",
-      "sha256": "35c2cd365dc6883398f1ecf2feb8d87712d2c8870b1cd737b7af6e59b98c093b"
+      "sha256": "18b26a428787889e5ea13404b58301af412c18d81ebf1f1942313406e9c39b45"
     },
     {
       "bytes": 11108,
@@ -179,6 +184,11 @@
       "sha256": "90859a66006d1c3d0830af22af5c08570d360d8631fa3885cd4ac97ce79f747c"
     },
     {
+      "bytes": 13232,
+      "path": "src/orcap/confirmatory_release.py",
+      "sha256": "92911074764c1d161eab3e4f74eef2e05f46592b06d2c48be374a27dbbb69239"
+    },
+    {
       "bytes": 3157,
       "path": "tests/test_blinded_study_isolation.py",
       "sha256": "f910ce5ef9018a1ddcfca03c0656350d07e518d3b0b86ef6b2f1176ed2255d76"
@@ -187,6 +197,11 @@
       "bytes": 4872,
       "path": "tests/test_capture_decomposition_replication.py",
       "sha256": "8f98056cec666db947f3bb4ad2c5fc4783adfeed693cf75f99fd492ad8fd5119"
+    },
+    {
+      "bytes": 6746,
+      "path": "tests/test_confirmatory_release.py",
+      "sha256": "28758f99c751e34caf1c63460865cc13a361cbd9a04bcbf5e9aa41a63f8a6b69"
     },
     {
       "bytes": 12951,
@@ -239,9 +254,9 @@
       "sha256": "15be7e5736852b2afbb1e35dc94e5b29a35ea75affd9dcaf3d424d558f5c823d"
     },
     {
-      "bytes": 2449,
+      "bytes": 2557,
       "path": "tests/test_remote_pipeline_health.py",
-      "sha256": "b7ec96af5c2282dbde6fa669eaa9432f00a228f9444191be9e8904961dae72c8"
+      "sha256": "c1b57b74ced3a770dedb1c362c0b384878b9842e4367f8c556eeb6bcee6aeb9a"
     },
     {
       "bytes": 1220,
@@ -249,11 +264,11 @@
       "sha256": "28fe964519ae7d4dec1ac3c2c191d3f518b5fab567a4a2af591d610686da580e"
     }
   ],
-  "gate_event_count": 13,
-  "generated_at_utc": "2026-07-17T05:07:04.333222+00:00",
+  "gate_event_count": 15,
+  "generated_at_utc": "2026-07-17T05:19:44.205956+00:00",
   "paper_theorem_count": 7,
   "paper_track": "ACM EC / TEAC",
   "registered_claim_count": 14,
   "schema_version": 1,
-  "status": "outcome-safe refresh with H81 and H95 accruing; H94 prospective cutoff repaired; focal outcomes blinded"
+  "status": "outcome-safe refresh with H81 and H95 accruing; clean remote first-access release armed; focal outcomes blinded"
 }
