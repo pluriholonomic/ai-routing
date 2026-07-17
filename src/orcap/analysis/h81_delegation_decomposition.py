@@ -318,6 +318,16 @@ def verify_treatment_metadata(row: pd.Series) -> bool:
 
 def first_position_sample(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
     attempts = prepare_assignment_attempts(frame)
+    if attempts.empty:
+        return attempts.copy(), {
+            "candidate_blocks": 0,
+            "assignment_replay_passes": 0,
+            "verified_first_position_blocks": 0,
+            "treatment_metadata_passes": 0,
+            "complete_blocks": 0,
+            "assignment_replay_rate": None,
+            "treatment_metadata_pass_rate": None,
+        }
     first_rows = []
     candidate_blocks = 0
     assignment_replay_passes = 0

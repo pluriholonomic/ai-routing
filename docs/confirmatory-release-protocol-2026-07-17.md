@@ -1,0 +1,91 @@
+# Clean confirmatory release protocol
+
+Status: implemented before either H81 or H95 outcome gate opened.
+
+This protocol governs the first confirmatory outcome access for the focal H81
+fallback/selection experiment and the independent H95 fixed-horizon
+replication. It operationalizes the release contract already stated in their
+preregistrations; it does not change an estimand, hypothesis, stopping rule,
+sample, or multiplicity family.
+
+## Trigger and immutable input
+
+`.github/workflows/confirmatory-release.yml` runs in GitHub Actions after every
+successful `compact` workflow and can also be dispatched manually. The job uses
+a clean checkout and the checked-in `uv.lock`. H81 and H95 are processed
+sequentially under a non-cancelling concurrency lock.
+
+For each study, `src/orcap/confirmatory_release.py` resolves the private Hugging
+Face dataset head once and sets `ORCAP_HF_REVISION` for the entire gate/release
+transaction. Concurrent collection or publication therefore cannot mix input
+revisions.
+
+## Outcome-free preflight
+
+Before a gate opens, the runner reads only the following columns from
+`router_route_attempts`:
+
+`source`, `event_id`, `run_ts`, `observed_at`, `study_id`, `model_id`, `policy`,
+and `metadata_json`.
+
+H81 checks assignment replay, treatment metadata, the earliest chronological
+40-per-arm prefix, and its cutoff. H95 additionally reads the outcome-free
+eligibility-plan table and checks the first 120 valid written triplets. The
+preflight writes `assignment_only_gate.json` and exits successfully when a gate
+is closed. It does not select response, provider, latency, cost, token, retry, or
+fallback fields.
+
+## First-access transaction
+
+When a gate is open, the runner executes this ordered state transition:
+
+1. Check that no published release manifest exists.
+2. Check that no orphaned first-access marker exists.
+3. Write a marker containing the UTC transition time, pinned dataset revision,
+   code commit, `uv.lock` hash, analyzer/preregistration hashes, and the
+   assignment-only gate audit.
+4. Commit that marker to the private dataset repository.
+5. Only after the marker commit succeeds, invoke the dedicated study analyzer,
+   which may issue its first full outcome query.
+6. Require the analyzer to report `outcomes_released=true`.
+7. Hash every released JSON and Parquet output and publish the complete bundle
+   plus `release_manifest.json` to the fixed study path.
+
+The fixed remote paths are:
+
+- `releases/h81-confirmatory-v1/`
+- `releases/h95-confirmatory-v1/`
+
+The release is idempotent. A completed manifest causes every later invocation to
+exit without running the analyzer. A first-access marker without a manifest is
+treated as evidence of an interrupted first access; later invocations fail
+closed and refuse a second outcome query. Recovery must use the retained
+90-day GitHub Actions artifact and a documented amendment, not an automatic
+rerun.
+
+## Released outputs and boundaries
+
+The H81 bundle contains the frozen preterminal fixed-count analysis, arm panel,
+model panel, contrasts, candidate-support diagnostics, and summary. The H95
+bundle contains its fixed 120-triplet audit, arm panel, model panel, contrasts,
+and summary. The two studies are never pooled.
+
+These releases identify owned-account policy effects over their realized model
+support. They do not identify market-wide routed share, private provider cost,
+provider intent, collusion, or social welfare.
+
+## Verification
+
+`tests/test_confirmatory_release.py` verifies that:
+
+- closed gates never select outcome columns;
+- the remote marker precedes the first analyzer call;
+- a completed release is not rerun;
+- an orphaned marker blocks a second access;
+- empty/new datasets fail closed rather than raising into an ambiguous state;
+- the remote workflow is compaction-triggered, non-cancelling, publishing, and
+  artifact-retaining.
+
+The first live non-publishing preflight pinned dataset revision
+`08a2a183d6df275b5614310b6205695dafbd929b`, reported H81 counts 30/23/25 and
+one of 120 H95 triplets, and queried no outcome field.

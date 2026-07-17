@@ -97,11 +97,23 @@ def prepare_assignment_attempts(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def prepare_plans(eligibility: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    empty_selected = pd.DataFrame(
+        columns=[
+            "triplet_id",
+            "triplet_sequence",
+            "run_id",
+            "model_id",
+            "assigned_first_policy",
+            "block_id",
+            "hugging_face_id",
+            "ranking_position",
+        ]
+    )
     if eligibility is None or eligibility.empty:
-        return pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), empty_selected
     frame = eligibility.loc[eligibility["study_id"].astype(str).eq(STUDY_ID)].copy()
     if frame.empty:
-        return frame, pd.DataFrame()
+        return frame, empty_selected
     frame["_observed"] = pd.to_datetime(
         frame.get("observed_at", frame.get("run_ts")), errors="coerce", utc=True
     )

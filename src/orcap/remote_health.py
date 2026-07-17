@@ -27,6 +27,7 @@ WORKFLOWS = {
     "router-catalogs.yml": 180,
     "route-simulation-monitor.yml": 180,
     "compact.yml": 1800,
+    "confirmatory-release.yml": 1800,
     "scrape.yml": 1800,
     "open-usage.yml": 1800,
     "memo.yml": 1800,

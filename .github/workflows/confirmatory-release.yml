@@ -1,0 +1,47 @@
+name: confirmatory-release
+
+# A clean remote release runner checks only assignment support after each
+# successful dataset compaction. Outcome fields become queryable only after the
+# frozen gate opens and a first-access marker is committed to the private data
+# repository. Published bundles are immutable and idempotent.
+on:
+  workflow_run:
+    workflows: ["compact"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: confirmatory-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: check frozen gates and publish any first release
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run python scripts/run_confirmatory_releases.py
+          --study all
+          --output-dir confirmatory-release
+          --publish
+      - name: retain gate audit or released bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: confirmatory-release-${{ github.run_id }}
+          path: confirmatory-release/
+          if-no-files-found: warn
+          retention-days: 90
+          compression-level: 0

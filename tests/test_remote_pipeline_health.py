@@ -11,6 +11,7 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["decomposition-probes.yml"] == 180
     assert WORKFLOWS["decomposition-replication.yml"] == 180
     assert WORKFLOWS["router-catalogs.yml"] == 180
+    assert WORKFLOWS["confirmatory-release.yml"] == 1800
     assert WORKFLOWS["capacity-policy-probes.yml"] == 180
     assert WORKFLOWS["hf-policy-probes.yml"] == 180
     assert WORKFLOWS["akash-close-events.yml"] == 1800
