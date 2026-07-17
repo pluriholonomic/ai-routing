@@ -28,8 +28,10 @@ shows.
   observations per arm and before any H81 outcome query.
 - The 542-test repository suite, including the production 100,000-draw audit
   setting.
-- The pinned outcome-free release audit at revision `8ce9eb75ed6e`: 82 H81
+- The pinned outcome-free release audit at revision `4fd167d674f6`: 82 H81
   blocks with counts 32/23/27 and four of 120 H95 triplets.
+- New-head preflight `29563312069` at commit `f2fd115`, with both outcome-query
+  flags false.
 - Full remote reanalysis workflow `29561010800`, which completed acquisition
   hydration, all analyses, memo rendering, HF publication, and Space publication
   successfully at 07:20 UTC. The subsequent newer run started normally.

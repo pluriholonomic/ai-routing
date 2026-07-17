@@ -118,9 +118,10 @@ provider intent, collusion, or social welfare.
 - the remote workflow is compaction-triggered, non-cancelling, publishing, and
   artifact-retaining.
 
-The latest post-amendment preflight, workflow `29562343314`, ran code commit
-`976468a`, pinned dataset revision
-`8ce9eb75ed6ec76733a56d03b97b21ef55933345`, reported H81 counts 32/23/27 and
+The latest post-amendment preflight, workflow `29563312069`, ran code commit
+`f2fd115`, pinned dataset revision
+`4fd167d674f6b227b766df00505fe02da1325e63`, reported H81 counts 32/23/27 and
 four of 120 H95 triplets, and queried no outcome field. The preceding compact
-workflow `29561825717` passed preparation and all eight table shards. The full
+workflow `29561825717` passed preparation and all eight table shards; full-screen
+workflow `29561010800` completed analysis and both publication steps. The full
 repository suite after the fail-closed exact-inference audit reports 542 passes.

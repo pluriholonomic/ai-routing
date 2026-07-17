@@ -47,7 +47,7 @@ delegation as both an estimand and estimator identity.
    - Pass rule: 100% replay and treatment compliance. Any failure invalidates
      the affected block and triggers a collector incident, not an outcome-based
      exclusion.
-   - Current result: 82/82 for both checks at revision `8ce9eb75`; arm counts
+   - Current result: 82/82 for both checks at revision `4fd167d6`; arm counts
      are 32, 23, and 27 and outcomes remain unqueried.
 
 2. **Stopped-design Monte Carlo**

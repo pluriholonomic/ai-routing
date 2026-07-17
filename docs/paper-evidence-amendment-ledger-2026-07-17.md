@@ -8,7 +8,7 @@ or promoted claims. It is not a substitute for the original protocols.
 
 - Dataset: private Hugging Face dataset `t4run/openrouter-market-history`.
 - Outcome-free randomized-design revision:
-  `8ce9eb75ed6ec76733a56d03b97b21ef55933345`.
+  `4fd167d674f6b227b766df00505fe02da1325e63`.
 - Corrected public-input revision:
   `b389923ad7713bc230dd522f770aa306bf778806`.
 - Endpoint panel: 2,004,680 distinct provider-model listings from 2,116 capture
@@ -69,6 +69,10 @@ authoritative evidence for the rewrite.
   release audit `29562343314` checked out paper/analysis commit `976468a`, pinned
   revision `8ce9eb75`, reproduced H81 counts 32/23/27 and H95 support 4/120,
   and explicitly reported `outcomes_queried=false` for both studies.
+- Full-screen run `29561010800` completed all analyses and both HF publication
+  steps. New-head preflight `29563312069` then checked out `f2fd115`, pinned
+  revision `4fd167d6`, reproduced H81 counts 32/23/27 and H95 support 4/120,
+  and again reported `outcomes_queried=false` for both studies.
 
 These workflows run on GitHub-hosted runners and do not depend on the local
 computer remaining online.
@@ -97,6 +101,7 @@ computer remaining online.
 | 2026-07-17 07:12 / run `29562343314` | H81/H95 | Clean post-amendment gate audit after eight-shard consolidation | Both gates closed; `outcomes_queried=false` | Revision `8ce9eb75` contains 82 H81 blocks (32/23/27) and four H95 triplets (12 blocks, eight models). This updates accrual only; no effect estimate exists. |
 | 2026-07-17 / `55b5087` | H81 | Pre-release audit found avoidable Monte Carlo error in the primary Fisher tails even though binary outcomes and fixed counts admit finite exact enumeration | H81 remained below 40 per arm; no outcome was queried | Published p-values now sum the multivariate-hypergeometric support exactly. The 100,000-draw permutation is retained only as an audit check; a 30-assignment brute-force fixture agrees to machine precision and the full suite has 541 passes. |
 | 2026-07-17 / `5cc0a4a` | H81 | Red-team follow-up found that the exact-versus-Monte-Carlo discrepancy was reported but could not stop a bad release | H81 remained below 40 per arm; no outcome was queried | Exact support mass must equal one within `1e-12`, and a production release fails closed if the 100,000-draw tail differs by more than 0.01. The production-setting regression and full 542-test suite pass. |
+| 2026-07-17 07:31 / run `29563312069` | H81/H95 deployment | Verify the exact-inference manuscript/code head on the live remote release path | Both gates closed; `outcomes_queried=false` | Head `f2fd115` pinned revision `4fd167d6`; H81 remained 32/23/27 and H95 remained 4/120. This is deployment evidence, not an effect estimate. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
 
 ## H81 stopping-time correction

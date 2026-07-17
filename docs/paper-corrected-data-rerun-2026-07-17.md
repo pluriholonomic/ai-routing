@@ -80,6 +80,13 @@ newest buffered randomized probes into immutable dataset revision
 - Remote-health run `29560495633` passed against the live workflows and data
   sink.
 
+Full-screen workflow `29561010800` subsequently completed every analysis and
+both HF publication steps, creating dataset head
+`4fd167d674f6b227b766df00505fe02da1325e63`. New-head confirmatory preflight
+`29563312069`, running commit `f2fd115`, pinned that revision, reproduced the
+same H81 and H95 counts, and again reported `outcomes_queried=false` for both
+studies.
+
 The new `pm1_temporal_validation` module is fail-closed at 10/30 completed UTC
 dates. It excludes the represented but open July 17 date and does not query the
 pricing-event table before the gate. At 30 completed dates it will fit on the

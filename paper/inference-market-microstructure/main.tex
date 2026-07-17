@@ -275,7 +275,7 @@ provider--model listing observations from 2,116 capture runs on 11 UTC dates,
 count is 2,013,866; the difference preserves 9,186 same-listing raw variants,
 all due to availability state rather than price or capability conflicts.  The
 newest outcome-free randomized-design status is separately pinned at revision
-\texttt{8ce9eb75ed6e}: H81 contains 82 verified first-position blocks, with arm
+\texttt{4fd167d674f6}: H81 contains 82 verified first-position blocks, with arm
 counts 32, 23, and 27 and exact assignment replay.  Its earlier eligibility
 audit contains 74 candidate rows across 37 runs; H80 remains a separate study
 with 156 verified first-position blocks over 40.7 hours.  The public cross-router
@@ -435,7 +435,7 @@ The primary contrast is the date-weighted paired Bernoulli log-loss improvement
 of the lagged-state rung over the duration/calendar rung.  Four adjacent-rung
 one-sided sign-flip tests are Holm-adjusted, with date- and model-cluster
 bootstrap intervals and leave-one-model-out sensitivity.  At revision
-\texttt{8ce9eb75ed6e}, 11 dates are represented but only 10 are complete; the
+\texttt{4fd167d674f6}, 11 dates are represented but only 10 are complete; the
 open July 17 date is excluded, 20 completed dates remain, and the program does
 not query a pricing outcome before the gate.  These estimator and support rules
 were frozen in commit \texttt{1719ade} while the holdout remained inaccessible.
@@ -919,7 +919,7 @@ assignment attrition bounds, not a per-protocol treatment effect.
 
 The original H81 protocol releases the earliest chronological prefix with at
 least 40 verified first-position assignments in every arm, regardless of sign.
-At the outcome-free release revision \texttt{8ce9eb75ed6e} (the full immutable
+At the outcome-free release revision \texttt{4fd167d674f6} (the full immutable
 hash appears in the release manifest), the arm counts
 are 32, 23, and 27.  Assignment replay and treatment-metadata checks pass for all
 82 verified blocks, so outcomes remain physically unqueried by the public
@@ -1815,11 +1815,13 @@ at a one-percentage-point discrepancy.  The full repository test run has 542
 passes.  The remote path publishes a content-hashed
 bundle exactly once and refuses automatic
 re-access if an orphan marker records an interrupted first run.  Live preflight
-run \texttt{29562343314} reproduced H81 counts 32/23/27 and H95 support 4/120 at
-their separate outcome-free revision \texttt{8ce9eb75ed6e}, with both
+run \texttt{29563312069}, checking out manuscript/code head \texttt{f2fd115},
+reproduced H81 counts 32/23/27 and H95 support 4/120 at their separate
+outcome-free revision \texttt{4fd167d674f6}, with both
 outcome-query flags false.  The preceding data consolidation was workflow
 \texttt{29561825717}, whose preparation and eight shards all passed; the
-independent remote-health audit
+full public-screen rerun \texttt{29561010800} also completed analysis, memo,
+dataset publication, and Space publication; the independent remote-health audit
 \texttt{29560495633} passed.  The public-input integrity repair ran remotely as
 workflow \texttt{29558374319}; the post-repair audit exactly reconstructed 3,219
 of 3,219 completed-day pricing events and found no price or capability conflict
