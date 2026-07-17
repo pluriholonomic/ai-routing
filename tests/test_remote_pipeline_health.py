@@ -63,6 +63,34 @@ def test_remote_health_rejects_latest_failure_even_if_previous_run_succeeded():
     assert "failure" in result["reason"]
 
 
+def test_remote_health_ignores_newer_skipped_or_cancelled_runs():
+    for conclusion in ("skipped", "cancelled"):
+        result = evaluate_workflow(
+            "compact.yml",
+            [_run(minutes_ago=80), _run(minutes_ago=20, conclusion=conclusion)],
+            now=NOW,
+            max_age_minutes=150,
+        )
+        assert result["healthy"] is True
+        assert result["ignored_terminal_runs"] == 1
+        assert "ignored 1" in result["reason"]
+
+
+def test_remote_health_rejects_only_skipped_or_cancelled_runs():
+    result = evaluate_workflow(
+        "confirmatory-release.yml",
+        [
+            _run(minutes_ago=80, conclusion="cancelled"),
+            _run(minutes_ago=20, conclusion="skipped"),
+        ],
+        now=NOW,
+        max_age_minutes=150,
+    )
+    assert result["healthy"] is False
+    assert result["ignored_terminal_runs"] == 2
+    assert "no actionable runs" in result["reason"]
+
+
 def test_remote_health_rejects_stale_success():
     result = evaluate_workflow(
         "capture.yml", [_run(minutes_ago=151)], now=NOW, max_age_minutes=150

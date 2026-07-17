@@ -46,7 +46,37 @@ def evaluate_workflow(
 ) -> dict[str, Any]:
     if not runs:
         return {"workflow": workflow, "healthy": False, "reason": "no runs"}
-    latest = max(runs, key=lambda run: _time(run["created_at"]))
+    ordered = sorted(runs, key=lambda run: _time(run["created_at"]), reverse=True)
+    # GitHub records a workflow_run job as skipped when its upstream workflow
+    # fails the job-level guard. Workflows with cancel-in-progress also retain
+    # superseded cancellations. Neither is an execution result for the monitored
+    # pipeline, so fall back to the most recent actionable run. A true failure
+    # remains actionable and must never be hidden by an older success.
+    ignored = [
+        run
+        for run in ordered
+        if run.get("status") == "completed"
+        and run.get("conclusion") in {"skipped", "cancelled"}
+    ]
+    actionable = [run for run in ordered if run not in ignored]
+    if not actionable:
+        latest_observed = ordered[0]
+        return {
+            "workflow": workflow,
+            "healthy": False,
+            "reason": "no actionable runs (only skipped/cancelled)",
+            "age_minutes": round(
+                (now - _time(latest_observed["created_at"])).total_seconds() / 60,
+                2,
+            ),
+            "status": latest_observed.get("status"),
+            "conclusion": latest_observed.get("conclusion"),
+            "run_id": latest_observed.get("id"),
+            "html_url": latest_observed.get("html_url"),
+            "created_at": latest_observed.get("created_at"),
+            "ignored_terminal_runs": len(ignored),
+        }
+    latest = actionable[0]
     age_minutes = (now - _time(latest["created_at"])).total_seconds() / 60
     status = latest.get("status")
     conclusion = latest.get("conclusion")
@@ -55,7 +85,13 @@ def evaluate_workflow(
     elif status in {"queued", "in_progress", "waiting", "pending", "requested"}:
         healthy, reason = True, "recent run active"
     elif status == "completed" and conclusion == "success":
-        healthy, reason = True, "latest run succeeded"
+        healthy = True
+        reason = (
+            f"latest actionable run succeeded; ignored {len(ignored)} "
+            "newer skipped/cancelled run(s)"
+            if ignored and ordered[0] is not latest
+            else "latest run succeeded"
+        )
     else:
         healthy, reason = False, f"latest run ended {status}/{conclusion}"
     return {
@@ -68,6 +104,7 @@ def evaluate_workflow(
         "run_id": latest.get("id"),
         "html_url": latest.get("html_url"),
         "created_at": latest.get("created_at"),
+        "ignored_terminal_runs": len(ignored),
     }
 
 
