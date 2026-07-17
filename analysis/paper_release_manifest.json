@@ -4,9 +4,9 @@
   "evidence_freeze_utc": "2026-07-17T03:30:47Z",
   "files": [
     {
-      "bytes": 14175,
+      "bytes": 16627,
       "path": "config/paper_evidence_registry.toml",
-      "sha256": "f38da19555d61a5480c38f20eec5390bfff667cd72ca47e9eccfb047cc412674"
+      "sha256": "d92b586bddf83d014ff117ea4528623a0367990fc2f2bd793f92493e85574dd9"
     },
     {
       "bytes": 3183,
@@ -34,14 +34,14 @@
       "sha256": "19166ac97a9f4bc4ef9f26500a1f7d0bca3650e73858bd4354bfdcfe759d755d"
     },
     {
-      "bytes": 4274,
+      "bytes": 4495,
       "path": "docs/h94-cross-router-pass-through-preregistration-2026-07-17.md",
-      "sha256": "75e4b5842c79b9d6a75eb1d27098a7ec3f5bfba8f00e9a879f4d15815e41238f"
+      "sha256": "137b85bc9341693e0981799fd3d185fc1bf0df15309daec79edd7bf4fa358e77"
     },
     {
-      "bytes": 6982,
+      "bytes": 8751,
       "path": "docs/paper-evidence-amendment-ledger-2026-07-17.md",
-      "sha256": "340954de6844efdbd1296fe16273e525ee3cfc75da5f7893d935fada27467c86"
+      "sha256": "a2f24e5b2908975555aba0a7f19fc1a899058c458bebd6f3b8a9e5e56012b0c0"
     },
     {
       "bytes": 7347,
@@ -54,6 +54,11 @@
       "sha256": "df7eb68091ac3b7304e57af675d245704abb33e1a12a05cd474c10ab979a85d9"
     },
     {
+      "bytes": 6658,
+      "path": "experiments/h95-delegation-replication-v1/preregistration.md",
+      "sha256": "dedc1dae66ba2269022ed8a3d1f9f4441cacbc9af4de16b4669861ef842e72f1"
+    },
+    {
       "bytes": 2715,
       "path": "manuscripts/h80-identification-correction-2026-07-16.md",
       "sha256": "9243fe6aca70f1d47a8a70e4199bdb07b3d64594018f1f986839473e194bf7ed"
@@ -64,9 +69,9 @@
       "sha256": "5709371eac108da35f7fd608dd6c03b956e9bdb94eae33ffdfaf2f194207f899"
     },
     {
-      "bytes": 22155,
+      "bytes": 24542,
       "path": "paper/inference-market-microstructure/figures/h81_theorem_validation.pdf",
-      "sha256": "3ca4d4e8025dd5ffd2c5981223b0d4d40434b1b996402397a6abfc96ad1d8593"
+      "sha256": "d1dbb485f2c0bf0d72724c6110482b122bb394d0d0faff84ea94e38abaca3a2d"
     },
     {
       "bytes": 31090,
@@ -84,9 +89,9 @@
       "sha256": "199ea7b6288b525db3dcfdefe4f1a7398b928397ac8adc3bcb11fd4b9b216643"
     },
     {
-      "bytes": 95197,
+      "bytes": 91171,
       "path": "paper/inference-market-microstructure/main.tex",
-      "sha256": "b7063b1d81e1dee54ac65511af1546c407bd8eace84480aa91154394ac20086c"
+      "sha256": "e8d749f3bbadd127b96506d770132c734647847993c6f94c6c792da38adec9a3"
     },
     {
       "bytes": 8244,
@@ -109,9 +114,9 @@
       "sha256": "e58249bee5da397b074ab411ec979d1a3bd8bcca7ec4d603a08ca6b0adf943ca"
     },
     {
-      "bytes": 10058,
+      "bytes": 10060,
       "path": "src/orcap/analysis/h81_theorem_validation.py",
-      "sha256": "5f143da2eed9f7df74ff1305818c050f447b708358dda30e929673f2f61c98e6"
+      "sha256": "d146ddd8778d20cf51b7d7b102b744a1233d01a8a064aa70ca67332f1d5aeb5b"
     },
     {
       "bytes": 37585,
@@ -134,9 +139,14 @@
       "sha256": "0ed758268055ae7c21708b3df9d60de9ad31d3d6cc8fe3b56a6a9556e8e5a530"
     },
     {
-      "bytes": 40712,
+      "bytes": 41170,
       "path": "src/orcap/analysis/h94_cross_router_pass_through.py",
-      "sha256": "2fee87c554a70b4d6ff73cb1250c58c74b72fcc3b20b5471f754b4c42cf40081"
+      "sha256": "bfed63b4a2d848c8b25c703e6c2a374b3145ba8e7725dfa32134e5957e8eef66"
+    },
+    {
+      "bytes": 22086,
+      "path": "src/orcap/analysis/h95_delegation_replication.py",
+      "sha256": "35c2cd365dc6883398f1ecf2feb8d87712d2c8870b1cd737b7af6e59b98c093b"
     },
     {
       "bytes": 11108,
@@ -154,6 +164,11 @@
       "sha256": "e817d8b1905f764d5c98fb2ea0170f894dc3b6b8a78c68c091b3f25283269ce0"
     },
     {
+      "bytes": 16469,
+      "path": "src/orcap/capture_decomposition_replication.py",
+      "sha256": "5597e571894bd82e41d75047a4a69bfb8e43cb508982402f6d4bfd1f25d1bfb2"
+    },
+    {
       "bytes": 15264,
       "path": "src/orcap/capture_probes.py",
       "sha256": "dcc8b8072f685270897cde32961ebafa9881347ab4e1f115e87b38a9aaad70ec"
@@ -167,6 +182,11 @@
       "bytes": 3157,
       "path": "tests/test_blinded_study_isolation.py",
       "sha256": "f910ce5ef9018a1ddcfca03c0656350d07e518d3b0b86ef6b2f1176ed2255d76"
+    },
+    {
+      "bytes": 4872,
+      "path": "tests/test_capture_decomposition_replication.py",
+      "sha256": "8f98056cec666db947f3bb4ad2c5fc4783adfeed693cf75f99fd492ad8fd5119"
     },
     {
       "bytes": 12951,
@@ -206,7 +226,12 @@
     {
       "bytes": 2403,
       "path": "tests/test_h94_cross_router_pass_through.py",
-      "sha256": "a2a6d79b73c857940a6f824a8391fd804716626e954c1dd8b23ccd6109ddfcc0"
+      "sha256": "ac318fbe78eb420b63616ef018f30d3ceda660a6845b45ae4b32aaefc8b19706"
+    },
+    {
+      "bytes": 6210,
+      "path": "tests/test_h95_delegation_replication.py",
+      "sha256": "b0d765c867c90e7de0c521bdf9a8b5e43493c03d42c96d68e9be16718c789e8f"
     },
     {
       "bytes": 38762,
@@ -214,16 +239,21 @@
       "sha256": "15be7e5736852b2afbb1e35dc94e5b29a35ea75affd9dcaf3d424d558f5c823d"
     },
     {
+      "bytes": 2449,
+      "path": "tests/test_remote_pipeline_health.py",
+      "sha256": "b7ec96af5c2282dbde6fa669eaa9432f00a228f9444191be9e8904961dae72c8"
+    },
+    {
       "bytes": 1220,
       "path": "tests/test_theory_validation_suite.py",
       "sha256": "28fe964519ae7d4dec1ac3c2c191d3f518b5fab567a4a2af591d610686da580e"
     }
   ],
-  "gate_event_count": 7,
-  "generated_at_utc": "2026-07-17T04:30:46.013872+00:00",
+  "gate_event_count": 10,
+  "generated_at_utc": "2026-07-17T04:55:05.584638+00:00",
   "paper_theorem_count": 7,
   "paper_track": "ACM EC / TEAC",
-  "registered_claim_count": 13,
+  "registered_claim_count": 14,
   "schema_version": 1,
-  "status": "review-driven rewrite with blinded focal outcomes"
+  "status": "compressed focal rewrite with H94 and H95 prospective collection active; focal outcomes blinded"
 }

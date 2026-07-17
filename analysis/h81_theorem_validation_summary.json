@@ -1,7 +1,7 @@
 {
   "hypothesis": "H81 stopped-design estimator validation",
   "bias_draws": 20000,
-  "size_experiments": 500,
+  "size_experiments": 2000,
   "mean_stopping_blocks": 136.26365,
   "p95_stopping_blocks": 156.0,
   "contrast_validation": [
@@ -33,8 +33,8 @@
       "terminal_inclusive_rmse": 0.021403151880503596
     }
   ],
-  "randomization_test_rejection_rate_5pct": 0.054,
-  "randomization_test_rejection_rate_mc_se": 0.010107818755794942,
+  "randomization_test_rejection_rate_5pct": 0.0505,
+  "randomization_test_rejection_rate_mc_se": 0.00489641450451246,
   "evidence_status": "simulation_validation_not_empirical_evidence",
   "claim_boundary": "This validates the stopped-design estimator under a synthetic fixed potential-outcome schedule. It does not validate H81 transport, outcomes, or market welfare."
 }

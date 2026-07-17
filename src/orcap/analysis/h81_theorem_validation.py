@@ -110,7 +110,7 @@ def simulate_bias(
 
 def simulate_randomization_size(
     *,
-    experiments: int = 500,
+    experiments: int = 2_000,
     permutations: int = 999,
     target_per_arm: int = 40,
     seed: int = 20260718,

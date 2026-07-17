@@ -142,7 +142,11 @@ they are not evidence for the focal clearing claim.
   compliance are outcome-free.  At the pinned data revision the arm counts are
   29, 22, and 25, below the original 40-per-arm release gate; no H81 outcome is
   reported.  The eligible support currently contains only two repeated models,
-  which limits transport even after release.
+  which limits transport even after release.  We therefore froze H95 before its
+  first request: an independent fixed-horizon replication over 120 three-model
+  triplets (360 first-position assignments, exactly 120 per arm) drawn from the
+  broader rank-7--30 eligible frontier.  H81 and H95 are never pooled, and no H95
+  outcome is queried before all 120 plans exist.
 
   \item \textbf{Identification and design.}  We prove the accounting
   decomposition and, after removing the gate-hitting terminal block, the
@@ -269,6 +273,15 @@ cross-router collector has one simultaneous catalog cut: 107 Glama rows, 114
 NemoRouter rows, and 563 Requesty rows.  No repeated cross-router snapshot or
 cross-router price event exists at this revision.
 
+A post-freeze audit of dataset revision \texttt{a4bb965612b5} on 2026-07-17 left
+the H81 counts and every H93 longitudinal gate unchanged.  We retain the earlier
+immutable release revision rather than moving the evidentiary cutoff after
+inspection.  H94 was subsequently activated as a future-only longitudinal
+protocol at 04:30:20 UTC; its earlier 03:30 cross-section is ineligible.  H95 was
+frozen in commit \texttt{00351dd} at 04:44:10 UTC before its first request.  Its
+confirmatory horizon is the first 120 written triplet plans, not a balance-based
+stopping time.
+
 The price-atom, repricing-hazard, steering, and Brown--MacKay analyses below were
 frozen on earlier nine-day discovery cuts.  They are retained to document the
 falsification path and are not silently refreshed into confirmatory evidence.
@@ -290,6 +303,7 @@ H81 first-position assignments & 76 & 38.5 hours & Fallback/selection release-ga
 H81 candidate eligibility & 72 & 36 runs & External-support and exclusion funnel \\
 H80 first-position assignments & 156 & 40.7 hours & Separate four-arm replication support \\
 Cross-router public catalogs & 784 & 1 cross section & Coverage and exact price equality only \\
+H95 prospective replication & 0 released & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
 Historical quote registry & multi-year & 3 years & Lifecycle and duration sensitivity \\
 \bottomrule
 \end{tabular}
@@ -327,8 +341,11 @@ experiment: its original gate was also 40 per arm, and its later 500-per-arm
 promotion threshold is disclosed as a post-outcome, pre-original-gate amendment.
 A proof audit further corrected H81's stopped-prefix inference before confirmatory
 release by excluding the gate-hitting block and conditioning on preterminal arm
-counts.  H82 is a retrospectively frozen descriptive event study, H84 is a
-retrospectively preregistered discovery falsification, and H94 remains a draft.
+counts.  H82 is a retrospectively frozen descriptive event study and H84 is a
+retrospectively preregistered discovery falsification.  H94 is a future-only
+protocol whose activation cutoff excludes the discovery cross-section.  H95 is
+an independent prospective fixed-horizon replication frozen before its first
+request; it cannot inherit or pool H81 outcomes.
 Every change is listed in the public amendment ledger.  A test below its frozen
 support is called power-gated, never a null result.
 
@@ -801,298 +818,94 @@ revision H80 has 156 verified first-position blocks with arm counts 37, 43, 38,
 and 38.  H80 and H81 are never pooled because their policies and model support
 differ.
 
-\section{The steering audit}
-\label{sec:steering}
+H95 addresses H81's narrow transport without modifying H81.  Its candidate
+frontier is ranking positions 7--30, excluding the models assigned to H80 and
+H81; a candidate must carry a current Hugging Face identifier, expose at least
+two positive-price providers, and pass the public endpoint fetch.  Each hourly
+run writes the full eligibility funnel before any purchase, samples three
+eligible models uniformly, and assigns each of the three H81 policies to first
+position exactly once.  The confirmatory sample is the first 120 valid written
+triplet plans: 360 first-position assignments with exact 120-per-arm balance and
+at most 1,080 one-token requests.  Missing planned requests and noncompliance are
+coded as failures, primary inference permutes labels within triplet, and the two
+directional contrasts receive Holm adjustment.  Broad transport additionally
+requires at least eight audited models, effective model count five, no model over
+35\%, and leave-one-model-out sign stability.  The protocol, collector, analyzer,
+and workflow were frozen in commit \texttt{00351dd} before the first request.
+H95 has no released outcome and is never pooled with H81.
 
-The platform-design problem is not exhausted by current-price ranking.
-\citet{johnsonrhodeswildenbeest2023} study dynamic
-price-directed prominence: a platform can reward a seller that previously cut
-price with additional exposure, changing the repeated-pricing game even after the
-current ranking is held fixed.  We turn the sign of that comparative static into a
-revealed-policy audit.
-
-For provider-model-day cell $(i,m,d)$, let $S_{imd}$ be its share of selected
-providers among our default probes, $C_{imd}$ indicate a price cut in the prior
-seven days, and $R_{imd}$ denote its current price rank.  The audit estimates
-\begin{equation}
- S_{imd}=\alpha_{md}+\beta C_{imd}+f(R_{imd})+\varepsilon_{imd}
- \label{eq:steering}
-\end{equation}
-and reports the nonparametric cheapest-provider cells.  Among 251
-provider-model-days, a currently cheapest provider without a recent cut has mean
-selection share 23.3\%; one with a recent cut has 3.9\%.  The rank-controlled
-coefficient is negative.  The observed policy therefore does not implement the
-positive past-cut reward that disciplines patient pricing algorithms in the
-theory.
-
-Eligibility is the central threat.  Publicly quoted endpoints may be ineligible
-for our region, prompt, or account.  Restricting the comparison to provider-model
-pairs whose eligibility is independently confirmed by pinned probes preserves the
-direction--30.0\% without a recent cut versus 9.5\% with a cut--but leaves only 11
-and one cells.  We therefore label the unrestricted result an audit statistic, not
-a causal effect of cutting price on future prominence.  Reversal would require
-eligibility misclassification to be concentrated among recent cutters, a pattern
-the prospective pinned panel is designed to measure.
-
-Two interpretations remain.  Recent cuts may predict degraded capacity, causing
-the router rationally to protect users.  Alternatively, a negative-memory rule
-taxes price competition.  A randomized visibility test or router-side eligibility
-log distinguishes them.  What the current data rule out is narrower but useful:
-for this account and sample, the revealed selection pattern does not reward past
-undercutting.
-
-\section{Bounded secondary evidence}
+\section{Secondary evidence and falsification}
 \label{sec:secondary}
 
-This section reports additional results with explicit support and promotion
-boundaries.  The accounting proposition is exact; the temporal replication and
-all behavioral interpretations remain bounded by the short panel.
+The focal result is the randomized clearing decomposition.  We retain the public
+pricing exercises only where they discipline its interpretation; full estimates,
+plots, theorem statements, and proofs are in the appendix.
 
-\subsection{Pricing cadence and Brown--MacKay}
+\paragraph{Steering memory.}
+Following \citet{johnsonrhodeswildenbeest2023}, we ask whether a currently cheap
+provider receives additional default selection after a recent price cut.  Among
+251 provider--model--days, cheapest providers without a cut in the prior seven
+days receive 23.3\% of our default selections, versus 3.9\% after a cut; a
+model-day and current-rank controlled coefficient is also negative.  Restricting
+to independently confirmed eligibility preserves the direction (30.0\% versus
+9.5\%) but leaves 11 and one cells.  This is a revealed-policy audit for one
+account, not a causal effect of cutting price.  Recent cuts may proxy for poor
+capacity, so the data reject a positive past-cut reward on this sample but do not
+identify whether the rule protects quality or taxes undercutting.
 
-Of 69 exposed providers, 19 reprice at least once: nine are classified intraday,
-seven daily, and three weekly; 50 are inactive or left-censored.  Cadence rates
-divide changes by each provider's observed quote exposure within the nine-day
-window, rather than by the shorter span between its first and last event.
-Conditional on model-day, slow
-providers quote 10.1\% more than fast providers.  The log-price coefficient is
-$-0.0964$ with provider-clustered standard error 0.0281 and 95\% interval
-$[-0.1515,-0.0413]$ across 5,501 observations and 127 models.  On the smaller
-public-quality overlap, the coefficient is $-0.3892$ with interval
-$[-0.6374,-0.1411]$.
+\paragraph{Pricing technology and timing.}
+Only 19 of 69 exposed providers reprice at least once.  Conditional on model-day,
+slow providers quote 10.1\% more than fast providers: the log-price coefficient
+is $-0.0964$ (provider-clustered standard error 0.0281, 95\% interval
+$[-0.1515,-0.0413]$).  The cadence association resembles
+\citet{brownmackay2023}; the mechanism does not.  A frozen temporal holdout has
+zero slow-initiator risk pairs, and state-only versus reaction-rule RMSE is
+0.23835 versus 0.23760.  The seven-model-cluster MSE-improvement interval
+$[-0.000972,0.008033]$ crosses zero.  Five-minute sampling also makes latent
+within-bin leaders interchangeable.  In the observed panel, 188 of 274 events
+have a unique strictly prior rival inside 72 hours, so the sharp share caused by
+that named rival remains $[0,68.6\%]$, with no positive lower bound.  Thus public
+quotes alone do not identify quote-surface front-running; the constructive result
+and full audit appear in \cref{app:coarsening-proof}.
 
-The association resembles \citet{brownmackay2023}, but the proposed reaction
-mechanism does not yet discriminate from state-dependent pricing.  Capture times
-interval-censor updates, so we exclude simultaneous multi-provider batches as
-initiators and never order changes first observed in the same snapshot.  Freezing
-cadence on the first 70\% of events then leaves 19 unambiguous evaluation waves but
-zero slow-initiator risk pairs.  Among 188 uniquely linked reactions, the temporal
-holdout RMSE is 0.23835 for the state-only rule and 0.23760 for the Brown--MacKay
-rule.  The paired MSE improvement is 0.000355 with seven-model-cluster bootstrap
-interval $[-0.000972,0.008033]$.  An exact cluster sign-flip sensitivity gives
-$p=0.023$, but the few-cluster interval crosses zero.  We therefore call the two
-rules predictively indistinguishable: the cadence premium is a resolved
-association, not evidence that slow firms initiate and fast firms respond.
+\paragraph{Revenue-share accounting.}
+On a common market-fixed-effect sample, the log quantity-share price coefficient
+is mechanically one less than the log revenue-share coefficient; residual-based
+standard errors are identical.  In 6,414 observations, the coefficients are
+$-1.0269$ and $-0.0269$ with common clustered standard error $0.0933$.  The
+identity holds to $3.6\times10^{-15}$, and the latter coefficient is equivalent
+to zero inside $[-0.25,0.25]$ ($p=0.0084$).  Yet the specification that absorbs
+both date--model and provider--model effects yields $-0.020$ (SE $0.409$), unlike
+the published $-1.02$ benchmark; only 50 listed-price moves and 0.157\% of raw
+centered price variation survive both effects.  The result corrects the accounting
+interpretation of a minus-one share coefficient.  It does not identify a causal
+demand derivative, revenue optimum, or welfare gap.  The theorem, replication
+ladder, and support audit are in \cref{app:revenue-stationarity}.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.98\linewidth]{figures/brown_mackay_audit.pdf}
-\caption{Frozen Brown--MacKay audit.  Negative cadence coefficients survive
-public-quality adjustment, while the slow-initiator support and incremental
-reaction-rule evidence do not identify the mechanism.  The 188 uniquely ordered
-candidates among 274 events imply a sharp named-rival response-share set of
-$[0,68.6\%]$.}
-\label{fig:bmaudit}
-\end{figure}
+\paragraph{Cross-router catalogs.}
+The first simultaneous Glama--Requesty--NemoRouter cross-section contains 784
+quotes and 29 Hugging-Face-linked exact provider--model pairs.  Twenty-eight pairs
+have identical input and output prices (96.6\%, Wilson interval
+$[82.8\%,99.4\%]$); the one DeepSeek pair has a 296.6\% registered-workload wedge.
+This is consistent with routers redistributing an upstream price book, but one
+cross-section cannot identify pass-through or staleness.  H94 is now prospectively
+active with a future-only cutoff of 2026-07-17 04:30:20 UTC; the discovery
+cross-section is excluded, and no prospective dynamic result exists.  Its gates
+require seven days, 48 snapshots per router, 30 transitions, 15 common shocks,
+and ten changing commodities.  The full plot and protocol summary are in
+\cref{app:secondary-details}.
 
-\Needspace{16\baselineskip}
-The negative reaction result is not merely a small-sample qualification.  The
-observation clock imposes a nonparametric identification limit even with an
-arbitrarily long panel.
-
-\begin{proposition}[Coarsened-timing observational equivalence]
-\label{prop:coarsening}
-Let latent provider quotes be right-continuous paths observed only at grid times
-$t_k=k\Delta$.  Consider an interval in which at least two providers change
-between $t_{k-1}$ and $t_k$.  If an administered-menu model permits
-provider-specific scheduled updates driven by latent public state, and a reactive
-model permits a provider to update within less than $\Delta$ after observing a
-rival move, then the sampled transition is compatible with both models.  Moreover,
-every changed provider can be made the latent first mover in a reactive path that
-produces the same sampled quotes.  Hence neither within-bin leader identity nor
-rival-triggered response is point identified from the snapshot panel.
-\end{proposition}
-
-\begin{corollary}[Sharp named-rival response bounds]
-\label{cor:named-rival-bound}
-For each of $N$ sampled price events, let $U_e=1$ when the event has a unique
-most-recent strictly prior rival move inside a declared lookback window, and let
-$R_e=1$ when that named move caused the event.  The sample response share
-$\theta=N^{-1}\sum_e U_eR_e$ satisfies
-\begin{equation}
-  0\leq\theta\leq \frac{1}{N}\sum_e U_e.
-  \label{eq:named-rival-bound}
-\end{equation}
-Without restrictions beyond \cref{prop:coarsening}, both endpoints are attainable.
-\end{corollary}
-
-The proofs are constructive and appear in \cref{app:coarsening-proof}.  The result
-allows unrestricted latent state and response maps, so restrictions on either can
-restore identification.  Without such restrictions, however, more five-minute
-snapshots improve frequency estimates but do not resolve ordering inside a
-snapshot.  Excluding same-snapshot batches therefore prevents invented order;
-the uniquely and strictly earlier links used above identify temporal candidates,
-not causal triggers.  Literal quote-surface front-running requires finer update
-timestamps, an exclusion restriction on common shocks, or randomized visibility.
-In the frozen nine-day panel, 188 of 274 price events have a unique most-recent
-strictly prior rival inside 72 hours.  Consequently, the share of all price events
-caused by that named rival is sharply bounded by $[0,188/274]=[0,68.6\%]$: candidate
-abundance narrows the upper endpoint but supplies no positive lower bound.
-
-\subsection{Unit elasticity and provider revenue shares}
-\label{sec:revenue-shares}
-
-The closest provider-market elasticity estimate in the emerging literature is
-near minus one \citep{demireretal2025}.  For zero marginal cost and negligible
-feedback to aggregate model demand, minus one is also the gross-revenue
-first-order condition.  The numerical coincidence is tempting but insufficient:
-the public regression uses equilibrium provider shares rather than a provider's
-causal residual-demand derivative.  A stronger problem is algebraic.
-
-For provider $i$ in model--time market $g$, let $q_{ig}>0$ be tokens,
-$p_{ig}>0$ price, $s_{ig}=q_{ig}/Q_g$ quantity share, and
-$e_{ig}=p_{ig}q_{ig}/R_g$ public revenue-proxy share, where
-$Q_g=\sum_jq_{jg}$ and $R_g=\sum_jp_{jg}q_{jg}$.
-
-\begin{proposition}[Quantity-share and revenue-share equivalence]
-\label{prop:revenue-share-identity}
-For any common sample, positive WLS weights, market fixed effects, and additional
-controls, let $\widehat\beta_s$ and $\widehat\beta_e$ be the coefficients on
-$\log p_{ig}$ in otherwise identical regressions of $\log s_{ig}$ and
-$\log e_{ig}$.  Then
-\begin{equation}
-  \widehat\beta_s=\widehat\beta_e-1.
-  \label{eq:revenue-share-beta}
-\end{equation}
-The fitted residuals are identical, so classical, heteroskedasticity-robust, and
-cluster-robust standard errors for the price coefficient are identical.  The
-same result holds after exact multiway fixed-effect absorption.
-\end{proposition}
-
-The proof follows from
-\begin{equation}
- \log s_{ig}=\log e_{ig}-\log p_{ig}
- +\log(R_g/Q_g),
- \label{eq:revenue-share-accounting}
-\end{equation}
-and Frisch--Waugh--Lovell partialling; it appears in
-\cref{app:revenue-stationarity}.  This is standard expenditure-share algebra in
-the spirit of demand-system analysis \citep{deatonmuellbauer1980}.  Its use here
-is diagnostic: a quantity-share coefficient of minus one says exactly that
-public revenue shares have a zero price coefficient.  It does not reveal whether
-providers maximize revenue, routers target expenditure shares, or unobserved
-quality and capacity assort with price.
-
-The identity holds to $3.6\times10^{-15}$ in our effective-price panel.  Across
-6,414 provider observations in 1,411 model--day--variant markets, the
-quantity-share coefficient is $-1.0269$ (clustered standard error $0.0933$) and
-the revenue-share coefficient is $-0.0269$ with the same standard error and
-95\% interval $[-0.2097,0.1559]$.  A two-one-sided equivalence test places the
-revenue-share coefficient inside $[-0.25,0.25]$ ($p=0.0084$).  All ten daily
-point estimates lie in that band.  A 999-draw within-market price-label
-permutation rejects exchangeable price--quantity matching ($p=0.001$), but does
-not identify the router or provider mechanism producing it.
-
-We then reproduce the no-performance-controls ladder in Table OA-5 of
-\citet{demireretal2025}.  The first two current coefficients are statistically
-compatible with the published estimates.  Only the specification that absorbs
-date--model and provider--model effects diverges.
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabular}{lrrr}
-\toprule
-Fixed effects & Published $\widehat\beta$ (SE) & Current $\widehat\beta$ (SE) & Difference $p$ \\
-\midrule
-Date & $-0.48$ $(0.15)$ & $-0.352$ $(0.115)$ & $0.498$ \\
-Date and model & $-1.07$ $(0.23)$ & $-1.575$ $(0.281)$ & $0.164$ \\
-Date$\times$model and provider$\times$model & $-1.02$ $(0.13)$ & $-0.020$ $(0.409)$ & $0.0197$ \\
-\bottomrule
-\end{tabular}
-\caption{Published and current open-weight prompt-price elasticity ladder.  The
-difference test treats the samples as independent; source construction and
-calendar windows are not identical.}
-\label{tab:revenue-replication}
-\end{table}
-
-Under a causal own-price interpretation, the last current coefficient implies a
-local public gross-revenue log-gradient of $1+\widehat\beta=0.980$ (standard
-error $0.409$, 95\% interval $[0.179,1.782]$), rejecting revenue stationarity.
-A 99,999-draw provider-cluster sign-flip score test of the fixed $-1.02$ null
-gives $p=0.00053$; 31 leave-one-residual-support-provider-out refits span
-$[-0.358,0.582]$.
-
-Identification remains bounded.  Only 30 of 351 provider--model entities and 13
-providers change raw listed prompt price.  Just 0.157\% of raw centered log-price
-sum of squares survives both fixed effects, and the top five entities carry
-65.0\% of the residual variation.  The panel has ten days and 50 price moves.
-The result is therefore a robust current-panel replication discrepancy and an
-accounting correction, not a causal structural break or a global revenue-gap
-estimate.
-
-\subsection{A cross-router law of one posted price}
-\label{sec:cross-router-price}
-
-A credential-free simultaneous capture of Glama, Requesty, and NemoRouter adds
-an external price-discovery check.  The capture contains 784 provider--model
-quotes.  We match a model only when its literal source suffix identifies exactly
-one current official \OR\ model, normalize provider labels only for punctuation,
-and restrict the open-weight screen to models carrying a current Hugging Face
-identifier.  This produces 29 simultaneous same-provider, same-model pairs.
-
-Twenty-eight of the 29 pairs post exactly the same input and output token price,
-an exact-match share of 96.6\% with Wilson 95\% interval
-$[82.8\%,99.4\%]$.  The median absolute price wedge is zero.  The sole material
-exception is \texttt{deepseek/deepseek-v4-pro} sold under the provider label
-\texttt{deepseek}: Glama posts \$1.70 input and \$3.50 output per million tokens,
-whereas Requesty posts \$0.435 and \$0.87.  For a registered workload with 1,000
-input and 500 output tokens, the Glama quote is 296.6\% above the Requesty quote.
-
-The initial cross-section suggests a useful refinement of the market analogy.
-Routers usually distribute an upstream posted price rather than independently
-make a visible price, resembling distribution channels or DEX aggregators more
-than dealers.  Rare wedges then become candidates for channel-specific contracts,
-markups, or stale catalogs.  This interpretation is deliberately provisional:
-equal provider labels need not imply equal capacity or commercial terms, a
-Hugging Face link is not a license audit, and no public catalog reveals a fill.
-The hourly H93 panel requires seven days, 48 observations per router, 30 price
-events, 15 common shocks, and 15 simulated cheapest-provider switches before a
-dynamic pass-through or staleness claim is promoted.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.99\linewidth]{figures/h93_cross_router_price_policy_panel.pdf}
-\caption{Initial cross-router posted-price audit.  Requesty supplies the broadest
-competitive provider menu.  Among 29 Hugging-Face-linked exact provider--model
-pairs, 28 have identical component prices; the plotted DeepSeek exception is a
-cross-sectional candidate, not yet evidence of stale or strategic pricing.  The
-right panel records the prospective longitudinal promotion gates.}
-\label{fig:cross-router-price}
-\end{figure}
-
-\subsection{Entry and long-memory demand}
-
-Across 304 models, the elasticity of quoting-provider count with respect to token
-demand is 0.149 (95\% interval $[0.126,0.175]$); the active-provider elasticity is
-0.173.  Both are below i.i.d. square-root and cube-root entry benchmarks.  A
-long-memory correction maps a measured multi-scale count Hurst exponent of 0.835
-to $n^{(2-2H)/2}=n^{0.165}$, numerically close to the observed slope.  We treat this
-as a remark, not identification: entry and demand are simultaneous, the panel is
-short, and a deseasonalized intraday estimator is anti-persistent.  The registered
-within-market interaction is underpowered.
-
-\subsection{Retry feedback}
-
-Within endpoint, subsequent thirty-minute request growth rises with the current
-rate-limit share.  Demand-controlled OLS gives 0.167, while a backward placebo is
-$-0.126$.  Instrumenting focal rationing with the same provider's rate limiting on
-other models gives 0.023 with interval $[-0.043,0.085]$.  The sign-asymmetric OLS
-is consistent with retry amplification; the instrument bounds the same-endpoint
-component near zero and excludes the rerouting margin.  We do not convert either
-coefficient into welfare because request aggregates do not reveal user values,
-backoff policies, or cross-provider substitution.
-
-\subsection{Conduct screens}
-
-A naive event classifier labels 83\% of rival responses to cuts as
-punish-and-revert.  Reconstructing the initiator's subsequent action changes the
-classification: 42.1\% are punish-and-revert candidates and 41.1\% are cuts the
-initiator later withdraws.  Among raises, 65.9\% are followed within 72 hours, but
-many initiators have low measured volume.  These classifications show why posted-
-price event shapes alone are not proof of algorithmic collusion.  Common cost
-shocks, experimentation, and sparse observation remain observationally
-equivalent without an adoption event or exogenous cost shock.
+\paragraph{Other diagnostics.}
+Entry, retry, and event-shape screens do not clear their identification bars.
+The provider-count elasticity with respect to tokens is 0.149 (95\% interval
+$[0.126,0.175]$), numerically close to a long-memory benchmark but confounded by
+simultaneous entry and demand.  Demand-controlled retry OLS is 0.167, whereas the
+cross-model rate-limit IV estimate is 0.023 with interval $[-0.043,0.085]$.
+Finally, reconstructing the initiating provider's next action splits apparent
+punish-and-revert events almost evenly between candidate punishment (42.1\%) and
+cuts the initiator later withdraws (41.1\%).  These are useful falsifications of
+simple stories, not promoted evidence of entry efficiency, retry externalities,
+or collusion.
 
 \section{Design implications, not welfare estimation}
 \label{sec:welfare}
@@ -1111,9 +924,10 @@ incomplete when the displayed quote is not an execution commitment.  For a fixed
 workload, an auditable procurement score must combine expected spend with failure,
 delay, and fidelity terms, and must state whether fallback is included.  Raw token
 price implements that score only when the nonprice terms are equal across eligible
-providers or already embedded in enforceable contingent prices.  H81 directly
-tests whether fallback and delegated selection are empirically relevant pieces of
-this score; it does not estimate their social weights.
+providers or already embedded in enforceable contingent prices.  H81 and its
+independent fixed-horizon H95 replication test whether fallback and delegated
+selection are empirically relevant pieces of this score; neither estimates their
+social weights.
 
 Execution-contingent prices, explicit fallback prices, and provider-level fill
 rates would make the displayed and clearing layers more congruent.  Capacity
@@ -1198,9 +1012,11 @@ far more conservative in known-clock panels; its nonrejection is not evidence of
 zero response.  Exact cluster sign-flip p-values are 0.425 and 0.214, and every
 registered empirical calibration diagnostic rejects the known-clock family as a
 fitted description.  A separately preregistered 15/15-date whole-market holdout
-test remains unopened until the 30-date gate.  Second, the randomized crossover's all-position block screen is
-secondary, and its carryover-robust first-position counts are only 33--37 of 500
-per arm.  Third, owned probes identify one
+test remains unopened until the 30-date gate.  Second, H81 remains below its
+original release gate and spans only two repeated models.  H80's later
+replication-promotion gate remains at 500 per arm, versus current outcome-free
+first-position counts of 37, 43, 38, and 38.  H95 broadens prospective support,
+but has no released outcome and cannot retroactively repair H81.  Third, owned probes identify one
 account, region, prompt family, and time window; they do not identify market-wide
 provider shares.  Fourth, public operational fields are router-published
 aggregates with missingness, not raw attempt logs.  Fifth, provider cost, private
@@ -1215,16 +1031,18 @@ markets.  Prices are not the rapidly clearing state variable.  Providers post
 sticky administered menus, minimum-price ties exceed independent grid benchmarks,
 but exact atoms do not survive hard tests of author identity.  Strategic following
 is neither promoted nor ruled out: its hard null is observationally defensible but
-underpowered at the observed effect.  The secondary block screen is consistent with the platform manufacturing
-a firm service by substituting across revocable quotes, but that statement awaits
-the first-position gate.  The platform's allocation memory does not reward recent
-undercutting in the observed panel.  Even within these boundaries, the inference
+underpowered at the observed effect.  The outcome-free H81 design can distinguish
+fallback from hidden selection once its fixed gate opens, and H95 supplies a
+separate fixed-horizon multi-model replication; neither has a promoted outcome
+now.  The platform's allocation-memory audit does not reward recent undercutting
+in the observed panel.  Even within these boundaries, the inference
 router is a market designer: its admission, fallback, and steering rules determine
 the delivered product as much as the visible price surface does.
 
 The resulting research agenda is concrete.  Longer panels test whether gap-driven
-repricing and matched-menu excess survive new vintages.  The randomized promotion gate
-estimates the deliverability frontier without order confounding.  Provider- or
+repricing and matched-menu excess survive new vintages.  The randomized H81 gate
+and independent H95 horizon estimate the deliverability frontier without order
+confounding.  Provider- or
 router-side eligibility logs would separate rational quality protection from a
 tax on undercutting.  Transparent decentralized markets supply an external
 laboratory in which accepted bids and termination reasons are public.  Together,
@@ -1332,9 +1150,9 @@ $-1.09\times10^{-4}$; each is smaller than its Monte Carlo uncertainty.  The
 terminal-inclusive fallback estimator has bias $-3.95\times10^{-4}$ (Monte Carlo
 standard error $1.23\times10^{-4}$).  The numerical magnitude is small because
 only one block is contaminated, but its sign and size depend on the unobserved
-time path and therefore cannot be assumed away.  In 500 heterogeneous sharp-null
-experiments, the fixed-count test rejects at 5.4\% (Monte Carlo standard error
-1.0 percentage point).
+time path and therefore cannot be assumed away.  In 2,000 heterogeneous
+sharp-null experiments, the fixed-count test rejects at 5.05\% (Monte Carlo
+standard error 0.49 percentage points).
 
 \begin{figure}[H]
 \centering
@@ -1344,7 +1162,7 @@ bias under a fixed, policy-specific time-varying potential-outcome schedule;
 bars are 95\% Monte Carlo intervals.  The corrected preterminal estimator is
 centered at zero, whereas including the gate-hitting block creates a small but
 design-dependent bias.  Panel B shows the randomization-$p$ empirical CDF under
-a heterogeneous sharp null; the 5\% rejection rate is 5.4\%.  This is estimator
+a heterogeneous sharp null; the 5\% rejection rate is 5.05\%.  This is estimator
 validation, not empirical evidence about routing outcomes.}
 \label{fig:h81-theorem-validation}
 \end{figure}
@@ -1424,8 +1242,78 @@ empirical estimate of the number of providers.}
 \label{fig:companion-theory-validation}
 \end{figure}
 
+\section{Secondary-result detail}
+\label{app:secondary-details}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/brown_mackay_audit.pdf}
+\caption{Frozen Brown--MacKay audit.  Negative cadence coefficients survive
+public-quality adjustment, while the slow-initiator support and incremental
+reaction-rule evidence do not identify the mechanism.  The 188 uniquely ordered
+candidates among 274 events imply the sharp named-rival response-share set
+$[0,68.6\%]$.}
+\label{fig:bmaudit}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.99\linewidth]{figures/h93_cross_router_price_policy_panel.pdf}
+\caption{Discovery cross-router posted-price audit.  Among 29
+Hugging-Face-linked exact provider--model pairs, 28 have identical component
+prices.  The DeepSeek exception is cross-sectional; the right panel records the
+longitudinal gates.  H94 excludes this entire discovery cross-section and uses
+only snapshots after its 2026-07-17 04:30:20 UTC activation.}
+\label{fig:cross-router-price}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+Fixed effects & Published $\widehat\beta$ (SE) & Current $\widehat\beta$ (SE) & Difference $p$ \\
+\midrule
+Date & $-0.48$ $(0.15)$ & $-0.352$ $(0.115)$ & $0.498$ \\
+Date and model & $-1.07$ $(0.23)$ & $-1.575$ $(0.281)$ & $0.164$ \\
+Date$\times$model and provider$\times$model & $-1.02$ $(0.13)$ & $-0.020$ $(0.409)$ & $0.0197$ \\
+\bottomrule
+\end{tabular}
+\caption{Published and current open-weight prompt-price elasticity ladder.  The
+difference test treats the samples as independent; source construction and
+calendar windows are not identical.}
+\label{tab:revenue-replication}
+\end{table}
+
 \section{Revenue-stationarity and bounded-gap protocol}
 \label{app:revenue-stationarity}
+
+For provider $i$ in model--time market $g$, let $q_{ig}>0$ be tokens,
+$p_{ig}>0$ price, $s_{ig}=q_{ig}/Q_g$ quantity share, and
+$e_{ig}=p_{ig}q_{ig}/R_g$ public revenue-proxy share, where
+$Q_g=\sum_jq_{jg}$ and $R_g=\sum_jp_{jg}q_{jg}$.
+
+\begin{proposition}[Quantity-share and revenue-share equivalence]
+\label{prop:revenue-share-identity}
+For any common sample, positive WLS weights, market fixed effects, and additional
+controls, let $\widehat\beta_s$ and $\widehat\beta_e$ be the coefficients on
+$\log p_{ig}$ in otherwise identical regressions of $\log s_{ig}$ and
+$\log e_{ig}$.  Then
+\begin{equation}
+  \widehat\beta_s=\widehat\beta_e-1.
+  \label{eq:revenue-share-beta}
+\end{equation}
+The fitted residuals are identical, so classical, heteroskedasticity-robust, and
+cluster-robust standard errors for the price coefficient are identical.  The
+same result holds after exact multiway fixed-effect absorption.
+\end{proposition}
+
+The accounting relation is
+\begin{equation}
+ \log s_{ig}=\log e_{ig}-\log p_{ig}
+ +\log(R_g/Q_g).
+ \label{eq:revenue-share-accounting}
+\end{equation}
 
 \begin{proof}[Proof of \cref{prop:revenue-share-identity}]
 Equation~\eqref{eq:revenue-share-accounting} holds observation by observation.
@@ -1481,6 +1369,32 @@ equilibrium loss; a boundary optimum leaves the global distance unidentified.
 
 \section{Proofs of the observational-equivalence results}
 \label{app:coarsening-proof}
+
+\begin{proposition}[Coarsened-timing observational equivalence]
+\label{prop:coarsening}
+Let latent provider quotes be right-continuous paths observed only at grid times
+$t_k=k\Delta$.  Consider an interval in which at least two providers change
+between $t_{k-1}$ and $t_k$.  If an administered-menu model permits
+provider-specific scheduled updates driven by latent public state, and a reactive
+model permits a provider to update within less than $\Delta$ after observing a
+rival move, then the sampled transition is compatible with both models.  Moreover,
+every changed provider can be made the latent first mover in a reactive path that
+produces the same sampled quotes.  Hence neither within-bin leader identity nor
+rival-triggered response is point identified from the snapshot panel.
+\end{proposition}
+
+\begin{corollary}[Sharp named-rival response bounds]
+\label{cor:named-rival-bound}
+For each of $N$ sampled price events, let $U_e=1$ when the event has a unique
+most-recent strictly prior rival move inside a declared lookback window, and let
+$R_e=1$ when that named move caused the event.  The sample response share
+$\theta=N^{-1}\sum_e U_eR_e$ satisfies
+\begin{equation}
+  0\leq\theta\leq \frac{1}{N}\sum_e U_e.
+  \label{eq:named-rival-bound}
+\end{equation}
+Without restrictions beyond \cref{prop:coarsening}, both endpoints are attainable.
+\end{corollary}
 
 \begin{proof}[Proof of \cref{prop:menu-equivalence}]
 For the nonreactive construction, let the public menu contain the finite union of
@@ -1634,6 +1548,14 @@ equivalence unless the registered equivalence margin is met.
 \section{Steering-audit robustness}
 \label{app:steering}
 
+For provider--model--day cell $(i,m,d)$, let $S_{imd}$ be the selected-provider
+share among default probes, $C_{imd}$ indicate a price cut in the prior seven
+days, and $R_{imd}$ be current price rank.  The audit estimates
+\begin{equation}
+ S_{imd}=\alpha_{md}+\beta C_{imd}+f(R_{imd})+\varepsilon_{imd}.
+ \label{eq:steering}
+\end{equation}
+
 The unrestricted audit includes every provider-model-day that is currently
 cheapest on the public surface and has at least one default probe.  Model-day fixed
 effects remove common demand and quote-level shocks; price-rank controls compare
@@ -1676,9 +1598,10 @@ Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
 H81 fallback and hidden selection & 76 verified blocks; counts 29, 22, 25; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm release gate; terminal block excluded \\
 H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
+H95 fixed-horizon replication & Protocol frozen before first request; no outcome released & 120 written triplets and broad audited model support & Fixed 120-triplet horizon; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
 Stale-cheap pickoff channel & H84 rejects its directional prediction; backward placebo nonzero & Prospective sample and realized fill linkage & Disjoint H85 holdout \\
-Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous cross section, Wilson interval $[0.828,0.994]$ & Repeated changes, contract comparability, eligibility, and fills & H93 longitudinal gates; H94 not yet active \\
+Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous discovery cross section, Wilson interval $[0.828,0.994]$ & Repeated changes, contract comparability, eligibility, and fills & H94 active prospectively after 2026-07-17 04:30:20 UTC; all dynamic gates closed \\
 Literal front-running & Coarsened-timing bounds only & Cross-user arrival and quote-update sequence & Negotiated router/provider event logs \\
 Global welfare loss & No identified estimate & Values, quality, costs, transfers, and capacity response & Structural measurement contract \\
 \bottomrule

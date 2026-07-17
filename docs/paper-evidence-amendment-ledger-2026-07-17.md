@@ -25,6 +25,10 @@ or promoted claims. It is not a substitute for the original protocols.
   exact provider-model pairs, 28 have identical input and output prices (Wilson
   95% interval `[0.8282, 0.9939]`). There are zero repeated snapshots and zero
   price events at this cut.
+- A post-freeze audit at dataset revision
+  `a4bb965612b5a4db306550f3afb5dc6caa947b37` left the H81 counts and every H93
+  longitudinal gate unchanged. The release revision remains pinned rather than
+  moving the evidentiary cutoff after inspection.
 
 Local `analysis/` outputs that were not rebuilt from this revision are not
 authoritative evidence for the rewrite.
@@ -40,6 +44,16 @@ authoritative evidence for the rewrite.
   artifacts and the consolidated workflow uploads them to Hugging Face; a
   dataset revision can therefore lag a successful collector until the next
   fold.
+- `marketplace-history` briefly received a malformed or missing app-rankings
+  payload at 03:30 UTC. The endpoint subsequently returned HTTP 200 with the
+  expected `data` and `meta` structure, and replay run `29555163723` completed
+  capture, quality checks, and Hugging Face upload successfully. The data sink
+  remained fresh throughout; this was a transient source response, not evidence
+  loss.
+- H95 run `29555584388` completed successfully at 04:46 UTC after the protocol
+  freeze and uploaded its eligibility and attempt telemetry. No workflow log,
+  request outcome, selected provider, cost, or latency was inspected; the
+  fixed 120-triplet outcome gate remains closed.
 
 These workflows run on GitHub-hosted runners and do not depend on the local
 computer remaining online.
@@ -56,7 +70,9 @@ computer remaining online.
 | 2026-07-17 / `6017dae` | H81 | Pre-gate analyzer changed from outcome derivation plus masking to an assignment-only SQL query and an early return | Dedicated H81 outcomes still masked | Pre-gate public execution no longer reads outcome, cost, latency, provider, token, or fallback fields. Raw-source analyst access remains technically possible. |
 | 2026-07-17 04:06 / `6017dae` | H81 | Proof audit found that the earliest-balanced-prefix rule is an assignment-dependent stopping time | No confirmatory H81 outcome released | The gate-hitting terminal block is excluded. Inference conditions on the preterminal arm counts and permutes their fixed label multiset. The 40-per-arm release threshold and hypotheses are unchanged. |
 | 2026-07-17 / `6017dae` | H93 | Remote DuckDB run failed because `run_ts` was ambiguous in the latest-model join | Cross-sectional data already public | The join is now explicitly qualified; a two-vintage regression test verifies that only the latest model mapping is used. The rerun reproduces the one-cross-section 28/29 result and confirms that every longitudinal gate remains closed. |
-| 2026-07-17 / draft only | H94 | Longitudinal cross-router pass-through protocol drafted | Not activated | H94 is not preregistered evidence until a freeze commit precedes additional eligible snapshots. |
+| 2026-07-17 04:30 / `6017dae` | H94 | Longitudinal cross-router pass-through protocol activated prospectively | One earlier discovery cross section known; no eligible future transition observed | Only snapshots after 04:30:20 UTC are eligible; the 03:30 cross section is excluded from all gates and events. |
+| 2026-07-17 04:44 / `00351dd` | H95 | Fixed 120-triplet protocol, collector, analyzer, and remote workflow frozen | Before first H95 inference request | H95 is independent of H81, uses exact within-triplet arm balance, and never pools outcomes with H81. |
+| 2026-07-17 04:46 / run `29555584388` | H95 | First prospective remote workflow completed and preserved telemetry | Outcomes not queried or inspected | Confirms remote operation and prospective activation only; no effect or completion-rate result is available. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
 
 ## H81 stopping-time correction
@@ -72,7 +88,8 @@ over fixed-count assignments. Arm means are therefore the conditional
 Horvitz-Thompson means with probabilities `n_p/(T-1)`, and randomization tests
 permute the observed label multiset. A 20,000-draw validation at the actual gate
 finds corrected bias indistinguishable from zero for all three contrasts; the
-fixed-count sharp-null test rejects at 5.4% in 500 experiments.
+fixed-count sharp-null test rejects at 5.05% in 2,000 experiments (Monte Carlo
+standard error 0.49 percentage points).
 
 ## Claim consequences for the rewrite
 
@@ -84,7 +101,9 @@ fixed-count sharp-null test rejects at 5.4% in 500 experiments.
    as a class.
 5. H93 is a cross-sectional equality fact only; no pass-through or reaction
    result exists yet.
-6. No current design identifies literal front-running, provider intent,
+6. H94 is active only for post-04:30:20 UTC snapshots and has no prospective
+   result yet. H95 is active, fixed at 120 triplets, and has no released outcome.
+7. No current design identifies literal front-running, provider intent,
    market-wide routed share, social welfare, or the welfare-maximizing entry
    count.
 

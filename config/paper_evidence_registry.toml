@@ -5,7 +5,7 @@ paper_track = "ACM EC / TEAC"
 authoritative_dataset = "t4run/openrouter-market-history"
 authoritative_revision = "1d366685a8e82ea5936ded5d325b6aa2c988e870"
 evidence_freeze_utc = "2026-07-17T03:30:47Z"
-status = "review-driven rewrite with blinded focal outcomes"
+status = "compressed focal rewrite with H94 and H95 prospective collection active; focal outcomes blinded"
 amendment_ledger = "docs/paper-evidence-amendment-ledger-2026-07-17.md"
 
 # Every proposition/corollary currently present in the paper must occur here.
@@ -311,10 +311,20 @@ classification = "prospective future-only activation"
 
 [[gate_event]]
 study_id = "H95"
-effective_utc = "2026-07-17T04:42:39Z"
-commit = "working-tree"
+effective_utc = "2026-07-17T04:44:10Z"
+commit = "00351dd"
 gate_version = "v1-fixed-120-triplets"
 target_per_arm = 120
 event = "fixed-horizon blocked replication protocol, collector, analyzer, and remote workflow frozen"
 outcome_visibility = "before first H95 inference request"
 classification = "original preregistration"
+
+[[gate_event]]
+study_id = "H95"
+effective_utc = "2026-07-17T04:46:19Z"
+commit = "github-actions-run-29555584388"
+gate_version = "v1-first-remote-run"
+target_per_arm = 120
+event = "first prospective H95 workflow completed and preserved eligibility and attempt telemetry"
+outcome_visibility = "workflow status only; logs and request outcomes not queried"
+classification = "outcome-blinded operational verification"

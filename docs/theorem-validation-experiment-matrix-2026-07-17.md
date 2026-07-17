@@ -17,7 +17,7 @@ it cannot turn a theorem into an empirical market fact.
 The first item is implemented. The H81 analyzer now queries only assignment and
 support fields before its gate, excludes the gate-hitting terminal block after
 release, and uses fixed-count conditional randomization. The 20,000-draw theorem
-validation and 500-experiment size audit are in
+validation and 2,000-experiment size audit are in
 `src/orcap/analysis/h81_theorem_validation.py`.
 
 The companion logical/numerical suite is also implemented in
@@ -66,7 +66,8 @@ delegation as both an estimand and estimator identity.
    - Pass rule: the 5% rejection rate must lie inside a predeclared Monte Carlo
      tolerance of `[0.03,0.07]` with at least 2,000 experiments for the final
      release audit.
-   - Current screen: 5.4% in 500 experiments; increase to 2,000 before submission.
+   - Current final audit: 5.05% in 2,000 experiments (Monte Carlo standard error
+     0.49 percentage points), inside the declared tolerance.
 
 4. **Missingness adversary**
    - Delete spend, latency, and selected-provider fields by treatment, success,
@@ -87,15 +88,25 @@ delegation as both an estimand and estimator identity.
    - Current result: fails transport decisively; only two models recur and support
      turnover is zero.
 
-### Independent replication design
+### Independent replication design: implemented as H95
 
-The next H81-style experiment must use a fixed chronological horizon rather than
-an arm-balance stopping time. Freeze `B=360` eligible first-position blocks, use
-stratified randomization within model and UTC six-hour bin, and assign 120 slots
-per arm by permuted blocks. Expand candidate support from ranks five and six to a
-predeclared rotating sample across the eligible model frontier. Report the
-original H81 cut unchanged and never pool the two experiments. This replication
-can improve transport and precision without rewriting the original study.
+H95 was frozen in commit `00351dd` before its first inference request and its
+first remote workflow completed successfully in run `29555584388`. It uses the
+first 120 prospectively written three-model triplet plans: 360 confirmatory
+first-position blocks with exact 120-per-arm balance. At each run it screens
+OpenRouter ranks 7--30, requires a Hugging Face id and at least two positive-price
+providers, uniformly samples three eligible models, and assigns each H81 policy
+to first position exactly once. The full eligibility funnel is written before
+requests. Missing planned records and noncompliance are coded as failure;
+randomization inference permutes labels within triplet and Holm-adjusts the two
+directional primary tests.
+
+The design uses a fixed horizon rather than the H81 arm-balance stopping rule and
+is never pooled with H81. No H95 outcome is queried before 120 plans exist. Broad
+transport additionally requires at least eight audited model ids, effective
+model count five, no model above 35% of plans, no six-hour bin above 20%, and both
+primary effect directions stable under leave-one-model-out. The launch establishes
+prospective operation only; it is not an empirical effect result.
 
 ## T2. Asynchronous-menu observational equivalence
 
