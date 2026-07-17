@@ -1,10 +1,15 @@
 import hashlib
+import runpy
+from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from orcap.compact import TRACKED_PRICE_FIELDS
-from scripts.repair_endpoint_integrity import build_repair_bundle
+
+build_repair_bundle = runpy.run_path(
+    str(Path(__file__).parents[1] / "scripts" / "repair_endpoint_integrity.py")
+)["build_repair_bundle"]
 
 
 def _row(dt: str, run_ts: str, *, prompt: float, status: int, raw: str) -> dict:

@@ -43,5 +43,5 @@ jobs:
         with:
           name: endpoint-integrity-repair-${{ github.run_id }}
           path: endpoint-integrity-repair.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 90
