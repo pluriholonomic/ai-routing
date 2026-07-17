@@ -322,7 +322,7 @@ classification = "prospective future-only activation"
 [[gate_event]]
 study_id = "H94"
 effective_utc = "2026-07-17T05:01:54Z"
-commit = "working-tree"
+commit = "d5345e55886558d2308b75d869a60546edb7bc99"
 gate_version = "v1-future-only-fail-closed"
 target_per_arm = 0
 event = "implementation audit applies the prospective cutoff to elapsed time, snapshot counts, simulated routes, and every derived frame, not only primary quote transitions"
