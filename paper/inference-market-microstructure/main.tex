@@ -140,7 +140,7 @@ they are not evidence for the focal clearing claim.
   primary contrasts isolate the option value of fallback and the additional
   value of hidden selection for the owned account.  Assignment replay and policy
   compliance are outcome-free.  At the pinned data revision the arm counts are
-  29, 22, and 25, below the original 40-per-arm release gate; no H81 outcome is
+  30, 23, and 25, below the original 40-per-arm release gate; no H81 outcome is
   reported.  The eligible support currently contains only two repeated models,
   which limits transport even after release.  We therefore froze H95 before its
   first request: an independent fixed-horizon replication over 120 three-model
@@ -265,22 +265,22 @@ and owned generation records for requests made with our study key.
 
 The paper release distinguishes the current acquisition cut from older frozen
 discovery vintages.  At immutable dataset revision
-\texttt{1d366685a8e8}, the endpoint panel contains 3,120,108 rows from 2,105
-capture runs on 11 UTC dates, 2026-07-07 through 2026-07-17.  H81 contains 76
-verified first-position blocks over 38.5 hours and 72 candidate-eligibility rows;
-H80 contains 156 verified first-position blocks over 40.7 hours.  The public
+\texttt{08a2a183d6df}, the endpoint panel contains 3,344,470 rows from 2,116
+capture runs on 11 UTC dates, 2026-07-07 through 2026-07-17.  H81 contains 78
+verified first-position blocks over 41.2 hours and 74 candidate-eligibility rows
+across 37 runs; H80 contains 156 verified first-position blocks over 40.7 hours.  The public
 cross-router collector has one simultaneous catalog cut: 107 Glama rows, 114
 NemoRouter rows, and 563 Requesty rows.  No repeated cross-router snapshot or
 cross-router price event exists at this revision.
 
-A post-freeze audit of dataset revision \texttt{a4bb965612b5} on 2026-07-17 left
-the H81 counts and every H93 longitudinal gate unchanged.  We retain the earlier
-immutable release revision rather than moving the evidentiary cutoff after
-inspection.  H94 was subsequently activated as a future-only longitudinal
-protocol at 04:30:20 UTC; its earlier 03:30 cross-section is ineligible.  H95 was
-frozen in commit \texttt{00351dd} at 04:44:10 UTC before its first request.  Its
-confirmatory horizon is the first 120 written triplet plans, not a balance-based
-stopping time.
+H94 was activated as a future-only longitudinal protocol at 04:30:20 UTC; its
+sole 03:30 discovery cross-section is
+ineligible, leaving zero prospective snapshots or transitions at this cut.  H95
+was frozen in commit \texttt{00351dd} at 04:44:10 UTC before its first request.
+Its first written triplet is present: all three first-position assignments replay
+and comply, the three selected models are distinct, and no outcome field was
+queried.  Its confirmatory horizon remains the first 120 written triplet plans,
+not a balance-based stopping time.
 
 The price-atom, repricing-hazard, steering, and Brown--MacKay analyses below were
 frozen on earlier nine-day discovery cuts.  They are retained to document the
@@ -290,20 +290,21 @@ from current-status claims.
 
 \begin{table}[H]
 \centering
-\small
+\footnotesize
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.27\linewidth}r
 >{\raggedright\arraybackslash}p{0.14\linewidth}
 >{\raggedright\arraybackslash}p{0.33\linewidth}}
 \toprule
 Panel & Rows / attempts & Span & Primary role \\
 \midrule
-Endpoint acquisition cut & 3,120,108 & 11 UTC dates & Current prices and public enforcement state \\
+Endpoint acquisition cut & 3,344,470 & 11 UTC dates & Current prices and public enforcement state \\
 Frozen pricing discovery cut & 2,968,449 & 9 days & Price atoms, hazards, and cadence screens \\
-H81 first-position assignments & 76 & 38.5 hours & Fallback/selection release-gate support \\
-H81 candidate eligibility & 72 & 36 runs & External-support and exclusion funnel \\
+H81 first-position assignments & 78 & 41.2 hours & Fallback/selection release-gate support \\
+H81 candidate eligibility & 74 & 37 runs & External-support and exclusion funnel \\
 H80 first-position assignments & 156 & 40.7 hours & Separate four-arm replication support \\
 Cross-router public catalogs & 784 & 1 cross section & Coverage and exact price equality only \\
-H95 prospective replication & 0 released & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
+H95 prospective replication & 1 triplet / 3 blocks & 120-triplet fixed horizon & Independent multi-model fallback/selection replication \\
 Historical quote registry & multi-year & 3 years & Lifecycle and duration sensitivity \\
 \bottomrule
 \end{tabular}
@@ -794,19 +795,19 @@ proof and a simulation-validation protocol appear in \cref{app:h81-proof}.
 
 The original H81 protocol releases the earliest chronological prefix with at
 least 40 verified first-position assignments in every arm, regardless of sign.
-At dataset revision \texttt{1d366685a8e8} (the full immutable hash appears in
+At dataset revision \texttt{08a2a183d6df} (the full immutable hash appears in
 the release manifest), the outcome-free arm counts
-are 29, 22, and 25.  Assignment replay and treatment-metadata checks pass for all
-76 verified blocks, so outcomes remain physically unqueried by the public
+are 30, 23, and 25.  Assignment replay and treatment-metadata checks pass for all
+78 verified blocks, so outcomes remain physically unqueried by the public
 pre-gate analysis.  When the gate opens, the analysis will exclude its terminal
 block and condition on the remaining arm counts; this correction was frozen
-before the first H81 outcome release.  The candidate funnel is narrow: 72 eligibility records cover
+before the first H81 outcome release.  The candidate funnel is narrow: 74 eligibility records cover
 two models at ranking positions five and six; both models are eligible in every
 recorded run and adjacent eligible support never changes.  The experiment will
 therefore identify a finite-sample policy effect for those model--time blocks,
 not a market-wide average.  Simulating continued uniform assignment at the
-observed 1.90 verified blocks per hour gives 30.3 additional hours to the gate on
-average and 36.4 hours at the 90th percentile; scheduling or eligibility failures
+observed 1.89 verified blocks per hour gives 29.2 additional hours to the gate on
+average and 34.8 hours at the 90th percentile; scheduling or eligibility failures
 can only make that calendar forecast less reliable.
 
 H80 is a separate four-arm replication.  Its original protocol also specified
@@ -1596,9 +1597,9 @@ identifiable when bids, acceptance, and termination are public.
 \toprule
 Claim & Current evidence & Missing identification & Promotion gate \\
 \midrule
-H81 fallback and hidden selection & 76 verified blocks; counts 29, 22, 25; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm release gate; terminal block excluded \\
+H81 fallback and hidden selection & 78 verified blocks; counts 30, 23, 25; no outcome released & Precision and transport beyond two repeated models & Original 40-per-arm release gate; terminal block excluded \\
 H80 provider-order replication & 156 verified blocks; counts 37, 43, 38, 38; outcomes masked & Independent replication under different policies and support & Later 500-per-arm promotion amendment \\
-H95 fixed-horizon replication & Protocol frozen before first request; no outcome released & 120 written triplets and broad audited model support & Fixed 120-triplet horizon; never pooled with H81 \\
+H95 fixed-horizon replication & One compliant triplet, three distinct models; no outcome released & 120 written triplets and broad audited model support & Fixed 120-triplet horizon; never pooled with H81 \\
 Displayed price versus operational state & H82 fixed-price enforcement paths with failed pretrends & Exogenous enforcement timing and request-level allocation & Future-only H83 holdout \\
 Stale-cheap pickoff channel & H84 rejects its directional prediction; backward placebo nonzero & Prospective sample and realized fill linkage & Disjoint H85 holdout \\
 Cross-router posted-price equality & 28/29 HF-linked pairs equal in one simultaneous discovery cross section, Wilson interval $[0.828,0.994]$ & Repeated changes, contract comparability, eligibility, and fills & H94 active prospectively after 2026-07-17 04:30:20 UTC; all dynamic gates closed \\

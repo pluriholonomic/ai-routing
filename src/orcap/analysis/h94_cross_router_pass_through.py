@@ -103,6 +103,28 @@ def _state(input_price: Any, output_price: Any) -> str:
     return f"{float(input_price):.12g}|{float(output_price):.12g}"
 
 
+def prospective_quote_source(panel: pd.DataFrame) -> pd.DataFrame:
+    """Apply the prospective activation cutoff to every H94 gate and outcome.
+
+    H94 was activated after one discovery cross section was already known.  The
+    cutoff must therefore govern not only transition construction, but also
+    elapsed time, snapshot counts, simulated route switches, and contract-pair
+    diagnostics.  Returning an empty frame when no post-cutoff row exists keeps
+    the design fail-closed.
+    """
+    if panel.empty:
+        return panel.copy()
+    if "ts" not in panel:
+        raise ValueError("H94 panel missing timestamp column: ts")
+    source = panel.copy()
+    source["ts"] = pd.to_datetime(source["ts"], errors="coerce", utc=True)
+    eligible_after = _settings().get("eligible_after_utc")
+    if eligible_after:
+        cutoff = pd.to_datetime(eligible_after, errors="raise", utc=True)
+        source = source.loc[source["ts"].ge(cutoff)].copy()
+    return source
+
+
 def primary_quote_panel(panel: pd.DataFrame) -> pd.DataFrame:
     """Return fail-closed, open-model, multi-router commodity observations."""
     if panel.empty:
@@ -121,13 +143,7 @@ def primary_quote_panel(panel: pd.DataFrame) -> pd.DataFrame:
     if missing := required.difference(panel.columns):
         raise ValueError(f"H94 panel missing columns: {sorted(missing)}")
 
-    settings = _settings()
-    source = panel.copy()
-    source["ts"] = pd.to_datetime(source["ts"], errors="coerce", utc=True)
-    eligible_after = settings.get("eligible_after_utc")
-    if eligible_after:
-        cutoff = pd.to_datetime(eligible_after, errors="raise", utc=True)
-        source = source.loc[source["ts"].ge(cutoff)].copy()
+    source = prospective_quote_source(panel)
     frame = source.copy()
     for column in ["price_input_usd_per_mtok", "price_output_usd_per_mtok"]:
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
@@ -759,28 +775,33 @@ def evidence_summary(
     panel: pd.DataFrame, *, bootstrap_draws: int | None = None
 ) -> tuple[dict[str, Any], dict[str, pd.DataFrame]]:
     settings = _settings()
-    primary = primary_quote_panel(panel)
+    prospective = prospective_quote_source(panel)
+    primary = primary_quote_panel(prospective)
     events = exact_price_transitions(primary)
     matches = common_shock_matches(events)
     controls = negative_control_matches(events)
     pair_panel = synchronous_pair_panel(primary)
     spells = material_wedge_spells(pair_panel)
-    routes = simulated_cheapest_routes(panel)
+    routes = simulated_cheapest_routes(prospective)
     switches = simulated_route_switches(routes)
     linked = link_simulated_switches(events, switches)
     lead_lag = lead_lag_inference(matches)
     placebo, placebo_inference = circular_shift_placebo(events, primary)
     coverage = transition_coverage_interval(events, matches, draws=bootstrap_draws)
 
-    timestamps = panel["ts"].dropna() if "ts" in panel else pd.Series(dtype="datetime64[ns, UTC]")
+    timestamps = (
+        prospective["ts"].dropna()
+        if "ts" in prospective
+        else pd.Series(dtype="datetime64[ns, UTC]")
+    )
     elapsed = (
         float((timestamps.max() - timestamps.min()).total_seconds() / 86400)
         if len(timestamps) >= 2
         else 0.0
     )
     snapshots = (
-        panel.groupby("router")["run_ts"].nunique()
-        if not panel.empty
+        prospective.groupby("router")["run_ts"].nunique()
+        if not prospective.empty
         else pd.Series(dtype=int)
     )
     independent = (

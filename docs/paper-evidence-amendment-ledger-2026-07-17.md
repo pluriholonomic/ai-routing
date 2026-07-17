@@ -7,28 +7,30 @@ or promoted claims. It is not a substitute for the original protocols.
 ## Authoritative evidence cut
 
 - Dataset: private Hugging Face dataset `t4run/openrouter-market-history`.
-- Revision: `1d366685a8e82ea5936ded5d325b6aa2c988e870`.
-- Endpoint panel: 3,120,108 rows, 2,105 runs, and 11 UTC dates from 2026-07-07
+- Revision: `08a2a183d6df275b5614310b6205695dafbd929b`.
+- Endpoint panel: 3,344,470 rows, 2,116 runs, and 11 UTC dates from 2026-07-07
   through 2026-07-17.
 - H80 outcome-free support: 156 verified first-position blocks with arm counts
   37, 43, 38, and 38; 100% assignment replay; outcomes masked.
-- H81 outcome-free support: 76 verified first-position blocks with arm counts
-  29, 22, and 25; 100% assignment replay and treatment-metadata compliance;
+- H81 outcome-free support: 78 verified first-position blocks with arm counts
+  30, 23, and 25; 100% assignment replay and treatment-metadata compliance;
   outcomes masked.
-- H81 external support: two repeated models, 72 eligibility rows, ranks five
+- H81 external support: two repeated models, 74 eligibility rows, ranks five
   and six, effective model count two, and zero adjacent-run support turnover.
-- H81 outcome-free forecast: 11, 18, and 15 additional assignments are needed
-  by arm. Under uniform continued assignment and the observed 1.90-block/hour
-  cadence, the simulated mean time to gate is 30.3 hours and the 90th percentile
-  is 36.4 hours; scheduler and eligibility failures are not modeled.
+- H81 outcome-free forecast: 10, 17, and 15 additional assignments are needed
+  by arm. Under uniform continued assignment and the observed 1.89-block/hour
+  cadence, the simulated mean time to gate is 29.2 hours and the 90th percentile
+  is 34.8 hours; scheduler and eligibility failures are not modeled.
 - Cross-router catalog: one simultaneous cross section only. Of 29 HF-linked
   exact provider-model pairs, 28 have identical input and output prices (Wilson
   95% interval `[0.8282, 0.9939]`). There are zero repeated snapshots and zero
   price events at this cut.
-- A post-freeze audit at dataset revision
-  `a4bb965612b5a4db306550f3afb5dc6caa947b37` left the H81 counts and every H93
-  longitudinal gate unchanged. The release revision remains pinned rather than
-  moving the evidentiary cutoff after inspection.
+- H94 prospective support: zero snapshots after the 04:30:20 UTC activation
+  cutoff and therefore zero eligible transitions, common shocks, or simulated
+  route switches.
+- H95 outcome-free support: one planned triplet, three first-position blocks,
+  three distinct models, perfect plan compliance and replay, ten candidate rows,
+  and nine eligible rows. No outcome was queried.
 
 Local `analysis/` outputs that were not rebuilt from this revision are not
 authoritative evidence for the rewrite.
@@ -73,6 +75,8 @@ computer remaining online.
 | 2026-07-17 04:30 / `6017dae` | H94 | Longitudinal cross-router pass-through protocol activated prospectively | One earlier discovery cross section known; no eligible future transition observed | Only snapshots after 04:30:20 UTC are eligible; the 03:30 cross section is excluded from all gates and events. |
 | 2026-07-17 04:44 / `00351dd` | H95 | Fixed 120-triplet protocol, collector, analyzer, and remote workflow frozen | Before first H95 inference request | H95 is independent of H81, uses exact within-triplet arm balance, and never pools outcomes with H81. |
 | 2026-07-17 04:46 / run `29555584388` | H95 | First prospective remote workflow completed and preserved telemetry | Outcomes not queried or inspected | Confirms remote operation and prospective activation only; no effect or completion-rate result is available. |
+| 2026-07-17 04:52 / dataset `08a2a183` | H81/H95 | Outcome-free refresh records H81 counts 30/23/25 and the first compliant H95 triplet | Dedicated analyzers queried assignment and support fields only | Updates accrual and transport support without releasing any policy outcome. |
+| 2026-07-17 05:01 / working tree | H94 | Red-team audit found that primary transitions respected the activation cutoff but elapsed-time, snapshot, and simulated-route summaries still read the unfiltered discovery panel | Zero post-cutoff snapshots and zero prospective events existed | A shared fail-closed prospective filter now governs every gate, derived frame, and simulated outcome; regression tests exclude all-discovery panels and prevent bridging the first future snapshot to discovery. No empirical result changed. |
 | 2026-07-17 / `6017dae` | Theory suite | Detection, revenue-accounting, coarsening, and entry propositions received finite numerical/property checks | No empirical outcome used | The checks validate algebra and implementation only; they are not market calibration or causal evidence. |
 
 ## H81 stopping-time correction
@@ -93,7 +97,8 @@ standard error 0.49 percentage points).
 
 ## Claim consequences for the rewrite
 
-1. H81 is the focal randomized design, but no causal outcome is yet reportable.
+1. H81 is the focal randomized design, but no causal outcome is yet reportable;
+   the current outcome-free counts are 30, 23, and 25.
 2. H80 is a separate replication and must retain both its original 40-per-arm
    history and its later 500-per-arm promotion rule.
 3. H82 is descriptive because its frozen pretrends fail.
@@ -102,7 +107,7 @@ standard error 0.49 percentage points).
 5. H93 is a cross-sectional equality fact only; no pass-through or reaction
    result exists yet.
 6. H94 is active only for post-04:30:20 UTC snapshots and has no prospective
-   result yet. H95 is active, fixed at 120 triplets, and has no released outcome.
+   result yet. H95 has one of 120 planned triplets and no released outcome.
 7. No current design identifies literal front-running, provider intent,
    market-wide routed share, social welfare, or the welfare-maximizing entry
    count.

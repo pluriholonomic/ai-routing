@@ -3,9 +3,9 @@ schema_version = 1
 paper_path = "paper/inference-market-microstructure/main.tex"
 paper_track = "ACM EC / TEAC"
 authoritative_dataset = "t4run/openrouter-market-history"
-authoritative_revision = "1d366685a8e82ea5936ded5d325b6aa2c988e870"
-evidence_freeze_utc = "2026-07-17T03:30:47Z"
-status = "compressed focal rewrite with H94 and H95 prospective collection active; focal outcomes blinded"
+authoritative_revision = "08a2a183d6df275b5614310b6205695dafbd929b"
+evidence_freeze_utc = "2026-07-17T04:52:33Z"
+status = "outcome-safe refresh with H81 and H95 accruing; H94 prospective cutoff repaired; focal outcomes blinded"
 amendment_ledger = "docs/paper-evidence-amendment-ledger-2026-07-17.md"
 
 # Every proposition/corollary currently present in the paper must occur here.
@@ -124,7 +124,7 @@ tex_label = ""
 title = "Owned randomized fallback and hidden-selection experiment"
 disposition = "main"
 identification = "randomized first-position ITT"
-status = "power-gated; 76 verified blocks and minimum arm count 22 at the pinned revision"
+status = "power-gated; 78 verified blocks and minimum arm count 23 at the pinned revision"
 source_tables = ["router_route_attempts", "router_probe_eligibility"]
 analyzers = ["src/orcap/analysis/h81_delegation_decomposition.py"]
 collectors = ["src/orcap/capture_decomposition_probes.py"]
@@ -204,7 +204,7 @@ tex_label = ""
 title = "Cross-router quote pass-through holdout"
 disposition = "future holdout"
 identification = "prospective event-time panel"
-status = "prospective protocol activated at 6017dae; the earlier discovery cross section is excluded"
+status = "prospective protocol activated at 6017dae; all gates and derived outcomes now fail-closed on the future-only cutoff"
 source_tables = ["router_public_quote_snapshots"]
 analyzers = ["src/orcap/analysis/h94_cross_router_pass_through.py"]
 collectors = ["src/orcap/capture_router_catalogs.py"]
@@ -220,7 +220,7 @@ tex_label = ""
 title = "Fixed-horizon multi-model delegation replication"
 disposition = "future independent replication"
 identification = "blocked randomized first-position ITT over 120 planned triplets"
-status = "protocol, collector, analyzer, and remote workflow frozen before the first request"
+status = "one compliant planned triplet accrued after protocol freeze; 119 of 120 triplets remain; outcomes unqueried"
 source_tables = ["router_route_attempts", "router_replication_eligibility"]
 analyzers = ["src/orcap/analysis/h95_delegation_replication.py"]
 collectors = ["src/orcap/capture_decomposition_replication.py"]
@@ -300,6 +300,16 @@ outcome_visibility = "dedicated analyzer remained gated; raw-source analyst blin
 classification = "post-collection pre-release identification correction"
 
 [[gate_event]]
+study_id = "H81"
+effective_utc = "2026-07-17T04:52:33Z"
+commit = "08a2a183d6df275b5614310b6205695dafbd929b"
+gate_version = "v1-current-support-2"
+target_per_arm = 40
+event = "outcome-free support audit: 30, 23, and 25 assignments across three arms"
+outcome_visibility = "not queried by the dedicated pre-gate analyzer"
+classification = "outcome-free accrual audit"
+
+[[gate_event]]
 study_id = "H94"
 effective_utc = "2026-07-17T04:30:20Z"
 commit = "6017dae"
@@ -308,6 +318,16 @@ target_per_arm = 0
 event = "prospective cross-router pass-through protocol frozen; the existing 03:30 discovery cross section is excluded"
 outcome_visibility = "one earlier public cross section known; no future longitudinal event observed"
 classification = "prospective future-only activation"
+
+[[gate_event]]
+study_id = "H94"
+effective_utc = "2026-07-17T05:01:54Z"
+commit = "working-tree"
+gate_version = "v1-future-only-fail-closed"
+target_per_arm = 0
+event = "implementation audit applies the prospective cutoff to elapsed time, snapshot counts, simulated routes, and every derived frame, not only primary quote transitions"
+outcome_visibility = "no eligible post-cutoff catalog snapshot or transition existed at the pinned revision"
+classification = "pre-outcome implementation correction"
 
 [[gate_event]]
 study_id = "H95"
@@ -328,3 +348,13 @@ target_per_arm = 120
 event = "first prospective H95 workflow completed and preserved eligibility and attempt telemetry"
 outcome_visibility = "workflow status only; logs and request outcomes not queried"
 classification = "outcome-blinded operational verification"
+
+[[gate_event]]
+study_id = "H95"
+effective_utc = "2026-07-17T04:52:33Z"
+commit = "08a2a183d6df275b5614310b6205695dafbd929b"
+gate_version = "v1-support-1"
+target_per_arm = 120
+event = "first prospectively planned triplet accrued with three distinct models and perfect plan compliance and assignment replay"
+outcome_visibility = "not queried by the fixed-horizon pre-gate analyzer"
+classification = "outcome-free accrual audit"

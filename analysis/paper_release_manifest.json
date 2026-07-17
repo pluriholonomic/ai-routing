@@ -1,12 +1,12 @@
 {
   "authoritative_dataset": "t4run/openrouter-market-history",
-  "authoritative_revision": "1d366685a8e82ea5936ded5d325b6aa2c988e870",
-  "evidence_freeze_utc": "2026-07-17T03:30:47Z",
+  "authoritative_revision": "08a2a183d6df275b5614310b6205695dafbd929b",
+  "evidence_freeze_utc": "2026-07-17T04:52:33Z",
   "files": [
     {
-      "bytes": 16627,
+      "bytes": 17991,
       "path": "config/paper_evidence_registry.toml",
-      "sha256": "d92b586bddf83d014ff117ea4528623a0367990fc2f2bd793f92493e85574dd9"
+      "sha256": "041a475b99eba9e98066de4bdcf1f4932adc29238858bbf8d316018bc3100432"
     },
     {
       "bytes": 3183,
@@ -39,9 +39,9 @@
       "sha256": "137b85bc9341693e0981799fd3d185fc1bf0df15309daec79edd7bf4fa358e77"
     },
     {
-      "bytes": 8751,
+      "bytes": 9740,
       "path": "docs/paper-evidence-amendment-ledger-2026-07-17.md",
-      "sha256": "a2f24e5b2908975555aba0a7f19fc1a899058c458bebd6f3b8a9e5e56012b0c0"
+      "sha256": "12855118ff72311dbddcb3b9c5ebd73058c2e5354090ebcdfedaf0c9335fbac8"
     },
     {
       "bytes": 7347,
@@ -89,9 +89,9 @@
       "sha256": "199ea7b6288b525db3dcfdefe4f1a7398b928397ac8adc3bcb11fd4b9b216643"
     },
     {
-      "bytes": 91171,
+      "bytes": 91219,
       "path": "paper/inference-market-microstructure/main.tex",
-      "sha256": "e8d749f3bbadd127b96506d770132c734647847993c6f94c6c792da38adec9a3"
+      "sha256": "ccd78faeab1528a2fb05bd4af0cd0e6438688d2cd6c6cdbb7498fc2d224c2794"
     },
     {
       "bytes": 8244,
@@ -139,9 +139,9 @@
       "sha256": "0ed758268055ae7c21708b3df9d60de9ad31d3d6cc8fe3b56a6a9556e8e5a530"
     },
     {
-      "bytes": 41170,
+      "bytes": 41967,
       "path": "src/orcap/analysis/h94_cross_router_pass_through.py",
-      "sha256": "bfed63b4a2d848c8b25c703e6c2a374b3145ba8e7725dfa32134e5957e8eef66"
+      "sha256": "b5fcb59b2b9e697f83056b6b28f14450976139a692c1b48b095df03ca22ad71e"
     },
     {
       "bytes": 22086,
@@ -224,9 +224,9 @@
       "sha256": "7a9511104937bcbef5248d1c30ec229233c60e76e74f00c2cb40f16b88964d4d"
     },
     {
-      "bytes": 2403,
+      "bytes": 3692,
       "path": "tests/test_h94_cross_router_pass_through.py",
-      "sha256": "ac318fbe78eb420b63616ef018f30d3ceda660a6845b45ae4b32aaefc8b19706"
+      "sha256": "1ffcbde65bd893afe45182184d8245f284f3448b0ff0824862c10d8877f2af34"
     },
     {
       "bytes": 6210,
@@ -249,11 +249,11 @@
       "sha256": "28fe964519ae7d4dec1ac3c2c191d3f518b5fab567a4a2af591d610686da580e"
     }
   ],
-  "gate_event_count": 10,
-  "generated_at_utc": "2026-07-17T04:55:05.584638+00:00",
+  "gate_event_count": 13,
+  "generated_at_utc": "2026-07-17T05:05:36.910660+00:00",
   "paper_theorem_count": 7,
   "paper_track": "ACM EC / TEAC",
   "registered_claim_count": 14,
   "schema_version": 1,
-  "status": "compressed focal rewrite with H94 and H95 prospective collection active; focal outcomes blinded"
+  "status": "outcome-safe refresh with H81 and H95 accruing; H94 prospective cutoff repaired; focal outcomes blinded"
 }

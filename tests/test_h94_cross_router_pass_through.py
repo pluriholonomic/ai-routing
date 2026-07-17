@@ -61,3 +61,37 @@ def test_summary_stays_closed_below_prospective_gates() -> None:
     assert summary["observed"]["matched_common_shocks"] == 1
     assert not all(summary["gates"].values())
     assert len(frames["common_shock_matches"]) == 1
+
+
+def test_pre_activation_rows_do_not_count_toward_any_gate() -> None:
+    panel = _quote_panel()
+    panel["ts"] = pd.Timestamp("2026-07-17T03:30:00Z")
+    panel["run_ts"] = panel["ts"]
+
+    summary, frames = evidence_summary(panel, bootstrap_draws=50)
+
+    assert summary["observed"] == {
+        "elapsed_days": 0.0,
+        "minimum_snapshots_per_router": 0,
+        "price_transitions": 0,
+        "matched_common_shocks": 0,
+        "independent_provider_models": 0,
+    }
+    assert summary["allocation_consequence"]["linked_simulated_route_switches"] == 0
+    assert frames["primary_quotes"].empty
+    assert frames["simulated_switch_links"].empty
+
+
+def test_first_post_activation_snapshot_cannot_transition_from_discovery() -> None:
+    panel = _quote_panel()
+    first_by_router = panel.groupby("router")["ts"].transform("min")
+    discovery = first_by_router.eq(panel["ts"])
+    panel.loc[discovery, "ts"] = pd.Timestamp("2026-07-17T03:30:00Z")
+    panel["run_ts"] = panel["ts"]
+
+    summary, frames = evidence_summary(panel, bootstrap_draws=50)
+
+    assert summary["observed"]["minimum_snapshots_per_router"] == 1
+    assert summary["observed"]["price_transitions"] == 0
+    assert summary["observed"]["matched_common_shocks"] == 0
+    assert frames["price_transitions"].empty
