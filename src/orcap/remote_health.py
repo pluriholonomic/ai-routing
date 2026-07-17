@@ -24,6 +24,7 @@ WORKFLOWS = {
     "livepeer.yml": 180,
     "market.yml": 180,
     "probes.yml": 180,
+    "router-catalogs.yml": 180,
     "route-simulation-monitor.yml": 180,
     "compact.yml": 1800,
     "scrape.yml": 1800,
