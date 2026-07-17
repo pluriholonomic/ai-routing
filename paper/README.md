@@ -15,8 +15,9 @@ The July 17, 2026 revision:
   revision;
 - freezes a leakage-resistant 15-day/15-day PM1 temporal validation with fixed
   ridge estimation and an events-per-parameter gate before its holdout exists;
-- replaces H81's published Monte Carlo tail approximation with an exact
-  fixed-count Fisher test and a fail-closed 100,000-draw implementation audit;
+- corrects H81's exact Fisher reference experiment to condition on the nuisance
+  third arm, adds a fail-closed 100,000-draw pairwise audit, demonstrates the
+  superseded all-arm test's size distortion, and reports exact pre-outcome power;
 - hardens the still-blinded H95 replication with exact within-triplet Fisher
   inference, explicit structural and measurement missingness, provider-control
   coverage, time/whole-triplet transport gates, and a sequential-position
@@ -25,10 +26,11 @@ The July 17, 2026 revision:
   moving price-atom diagnostics and proofs to Appendix A without deleting them.
 
 The latest adversarial assessment is
-[`../docs/manuscript-review-round-22-2026-07-17.md`](../docs/manuscript-review-round-22-2026-07-17.md).
-It treats the structural paper objection as resolved; the remaining promotion
-gates are unreleased H81/H95 outcomes and the unopened 30-completed-day PM1
-holdout.
+[`../docs/manuscript-review-round-23-2026-07-17.md`](../docs/manuscript-review-round-23-2026-07-17.md).
+It treats the H81 pairwise randomization defect as repaired before outcome access
+and identifies H81's 25--35-point familywise power boundary; the remaining
+promotion gates are unreleased H81/H95 outcomes and the unopened 30-completed-day
+PM1 holdout.
 
 This directory contains three non-concurrent manuscripts built from the reviewed
 research drafts:

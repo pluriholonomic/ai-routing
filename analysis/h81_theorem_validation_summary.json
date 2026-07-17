@@ -35,6 +35,62 @@
   ],
   "randomization_test_rejection_rate_5pct": 0.0505,
   "randomization_test_rejection_rate_mc_se": 0.00489641450451246,
+  "nuisance_arm_size_audit": [
+    {
+      "scenario": "fallback_null_delegation_nuisance",
+      "experiments": 2000,
+      "pairwise_rejection_rate_5pct": 0.0345,
+      "pairwise_rejection_rate_mc_se": 0.004081038470781672,
+      "superseded_all_arm_rejection_rate_5pct": 0.0565,
+      "superseded_all_arm_rejection_rate_mc_se": 0.005162739098579358
+    },
+    {
+      "scenario": "selection_null_no_fallback_nuisance",
+      "experiments": 2000,
+      "pairwise_rejection_rate_5pct": 0.036,
+      "pairwise_rejection_rate_mc_se": 0.004165573189850348,
+      "superseded_all_arm_rejection_rate_5pct": 0.067,
+      "superseded_all_arm_rejection_rate_mc_se": 0.005590661857061291
+    }
+  ],
+  "minimum_detectable_effect_grid": [
+    {
+      "negative_success_probability": 0.25,
+      "multiplicity_scenario": "bonferroni_2p5pct",
+      "minimum_grid_effect_for_80pct_power": 0.35000000000000003,
+      "maximum_power_on_grid": 0.9929341002095017
+    },
+    {
+      "negative_success_probability": 0.25,
+      "multiplicity_scenario": "unadjusted_5pct",
+      "minimum_grid_effect_for_80pct_power": 0.30000000000000004,
+      "maximum_power_on_grid": 0.998239241905433
+    },
+    {
+      "negative_success_probability": 0.5,
+      "multiplicity_scenario": "bonferroni_2p5pct",
+      "minimum_grid_effect_for_80pct_power": 0.325,
+      "maximum_power_on_grid": 0.9999993086939867
+    },
+    {
+      "negative_success_probability": 0.5,
+      "multiplicity_scenario": "unadjusted_5pct",
+      "minimum_grid_effect_for_80pct_power": 0.30000000000000004,
+      "maximum_power_on_grid": 0.9999999071487764
+    },
+    {
+      "negative_success_probability": 0.75,
+      "multiplicity_scenario": "bonferroni_2p5pct",
+      "minimum_grid_effect_for_80pct_power": 0.25,
+      "maximum_power_on_grid": 0.9567260174279844
+    },
+    {
+      "negative_success_probability": 0.75,
+      "multiplicity_scenario": "unadjusted_5pct",
+      "minimum_grid_effect_for_80pct_power": 0.225,
+      "maximum_power_on_grid": 0.9839577601812303
+    }
+  ],
   "evidence_status": "simulation_validation_not_empirical_evidence",
-  "claim_boundary": "This validates the stopped-design estimator under a synthetic fixed potential-outcome schedule. It does not validate H81 transport, outcomes, or market welfare."
+  "claim_boundary": "This validates the stopped-design estimator under a synthetic fixed potential-outcome schedule and reports model-based Bernoulli power scenarios. It does not validate H81 transport, reveal H81 outcomes, or identify market welfare."
 }

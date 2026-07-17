@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from orcap.analysis.h81_theorem_validation import (
     POLICIES,
+    exact_pairwise_bernoulli_power,
     simulate_bias,
+    simulate_nuisance_arm_size,
     simulate_randomization_size,
     stopped_assignment,
     summarize,
@@ -35,3 +37,27 @@ def test_preterminal_estimator_is_nearly_unbiased_in_monte_carlo():
         assert abs(row["corrected_bias"]) <= 3.5 * row["corrected_monte_carlo_se"] + 0.002
     assert 0.0 <= summary["randomization_test_rejection_rate_5pct"] <= 0.125
 
+
+def test_pairwise_test_controls_size_with_a_nonnull_nuisance_arm():
+    audit = simulate_nuisance_arm_size(experiments=500, target_per_arm=8, seed=23)
+    rates = audit.groupby("scenario")[["pairwise_reject_5pct", "all_arm_reject_5pct"]].mean()
+
+    # Exact randomization tests may be conservative because their support is
+    # discrete, but the corrected pairwise law must not be anti-conservative.
+    assert rates["pairwise_reject_5pct"].max() <= 0.08
+    assert audit["pairwise_p_greater"].between(0.0, 1.0).all()
+
+
+def test_exact_pairwise_power_increases_with_effect_size():
+    powers = [
+        exact_pairwise_bernoulli_power(
+            n_positive=12,
+            n_negative=12,
+            p_positive=0.5 + effect,
+            p_negative=0.5,
+            alpha=0.05,
+        )
+        for effect in (0.0, 0.15, 0.30)
+    ]
+    assert powers == sorted(powers)
+    assert powers[-1] > powers[0]

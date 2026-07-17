@@ -598,87 +598,79 @@ def _finalize_gate_audit(
     return audit
 
 
-def _fixed_count_randomizations(
-    counts: pd.Series,
+def _pairwise_fixed_count_randomizations(
+    n_positive: int,
+    n_negative: int,
     *,
     simulations: int,
     seed: int = 20260715,
 ) -> np.ndarray:
-    """Permute the observed arm multiset for conditional randomization inference."""
-    n_blocks = int(counts.sum())
-    if not n_blocks or not simulations:
+    """Permute only a contrasted pair while holding the nuisance arm fixed."""
+    n_pair = int(n_positive + n_negative)
+    if n_positive <= 0 or n_negative <= 0 or not n_pair or not simulations:
         return np.empty((0, 0), dtype=np.int8)
     template = np.concatenate(
-        [
-            np.full(int(counts[policy]), index, dtype=np.int8)
-            for index, policy in enumerate(POLICIES)
-        ]
+        [np.ones(n_positive, dtype=np.int8), np.zeros(n_negative, dtype=np.int8)]
     )
     rng = np.random.default_rng(seed)
-    labels = np.empty((simulations, n_blocks), dtype=np.int8)
+    labels = np.empty((simulations, n_pair), dtype=np.int8)
     for draw in range(simulations):
         labels[draw] = rng.permutation(template)
     return labels
 
 
-def _exact_binary_randomization_pvalues(
-    outcomes: np.ndarray,
-    counts: pd.Series,
+def _exact_pairwise_binary_randomization_pvalues(
+    positive_outcomes: np.ndarray,
+    negative_outcomes: np.ndarray,
     *,
-    positive: str,
-    negative: str,
-    observed_statistic: float,
+    observed_statistic: float | None = None,
 ) -> tuple[float, float]:
-    """Return exact fixed-count Fisher tails for a binary arm-mean contrast.
+    """Return exact conditional Fisher tails for one binary policy pair.
 
-    Conditional on the stopped design's preterminal arm counts, the number of
-    successes assigned to the three arms is multivariate hypergeometric under
-    the Fisher sharp null.  Summing that finite support is exact up to ordinary
-    floating-point evaluation of integer probability ratios and avoids Monte
-    Carlo error in the published p-values.
+    For a null comparing policies ``positive`` and ``negative``, the third
+    policy is a nuisance arm whose potential outcomes need not satisfy the
+    pairwise null.  We therefore condition on the nuisance-arm assignment and
+    permute only the two contrasted labels.  Conditional on their combined
+    binary outcomes, the positive-arm success count is hypergeometric.  This
+    yields a valid pairwise sharp-null p-value even when the nuisance policy has
+    an arbitrary effect.
     """
-    values = np.asarray(outcomes, dtype=float)
-    n_total = int(counts.reindex(POLICIES, fill_value=0).sum())
-    n_positive = int(counts.get(positive, 0))
-    n_negative = int(counts.get(negative, 0))
-    n_other = n_total - n_positive - n_negative
+    positive_values = np.asarray(positive_outcomes, dtype=float)
+    negative_values = np.asarray(negative_outcomes, dtype=float)
+    n_positive = int(len(positive_values))
+    n_negative = int(len(negative_values))
+    values = np.concatenate([positive_values, negative_values])
+    n_pair = int(len(values))
+    if observed_statistic is None and n_positive and n_negative:
+        observed_statistic = float(positive_values.mean() - negative_values.mean())
     if (
-        n_total <= 0
-        or len(values) != n_total
-        or n_positive <= 0
+        n_positive <= 0
         or n_negative <= 0
-        or n_other < 0
         or not np.isfinite(values).all()
+        or observed_statistic is None
         or not np.isfinite(observed_statistic)
         or not np.isin(values, (0.0, 1.0)).all()
     ):
         return np.nan, np.nan
 
     successes = int(values.sum())
-    denominator = math.comb(n_total, successes)
+    denominator = math.comb(n_pair, successes)
     greater_probabilities: list[float] = []
     two_sided_probabilities: list[float] = []
     support_probabilities: list[float] = []
     tolerance = 1e-15
-    positive_min = max(0, successes - n_negative - n_other)
+    positive_min = max(0, successes - n_negative)
     positive_max = min(n_positive, successes)
     for positive_successes in range(positive_min, positive_max + 1):
-        negative_min = max(0, successes - positive_successes - n_other)
-        negative_max = min(n_negative, successes - positive_successes)
-        for negative_successes in range(negative_min, negative_max + 1):
-            other_successes = successes - positive_successes - negative_successes
-            ways = (
-                math.comb(n_positive, positive_successes)
-                * math.comb(n_negative, negative_successes)
-                * math.comb(n_other, other_successes)
-            )
-            probability = ways / denominator
-            support_probabilities.append(probability)
-            statistic = positive_successes / n_positive - negative_successes / n_negative
-            if statistic >= observed_statistic - tolerance:
-                greater_probabilities.append(probability)
-            if abs(statistic) >= abs(observed_statistic) - tolerance:
-                two_sided_probabilities.append(probability)
+        negative_successes = successes - positive_successes
+        ways = math.comb(n_positive, positive_successes) * math.comb(n_negative, negative_successes)
+        probability = ways / denominator
+        support_probabilities.append(probability)
+        statistic = positive_successes / n_positive - negative_successes / n_negative
+        if statistic >= observed_statistic - tolerance:
+            greater_probabilities.append(probability)
+        if abs(statistic) >= abs(observed_statistic) - tolerance:
+            two_sided_probabilities.append(probability)
     support_mass = math.fsum(support_probabilities)
     if not math.isclose(support_mass, 1.0, rel_tol=0.0, abs_tol=1e-12):
         raise RuntimeError(f"exact randomization support has mass {support_mass}")
@@ -1140,11 +1132,9 @@ def analyze(
         else np.array([], dtype=float)
     )
     complete_binary_outcomes = bool(n_blocks and np.isfinite(outcomes).all())
-    labels = _fixed_count_randomizations(analysis_counts, simulations=simulations)
-    policy_index = {policy: index for index, policy in enumerate(POLICIES)}
     primary_comparisons = sum(int(primary) for _, _, _, primary in COMPARISONS)
     contrast_rows = []
-    for name, positive, negative, primary in COMPARISONS:
+    for contrast_index, (name, positive, negative, primary) in enumerate(COMPARISONS):
         pos = first[first["policy"].eq(positive)] if n_blocks else first
         neg = first[first["policy"].eq(negative)] if n_blocks else first
         pos_success = pd.to_numeric(pos.get("success"), errors="coerce")
@@ -1196,24 +1186,26 @@ def analyze(
             else np.nan
         )
         if n_blocks and complete_binary_outcomes:
-            p_greater, p_two_sided = _exact_binary_randomization_pvalues(
-                outcomes,
-                analysis_counts,
-                positive=positive,
-                negative=negative,
+            p_greater, p_two_sided = _exact_pairwise_binary_randomization_pvalues(
+                pos_success.to_numpy(dtype=float),
+                neg_success.to_numpy(dtype=float),
                 observed_statistic=ht,
             )
         else:
             p_greater = p_two_sided = np.nan
         if n_blocks and simulations and complete_binary_outcomes:
-            simulated = (
-                (labels == policy_index[positive])
-                * outcomes[None, :]
-                / analysis_probabilities[positive]
-                - (labels == policy_index[negative])
-                * outcomes[None, :]
-                / analysis_probabilities[negative]
-            ).sum(axis=1) / n_blocks
+            pair_outcomes = np.concatenate(
+                [pos_success.to_numpy(dtype=float), neg_success.to_numpy(dtype=float)]
+            )
+            pair_labels = _pairwise_fixed_count_randomizations(
+                len(pos),
+                len(neg),
+                simulations=simulations,
+                seed=20260715 + contrast_index,
+            )
+            simulated = ((pair_labels == 1) * pair_outcomes[None, :]).sum(axis=1) / len(pos) - (
+                (pair_labels == 0) * pair_outcomes[None, :]
+            ).sum(axis=1) / len(neg)
             p_greater_mc = float((1 + (simulated >= ht - 1e-15).sum()) / (simulations + 1))
             p_two_sided_mc = float(
                 (1 + (np.abs(simulated) >= abs(ht) - 1e-15).sum()) / (simulations + 1)
@@ -1404,8 +1396,9 @@ def analyze(
         "preterminal fixed-count arm-mean difference; identical to conditional HT"
     )
     summary["randomization_inference"] = (
-        "exact multivariate-hypergeometric Fisher sharp-null tails conditional on "
-        "preterminal arm counts; configured Monte Carlo draws are an audit check only"
+        "exact pairwise-hypergeometric Fisher sharp-null tails conditional on the "
+        "nuisance-arm assignment and the two contrasted preterminal arm counts; configured "
+        "Monte Carlo draws permute only the contrasted pair and are an audit check only"
     )
     summary["randomization_mc_audit_tolerance"] = RANDOMIZATION_MC_AUDIT_TOLERANCE
     summary["randomization_mc_audit_enforced"] = bool(

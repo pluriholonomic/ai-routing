@@ -61,23 +61,41 @@ delegation as both an estimand and estimator identity.
      and `-1.09e-4`, all within Monte Carlo error. The old terminal-inclusive
      fallback estimator has detectable bias under the deliberately trending DGP.
 
-3. **Sharp-null randomization size**
+3. **Pairwise sharp-null randomization size**
    - Generate a common heterogeneous outcome path under the sharp null.
-   - Preserve each realized preterminal arm-count multiset. For each binary
-     outcome vector, sum the exact multivariate-hypergeometric arm-success law;
-     use simulation only to estimate repeated-experiment rejection frequency.
+   - Preserve each realized preterminal arm-count multiset and hold the nuisance
+     third-policy assignment fixed. For each primary pair, sum the exact two-arm
+     hypergeometric law; use simulation only to estimate repeated-experiment
+     rejection frequency.
    - Pass rule: the 5% rejection rate must lie inside a predeclared Monte Carlo
      tolerance of `[0.03,0.07]` with at least 2,000 experiments for the final
      release audit.
    - Current final audit: 5.05% in 2,000 experiments (Monte Carlo standard error
      0.49 percentage points), inside the declared tolerance.
-   - Exact-enumerator audit: all 30 assignments in a five-block `2/2/1` fixture
-     agree with brute-force label enumeration to machine precision. Commit
-     `55b5087` froze the exact primary tails before outcome access; 100,000-draw
-     tails remain discrepancy checks. Commit `5cc0a4a` makes the release fail
-     closed if their maximum absolute discrepancy exceeds one percentage point.
+   - Nuisance-arm stress test: in 2,000 stopped experiments per primary null,
+     the two focal policies share exactly the same fixed outcome path while the
+     third policy has a large time-varying effect. The corrected pairwise test
+     rejects at 3.45% and 3.60%; the superseded all-arm permutation rejects at
+     5.65% and 6.70%. This proves that the old global-sharp-null law was not a
+     valid reference experiment for the registered pairwise nulls.
+   - Exact-enumerator audit: all six assignments in a four-block `2/2` pair
+     fixture agree with brute-force label enumeration to machine precision.
+     The 100,000-draw tails permute the contrasted pair only and remain
+     discrepancy checks; the release fails closed above one percentage point.
 
-4. **Missingness adversary**
+4. **Exact pre-outcome power surface**
+   - Enumerate independent-Bernoulli scenario power at the conservative minimum
+     preterminal pair counts 39 and 40, over baseline success probabilities 25%,
+     50%, and 75% and effect increments of 2.5 percentage points.
+   - Report both the unadjusted 5% test and the Bonferroni 2.5% threshold, which
+     lower-bounds marginal power under the registered two-test Holm procedure.
+   - Current result: 80% power requires effects of 22.5--30 percentage points
+     unadjusted and 25--35 points at the Bonferroni threshold. H81 can detect
+     large wedges but cannot treat a nonsignificant result as equivalence.
+   - Boundary: this is a model-based planning surface, not an empirical outcome
+     estimate and not a post-outcome sample-size amendment.
+
+5. **Missingness adversary**
    - Replace a verified binary outcome with `unknown`; delete spend, latency,
      and selected-provider fields by treatment, success, and quote level; and
      corrupt a treatment-control record before a valid replacement reaches the
@@ -92,11 +110,11 @@ delegation as both an estimand and estimator identity.
    - Pass rule: reported bound coverage is 100% over generated schedules and no
      point estimate appears when its completeness rule fails.
    - Current result: implemented before outcome access in commit `4d66fda`.
-     Both adversarial tests and the full 542-test suite pass. The two primary
+     Both adversarial tests and the current full 554-test suite pass. The two primary
      intervals additionally receive Bonferroni-Newcombe familywise adjustment;
      their exact conditional Fisher p-values retain the registered Holm family.
 
-5. **External-support and leave-one-model-out audit**
+6. **External-support and leave-one-model-out audit**
    - Report model dominance, effective model count, support turnover, arm balance
      by model, and leave-one-model-out contrasts after release.
    - Pass rule for a broad claim: at least eight models, effective model count at

@@ -90,16 +90,26 @@ missing outcomes are sent to both worst-case endpoints; an unreconstructable
 arm widens the contrast to `[-1,1]`. These are attrition bounds, not a
 per-protocol effect.
 
-Commit `55b5087`, also made while the H81 outcome gate was closed, replaces the
-published Monte Carlo tail approximation with exact fixed-count Fisher
-randomization inference. Conditional on the preterminal arm counts and total
-number of successes, the three arm-success counts follow their finite
-multivariate-hypergeometric law. The analyzer sums that support for the
-one-sided and absolute contrast tails; the configured 100,000 permutations are
-retained only as an implementation discrepancy check. A brute-force five-block
-fixture enumerates all 30 assignments and agrees to machine precision. Commit
-`5cc0a4a` makes the production check fail closed if the maximum exact-versus-
-simulated tail discrepancy exceeds one percentage point.
+Commit `55b5087`, also made while the H81 outcome gate was closed, replaced the
+published Monte Carlo tail approximation with an exact finite-support
+enumerator. A subsequent proof audit found that its all-three-arm reference law
+was exact only under a global sharp null, whereas each registered hypothesis is
+pairwise and permits an arbitrary effect in the nuisance third arm. Before
+outcome access, the analyzer was therefore corrected to condition on the
+nuisance-arm assignment and permute only the two contrasted policies. Given the
+pair's combined success count, its positive-arm success count follows the exact
+two-arm hypergeometric law. A four-block `2/2` fixture enumerates all six
+pairwise assignments and agrees to machine precision. The configured 100,000
+permutations now hold the nuisance arm fixed and remain an implementation check;
+the production release still fails closed if the maximum exact-versus-simulated
+tail discrepancy exceeds one percentage point.
+
+The same outcome-blind amendment records two limits. First, in nuisance-effect
+stress tests the corrected pairwise tests reject at 3.45% and 3.60%, while the
+superseded all-arm law rejects at 5.65% and 6.70%. Second, exact Bernoulli power
+at the minimum preterminal counts 39/40 reaches 80% only for effects of 25--35
+percentage points at the Bonferroni 2.5% threshold, depending on the baseline.
+These are design-validation and planning calculations, not H81 outcomes.
 
 H95's prerelease analyzer was hardened in commit `f170d89` while its fixed
 horizon remained 4/120 and before any H95 outcome field was queried. Its Fisher
