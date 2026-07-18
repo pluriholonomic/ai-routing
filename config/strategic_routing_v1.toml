@@ -1,0 +1,34 @@
+schema_version = 1
+scenario_id = "strategic-routing-v1-vertical-slice"
+horizon_epochs = 2016
+demand_per_epoch = 12
+
+[workload]
+name = "short_chat"
+input_tokens = 1000
+output_tokens = 256
+delivered_value = 0.02
+latency_cost_per_ms = 0.000001
+failure_loss = 0.02
+fallback_latency_ms = 50.0
+max_attempts = 2
+
+[[providers]]
+provider = "provider_a"
+marginal_cost = 0.001
+physical_capacity = 10
+capital_cost_per_slot = 0.00001
+base_latency_ms = 250.0
+reliability = 0.99
+degraded_capacity_multiplier = 0.5
+degraded_reliability_multiplier = 0.8
+
+[[providers]]
+provider = "provider_b"
+marginal_cost = 0.0012
+physical_capacity = 10
+capital_cost_per_slot = 0.00001
+base_latency_ms = 300.0
+reliability = 0.98
+degraded_capacity_multiplier = 0.5
+degraded_reliability_multiplier = 0.8

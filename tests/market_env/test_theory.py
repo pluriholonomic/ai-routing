@@ -53,8 +53,11 @@ def test_corollary1_epsilon_formula():
             return ((w + W) ** (-1 / a)) ** eps * w / (w + W) * (p_i - C)
         p = 2 * C
         for _ in range(800):
-            r = minimize_scalar(lambda x: -profit(x, p), bounds=(C * 1.0001, cap),
-                                method="bounded")
+            r = minimize_scalar(
+                lambda x, rival=p: -profit(x, rival),
+                bounds=(C * 1.0001, cap),
+                method="bounded",
+            )
             if abs(r.x - p) < 1e-9:
                 break
             p = r.x

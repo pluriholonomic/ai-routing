@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 
 from orcap.market_env.calibration import classify_pairs, fit_hazard

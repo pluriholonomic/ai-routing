@@ -1,9 +1,11 @@
-import json
-
 import httpx
-import pytest
+import numpy as np
 
-from orcap.market_env.diagnostics_collusion import cut_response, deviation_audit
+from orcap.market_env.diagnostics_collusion import (
+    cut_response,
+    deviation_audit,
+    permanent_cut_audit,
+)
 from orcap.market_env.routers import InversePriceRouter
 from orcap.market_env.strategies_llm import LLMPricingAgent, _extract_price
 from orcap.market_env.strategies_qlearn import price_grid
@@ -97,3 +99,33 @@ def test_deviation_audit_flags_wta_cartel():
     out = deviation_audit(prices, dict.fromkeys(prices, 0.2), LowestCostRouter(), 1.0, g)
     # winner-take-all: undercutting grabs the whole market -- huge gain
     assert not out["equilibrium_consistent"]
+
+
+def test_permanent_cut_audit_rejects_locally_stable_high_price():
+    from orcap.market_env.routers_steering import CutPenaltyRouter
+
+    grid = price_grid(1.0)
+    prices = {
+        "Me": float(grid[-1]),
+        "Anchor": 1.0,
+        "Adopter": 1.0,
+        "StaticCut": float(np.exp(-0.4)),
+        "Premium": float(np.exp(0.34)),
+    }
+    costs = dict.fromkeys(prices, 0.2)
+    penalty = CutPenaltyRouter(2.0, theta=0.17, memory=7)
+    for _ in range(7):
+        penalty.advance(prices)
+    out = permanent_cut_audit(
+        prices,
+        costs,
+        "Me",
+        InversePriceRouter(2.0),
+        penalty,
+        1.0,
+        grid,
+        gamma=0.95,
+        penalty_memory=7,
+    )
+    assert out["permanent_cut_profitable"]
+    assert out["best_permanent_cut"]["price"] < prices["Me"]

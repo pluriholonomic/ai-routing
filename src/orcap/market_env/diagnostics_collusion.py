@@ -96,3 +96,65 @@ def deviation_audit(
         "max_gain_rel_to_mean_profit": round(float(rel), 4),
         "equilibrium_consistent": bool(rel < 0.05),
     }
+
+
+def permanent_cut_audit(
+    prices: dict[str, float],
+    costs: dict[str, float],
+    subject: str,
+    router: RouterMechanism,
+    penalized_router: RouterMechanism,
+    demand: float,
+    grid: np.ndarray,
+    gamma: float,
+    penalty_memory: int,
+) -> dict:
+    """Test a permanent cut after a finite allocation-penalty window.
+
+    A positive gain rejects equilibrium at the incumbent price. A nonpositive
+    gain only rejects this deviation class; it does not prove equilibrium.
+    """
+    if not 0 <= gamma < 1:
+        raise ValueError("gamma must lie in [0, 1)")
+    if penalty_memory < 1:
+        raise ValueError("penalty_memory must be positive")
+    current = prices[subject]
+    stay_profit = expected_profits(prices, costs, router, demand)[subject]
+    stay_value = stay_profit / (1 - gamma)
+    candidates = []
+    for candidate in grid:
+        if candidate >= current - 1e-12:
+            continue
+        cut_prices = dict(prices)
+        cut_prices[subject] = float(candidate)
+        penalty_profit = expected_profits(
+            cut_prices, costs, penalized_router, demand
+        )[subject]
+        steady_profit = expected_profits(cut_prices, costs, router, demand)[subject]
+        cut_value = (
+            penalty_profit * (1 - gamma**penalty_memory) / (1 - gamma)
+            + gamma**penalty_memory * steady_profit / (1 - gamma)
+        )
+        candidates.append({
+            "price": float(candidate),
+            "penalty_profit": float(penalty_profit),
+            "steady_profit": float(steady_profit),
+            "discounted_value": float(cut_value),
+            "gain": float(cut_value - stay_value),
+        })
+    best = max(candidates, key=lambda row: row["discounted_value"], default=None)
+    max_gain = max((row["gain"] for row in candidates), default=0.0)
+    return {
+        "stay_profit": float(stay_profit),
+        "stay_discounted_value": float(stay_value),
+        "best_permanent_cut": best,
+        "max_discounted_gain": float(max_gain),
+        "max_gain_relative_to_stay_value": float(
+            max_gain / max(abs(stay_value), 1e-12)
+        ),
+        "permanent_cut_profitable": bool(max_gain > 1e-10),
+        "audit_scope": (
+            "restricted permanent-cut deviation; positive gain rejects equilibrium, "
+            "nonpositive gain does not prove equilibrium"
+        ),
+    }

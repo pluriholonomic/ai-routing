@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 
 from orcap.market_env.routers import InversePriceRouter, LowestCostRouter
