@@ -183,7 +183,7 @@ def observed_trajectory(dates: list[str] | None = None) -> pd.DataFrame:
     t = prices.merge(anchor, on=["model_id", "dt"], how="inner").sort_values("dt")
     t["anchor_class"] = [
         "author" if a else cls.get((m, p), "unclassified")
-        for m, p, a in zip(t.model_id, t.provider_name, t.is_author)
+        for m, p, a in zip(t.model_id, t.provider_name, t.is_author, strict=True)
     ]
     t["prev"] = t.groupby(["model_id", "provider_name"])["p"].shift(1)
     t["repriced"] = (t["p"] - t["prev"]).abs() > 1e-12
@@ -199,7 +199,9 @@ def observed_trajectory(dates: list[str] | None = None) -> pd.DataFrame:
         group by 1, 2, 3
         """
     ).df()
-    flows["flow_share"] = flows.tok / flows.groupby(["model_permaslug", "dt"])["tok"].transform("sum")
+    flows["flow_share"] = flows.tok / (
+        flows.groupby(["model_permaslug", "dt"])["tok"].transform("sum")
+    )
     t = t.merge(
         flows[["dt", "model_permaslug", "provider_name", "flow_share"]],
         left_on=["dt", "model_id", "provider_name"],

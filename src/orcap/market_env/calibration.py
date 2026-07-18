@@ -93,7 +93,7 @@ def daily_prices(dates: list[str]) -> pd.DataFrame:
         """
     ).df()
     q["is_author"] = [
-        is_author_provider(m, p) for m, p in zip(q["model_id"], q["provider_name"])
+        is_author_provider(m, p) for m, p in zip(q["model_id"], q["provider_name"], strict=True)
     ]
     return q
 
@@ -179,7 +179,7 @@ def fit_hazard(prices: pd.DataFrame, pairs: pd.DataFrame | None = None) -> dict:
         cls = pairs.set_index(["model_id", "provider_name"])["anchor_class"]
         p["cls"] = [
             cls.get((m, pr), "unclassified")
-            for m, pr in zip(p["model_id"], p["provider_name"])
+            for m, pr in zip(p["model_id"], p["provider_name"], strict=True)
         ]
         for c in ("adopter", "below_active", "above"):
             names.append(f"fe_{c}")
@@ -189,7 +189,7 @@ def fit_hazard(prices: pd.DataFrame, pairs: pd.DataFrame | None = None) -> dict:
         fit = sm.Logit(p["repriced"].astype(float), X).fit_regularized(
             alpha=1e-4, disp=0
         )
-        coefs = dict(zip(names, fit.params))
+        coefs = dict(zip(names, fit.params, strict=True))
     except Exception as e:  # separation on thin panels — keep bands honest
         log.warning("hazard fit failed: %s", e)
         coefs = {}
@@ -316,7 +316,9 @@ def market_snapshots(prices: pd.DataFrame, pairs: pd.DataFrame, top_n: int = 4) 
                 r.provider_name: {
                     "price": float(r.p),
                     "is_author": bool(r.is_author),
-                    "anchor_class": cls.get(r.provider_name, "author" if r.is_author else "unclassified"),
+                    "anchor_class": cls.get(
+                        r.provider_name, "author" if r.is_author else "unclassified"
+                    ),
                 }
                 for r in g.itertuples()
             },

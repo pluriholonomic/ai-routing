@@ -182,7 +182,10 @@ def train_symmetric(
     profits_trace = []
     for t in range(max_epochs):
         states = [
-            agents[i].state_index(idx[i], min((idx[j] for j in range(n_agents) if j != i), default=idx[i]))
+            agents[i].state_index(
+                idx[i],
+                min((idx[j] for j in range(n_agents) if j != i), default=idx[i]),
+            )
             for i in range(n_agents)
         ]
         acts = [agents[i].act_index(states[i]) for i in range(n_agents)]
@@ -211,7 +214,10 @@ def train_symmetric(
     # converged play: run greedy from last state
     for _ in range(200):
         states = [
-            agents[i].state_index(idx[i], min((idx[j] for j in range(n_agents) if j != i), default=idx[i]))
+            agents[i].state_index(
+                idx[i],
+                min((idx[j] for j in range(n_agents) if j != i), default=idx[i]),
+            )
             for i in range(n_agents)
         ]
         idx = [agents[i].greedy(states[i]) for i in range(n_agents)]

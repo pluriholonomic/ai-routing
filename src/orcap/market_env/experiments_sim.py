@@ -142,7 +142,8 @@ def run_market(bundle: dict, model_id: str, seed: int, epochs: int, burn_in: int
     rng = np.random.default_rng(seed * 7919 + hash(model_id) % 10_000)
     ar1 = bundle["demand"].get("ar1_median") or 0.5
     sigma = bundle["demand"].get("sigma_dlog_median") or 0.3
-    quotes = {p: s.act(specs[p], {anchor_provider: bundle["markets"][model_id]["anchor_price"]}).quote
+    p_anchor0 = bundle["markets"][model_id]["anchor_price"]
+    quotes = {p: s.act(specs[p], {anchor_provider: p_anchor0}).quote
               for p, s in strategies.items()}
     p0 = float(np.median(list(quotes.values())))
     log_dev = 0.0
