@@ -212,6 +212,33 @@ def observed_trajectory(dates: list[str] | None = None) -> pd.DataFrame:
     ]
 
 
+def conditional_targets(
+    markets: list[str], dates: list[str],
+    base: dict[str, tuple[float, float]] | None = None,
+) -> tuple[dict[str, tuple[float, float]], float]:
+    """Targets computed on the SAME market universe a simulation covers
+    (composition-sensitive moments — ladder, dispersion, cadence — differ
+    across market subsets; scoring a 4-market sim against global-panel
+    targets is apples-to-oranges; see the dated addendum in
+    docs/simulation-moments-preregistration.md). The adopter-atom target
+    keeps the global OOS value (a within-pair property, composition-robust).
+    Returns (targets, observed_author_daily_cadence) — the latter drives the
+    simulator's exogenous anchor-walk hazard."""
+    base = base or DEFAULT_TARGETS
+    t = observed_trajectory(dates)
+    tm = t[t.model_id.isin(markets)]
+    obs = compute_moments(tm)
+    targets = {}
+    for k, (v, w) in base.items():
+        if k == "adopter_atom_share":
+            targets[k] = (v, w)
+        elif obs.get(k) is not None:
+            targets[k] = (round(float(obs[k]), 4), w)
+    authors = tm[tm.is_author.astype(bool)]
+    author_cadence = float(authors.repriced.mean()) if len(authors) else 0.0
+    return targets, author_cadence
+
+
 def trajectory_from_epoch_results(
     epochs: list, model_id: str, classes: dict[str, str],
     anchor_prices: list[float], authors: set[str] | None = None,

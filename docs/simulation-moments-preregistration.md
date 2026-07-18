@@ -59,3 +59,20 @@ standard variant). Calibration (`calibration.fit`) reads ONLY the earliest
   file with a dated addendum stating what changed and why, and re-run.
 - Any post-hoc moment addition/removal or threshold change requires a dated
   addendum before the affected run.
+
+## Addendum 2026-07-18 (before the first scored E-SIM1 run)
+
+The first smoke run (3 seeds, 20 epochs, unscored) exposed a definitional
+mismatch, corrected before any pass/fail run: the composition-sensitive
+targets (dispersion, premium ladder, cadences) were computed on the GLOBAL
+panel, while the simulation covers only the 4 calibrated markets. Scoring a
+4-market sim against global targets is apples-to-oranges. Correction —
+mechanical, not threshold-motivated: targets are now computed by
+`moments.conditional_targets` on the SAME market universe (train window,
+identical code); the adopter-atom target keeps its global OOS value (a
+within-pair property, composition-robust); the simulator's exogenous
+anchor-walk hazard is set to the OBSERVED author daily repricing cadence in
+those markets rather than the adopter ledger cadence. Thresholds (0.04
+distance, 35% weight-2 cap, elasticity sign/order gates) are UNCHANGED. The
+smoke run's diagnostic values are recorded in
+output/market_env/esim1/fc402118b0 and it does not count as a scored run.
