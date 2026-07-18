@@ -1,0 +1,43 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_day_class_sizes": 165,
+  "latest_h100": {
+    "8": {
+      "best_ask": 1.04,
+      "avg_fill": 1.04,
+      "impact_pct": 0.0
+    },
+    "40": {
+      "best_ask": 1.04,
+      "avg_fill": 1.227,
+      "impact_pct": 17.949
+    },
+    "100": {
+      "best_ask": 1.04,
+      "avg_fill": 1.283,
+      "impact_pct": 23.359
+    },
+    "300": {
+      "best_ask": 1.04,
+      "avg_fill": 1.484,
+      "impact_pct": 42.658
+    },
+    "800": {
+      "best_ask": 1.04,
+      "avg_fill": 1.582,
+      "impact_pct": 52.135
+    }
+  },
+  "impact_stability": {
+    "H100": 33.2,
+    "A100": 9.0,
+    "RTX 4090": 58.0
+  },
+  "overflow_breakeven_usd_per_mtok_at_300gpus": {
+    "theta_1M_tok_per_gpu_hr": 1.484,
+    "theta_3M_tok_per_gpu_hr": 0.495,
+    "theta_10M_tok_per_gpu_hr": 0.148
+  },
+  "registered_test": "cross-market rationing: provider 429 incidence rises with same-day book impact (thinness), demand controls included \u2014 rationing as the rational alternative to paying impact at a fixed menu price; gates on 30 joint days",
+  "claim_boundary": "Vast.ai book only (one venue; hyperscaler/neocloud reserved capacity unobserved); walking the book ignores multi-GPU node constraints and geographic/interconnect requirements, so impact is a LOWER bound for training-grade sourcing and an approximation for inference-grade."
+}
