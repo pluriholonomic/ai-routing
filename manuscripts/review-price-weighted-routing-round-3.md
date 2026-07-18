@@ -1,5 +1,8 @@
 # Adversarial review — "The Router Is the Demand Curve"
 
+*Superseded by round 4 after the LiteLLM executable-router conformance
+addition.*
+
 *Round 3, 2026-07-18. Venue lens: ACM EC main track, with a secondary
 NeurIPS economics-and-learning lens. This report supersedes the earlier review,
 which evaluated a materially different paper. Reviewed artifacts: nine-page PDF,

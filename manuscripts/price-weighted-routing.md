@@ -65,6 +65,9 @@ price elevation.
    assembled market must reproduce held-out moments before any
    counterfactual is run. The validation gate includes an untargeted
    moment: the simulated flow elasticity emerges from the router alone.
+   A separate executable suite checks the kernel's mapped selection,
+   filtering, fallback ordering, and lowest-cost decisions against LiteLLM
+   1.92.0.
 3. *Learning counterfactuals* (§6). A preregistered audit rejects the original
    equilibrium and state-aliasing explanations of the high-price learning
    path. A second preregistered experiment identifies delayed credit instead:
@@ -360,6 +363,22 @@ Passing distance 0.0193 establishes calibration adequacy for the registered
 counterfactuals, not a structural goodness-of-fit test or external validation
 of the live router.
 
+### Executable-router conformance
+
+Five fixed provider states were submitted to both the surrogate and LiteLLM
+1.92.0's executable Router code for 10,000 selections per state. A separate
+10,000-trial arm drew complete three-provider fallback orders by sequential
+exclusion, and five deterministic cases checked scalar lowest-cost routing.
+The inverse-price score was explicitly mapped to LiteLLM's deployment weight;
+this validates code conformance, not a claim that LiteLLM or OpenRouter
+natively uses inverse-price routing.
+
+All 25 rows pass. Every exact probability is inside a Clopper–Pearson interval
+Bonferroni-adjusted across the complete 20-cell stochastic family, and the
+largest absolute discrepancy is 0.732 percentage points against the frozen
+two-point gate. The suite sends no inference request, so queueing, latency,
+and live fallback execution remain outside the result.
+
 ## 6. Learning counterfactuals (gated on §5)
 
 All confirmatory designs use seeds 0--19 and immutable JSON manifests. Results
@@ -511,9 +530,10 @@ full provider game. The 20 seeds vary learning randomness around one calibrated
 payoff profile. E-SIM8 supplies local tabular-Q hyperparameter robustness and
 E-SIM7 rejects universal trap transport. E-SIM9 shows that an ordinary
 eight-step target is not a substitute for the option; alternative return
-operators and traces remain untested. Other learner classes and executable
-open-source-router replications remain required for a broad learning claim.
-The species world treats author repricing as exogenous.
+operators and traces remain untested. Other learner classes, endogenous rivals,
+request-serving systems fidelity, and direct validation of OpenRouter's live
+implementation remain required for a broad learning claim. The species world
+treats author repricing as exogenous.
 
 ## 9. Conclusion
 

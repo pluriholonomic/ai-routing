@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -82,3 +83,28 @@ def test_paper_uses_clean_ids_and_preserves_negative_results():
     assert "not confidence intervals for live-market parameters" in markdown
     assert "ordinary multi-step target fails" in markdown
     assert "registered gate fails" in latex
+
+
+def test_litellm_conformance_release_matches_paper():
+    summary_path = ROOT / "analysis" / "sm4_litellm_conformance_summary.json"
+    manifest_path = ROOT / "analysis" / "sm4_litellm_conformance_manifest.json"
+    summary = json.loads(summary_path.read_text())
+    manifest = json.loads(manifest_path.read_text())
+    latex = (ROOT / "paper" / "price-weighted-routing" / "main.tex").read_text()
+
+    assert summary["source_commit"] == "1e62de30d40e49ac6ee7904edb44b42a0be95ff9"
+    assert manifest["source_commit"] == summary["source_commit"]
+    assert summary["litellm_version"] == "1.92.0"
+    assert summary["trials_per_stochastic_state"] == 10_000
+    assert summary["fallback_trials"] == 10_000
+    assert summary["all_rows_pass"]
+    assert summary["all_interval_gates_pass"]
+    assert summary["all_absolute_error_gates_pass"]
+    assert 100 * summary["max_absolute_error"] == pytest.approx(0.7315763711909673)
+    assert "0.732 percentage" in latex
+    assert "LiteLLM conformance validates the mapped selection paths only" in latex
+
+    for filename, metadata in manifest["artifacts"].items():
+        artifact = ROOT / "analysis" / filename
+        assert artifact.stat().st_size == metadata["bytes"]
+        assert hashlib.sha256(artifact.read_bytes()).hexdigest() == metadata["sha256"]

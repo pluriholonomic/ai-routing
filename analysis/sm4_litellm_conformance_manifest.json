@@ -1,0 +1,327 @@
+{
+  "artifacts": {
+    "sm4_litellm_conformance.parquet": {
+      "bytes": 9587,
+      "sha256": "d23b20a7168b97dafee391ae6df6f7bed4efcaaf5d428b413f6a0a44bb6c42b0"
+    },
+    "sm4_litellm_conformance.pdf": {
+      "bytes": 22019,
+      "sha256": "26e9a780bb1ba2cb8ade6cbbb13fa7b9382517d31f62f2359efaa132ad45d2fc"
+    },
+    "sm4_litellm_conformance.png": {
+      "bytes": 170875,
+      "sha256": "09b6c7cc1e234f52594eaedf2c8048a01cc2e4bd0a15c801b85523f79c98e3b1"
+    },
+    "sm4_litellm_conformance_report.md": {
+      "bytes": 1091,
+      "sha256": "7a6cc8059b7b2e587c6be8759d27e6a7fa333d0a8d523789be6c03454f4af80f"
+    },
+    "sm4_litellm_conformance_summary.json": {
+      "bytes": 2316,
+      "sha256": "87e51e0fabc8ba68f632a436a7b448907580f67f87a22b9fbd33db6d22209cfc"
+    }
+  },
+  "experiment": "SM4 LiteLLM executable-router conformance",
+  "fixtures": [
+    {
+      "actions": {
+        "a": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.0
+        },
+        "b": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.0
+        },
+        "c": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.0
+        }
+      },
+      "exponent": 2.0,
+      "name": "balanced_three",
+      "specs": [
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "a",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "b",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "c",
+          "reliability": 1.0
+        }
+      ]
+    },
+    {
+      "actions": {
+        "a": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.0
+        },
+        "b": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.4
+        },
+        "c": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 2.2
+        }
+      },
+      "exponent": 2.0,
+      "name": "moderate_price_spread",
+      "specs": [
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "a",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "b",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "c",
+          "reliability": 1.0
+        }
+      ]
+    },
+    {
+      "actions": {
+        "a": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.0
+        },
+        "b": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.2
+        },
+        "c": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.8
+        },
+        "d": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 2.6
+        }
+      },
+      "exponent": 2.0,
+      "name": "four_provider_spread",
+      "specs": [
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "a",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "b",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "c",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "d",
+          "reliability": 1.0
+        }
+      ]
+    },
+    {
+      "actions": {
+        "a": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.0
+        },
+        "b": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.5
+        },
+        "c": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "withdrawn",
+          "quote": 0.8
+        },
+        "d": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 0.7
+        }
+      },
+      "exponent": 2.0,
+      "name": "withdrawn_and_zero_capacity",
+      "specs": [
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "a",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "b",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "c",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 0,
+          "provider": "d",
+          "reliability": 1.0
+        }
+      ]
+    },
+    {
+      "actions": {
+        "a": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "active",
+          "quote": 1.0
+        },
+        "b": {
+          "admitted_capacity_fraction": 1.0,
+          "availability": "degraded",
+          "quote": 1.3
+        },
+        "c": {
+          "admitted_capacity_fraction": 0.0,
+          "availability": "active",
+          "quote": 1.7
+        }
+      },
+      "exponent": 2.0,
+      "name": "degraded_remains_eligible",
+      "specs": [
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "a",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "b",
+          "reliability": 1.0
+        },
+        {
+          "base_latency_ms": 0.0,
+          "capital_cost_per_slot": 0.0,
+          "degraded_capacity_multiplier": 0.5,
+          "degraded_reliability_multiplier": 0.8,
+          "marginal_cost": 0.2,
+          "physical_capacity": 100,
+          "provider": "c",
+          "reliability": 1.0
+        }
+      ]
+    }
+  ],
+  "parameters": {
+    "fallback_trials": 10000,
+    "trials_per_state": 10000
+  },
+  "source_commit": "1e62de30d40e49ac6ee7904edb44b42a0be95ff9"
+}

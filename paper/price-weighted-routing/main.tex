@@ -104,7 +104,9 @@ Our contributions are:
   high quote and best persistent cut.  Full state observability does not solve
   the learning failure.  A semi-Markov commitment option does, while preserving
   the exact optimal value and every feasible primitive path.  A registered
-  eight-step TD falsification does not reproduce the improvement.
+  eight-step TD falsification does not reproduce the improvement.  A separate
+  executable conformance suite verifies the kernel's weighted selection,
+  filtering, fallback ordering, and lowest-cost choices against LiteLLM.
   \item We retain the negative results.  The original high-price equilibrium
   interpretation fails a multi-period deviation audit; the state-aliasing
   hypothesis fails; and the strict cross-market transport gate fails.  The
@@ -271,6 +273,37 @@ and a 10,000-transition frozen-policy evaluation.  Seed-bootstrap intervals
 quantify Monte Carlo variation under the frozen simulator.  They are not
 confidence intervals for market parameters or calibration uncertainty.
 
+\subsection{Executable-router conformance}
+
+We also submit identical synthetic provider snapshots to the surrogate and
+LiteLLM 1.92.0's executable \texttt{Router} selection code
+\citep{litellm2026}.  Five fixed states receive 10,000 selections each.  The
+suite additionally draws 10,000 complete three-provider fallback orders using
+LiteLLM's sequential exclusion path and checks five deterministic
+lowest-cost choices.  Inverse-price scores are mapped explicitly into
+LiteLLM's deployment weights; this validates the selection implementation,
+not a claim that LiteLLM natively uses inverse-price routing.
+
+All 25 conformance rows pass.  Every exact probability lies inside a
+Clopper--Pearson interval Bonferroni-adjusted over the complete 20-cell
+stochastic family, and the maximum absolute discrepancy is 0.732 percentage
+points against a two-point gate.  Withdrawn and zero-capacity providers are
+excluded exactly; degraded positive-capacity providers remain eligible.  The
+test does not send inference requests, so queueing, latency, and live fallback
+execution remain outside this gate.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{sm4_litellm_conformance.pdf}
+  \caption{Executable LiteLLM conformance.  Crosses are exact surrogate
+  probabilities; dots and bars are LiteLLM frequencies and globally
+  simultaneous 95\% intervals.  The bottom six rows are complete fallback
+  permutations, not independent first-route draws.}
+  \label{fig:litellm}
+\end{figure}
+
+\FloatBarrier
+
 \section{Results}
 
 \subsection{Falsification: state information is not enough}
@@ -420,8 +453,10 @@ around one payoff profile.  E-SIM8 gives local tabular-Q robustness; E-SIM7
 rejects universal severe-trap transport.  E-SIM9 shows that an ordinary
 eight-step target is not a substitute for the option; other return operators
 and traces remain untested.  Deep RL, LLM pricing agents, endogenous
-rivals, executable open-source routers, and longer calibration panels are future
-tests.  No result establishes provider intent, communication, collusion, or a
+rivals, request-serving systems fidelity, and longer calibration panels are
+future tests.  LiteLLM conformance validates the mapped selection paths only;
+it does not identify OpenRouter's live implementation.  No result establishes
+provider intent, communication, collusion, or a
 causal effect in the live router.
 
 \section{Conclusion}
@@ -498,7 +533,9 @@ The clean confirmatory bundles are E-SIM5 \texttt{3e5a55405e}, E-SIM6
 \texttt{4f9007b}, a result hash, input-artifact hashes, and equality between the
 executed market-environment source and the source stored at that commit.  Exact
 Bellman residuals, option-value equality, and paper-number crosswalks are
-enforced by the test suite.
+enforced by the test suite.  The LiteLLM conformance release executes from
+source commit \texttt{1e62de3}; its manifest pins LiteLLM 1.92.0, hashes both
+executed selector functions, and hashes every table, figure, and report.
 
 \bibliographystyle{plainnat}
 \bibliography{references}

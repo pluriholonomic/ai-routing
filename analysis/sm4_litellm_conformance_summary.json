@@ -1,0 +1,45 @@
+{
+  "absolute_error_gate": 0.02,
+  "adapter_limitations": [
+    "LiteLLM exposes blocked status but not our economic exclusion reason; the adapter preserves the reason separately.",
+    "LiteLLM cost-based routing sums configured input and output unit prices; fixtures split the scalar quote equally across them.",
+    "No model request is sent, so fallback execution and service-system fidelity remain outside this experiment."
+  ],
+  "all_absolute_error_gates_pass": true,
+  "all_interval_gates_pass": true,
+  "all_rows_pass": true,
+  "claim_boundary": "This validates LiteLLM 1.92.0 deployment filtering, weighted selection, sequential exclusion, and scalar lowest-cost selection on synthetic fixtures. Inverse-price scores are explicitly mapped into LiteLLM weights; this is not evidence that LiteLLM or OpenRouter natively uses inverse-price routing, and it does not validate live production state, queueing, latency, or provider conduct.",
+  "excluded_provider_mappings": [
+    {
+      "adapter_reason": "withdrawn",
+      "fixture": "withdrawn_and_zero_capacity",
+      "litellm_representation": "model_info.blocked=true",
+      "provider": "c"
+    },
+    {
+      "adapter_reason": "zero_physical_capacity",
+      "fixture": "withdrawn_and_zero_capacity",
+      "litellm_representation": "model_info.blocked=true",
+      "provider": "d"
+    },
+    {
+      "adapter_reason": "zero_admitted_capacity",
+      "fixture": "degraded_remains_eligible",
+      "litellm_representation": "model_info.blocked=true",
+      "provider": "c"
+    }
+  ],
+  "experiment": "SM4 LiteLLM executable-router conformance",
+  "fallback_trials": 10000,
+  "interval_method": "Clopper-Pearson intervals with Bonferroni alpha=0.05/family_cells; simultaneous over every first-route share and fallback permutation cell",
+  "litellm_cost_selector_source_sha256": "3b3a74b343f9c1bdc7b3b29d8cba1f1b28a70d1fdb71f1469838f1e48cc2480c",
+  "litellm_simple_shuffle_source_sha256": "f70e3dc88aa274fb00c34f1bae7fe72400fb7d093ce0fdb0131b1e930f45117e",
+  "litellm_version": "1.92.0",
+  "max_absolute_error": 0.007315763711909673,
+  "n_deterministic_rows": 5,
+  "n_stochastic_fixtures": 5,
+  "n_stochastic_rows": 20,
+  "source_commit": "1e62de30d40e49ac6ee7904edb44b42a0be95ff9",
+  "stochastic_family_cells": 20,
+  "trials_per_stochastic_state": 10000
+}
