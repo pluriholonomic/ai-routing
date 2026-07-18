@@ -1,5 +1,10 @@
 # Referee reports — "The Router Is the Demand Curve"
 
+> **Superseded.** This file reviews an earlier equilibrium-and-steering draft.
+> The current delayed-credit paper is evaluated in
+> `review-price-weighted-routing-round-3.md`; its recommendation is based on
+> clean E-SIM5--9 bundles and narrower claim boundaries.
+
 ## Round 2 (final) — decision: ACCEPT (minor)
 
 All four required items landed, and two of them improved the paper beyond

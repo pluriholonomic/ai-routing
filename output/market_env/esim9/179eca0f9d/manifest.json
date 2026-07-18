@@ -1,0 +1,14 @@
+{
+ "run_id": "179eca0f9d",
+ "experiment": "E-SIM9",
+ "commit": "4f9007be9e1ffdaea2cfce2a5ecc421d58b80f45",
+ "bundle_rev": null,
+ "seeds": 20,
+ "result_sha256": "eb7664f2bd4f08b7cd27fc71cdfd6903c9f098134ee35b44930e09af95038679",
+ "market_env_source_sha256": "634f46cca8e4cad9317fafcb4b74b28640e6a60f0c66f3b6e15860107b09105d",
+ "market_env_commit_source_sha256": "634f46cca8e4cad9317fafcb4b74b28640e6a60f0c66f3b6e15860107b09105d",
+ "market_env_source_matches_commit": true,
+ "input_artifact_sha256": {
+  "source_esim4": "a8db910936ec7e77c7b6a5d3859462b993678eccca90b494d40cce989b3adf21"
+ }
+}

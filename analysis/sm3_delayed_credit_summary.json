@@ -1,0 +1,25 @@
+{
+  "experiment_id": "sm3-delayed-credit-v1",
+  "esim5_run": "3e5a55405e",
+  "esim6_run": "93265b9b03",
+  "esim7_run": "bd74ab2eb7",
+  "esim8_run": "4d84b9b3a2",
+  "esim9_run": "179eca0f9d",
+  "esim5_state_aliasing_supported": false,
+  "esim6_delayed_credit_supported": true,
+  "calibrated_regret_contrast": {
+    "memory": 7,
+    "estimand": "normalized_regret_option_minus_primitive",
+    "paired_mean": -0.06425116521128763,
+    "paired_bootstrap_ci95": [
+      -0.07552830101524913,
+      -0.04930183305321537
+    ]
+  },
+  "rational_memory_threshold": 9.240163820889613,
+  "esim7_confirmatory_transport_supported": false,
+  "esim7_theory_aligned_effect_signs": true,
+  "esim8_q_robustness_gate": true,
+  "esim9_multistep_credit_supported": false,
+  "claim_boundary": "A passing result identifies a delayed-credit barrier and its removal by a payoff-equivalent commitment option in the controlled calibrated MDP. It does not identify live-router causality, provider conduct, equilibrium, or collusion."
+}

@@ -11,7 +11,7 @@ RUNS = {
     "esim8": "4d84b9b3a2",
     "esim9": "179eca0f9d",
 }
-SOURCE_COMMIT = "eb19ae157d7c1757ed39230426b48a6d00a95211"
+SOURCE_COMMIT = "4f9007be9e1ffdaea2cfce2a5ecc421d58b80f45"
 
 
 def _load(experiment: str, filename: str) -> dict:

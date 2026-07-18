@@ -11,6 +11,7 @@
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{natbib}
+\usepackage{placeins}
 \usepackage[hidelinks]{hyperref}
 \usepackage[nameinlink,noabbrev]{cleveref}
 
@@ -140,11 +141,12 @@ when that root lies below $\pbar$, and is $\pbar$ otherwise.
 Suppose costs are symmetric at $c$.
 \begin{enumerate}[label=(\roman*)]
   \item If $a(n-1)>n$ and the cap does not bind, the unique symmetric interior
-  equilibrium is
+  pure-strategy equilibrium is
   \[
     p^*=c\frac{a(n-1)}{a(n-1)-n}.
   \]
-  \item If $a(n-1)\le n$, the only symmetric equilibrium is the menu ceiling.
+  \item If $a(n-1)\le n$, the only symmetric pure-strategy equilibrium is the
+  menu ceiling.
   At $a=2$, this is exactly the duopoly boundary.
   \item At any interior equilibrium, symmetric or not, and with any outside
   option added to the allocation denominator,
@@ -378,6 +380,8 @@ return operator solves the problem.
   \label{fig:esim9}
 \end{figure}
 
+\FloatBarrier
+
 \section{Relation to prior work}
 
 Inverse-power allocation is a constant-elasticity differentiated-products
@@ -453,7 +457,8 @@ best-response statement.
 At symmetry $s_i=1/n$.  The interior first-order condition becomes
 $a(1-1/n)(p-c)/p=1$, which yields the formula and requires
 $a(n-1)>n$.  If the inequality fails, the derivative at every symmetric
-interior profile is positive and the cap is the only symmetric solution.
+interior profile is positive and the cap is the only symmetric pure-strategy
+solution.
 At any interior equilibrium,
 $(p_i-c_i)/p_i=1/[a(1-s_i)]>1/a$, which rearranges to the markup floor.
 As $s_i\to0$, the inequality converges to equality.
@@ -490,7 +495,7 @@ The clean confirmatory bundles are E-SIM5 \texttt{3e5a55405e}, E-SIM6
 \texttt{93265b9b03}, E-SIM7 \texttt{bd74ab2eb7}, and E-SIM8
 \texttt{4d84b9b3a2}; the registered E-SIM9 falsification is
 \texttt{179eca0f9d}.  Every manifest records source commit
-\texttt{eb19ae1}, a result hash, input-artifact hashes, and equality between the
+\texttt{4f9007b}, a result hash, input-artifact hashes, and equality between the
 executed market-environment source and the source stored at that commit.  Exact
 Bellman residuals, option-value equality, and paper-number crosswalks are
 enforced by the test suite.

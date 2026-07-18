@@ -1,0 +1,14 @@
+{
+ "run_id": "bd74ab2eb7",
+ "experiment": "E-SIM7",
+ "commit": "4f9007be9e1ffdaea2cfce2a5ecc421d58b80f45",
+ "bundle_rev": "e292f3ed41c5",
+ "seeds": 20,
+ "result_sha256": "442963f2e0c5086da0c7144f25d2b3c12d900edd06cae06eca833d88af062ff3",
+ "market_env_source_sha256": "634f46cca8e4cad9317fafcb4b74b28640e6a60f0c66f3b6e15860107b09105d",
+ "market_env_commit_source_sha256": "634f46cca8e4cad9317fafcb4b74b28640e6a60f0c66f3b6e15860107b09105d",
+ "market_env_source_matches_commit": true,
+ "input_artifact_sha256": {
+  "source_esim4b": "5bf06d0f50dda1cd4d4496331d55d87aa85ce23c805be26cbebf75ea1c206ab7"
+ }
+}

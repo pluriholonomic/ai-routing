@@ -117,13 +117,14 @@ the solution of h = 1 if h(p̄) > 1, else the ceiling p̄.
 **Theorem 1 (symmetric equilibrium; knife edge; markup floor).**
 With symmetric costs c:
 (i) If a(n−1) > n and the menu ceiling satisfies p̄ > p*, the unique
-symmetric equilibrium is interior:
+symmetric pure-strategy equilibrium is interior:
 
     p* = c · a(n−1) / (a(n−1) − n).
 
 (If p̄ ≤ p* the ceiling binds and the equilibrium is p̄.)
 (ii) If a(n−1) ≤ n, every provider's best response exceeds any rival
-price: the unique symmetric equilibrium is p_i = p̄ (the menu ceiling).
+price: the unique symmetric pure-strategy equilibrium is p_i = p̄ (the menu
+ceiling).
 At a = 2 this is precisely n ≤ 2.
 (iii) *Markup floor* (a > 1; for a ≤ 1 the ceiling always obtains). In ANY
 interior equilibrium — symmetric or not, any n, and with any outside
@@ -554,7 +555,7 @@ deviation is strictly profitable. ∎
 
 **Theorem 1(ii).** With all rivals at any common q and a(n−1) ≤ n, at the
 symmetric point h(q) = a(1−1/n)(q−c)/q < a(n−1)/n ≤ 1, so each firm
-strictly gains by raising price; the only symmetric profile with no
+strictly gains by raising price; the only symmetric pure-strategy profile with no
 profitable deviation is q = p̄, where quasiconcavity (Lemma 2) rules out
 downward deviations globally. ∎
 
