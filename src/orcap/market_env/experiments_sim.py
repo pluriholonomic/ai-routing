@@ -139,7 +139,7 @@ def run_market(bundle: dict, model_id: str, seed: int, epochs: int, burn_in: int
     kernel, specs, strategies, anchor_provider, classes, authors = build_market(
         bundle, model_id, seed, author_hazard
     )
-    rng = np.random.default_rng(seed * 7919 + hash(model_id) % 10_000)
+    rng = np.random.default_rng(_market_seed(seed, model_id))
     ar1 = bundle["demand"].get("ar1_median") or 0.5
     sigma = bundle["demand"].get("sigma_dlog_median") or 0.3
     p_anchor0 = bundle["markets"][model_id]["anchor_price"]
@@ -162,6 +162,17 @@ def run_market(bundle: dict, model_id: str, seed: int, epochs: int, burn_in: int
         results, model_id, classes, anchor_prices, authors
     )
     return traj[traj.epoch >= burn_in]
+
+
+def _market_seed(seed: int, model_id: str) -> int:
+    """Stable demand-process seed, independent of ``PYTHONHASHSEED``.
+
+    Python deliberately randomizes ``hash(str)`` between interpreter
+    processes.  Using it here made an otherwise identical confirmatory run
+    depend on the process that launched it.
+    """
+    payload = f"{int(seed)}\0{model_id}".encode()
+    return int.from_bytes(hashlib.blake2b(payload, digest_size=8).digest(), "little")
 
 
 def run_esim1(bundle_rev: str | None, seeds: int, epochs: int, burn_in: int) -> dict:
@@ -242,6 +253,209 @@ def _write_run(result: dict, name: str) -> Path:
     return d
 
 
+def _require_esim1_pass() -> str:
+    """Downstream experiments are gated on a passing E-SIM1 for some bundle."""
+    for res in sorted((OUT / "esim1").glob("*/results.json")):
+        r = json.loads(res.read_text())
+        if r.get("passed") and r.get("seeds", 0) >= 20:
+            return r["bundle_rev"]
+    raise SystemExit("no passing confirmatory E-SIM1 run found; gate closed")
+
+
+def _stylized_world(seed: int):
+    """A 5-provider synthetic market with one slot per species + an anchor,
+    stationary demand — the arena for learner-substitution and steering."""
+    from .strategies_species import (
+        ActiveUndercutterStrategy,
+        AdopterStrategy,
+        TargetHazardStrategy,
+    )
+
+    mc = 0.2
+    providers = {
+        "Anchor": StaticStrategy(1.0),
+        "Adopter": AdopterStrategy("Anchor", idio_hazard=0.0, seed=seed),
+        "StaticCut": TargetHazardStrategy("Anchor", -0.4, 0.005, seed=seed + 1),
+        "ActiveCut": ActiveUndercutterStrategy(margin_floor=0.1),
+        "Premium": TargetHazardStrategy("Anchor", 0.34, 0.02, seed=seed + 2),
+    }
+    costs = dict.fromkeys(providers, mc)
+    return providers, costs
+
+
+def run_esim2(seeds: int = 5, train_epochs: int = 300_000) -> dict:
+    """Replace each species slot with a Q-learner trained against the rest
+    (stationary demand). Which species does the learner converge to?"""
+    from .strategies_qlearn import TabularQAgent, expected_profits, price_grid
+
+    _require_esim1_pass()
+    grid = price_grid(1.0)
+    router = InversePriceRouter(2.0)
+    out: dict[str, list] = {}
+    for slot in ("Adopter", "StaticCut", "ActiveCut", "Premium"):
+        outcomes = []
+        for seed in range(seeds):
+            strategies, costs = _stylized_world(seed * 31 + 7)
+            del strategies[slot]
+            agent = TabularQAgent(grid, seed=seed)
+            specs = {
+                p: ProviderSpec(provider=p, marginal_cost=costs[p], physical_capacity=1)
+                for p in list(strategies) + [slot]
+            }
+            quotes = {p: 1.0 for p in specs}
+            own_idx = len(grid) // 2
+            for _t in range(train_epochs):
+                rival_min = min(q for p, q in quotes.items() if p != slot)
+                rividx = int(np.argmin(np.abs(grid - rival_min)))
+                s = agent.state_index(own_idx, rividx)
+                a = agent.act_index(s)
+                quotes[slot] = float(grid[a])
+                for p, strat in strategies.items():
+                    quotes[p] = strat.act(specs[p], dict(quotes)).quote
+                pis = expected_profits(quotes, costs, router, 1.0)
+                rival_min2 = min(q for p, q in quotes.items() if p != slot)
+                s2 = agent.state_index(a, int(np.argmin(np.abs(grid - rival_min2))))
+                agent.update(s, a, pis[slot], s2)
+                own_idx = a
+            # classify converged behavior over a 56-epoch greedy eval
+            prices, reprices = [], 0
+            prev = quotes[slot]
+            for _t in range(56):
+                rival_min = min(q for p, q in quotes.items() if p != slot)
+                s = agent.state_index(
+                    int(np.argmin(np.abs(grid - quotes[slot]))),
+                    int(np.argmin(np.abs(grid - rival_min))),
+                )
+                quotes[slot] = float(grid[agent.greedy(s)])
+                for p, strat in strategies.items():
+                    quotes[p] = strat.act(specs[p], dict(quotes)).quote
+                prices.append(quotes[slot])
+                reprices += abs(quotes[slot] - prev) > 1e-12
+                prev = quotes[slot]
+            med_rel = float(np.log(np.median(prices) / 1.0))
+            cpd = reprices / 55
+            at_anchor = float(np.mean(np.isclose(prices, 1.0)))
+            if at_anchor >= 0.8:
+                learned = "adopter"
+            elif med_rel < 0:
+                learned = "below_active" if cpd > 0.05 else "below_static"
+            else:
+                learned = "above"
+            outcomes.append({"seed": seed, "learned_class": learned,
+                             "median_log_rel": round(med_rel, 3),
+                             "changes_per_day": round(cpd, 3),
+                             "share_at_anchor": round(at_anchor, 3)})
+        out[slot] = outcomes
+    result = {"experiment": "E-SIM2", "replaced_slot_outcomes": out,
+              "seeds": seeds, "train_epochs": train_epochs}
+    _write_run(result, "esim2")
+    return result
+
+
+def run_esim3(seeds: int = 5) -> dict:
+    """Router price-sensitivity sweep: all-Q worlds under exponent a
+    (softmax temperature 1/a). Deliverable: price level and Calvano Delta
+    vs a — does a sharper router discipline learners?"""
+    from .strategies_qlearn import train_symmetric
+
+    _require_esim1_pass()
+    sweep = []
+    for a in (0.0, 1.0, 2.0, 4.0, 8.0, 32.0):
+        rows = []
+        for seed in range(seeds):
+            r = train_symmetric(
+                InversePriceRouter(a), n_agents=3, mc=0.2,
+                max_epochs=300_000, stable_window=40_000, seed=seed * 13 + 1,
+            )
+            rows.append({k: r[k] for k in
+                         ("final_prices", "mean_profit", "pi_nash",
+                          "pi_monopoly", "calvano_delta", "converged")})
+        deltas = [x["calvano_delta"] for x in rows if x["calvano_delta"] is not None]
+        prices = [np.mean(list(x["final_prices"].values())) for x in rows]
+        sweep.append({
+            "exponent": a,
+            "mean_price": round(float(np.mean(prices)), 4),
+            "mean_delta": round(float(np.mean(deltas)), 4) if deltas else None,
+            "sd_delta": round(float(np.std(deltas)), 4) if deltas else None,
+            "n_delta_defined": len(deltas),
+        })
+    result = {"experiment": "E-SIM3", "sweep": sweep, "seeds": seeds,
+              "n_agents": 3}
+    _write_run(result, "esim3")
+    return result
+
+
+def run_esim4(seeds: int = 5) -> dict:
+    """JRW steering counterfactual: cut-penalty on/off in the stylized
+    species world with the learner in the ActiveCut slot. Prediction from
+    the JRW-inverse reading: penalizing recent cutters removes the payoff
+    to undercutting -> less repricing, higher price level."""
+    from .routers_steering import CutPenaltyRouter
+    from .strategies_qlearn import TabularQAgent, expected_profits, price_grid
+
+    _require_esim1_pass()
+    grid = price_grid(1.0)
+    arms = {"penalty_off": None, "penalty_on": 0.17}
+    out = {}
+    for arm, theta in arms.items():
+        rows = []
+        for seed in range(seeds):
+            router = (InversePriceRouter(2.0) if theta is None
+                      else CutPenaltyRouter(2.0, theta=theta, memory=7))
+            strategies, costs = _stylized_world(seed * 17 + 3)
+            del strategies["ActiveCut"]
+            slot = "ActiveCut"
+            agent = TabularQAgent(grid, seed=seed)
+            specs = {
+                p: ProviderSpec(provider=p, marginal_cost=costs[p], physical_capacity=1)
+                for p in list(strategies) + [slot]
+            }
+            quotes = {p: 1.0 for p in specs}
+            own_idx = len(grid) // 2
+            for _t in range(300_000):
+                rival_min = min(q for p, q in quotes.items() if p != slot)
+                s = agent.state_index(own_idx, int(np.argmin(np.abs(grid - rival_min))))
+                a = agent.act_index(s)
+                quotes[slot] = float(grid[a])
+                for p, strat in strategies.items():
+                    quotes[p] = strat.act(specs[p], dict(quotes)).quote
+                pis = expected_profits(quotes, costs, router, 1.0)
+                if hasattr(router, "advance"):
+                    router.advance(quotes)
+                rival_min2 = min(q for p, q in quotes.items() if p != slot)
+                s2 = agent.state_index(a, int(np.argmin(np.abs(grid - rival_min2))))
+                agent.update(s, a, pis[slot], s2)
+                own_idx = a
+            prices, reprices, prev = [], 0, quotes[slot]
+            for _t in range(56):
+                rival_min = min(q for p, q in quotes.items() if p != slot)
+                s = agent.state_index(
+                    int(np.argmin(np.abs(grid - quotes[slot]))),
+                    int(np.argmin(np.abs(grid - rival_min))),
+                )
+                quotes[slot] = float(grid[agent.greedy(s)])
+                for p, strat in strategies.items():
+                    quotes[p] = strat.act(specs[p], dict(quotes)).quote
+                if hasattr(router, "advance"):
+                    router.advance(quotes)
+                prices.append(quotes[slot])
+                reprices += abs(quotes[slot] - prev) > 1e-12
+                prev = quotes[slot]
+            rows.append({
+                "seed": seed,
+                "learner_median_price": round(float(np.median(prices)), 4),
+                "learner_changes_per_day": round(reprices / 55, 3),
+                "market_mean_price": round(float(np.mean(
+                    [np.mean(list(quotes.values()))]
+                )), 4),
+            })
+        out[arm] = rows
+    result = {"experiment": "E-SIM4", "arms": out, "seeds": seeds,
+              "theta": 0.17, "memory_epochs": 7}
+    _write_run(result, "esim4")
+    return result
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     ap = argparse.ArgumentParser()
@@ -251,12 +465,19 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=56)
     ap.add_argument("--burn-in", type=int, default=7)
     args = ap.parse_args()
-    if args.experiment != "E-SIM1":
-        raise SystemExit("only E-SIM1 is implemented; E-SIM2..4 unlock on a pass")
-    result = run_esim1(args.bundle, args.seeds, args.epochs, args.burn_in)
-    d = _write_run(result, "esim1")
-    print(json.dumps(result, indent=1, default=str))
-    print(f"run dir: {d}")
+    if args.experiment == "E-SIM1":
+        result = run_esim1(args.bundle, args.seeds, args.epochs, args.burn_in)
+        d = _write_run(result, "esim1")
+        print(json.dumps(result, indent=1, default=str))
+        print(f"run dir: {d}")
+    elif args.experiment == "E-SIM2":
+        print(json.dumps(run_esim2(seeds=args.seeds), indent=1, default=str))
+    elif args.experiment == "E-SIM3":
+        print(json.dumps(run_esim3(seeds=args.seeds), indent=1, default=str))
+    elif args.experiment == "E-SIM4":
+        print(json.dumps(run_esim4(seeds=args.seeds), indent=1, default=str))
+    else:
+        raise SystemExit(f"unknown experiment {args.experiment}")
 
 
 if __name__ == "__main__":
