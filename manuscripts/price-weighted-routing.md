@@ -1,4 +1,4 @@
-# The Router Is the Demand Curve: Price-Weighted Routing and the Limits of Competition in AI Inference Marketplaces
+# The Router Is the Demand Curve: Price Steering and Delayed Credit in AI Inference Markets
 
 *Draft 2026-07-18. Companion to "Administered Menus and Hidden Clearing"
 (empirical); this paper supplies the mechanism theory and the calibrated
@@ -7,45 +7,34 @@ reproduces from committed modules with recorded seeds and manifests.*
 
 ## Abstract
 
-AI inference marketplaces route buyer traffic across competing providers of
-the same model with a documented rule: selection probability proportional to
-1/price². We show this rule *is* the market's demand system, and
-characterize competition under the induced logit-form game. Three results.
-**(1) A markup floor.** For routing weights ∝ p^(−a), every interior
-equilibrium satisfies Lerner index (p−c)/p ≥ 1/a — regardless of the number
-of providers or any outside option. At the documented a = 2, equilibrium
-markups never fall below 100%; free entry cannot compete them away. For n
-providers, symmetric equilibrium is p* = c·a(n−1)/(a(n−1)−n) when
-a(n−1) > n, and the *menu ceiling* otherwise: at a = 2 with two providers —
-the modal market structure in our panel — the unique symmetric equilibrium
-is the highest feasible price. Replacing literal captivity with the
-*measured* end-user elasticity (−0.05) gives the finite version:
-equilibrium duopoly price equals **41× marginal cost**. **(2) Steering as a price elevator.** The
-router's empirically measured penalty on recent price-cutters (selection
-weight ×θ ≈ 0.17 for ~7 days, from our randomized probe panel) has a
-closed-form deterrence threshold θ*: for all calibrated configurations
-θ = 0.17 ≪ θ*, so undercutting is strictly unprofitable for any agent with
-effective patience δ^M below ≈ 0.93, and a *perpetual* micro-adjuster pays a
-~5× share tax. In simulation the penalty flips a learning undercutter to
-the price ceiling and raises market prices 18%. **(3) A validated
-environment.** We fit four behavioral pricing species (anchor adopters,
-static and active undercutters, premium providers) to a live capture of the
-OpenRouter marketplace under a pre-registered split-sample protocol; the
-simulated market reproduces ten observed moments (distance 0.019 vs 0.04
-gate) and — with no parameter targeting allocation — endogenously generates
-the observed provider-level flow elasticity (−0.65 ± 0.35 simulated vs
-−0.78 observed). Q-learning agents dropped into the environment converge to
-supra-competitive prices (Calvano Δ up to 0.47) whose level is dial-set by
-the routing exponent, and never rediscover high-frequency undercutting —
-consistent with the observed bifurcation of repricing technologies.
+Open-weight inference is a partially substitutable execution service sold by
+providers through routers. We study a documented inverse-square allocation
+rule and a conditional selection association for recent price cutters.
+Inverse-power routing creates a classical markup floor. More importantly, a
+finite cut penalty creates a **delayed-credit region**: cutting is immediately
+unprofitable yet optimal after the penalty expires. In our calibrated
+two-price reduction, the rational boundary is 9.24 periods. At the observed
+seven-period memory, exact optimization cuts, while a primitive-action
+Q-learner remains high in 19/20 seeds. Adding a payoff-equivalent commitment
+option leaves the optimal value unchanged, restores the cut in 18/20 seeds,
+and lowers normalized regret by 6.43 percentage points (paired 95% interval
+[4.93, 7.55]). The regret effect remains beneficial in all nine registered
+Q-learning parameter cells. Across four calibrated price books, its sign flips
+with the rational memory boundary, although the strict transport gate fails.
+An eight-step TD target does not improve on one-step Q, narrowing the result to
+option-specific temporal abstraction.
+Thus router memory can separate rational incentives from learned pricing, but
+interventions are nonmonotone. This is a calibrated counterfactual mechanism,
+not evidence of provider conduct or live-router causality.
 
 ## 1. Introduction
 
 Routing marketplaces for AI inference (OpenRouter and peers) sell a
 homogeneous good — tokens from a specific model — served by multiple
 competing providers. Buyers do not choose providers; a router does.
-OpenRouter documents its default: filter providers with recent outages,
-then select with probability proportional to the inverse square of price.
+For non-tool-calling traffic, OpenRouter documents its price-weighted default:
+filter providers with recent outages, then select with probability proportional
+to the inverse square of price.
 This one sentence pins down the residual demand curve every provider faces.
 The competitive question is therefore not "how do buyers search" but "what
 game does the routing rule induce," and it can be answered exactly.
@@ -53,45 +42,45 @@ game does the routing rule induce," and it can be answered exactly.
 Our empirical companion paper documents, from a 5-minute-resolution capture
 of the marketplace: same-model price dispersion sustained at 1.3–10×;
 menu-cost repricing with a large atom of providers pricing *exactly* at the
-model author's price; a 20× wedge between routing-level and end-user demand
-elasticity; and a router that *penalizes* recent price-cutters (a
-cheapest-quoting provider with a cut in the last week is selected 3.9% of
-the time vs 23.3% without). This paper asks whether those facts are what
+model author's price; a large wedge between routing-share elasticity and an
+external end-user demand benchmark; and a selection association consistent
+with lower weight on recent cutters (a cheapest-quoting provider with a cut in
+the last week is selected 3.9% of the time vs 23.3% without). This paper asks whether those facts are what
 competition under price-weighted routing *should* produce — and whether the
 router's design choices could themselves be the source of the observed
 price elevation.
 
 **Contributions.**
 
-1. *Theory* (§3). For the weight class w(p) = p^(−a) we give a complete
-   characterization of symmetric pricing equilibrium with captive demand:
-   an interior solution p* = c·a(n−1)/(a(n−1)−n) iff a(n−1) > n, the menu
-   ceiling otherwise, and a universal Lerner floor 1/a that survives free
-   entry and any outside option. The documented exponent a=2 sits exactly
-   at the two-provider knife edge. We then model the observed cut-penalty
-   as a transient multiplicative weight tax and derive its closed-form
-   deviation target, deterrence threshold θ*, patience boundary, and the
-   perpetual-cutter share tax.
+1. *Theory* (§3). We map inverse-power routing to a standard differentiated-
+   products demand system and state the resulting symmetric equilibrium and
+   markup floor. Our new object is dynamic: a history-dependent cut penalty
+   creates an exact wedge between the immediately optimal price and the
+   infinite-horizon optimum. We derive the rational memory boundary and prove
+   that a feasible persistent-cut option cannot change the provider's optimal
+   discounted value.
 2. *A calibrated, validated multi-agent environment* (§4–5). Provider
    behavior is not assumed: four behavioral species are classified from
    panel data on a train window under pre-registered rules, and the
    assembled market must reproduce held-out moments before any
    counterfactual is run. The validation gate includes an untargeted
    moment: the simulated flow elasticity emerges from the router alone.
-3. *Learning counterfactuals* (§6). Tabular Q-learners (Calvano et al.'s
-   design, which our demand system nests exactly) show: collusion indices
-   up to Δ = 0.47 under the documented router; a monotone price-level dial
-   in the routing exponent; the cut-penalty raising prices 18%; and the
-   non-emergence of high-frequency undercutting as an optimal reply.
+3. *Learning counterfactuals* (§6). A preregistered audit rejects the original
+   equilibrium and state-aliasing explanations of the high-price learning
+   path. A second preregistered experiment identifies delayed credit instead:
+   temporal abstraction closes the implementation gap at the calibrated
+   memory, but overcorrects beyond the rational cut boundary. A registered
+   eight-step TD target does not improve on one-step Q, so the successful
+   intervention is not generalized to every longer backup.
 
 **Why this matters beyond one marketplace.** Price-weighted probabilistic
-allocation is the natural "fair" design for any machine-mediated
-marketplace (ad exchanges, cloud brokers, agentic procurement). Our results
-say such rules carry an intrinsic markup floor set by the weighting
-exponent, that softening allocation to protect quality also protects
-margins, and that anti-bait-and-switch steering is mathematically a
-collusion device. These are design levers, not conduct — the "who is to
-blame" question inverts.
+allocation appears in machine-mediated procurement, cloud brokerage, and ad
+allocation. Our results separate two design margins. The routing exponent
+governs static residual demand. Router memory governs dynamic credit
+assignment: a penalty can leave a rational provider willing to cut while
+preventing a primitive learner from discovering that cut. A commitment
+interface can repair the latter, but may induce overcommitment when the
+rational optimum changes. These are mechanism effects, not conduct labels.
 
 ## 2. Model
 
@@ -100,8 +89,10 @@ from a menu (the ceiling p̄ is the highest feasible/observed menu price;
 discreteness is irrelevant to the theory and used only in learning
 experiments). Marginal cost c_i per served request; capacity non-binding
 for the theory (the empirical companion treats rationing). Per epoch a unit
-mass D of captive requests arrives (end-user elasticity measured at −0.05;
-we treat D fixed and discuss the outside option below). The router selects
+mass D of captive requests arrives. We treat D as fixed in the baseline and
+use an external published end-user elasticity near −0.05 only as a sensitivity
+benchmark below; this repository does not estimate aggregate token demand.
+The router selects
 provider i first with probability
 
     s_i(p) = w(p_i) / Σ_j w(p_j),    w(p) = p^(−a),   a > 0.
@@ -157,7 +148,7 @@ to our knowledge, new. Asymmetric-cost equilibria are not characterized
 here; all equilibrium statements are symmetric (the floor in (iii) is the
 exception — it binds provider-by-provider at any interior profile).
 
-**Corollary 1 (measured outside option; the empirical duopoly markup).**
+**Corollary 1 (elastic-demand sensitivity).**
 The ceiling case is the ε → 0 limit of a finite answer. Let aggregate
 demand be D = D₀·P^ε with inclusive-value index P = (Σ_j p_j^(−a))^(−1/a)
 (so ∂log P/∂log p_i = s_i) and ε < 0 the end-user price elasticity. The
@@ -165,25 +156,25 @@ symmetric FOC becomes
 
     p/(p−c) = a(n−1)/n + |ε|/n  ≡  R,    p* = c·R/(R−1)   (R > 1).
 
-Every routing marketplace with a > 1 and any ε < 0 has a finite symmetric
-equilibrium; captivity (ε = 0) is what produces the ceiling. At the
-MEASURED end-user elasticity ε = −0.05 and the documented a = 2, duopoly
+Elastic demand produces a finite symmetric stationary price exactly when
+`a(n−1)+|ε|>n`; otherwise the menu ceiling still binds. At the external
+benchmark ε = −0.05 and the documented a = 2, duopoly
 gives R = 1.025 and
 
     p* = 41·c :
 
 (The inclusive-value aggregator P is a modeling choice for mapping the
-measured token-demand elasticity into a price index; any aggregator with
+external token-demand elasticity into a price index; any aggregator with
 ∂log P/∂log p_i = s_i + o(s_i) gives the same FOC to first order.)
-The equilibrium duopoly price is forty-one times marginal cost. (Verified
+Conditional on this demand model, the stationary duopoly price is forty-one
+times marginal cost. This is a sensitivity calculation, not an estimated
+markup. (Verified
 against the full profit function to 4 decimals at (n, a, ε) ∈
 {(2,2,−.05), (3,2,−.05), (2,2,−.2), (5,2,−.05), (2,2,−1)}.) The
-elasticity wedge measured in the companion paper is thus a structural
-parameter here: the router's near-captive demand (|ε| ≪ 1) is precisely
-why realistic menus bind before equilibrium does. The same FOC also
-rationalizes the measured provider-level flow elasticity: theory predicts
-own-price share elasticity −a(1−s) ≈ −1 at the observed share levels;
-we measure −0.78 (panel) and −0.65 (simulation).
+external aggregate-demand benchmark and the companion paper's routing-share
+elasticity play different roles. Near-captive aggregate demand explains why
+realistic menus may bind before the stationary price, while provider-level
+own-price share elasticity is generated directly by the router.
 
 *Proof.* (i)–(ii): impose symmetry s = 1/n in Lemma 2's FOC h(p)=1 and
 solve; the knife edge is h(p) < 1 for all p when a(1−1/n) ≤ 1. Corner
@@ -213,14 +204,15 @@ its price at any of the last M epochs has weight θ·w(p_i).
 
 **Theorem 2 (deterrence).** Symmetric providers at price q (interior p* or
 p̄), a = 2, rival weight mass W = (n−1)q^(−2).
-(i) *Optimal deviation.* A flagged deviant's best cut is
+(i) *Optimal deviation.* A flagged deviant's unconstrained best response is
 
     p_dev = c + √(c² + θ/W),
 
-(unique, by the same single-crossing argument applied to the flagged
-share).
+(unique, by the same single-crossing argument applied to the flagged share).
+The best weak cut is `p_hat=min{q,p_dev}`; in every calibration below
+`p_dev<q`.
 (ii) *Myopic deterrence.* The flagged deviation value v(θ) =
-s_θ(p_dev)(p_dev−c) is continuous and strictly increasing with v(0)=0;
+s_θ(p_hat)(p_hat−c) is continuous and strictly increasing with v(0)=0;
 undercutting is unprofitable for a one-epoch optimizer iff θ ≤ θ*, the
 unique solution of v(θ*) = (q−c)/n (θ* = 1 if v(1) is below). Calibrated
 configurations give θ* ∈ [0.81, 1.0]; the measured θ = 0.17 deters with
@@ -229,18 +221,19 @@ wide margin.
 epochs, has present value gain
 (1−δ^M)/(1−δ)·[v_θ(p) − v̄] + δ^M/(1−δ)·[v_1(p) − v̄], v̄ = (q−c)/n.
 Deterrence for all p holds iff δ ≤ δ†, the root of
-max_p PV(p; δ) = 0; at calibrated parameters (n=5, q=1, c=0.2, θ=0.17,
-M=7) **δ† = 0.9895** (equivalently δ^M ≤ 0.929): the penalty deters
-myopic and moderately patient agents (a γ=0.95 Q-learner is inside) but
-not arbitrarily patient deviants.
+max_p PV(p; δ) = 0. In the symmetric benchmark (n=5, q=1, c=0.2, θ=0.17,
+M=7), **δ† = 0.9895**. This calculation does not apply mechanically to the
+heterogeneous learned profile studied below; that profile requires its own
+multi-period deviation audit.
 (iv) *Perpetual-cutter tax.* An agent repricing downward at least once per
 M epochs is permanently flagged: at symmetric prices its share is
-θ/(θ+n−1) vs 1/n unflagged — at θ=0.17, n=5, a 4.9× share tax. The
-high-frequency micro-adjustment technology is strictly dominated under the
-documented steering rule.
+θ/(θ+n−1) vs 1/n unflagged — at θ=0.17, n=5, a 4.9× share tax. This is an
+allocation wedge, not by itself a dominance claim because the cutter's price
+and margin also change.
 
 *Proof.* (i) FOC of θp^(−2)(p−c)/(θp^(−2)+W) reduces to
-Wp² − 2Wcp − θ = 0. (ii) monotone comparative statics in θ; continuity;
+Wp² − 2Wcp − θ = 0; projection onto the weak-cut set gives `p_hat`.
+(ii) monotone comparative statics in θ; continuity;
 intermediate value. (iii) direct computation. (iv) substitute equal prices
 with one weight scaled by θ. ∎ (Numerics: p_dev matches to 5 decimals;
 threshold values in `output/market_env/`.)
@@ -255,24 +248,67 @@ the calibrated steering experiment under BOTH variants, which bracket the
 unobserved treatment of non-cheapest cutters. M and the flag-refresh
 semantics are modeling choices fitted to the 7-day empirical window.
 
-**Reading.** The cut-penalty is presumably quality protection — punish
-bait-and-switch repricing. Mathematically it is an *asymmetric menu cost
-imposed by the platform on price cuts only*, and Theorem 2 says it
-converts the routing game into one where holding high prices is robustly
-optimal for any realistically patient agent. It also predicts the observed
-JRW-futility dynamic: undercutters should learn to stop cutting (the
-registered cut-frequency-decay watch in the empirical companion). This is
-the strongest form of the empirical paper's "JRW-inverse" claim: measured
-steering parameters sit deep inside the deterrence region.
+**Reading.** The cut penalty is plausibly quality protection against
+bait-and-switch repricing. Mathematically it is an asymmetric, platform-imposed
+cost of lowering a quote. Theorem 2 identifies its one-period and symmetric-
+benchmark effects. It does not establish that a heterogeneous high-price path
+is an equilibrium. The next result characterizes exactly when such a path is
+rational and when it reflects delayed credit for a bounded algorithm.
 
-### 3.3 What the theory does NOT claim
+### 3.3 Delayed credit under history-dependent routing
 
-No provider communication, no agreement, no intent: every elevated-price
-outcome above is a *static Nash equilibrium of the game the router
-defines* (or its learning analog). The policy conclusion is about mechanism
-design — exponent choice, steering design, eligibility floors — not about
-conduct. Costs enter only as bands; every quantitative claim is reported
-across the band.
+Fix rivals and restrict the subject provider to a high quote `H` and a low
+quote `l`. Let `u_H` be profit at `H`, `u_L` unpenalized profit at `l`, and
+`u_θL` penalized profit at `l`. Suppose
+
+    u_L > u_H > u_θL.
+
+The low quote is best after the flag expires, but worse while flagged.
+
+**Theorem 3 (rational memory boundary).** If quoting high resets the `M`-period
+cut history, the optimal policy from an all-high history is either stay high
+forever or cut immediately and remain low. The cut is optimal if and only if
+
+    γ^M > (u_H-u_θL)/(u_L-u_θL).                              (1)
+
+Thus the rational boundary is
+
+    M* = log[(u_H-u_θL)/(u_L-u_θL)] / log γ.
+
+For the audited E-SIM4 profile, `(u_H,u_θL,u_L) =
+(0.1067535,0.0351280,0.1501829)` and `γ=0.95`, so `M*=9.240`: a rational
+provider cuts through integer memory nine and stays high from ten onward.
+
+**Corollary 2 (bounded-horizon wedge).** Whenever (1) holds, every receding-
+horizon controller that evaluates at most `M` consecutive low periods prefers
+high, because it sees only `u_θL<u_H`, while the infinite-horizon optimizer
+cuts. This is the delayed-credit region.
+
+**Theorem 4 (value-equivalent temporal abstraction).** Add a macro action that
+executes `M+1` existing low actions, while retaining both primitive actions.
+The augmented semi-Markov problem has exactly the same optimal value as the
+primitive problem at every state.
+
+*Proof sketch.* Once the history is all-low, low strictly dominates inserting a
+high quote. Before then, high resets progress. Any eventual-cut policy is
+therefore a finite wait at high followed by low forever; comparing its value to
+high forever gives (1), and waiting cannot improve the preferred alternative.
+For Theorem 4, primitive actions are contained in the augmented problem, while
+every macro action can be unrolled into its defining primitive path with the
+same discounted rewards and states. Appendix A gives the full proof.
+
+Theorem 4 separates economic opportunity from discovery: a macro action can
+change learning without changing feasible pricing paths or the provider's
+optimal value. It is not a social-welfare theorem.
+
+### 3.4 What the theory does NOT claim
+
+No provider communication, agreement, or intent is observed. A learned price
+is not a Nash equilibrium or a "learning analog" of one. The multi-period
+deviation audit explicitly rejects equilibrium for the E-SIM4 ceiling path.
+The policy conclusion concerns exponent choice, steering memory, and agent
+interfaces—not provider conduct. Costs enter only as bands outside the
+controlled two-price reduction.
 
 ## 4. The calibrated environment
 
@@ -308,121 +344,190 @@ and we insist on the distinction:
 them is calibration hygiene, not evidence): premium ladders (margins
 fitted), cadences (hazards fitted), adopter in-sample atom.
 
-*Emergent moments* (no fitted parameter targets them; these carry the
+*Emergent moments* (no allocation parameter targets them; these carry the
 evidential weight):
-- **Flow elasticity −0.65 ± 0.35 vs observed −0.78** — allocation has NO
-  fitted parameter; the documented inverse-square rule alone reproduces
-  the measured demand response (and Corollary 1 says why: −a(1−s̄)).
-- **Adopter-atom OOS persistence 0.83 vs 0.834** — the target is the
-  held-out persistence of train-classified adopters, which the simulated
-  interaction (anchor walk + species responses) must regenerate.
-- Dispersion (1.2 vs 1.34) — partially emergent: level depends on the
-  demand/hazard/response interplay, not any single fitted input.
+- **Flow elasticity −0.718 ± 0.351 vs market-conditional target −1.153.** The
+  documented inverse-square rule gets the sign and order of magnitude, which
+  is exactly the frozen gate; it does not numerically match the point target.
+- **Adopter-atom OOS persistence 0.722 ± 0.082 vs 0.834.** The simulator is
+  13.4% below the held-out target and remains inside the registered tolerance.
+- **Dispersion 1.991 vs 2.236.** The max/min ratio is 11.0% below the
+  market-conditional target. Its level is partially emergent from the
+  composition and response interaction.
+
+Passing distance 0.0193 establishes calibration adequacy for the registered
+counterfactuals, not a structural goodness-of-fit test or external validation
+of the live router.
 
 ## 6. Learning counterfactuals (gated on §5)
 
-*(Confirmatory tier: 8 seeds per cell, `output/market_env/esim{2,3,4}`;
-screening runs replicated exactly.)*
+All confirmatory designs use seeds 0--19 and immutable JSON manifests. Results
+are intention-to-simulate unless their prespecified convergence gate passes.
+Seed-bootstrap intervals quantify Monte Carlo variation under the frozen
+simulator; they are not confidence intervals for live-market parameters or
+uncertainty in the calibration inputs.
 
-**E-SIM3 — the exponent is a price dial.** All-Q worlds (n=3, Calvano
-hyperparameters): mean converged price 1.53 (a=0, uniform routing), 1.30
-(a=1; unbounded-Nash regime per Theorem 1(ii); Δ undefined there since
-π_N = π_M), 0.94 (a=2; Δ = 0.08 ± 0.13, single-seed runs with longer
-stability windows reach Δ = 0.47), 0.60 (a=4; Δ = 0.11 ± 0.07),
-competitive floor at a ≥ 8 (Nash below the grid; Δ = 0). Figure:
-`output/market_env/figs/exponent_dial.png` (theory curve, no-interior
-region shaded, learned points overlaid). A finer grid at
-n=3 around the knife edge (a = 1.5 exactly on it) shows learning friction
-regularizes the theory's singularity: at a = 1.5 learners reach 1.10, not
-the ceiling 1.6 — near the edge the profit gradient toward higher prices
-vanishes (h → 1), so ε-greedy exploration cannot climb it — while at
-a = 2.5 they sustain 0.88 against Nash 0.5 (Δ = 0.31). The learned price
-is a smoothed, strictly decreasing function of a: the dial is robust to
-bounded rationality even where the equilibrium correspondence is not.
+**E-SIM3 — the exponent disciplines prices, but not all policies converge.**
+Across the designed exponents `a={0,1,2,4,8,32}`, mean terminal prices are
+1.564, 1.247, 0.939, 0.651, 0.400, and 0.400. Every adjacent paired interval
+through `4→8` is strictly negative; the arm-mean Spearman correlation is
+−0.986. However, policy stability is 19/20, 20/20, 20/20, 6/20, 0/20, and
+0/20. The high-exponent arms therefore support a price-discipline statement
+about the frozen learning process, not a converged-equilibrium claim. The
+Calvano index is secondary and weak at `a=2`; we do not use it as evidence of
+collusion.
 
-**E-SIM4 — steering elevates prices.** Stylized 5-provider world ± the
-measured cut-penalty (θ=0.17, M=7), 8/8 seeds each arm: without the
-penalty the learner in the undercutter slot converges to 0.72; with it, to
-the *menu ceiling* (1.60), and market mean price rises **0.96 → 1.14
-(+18%)**. Theorem 2 predicts exactly this: at θ far below θ*, the best
-learnable reply is never-cut-price-high.
+**E-SIM4 — the initial price-elevation result fails equilibrium audit.** In the
+stylized five-provider world, the seven-period penalty raises the learner's
+median quote from 0.725 to the 1.600 grid ceiling in 20/20 seeds; mean market
+price rises from 0.960 to 1.135. But a permanent cut to 0.656 bears seven
+penalized periods and then raises discounted value from 2.135 to 2.310, a gain
+of 8.17%, in every seed. The ceiling path is therefore a Q-learning trap, not
+an equilibrium predicted by Theorem 2.
 
-**E-SIM4b — steering in the calibrated markets, both penalty variants.**
-The learner takes the real most-undercutting slot in each of the four
-calibrated markets (17–26 providers); arms: off / any-cutter /
-cheapest-only (the measured conditional). Any-cutter: the learner reaches
-the ceiling in **4/4 markets**; unweighted market mean rises +1 to +7pp —
-smaller than the stylized +18% because one agent is diluted across a deep
-book (and the unweighted mean understates the effect: under 1/p² routing,
-flow concentrates at the bottom of the book, exactly where the learner
-sits). Cheapest-only: the penalty binds only when the learner occupies the
-cheapest region — there (glm-5.1, the StreamLake slot) the bottom-of-book
-quote rises **0.40 → 0.725× anchor (+81%)**, i.e., the flow-dominant
-price nearly doubles; in the other markets the learner escapes by cutting
-above the minimum quote, exactly as the Theorem 2 remark predicts. The
-two variants bracket the unobserved rule: steering elevates prices
-everywhere under the broad reading, and elevates precisely the
-flow-dominant bottom-of-book price under the strict measured reading.
+The calibrated E-SIM4b screen reaches the ceiling in four of four broad-
+penalty markets. Under cheapest-only conditioning, one bottom-of-book quote
+rises from 0.400 to 0.725 times the anchor and three markets do not move. This
+four-seed screen has no multi-period equilibrium audit and is exploratory; it
+does not carry the paper's identification claim.
 
-*(On seed unanimity in E-SIM2/4: training uses expected-allocation
-rewards, so the environment is deterministic given actions; seeds enter
-only through Q-initialization and exploration paths. Unanimity therefore
-means the converged policies are attractors robust to exploration
-history, not that sampling noise was tested — the request-level kernel
-supplies that separately in E-SIM1.)*
+**E-SIM5 — observing penalty history is not enough.** The two-action reduction
+uses the E-SIM4 high quote and best permanent cut against fixed terminal rivals.
+The full state contains all `2^7=128` router histories. Exact value iteration
+cuts in 20/20 profiles. A learner observing only its last action stays high in
+20/20; more importantly, a learner observing the complete Markov history also
+stays high in 19/20. The history-aware-minus-aliased median-price contrast is
+−0.047, paired 95% interval `[−0.142,0]`. The preregistered state-aliasing gate
+fails.
 
-**E-SIM2 — species are technologies, not mistakes.** Unanimous across 8
-seeds per slot: a Q-learner replacing the active undercutter does not
-rediscover micro-adjustment (it parks below anchor and freezes); replacing
-the static undercutter, it converges to the anchor price exactly —
-endogenous tie formation at the focal point, without any author-salience
-assumption. Rigid low pricing and anchor ties are attractors of the
-routing game; high-frequency adjustment is not, consistent with the
-empirical two-technology bifurcation and with Theorem 2(iv)'s tax on
-perpetual cutters.
+**E-SIM6 — delayed credit and a payoff-equivalent intervention.** We add a
+`commit_low` option that executes `M+1` existing low actions. Enumerated optimal
+values with and without the option agree at every state to `1e-10`, as Theorem
+4 requires. At calibrated `M=7`, 18/20 option learners choose the exact action
+and have at most 5% normalized regret, versus 1/20 primitive learners. The
+option-minus-primitive regret contrast is −0.0643, paired 95% interval
+`[−0.0755,−0.0493]`; the median-price contrast is −0.849
+`[−0.944,−0.708]`.
+
+The registered memory sweep supplies the mechanism check. Both learners
+succeed at `M=1,3,5`. At `M=7,9`, the exact optimizer still cuts while primitive
+learning fails, and the option succeeds in 18/20 and 16/20 seeds. At `M=12`,
+above the theoretical boundary `M*=9.240`, the exact optimizer stays high;
+primitive learning agrees in 20/20, whereas the option often overcommits and
+adds 0.0942 normalized regret `[0.0735,0.1160]`. The intervention is therefore
+effective specifically in the delayed-credit region, not universally.
+
+**E-SIM7 — cross-market transport is partial.** Applying the same design to
+all four frozen calibrated price books fails the preregistered transport gate:
+only two markets are delayed-credit eligible, and primitive success there is
+12/20 and 14/20 rather than at most 4/20. Nevertheless, the prespecified
+rational-boundary classification aligns with all four realized effect signs.
+In the two eligible books
+(`M*=26.31,27.91`), exact optimization cuts and the option lowers normalized
+regret by 0.178 `[0.080,0.275]` and 0.118 `[0.032,0.215]`. In the two ineligible
+books (`M*=2.59,2.67`), exact optimization stays high and the option *adds*
+0.155 `[0.139,0.163]` and 0.152 `[0.136,0.160]` regret. This is descriptive
+theory-aligned sign transport, not confirmation of universal trap severity.
+
+**E-SIM8 — local Q-learning robustness passes.** A preregistered `3×3` grid
+over learning rate `alpha={0.05,0.15,0.30}` and exploration decay
+`beta={1,2,4}×10⁻⁵` passes its composite gate in seven of nine cells. The
+option's regret interval is strictly negative in all nine cells, with mean
+improvements from 0.026 to 0.068; option success is 18/20 or 19/20 throughout.
+The two failed cells have high learning rate and slower exploration decay:
+primitive success rises to 12/20 and 6/20, violating the preregistered severity
+criterion even though the option remains beneficial. The intervention is
+therefore robust locally within tabular Q, while primitive failure severity is
+algorithm-parameter dependent.
+
+**E-SIM9 — an ordinary multi-step target fails.** Holding the primitive action
+set and every price path fixed, an eight-step Q target yields 0/20 successful
+learners, versus 1/20 for one-step Q and 18/20 for the option benchmark. Its
+normalized-regret contrast relative to one-step Q is `+0.0038`, paired interval
+`[0,0.0113]`. The registered gate fails. Spanning the penalty window in this TD
+target is therefore insufficient; the E-SIM6 result is option-specific, not a
+claim that any form of multi-step credit assignment solves the problem.
+
+Figures `analysis/sm3_esim5_state_information.pdf`,
+`analysis/sm3_esim6_delayed_credit.pdf`,
+`analysis/sm3_esim7_market_transport.pdf`, and
+`analysis/sm3_esim8_q_robustness.pdf` show the negative state-information test,
+rational boundary, learning-success rates, regret tradeoff, cross-market sign
+reversal, and hyperparameter robustness directly. Figure
+`analysis/sm3_esim9_multistep_falsification.pdf` shows the negative multi-step
+credit test.
+
+**E-SIM2 — behavioral attractors (descriptive).** A learner replacing an
+active undercutter generally parks at a rigid below-anchor quote; replacing a
+static undercutter can converge to the anchor. This result motivates the
+species representation but is not used to identify the delayed-credit
+mechanism.
 
 ## 7. Related work
 
-Calvano et al. (2020) Q-learning collusion in logit Bertrand — our demand
-system nests theirs, so their apparatus (Δ, convergence rules) transfers;
-Klein (2021) sequential pricing; Asker et al. (2022) learning protocols;
-Abada–Lambin (2023) exploration-driven pseudo-collusion; Johnson–Rhodes–
-Wildenbeest (2023) platform steering *against* collusion — our Theorem 2 is
-its inverse: steering that stabilizes it; Hansen–Misra–Pai (2021) bandit
-pricing. Inference-market empirics: Demirer et al. (2025) dispersion and
-elasticity on OpenRouter; Fish et al. (2024) LLM pricing collusion (an
-FGS-protocol LLM-agent tier exists in our codebase; running it at
-confirmatory scale is future work and not claimed here). PriLLM (2025)
-models a
-Stackelberg routing game without calibration or the steering mechanism;
-none of these combine an exactly-documented allocation rule, calibrated
-behavioral heterogeneity, and platform-steering counterfactuals.
+Calvano et al. (2020) study Q-learning in logit Bertrand competition; our
+demand system nests their static allocation form, but we do not infer collusion
+from high prices or a Calvano index. Klein (2021), Asker et al. (2022), and
+Abada--Lambin (2023) emphasize timing, protocols, and exploration artifacts.
+Johnson--Rhodes--Wildenbeest (2023) study platform steering against collusion.
+Brown and MacKay (2025) show that a fast pricing algorithm with multi-period
+commitment can coerce a myopic rival. Our mechanism is distinct: no provider
+reacts to a rival's commitment rule; the router imposes a temporary own-cut
+penalty, and the calibrated high-price path is rejected as an equilibrium.
+
+Temporal abstraction is classical. Sutton, Precup, and Singh (1999) establish
+the options/SMDP framework and option Q-learning; Theorem 4 is a specialization
+used as an implementation audit, not a novelty claim. Recent work on delayed
+reward and sequence compression (Han et al., 2022; Ramesh et al., 2024) studies
+credit assignment algorithmically. Our contribution is to derive the delay
+endogenously from a marketplace routing rule, locate the rational boundary from
+calibrated economic payoffs, and show that the same temporal abstraction helps
+inside—but harms beyond—that boundary.
+
+Inference-market work studies OpenRouter dispersion and demand, LLM pricing,
+and Stackelberg routing. Our empirical contribution is narrower: a reproducible
+calibrated counterfactual linking public routing telemetry to a finite-state
+mechanism, with negative audits retained alongside the successful result.
 
 ## 8. Limitations and scope
 
-Theory assumes captive unit demand in the baseline (Corollary 1 supplies
-the measured-elasticity version), no capacity binding, and the documented
-rule rather than the (closed-source) implementation — our probe panel
-verifies the rule's realized behavior for one buyer tier only. The panel
+Theory assumes captive unit demand in the baseline (Corollary 1 supplies an
+external-elasticity sensitivity), no capacity binding, and the documented
+non-tool-calling price-weighted rule after eligibility filtering rather than
+the closed-source implementation. The probe panel measures a
+conditional selection-frequency ratio for one buyer tier; interpreting that
+ratio as a multiplicative weight `θ` and the trailing window as exact router
+memory is a calibrated model, not a randomized causal estimate. The panel
 behind calibration is short (11–14 days at freeze); the registered 30-day
 re-estimation (~2026-08-06, shared with the companion paper) is the
 standing robustness commitment for the fitted θ, species margins, and
 hazards — sign flips there reopen this paper's calibrated claims under the
 same rule that governs the companion. Costs are identified sets; the
-cut-penalty θ is a single scalar from one conditional slice. Learning
-results use tabular Q at Calvano hyperparameters; deep-RL and LLM-agent
-tiers are built but not yet confirmatory. The species world treats author
-repricing as exogenous.
+cut-penalty θ is a single scalar from one conditional slice. E-SIM5--6 reduce
+the action set to the audited high quote and best permanent cut and hold rivals
+fixed; they identify a mechanism in that finite MDP, not equilibrium in the
+full provider game. The 20 seeds vary learning randomness around one calibrated
+payoff profile. E-SIM8 supplies local tabular-Q hyperparameter robustness and
+E-SIM7 rejects universal trap transport. E-SIM9 shows that an ordinary
+eight-step target is not a substitute for the option; alternative return
+operators and traces remain untested. Other learner classes and executable
+open-source-router replications remain required for a broad learning claim.
+The species world treats author repricing as exogenous.
 
 ## 9. Conclusion
 
-The router is the demand curve. Its documented parameters place the
-marketplace in a regime where duopoly prices sit at the menu ceiling (41×
-cost at the measured outside elasticity), entry cannot push markups below
-100%, and the platform's own anti-cut steering pays providers to keep
-prices high. The observed market — rigid administered menus, an anchor-tie
-atom, undercutters whose cutting looks futile — is what equilibrium under
-this mechanism looks like. The lever is the mechanism, not the conduct.
+The router is the demand curve, but its memory also shapes which long-run price
+paths a bounded provider algorithm can discover. Inverse-square allocation has
+a classical static markup floor; the conditional 41× figure is a demand-model
+sensitivity, not an estimated market markup. The new result is dynamic. At the
+calibrated seven-period cut penalty, cutting is rational but delayed credit
+keeps primitive Q-learning high. A payoff-equivalent commitment option closes
+that implementation gap, then overcorrects once router memory crosses the
+rational boundary. An ordinary longer TD target does not reproduce the effect,
+which confines the result to this action abstraction. Mechanism design must
+therefore evaluate both rational
+incentives and learning dynamics. None of these results establishes collusion
+or actual provider conduct.
 
 ## Appendix A. Proofs
 
@@ -470,10 +575,13 @@ and p̄ > p*. ∎
 g(p) = θp^(−2)(p−c)/(θp^(−2)+W) = θ(p−c)/(θ+Wp²). g′ = 0 ⇔
 θ(θ+Wp²) − θ(p−c)·2Wp = 0 ⇔ Wp² − 2Wcp − θ = 0 ⇔
 p = c + √(c² + θ/W) (positive root). Uniqueness by the sign pattern of g′
-(positive before the root, negative after). ∎
+(positive before the root, negative after). Restricting to a weak cut
+`p≤q` projects this maximizer to `p_hat=min{q,p_dev}`. ∎
 
-**Theorem 2(ii).** v(θ) = g(p_dev(θ)) is continuous; by the envelope
-theorem v′(θ) = ∂g/∂θ = W p²(p−c)/(θ+Wp²)² > 0; v(0) = 0 < v̄ =
+**Theorem 2(ii).** v(θ) = g(p_hat(θ)) is continuous. At an interior optimum,
+the envelope theorem gives v′(θ) = ∂g/∂θ = W p²(p−c)/(θ+Wp²)² > 0;
+at the boundary `p_hat=q`, the same partial derivative is positive. Thus
+v(0) = 0 < v̄ =
 (q−c)/n. If v(1) ≤ v̄ no cut is ever profitable (θ* = 1); otherwise the
 intermediate value theorem gives a unique θ* with v(θ*) = v̄, and
 deterrence holds iff θ ≤ θ*. ∎
@@ -481,8 +589,53 @@ deterrence holds iff θ ≤ θ*. ∎
 **Theorem 2(iii)–(iv).** Direct computation (PV decomposition over the
 flagged window and its complement; substitution of equal prices with one
 weight scaled by θ). The root δ† of max_p PV(p; δ) = 0 is certified
-numerically (0.9895 at the calibrated parameters; test
+numerically (0.9895 at the symmetric benchmark parameters; test
 `test_theorem2_patience_boundary`). ∎
 
-All closed forms in this appendix are enforced against continuum numerics
-by `tests/market_env/test_theory.py` (13 tests) in CI.
+**Theorem 3.** In the all-low history, low forever yields `u_L/(1−γ)`.
+Inserting high gives the smaller current payoff `u_H<u_L` and places a high
+quote in memory, which weakly reduces the payoff from every subsequent low
+until that quote expires. Hence low is uniquely optimal in the all-low state.
+
+Before reaching all-low, any high action resets the number of consecutive low
+actions since the last high to zero. Consider a policy that eventually reaches
+all-low, and let `k` be the time of its final high action. Conditional on that
+time, replacing all earlier transient low actions by high weakly raises current
+payoff (`u_H>u_θL`) and leaves the post-`k` state unchanged. The best policy
+that cuts after `k` is therefore `k` high actions followed by low forever. Its
+value is
+
+    V_k = u_H(1−γ^k)/(1−γ) + γ^k V_cut,
+
+where
+
+    V_cut = [(1−γ^M)u_θL + γ^M u_L]/(1−γ).
+
+Let `V_high=u_H/(1−γ)`. Then
+`V_k−V_high=γ^k(V_cut−V_high)`. If the bracket is positive, `k=0` maximizes
+value; if negative, the supremum is attained by never cutting. Finally,
+`V_cut>V_high` is equivalent to
+
+    (1−γ^M)u_θL+γ^M u_L>u_H,
+
+which rearranges to (1). Taking logarithms yields `M*`; because `log γ<0`,
+cutting is optimal for `M<M*`. ∎
+
+**Corollary 2.** For any horizon `h≤M`, committing to low for the evaluated
+horizon yields `u_θL` in every included period, whereas high yields `u_H`.
+Since `u_H>u_θL`, the bounded-horizon controller stays high. When (1) also
+holds, its action differs from the infinite-horizon optimum. ∎
+
+**Theorem 4.** Let the primitive MDP have optimal value `V*` and augment it
+with any option equal to a finite feasible sequence of primitive actions. The
+augmented action set includes all primitive actions, so its optimal value
+`V*_O≥V*`. Conversely, replace every option selected by an augmented policy
+with its defining primitive sequence. The unrolled policy is feasible in the
+primitive MDP and induces the same state sequence and discounted reward, so
+`V*_O≤V*`. Therefore `V*_O=V*` at every state. The E-SIM6 implementation
+checks this identity over all binary histories before reporting outcomes. ∎
+
+The static closed forms are checked against continuum numerics in
+`tests/market_env/test_theory.py`; the history transition, Bellman residual,
+permanent-cut identity, and option-value equivalence are checked in
+`tests/market_env/test_state_aliasing.py`.

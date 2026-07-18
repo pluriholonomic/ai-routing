@@ -14,6 +14,7 @@ for a bounded learner's high-price path.
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from itertools import product
 from typing import Literal
@@ -103,8 +104,10 @@ class BinaryCutPenaltyMDP:
 
     def reward_table(self) -> np.ndarray:
         return np.asarray(
-            [[self.reward(state, action) for action in (LOW, HIGH)]
-             for state in range(self.n_states)],
+            [
+                [self.reward(state, action) for action in (LOW, HIGH)]
+                for state in range(self.n_states)
+            ],
             dtype=float,
         )
 
@@ -113,8 +116,7 @@ class BinaryCutPenaltyMDP:
         penalized = self.reward(self.initial_state, LOW)
         unpenalized = self.reward(0, LOW)
         return (
-            (1 - self.gamma**self.memory) * penalized
-            + self.gamma**self.memory * unpenalized
+            (1 - self.gamma**self.memory) * penalized + self.gamma**self.memory * unpenalized
         ) / (1 - self.gamma)
 
     def permanent_high_value(self) -> float:
@@ -138,8 +140,10 @@ def solve_exact(
     """Value iteration over every binary history."""
     rewards = mdp.reward_table()
     successors = np.asarray(
-        [[mdp.transition(state, action) for action in (LOW, HIGH)]
-         for state in range(mdp.n_states)],
+        [
+            [mdp.transition(state, action) for action in (LOW, HIGH)]
+            for state in range(mdp.n_states)
+        ],
         dtype=int,
     )
     values = np.zeros(mdp.n_states, dtype=float)
@@ -203,9 +207,7 @@ class BinaryQAgent:
         next_observation: int,
     ) -> None:
         target = reward + self.gamma * self.q[next_observation].max()
-        self.q[observation, action] += self.alpha * (
-            target - self.q[observation, action]
-        )
+        self.q[observation, action] += self.alpha * (target - self.q[observation, action])
 
 
 def evaluate_deterministic_policy(
@@ -267,19 +269,20 @@ def solve_exact_with_option(
 ) -> ExactSolution:
     """Exact semi-Markov optimum after adding the payoff-equivalent cut option."""
     outcomes = [
-        [option_outcome(mdp, state, action) for action in range(3)]
-        for state in range(mdp.n_states)
+        [option_outcome(mdp, state, action) for action in range(3)] for state in range(mdp.n_states)
     ]
     values = np.zeros(mdp.n_states, dtype=float)
     for _iteration in range(1, max_iterations + 1):
-        q_values = np.asarray([
+        q_values = np.asarray(
             [
-                outcome.discounted_reward
-                + mdp.gamma**outcome.duration * values[outcome.successor]
-                for outcome in state_outcomes
+                [
+                    outcome.discounted_reward
+                    + mdp.gamma**outcome.duration * values[outcome.successor]
+                    for outcome in state_outcomes
+                ]
+                for state_outcomes in outcomes
             ]
-            for state_outcomes in outcomes
-        ])
+        )
         updated = q_values.max(axis=1)
         if float(np.max(np.abs(updated - values))) <= tolerance:
             values = updated
@@ -287,14 +290,15 @@ def solve_exact_with_option(
         values = updated
     else:
         raise RuntimeError("option value iteration did not converge")
-    q_values = np.asarray([
+    q_values = np.asarray(
         [
-            outcome.discounted_reward
-            + mdp.gamma**outcome.duration * values[outcome.successor]
-            for outcome in state_outcomes
+            [
+                outcome.discounted_reward + mdp.gamma**outcome.duration * values[outcome.successor]
+                for outcome in state_outcomes
+            ]
+            for state_outcomes in outcomes
         ]
-        for state_outcomes in outcomes
-    ])
+    )
     policy = np.argmax(q_values, axis=1).astype(np.int8)
     residual = float(np.max(np.abs(values - q_values.max(axis=1))))
     return ExactSolution(values, policy, residual, _iteration)
@@ -425,21 +429,15 @@ def train_option_q(
         "train_option_decision_share": option_decisions / decisions,
         "evaluation_transitions": evaluation_transitions,
         "evaluation_decisions": evaluation_decisions,
-        "evaluation_option_decision_share": (
-            evaluation_option_decisions / evaluation_decisions
-        ),
-        "policy_stable_last_window": (
-            train_transitions - last_change_step >= stable_window
-        ),
+        "evaluation_option_decision_share": (evaluation_option_decisions / evaluation_decisions),
+        "policy_stable_last_window": (train_transitions - last_change_step >= stable_window),
         "last_policy_change_step": last_change_step,
         "first_action": int(policy[mdp.initial_state]),
         "first_primitive_action": int(
-            LOW if policy[mdp.initial_state] == COMMIT_LOW
-            else policy[mdp.initial_state]
+            LOW if policy[mdp.initial_state] == COMMIT_LOW else policy[mdp.initial_state]
         ),
         "first_action_agrees_exact": bool(
-            (LOW if policy[mdp.initial_state] == COMMIT_LOW
-             else policy[mdp.initial_state])
+            (LOW if policy[mdp.initial_state] == COMMIT_LOW else policy[mdp.initial_state])
             == exact.policy[mdp.initial_state]
         ),
         "median_price": float(np.median(prices)),
@@ -474,8 +472,10 @@ def train_q(
     )
     rewards = mdp.reward_table()
     successors = np.asarray(
-        [[mdp.transition(state, action) for action in (LOW, HIGH)]
-         for state in range(mdp.n_states)],
+        [
+            [mdp.transition(state, action) for action in (LOW, HIGH)]
+            for state in range(mdp.n_states)
+        ],
         dtype=np.int16,
     )
     state = mdp.initial_state
@@ -516,6 +516,103 @@ def train_q(
         "alpha": alpha,
         "beta": beta,
         "train_steps": train_steps,
+        "evaluation_steps": evaluation_steps,
+        "policy_stable_last_window": train_steps - last_change_step >= stable_window,
+        "last_policy_change_step": last_change_step,
+        "first_action": int(full_policy[mdp.initial_state]),
+        "first_action_agrees_exact": bool(
+            full_policy[mdp.initial_state] == exact.policy[mdp.initial_state]
+        ),
+        "median_price": float(np.median(prices)),
+        "low_action_share": float(np.mean(np.asarray(actions) == LOW)),
+        "discounted_value": float(policy_values[mdp.initial_state]),
+        "discounted_regret": max(0.0, regret),
+        "full_policy": full_policy.tolist(),
+        "q_table": agent.q.tolist(),
+    }
+
+
+def train_n_step_q(
+    mdp: BinaryCutPenaltyMDP,
+    *,
+    seed: int,
+    n_steps: int,
+    alpha: float = 0.15,
+    beta: float = 2e-5,
+    train_steps: int = 300_000,
+    stable_window: int = 100_000,
+    evaluation_steps: int = 10_000,
+) -> dict[str, object]:
+    """Train a full-history primitive learner with a fixed n-step TD target.
+
+    The action space and primitive transition process are unchanged. Only
+    complete n-step targets are applied, matching the frozen E-SIM9 design.
+    """
+    if n_steps < 1:
+        raise ValueError("n_steps must be positive")
+    if n_steps > train_steps:
+        raise ValueError("n_steps cannot exceed train_steps")
+    agent = BinaryQAgent(
+        mdp.memory,
+        "history",
+        alpha=alpha,
+        gamma=mdp.gamma,
+        beta=beta,
+        seed=seed,
+    )
+    rewards = mdp.reward_table()
+    successors = np.asarray(
+        [
+            [mdp.transition(state, action) for action in (LOW, HIGH)]
+            for state in range(mdp.n_states)
+        ],
+        dtype=np.int16,
+    )
+    pending: deque[tuple[int, int, float]] = deque()
+    state = mdp.initial_state
+    last_policy = agent.q.argmax(axis=1).copy()
+    last_change_step = 0
+    for step in range(train_steps):
+        action = agent.act(state)
+        reward = float(rewards[state, action])
+        next_state = int(successors[state, action])
+        pending.append((state, action, reward))
+        if len(pending) == n_steps:
+            target = sum(
+                mdp.gamma**offset * transition[2] for offset, transition in enumerate(pending)
+            )
+            target += mdp.gamma**n_steps * agent.q[next_state].max()
+            update_state, update_action, _ = pending.popleft()
+            agent.q[update_state, update_action] += agent.alpha * (
+                target - agent.q[update_state, update_action]
+            )
+        state = next_state
+        if (step + 1) % 1_000 == 0:
+            policy = agent.q.argmax(axis=1)
+            if not np.array_equal(policy, last_policy):
+                last_change_step = step + 1
+                last_policy = policy.copy()
+
+    full_policy = agent.q.argmax(axis=1).astype(np.int8)
+    policy_values = evaluate_deterministic_policy(mdp, full_policy)
+    exact = solve_exact(mdp)
+    state = mdp.initial_state
+    actions: list[int] = []
+    prices: list[float] = []
+    for _ in range(evaluation_steps):
+        action = int(full_policy[state])
+        actions.append(action)
+        prices.append(mdp.price(action))
+        state = mdp.transition(state, action)
+    regret = float(exact.values[mdp.initial_state] - policy_values[mdp.initial_state])
+    return {
+        "observation": "history_n_step",
+        "seed": seed,
+        "n_steps": n_steps,
+        "alpha": alpha,
+        "beta": beta,
+        "train_steps": train_steps,
+        "complete_updates": train_steps - n_steps + 1,
         "evaluation_steps": evaluation_steps,
         "policy_stable_last_window": train_steps - last_change_step >= stable_window,
         "last_policy_change_step": last_change_step,

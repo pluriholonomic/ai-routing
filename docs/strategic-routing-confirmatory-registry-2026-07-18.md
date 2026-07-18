@@ -192,7 +192,7 @@ must be reported; components may not be silently replaced by a composite score.
 
 ## E-SIM5 frozen result
 
-Run `6c2a3b6a52` executed the registered 20-seed design. The exact optimizer
+Run `3e5a55405e` executed the registered 20-seed design. The exact optimizer
 cuts in 20/20 profiles and has Bellman residual below `9.4e-14`. The aliased
 learner remains high in 20/20 profiles. Crucially, the full-history learner
 also remains high in 19/20 profiles: its exact-first-action and low-regret gates
@@ -266,7 +266,7 @@ temporal abstraction is insufficient and do not tune the option or horizon.
 
 ## E-SIM6 frozen result
 
-Run `4ab122a67d` passes all five registered gates. At calibrated memory `L=7`,
+Run `93265b9b03` passes all five registered gates. At calibrated memory `L=7`,
 the option-minus-primitive normalized-regret contrast is `-0.0643`, paired
 bootstrap 95% interval `[-0.0755,-0.0493]`. Exact primitive and option values
 agree at every state within `1e-10`; 18/20 option learners meet the exact-action
@@ -326,7 +326,7 @@ dropped or reweighted after inspection.
 
 ## E-SIM7 frozen result
 
-Run `621bfcd40c` fails the registered transport gate. Only two of four markets
+Run `bd74ab2eb7` fails the registered transport gate. Only two of four markets
 are delayed-credit eligible, below the required three. In the eligible Kimi
 and GLM-5.1 books, the option lowers normalized regret by `0.1777` (95%
 interval `[0.0805,0.2749]`) and `0.1179` (`[0.0319,0.2152]`) respectively,
@@ -374,3 +374,61 @@ success is 18/20 or 19/20 in every cell. The two failed cells are
 and its regret interval remains negative. Thus the intervention effect is
 locally robust across the full grid, while the severity of primitive delayed
 credit depends on learning rate as expected.
+
+## E-SIM9 preregistration: multi-step credit without a new action
+
+Registered 2026-07-18 after E-SIM8 was frozen and before any E-SIM9 outcome was
+generated. E-SIM9 tests whether the E-SIM6 result is a general temporal-credit
+effect or an artifact of adding the bespoke `commit_low` action.
+
+The environment is the frozen E-SIM6 profile at `M=7`: identical binary action
+set, 128-state Markov history, rewards, initial all-high state, `gamma=0.95`,
+seeds 0--19, 300,000 environment transitions, and 10,000-transition greedy
+evaluation. The learning rate is `alpha=0.15` and exploration is
+`exp(-2e-5 t)`. The frozen arms are:
+
+1. `primitive_q`, the one-step full-history learner from E-SIM6;
+2. `n_step_q`, the same primitive-action learner with an `M+1=8` step
+   Q-learning target; and
+3. `commit_option_q`, the E-SIM6 semi-Markov option arm, retained as a positive
+   benchmark.
+
+The multi-step arm adds no action and no feasible price path. Its update for a
+transition at time `t` is
+
+    sum_{k=0}^{7} gamma^k r_{t+k}
+      + gamma^8 max_a Q(s_{t+8},a),
+
+with the same environment-transition exploration clock as the other arms.
+Only complete eight-transition targets are used during the fixed training
+horizon; the final seven transitions are not updated. Exact value iteration is
+unchanged and remains the regret benchmark.
+
+The primary estimand is paired normalized regret
+`n_step_q - primitive_q`, with a seed-bootstrap 95% interval. The multi-step
+mechanism gate passes only if: (i) that interval is strictly negative; (ii) at
+least 16/20 multi-step learners match the exact initial action and have at most
+5% normalized regret; and (iii) at most 4/20 primitive learners meet the same
+criterion. Report the option arm but do not include it in this conjunction.
+
+Passing supports a generic statement within tabular Q-learning: spanning the
+finite router-penalty window in either the action representation or the TD
+target removes the delayed-credit barrier without changing primitive price
+paths. Failure narrows the E-SIM6 result to option-specific temporal
+abstraction. No result identifies provider conduct, a live-router effect,
+equilibrium, or collusion.
+
+## E-SIM9 frozen result
+
+Run `179eca0f9d` fails the registered multi-step mechanism gate. The
+eight-step-minus-one-step normalized-regret contrast is `+0.0038`, paired
+seed-bootstrap 95% interval `[0,0.0113]`. The eight-step learner meets the
+exact-action/low-regret criterion in 0/20 seeds, compared with 1/20 for
+one-step Q and 18/20 for the retained option benchmark.
+
+Thus spanning the penalty window in this ordinary n-step TD target is not
+sufficient. E-SIM6 cannot be generalized to arbitrary multi-step credit
+assignment: its successful intervention is a temporally extended action that
+changes exploration and backup structure while preserving primitive price
+paths. This negative result remains in the paper and no alternative target,
+trace parameter, or horizon is tuned in this round.

@@ -93,9 +93,7 @@ def build_market(bundle: dict, model_id: str, seed: int, author_hazard: float = 
     provs = m["providers"]
     anchor_price = float(m["anchor_price"])
     authors = {p for p, v in provs.items() if v["is_author"]}
-    anchor_provider = min(
-        (p for p in authors), key=lambda p: provs[p]["price"], default=None
-    )
+    anchor_provider = min((p for p in authors), key=lambda p: provs[p]["price"], default=None)
     if anchor_provider is None:
         raise ValueError(f"market {model_id} has no author provider")
     min_price = min(v["price"] for v in provs.values())
@@ -120,14 +118,18 @@ def build_market(bundle: dict, model_id: str, seed: int, author_hazard: float = 
         elif cls in bundle["species"]:
             margin = float(np.log(price / anchor_price)) if price > 0 else 0.0
             strategies[name] = species_strategy(
-                cls, bundle["species"], anchor_provider,
+                cls,
+                bundle["species"],
+                anchor_provider,
                 margin_log=margin if cls in ("below_static", "above") else None,
                 seed=pseed,
             )
         else:
             strategies[name] = StaticStrategy(price)
     workload = Workload(
-        name="short_chat", input_tokens=1000, output_tokens=256,
+        name="short_chat",
+        input_tokens=1000,
+        output_tokens=256,
         delivered_value=max(v["price"] for v in provs.values()) * 3,
     )
     kernel = MarketKernel(
@@ -136,8 +138,9 @@ def build_market(bundle: dict, model_id: str, seed: int, author_hazard: float = 
     return kernel, specs, strategies, anchor_provider, classes, authors
 
 
-def run_market(bundle: dict, model_id: str, seed: int, epochs: int, burn_in: int,
-               author_hazard: float = 0.02) -> pd.DataFrame:
+def run_market(
+    bundle: dict, model_id: str, seed: int, epochs: int, burn_in: int, author_hazard: float = 0.02
+) -> pd.DataFrame:
     kernel, specs, strategies, anchor_provider, classes, authors = build_market(
         bundle, model_id, seed, author_hazard
     )
@@ -145,8 +148,7 @@ def run_market(bundle: dict, model_id: str, seed: int, epochs: int, burn_in: int
     ar1 = bundle["demand"].get("ar1_median") or 0.5
     sigma = bundle["demand"].get("sigma_dlog_median") or 0.3
     p_anchor0 = bundle["markets"][model_id]["anchor_price"]
-    quotes = {p: s.act(specs[p], {anchor_provider: p_anchor0}).quote
-              for p, s in strategies.items()}
+    quotes = {p: s.act(specs[p], {anchor_provider: p_anchor0}).quote for p, s in strategies.items()}
     p0 = float(np.median(list(quotes.values())))
     log_dev = 0.0
     results, anchor_prices = [], []
@@ -156,13 +158,9 @@ def run_market(bundle: dict, model_id: str, seed: int, epochs: int, burn_in: int
         anchor_prices.append(quotes[anchor_provider])
         log_dev = ar1 * log_dev + sigma * rng.standard_normal()
         p_med = float(np.median(list(quotes.values())))
-        demand = int(round(
-            BASE_DEMAND * np.exp(log_dev) * (p_med / p0) ** END_USER_ELASTICITY
-        ))
+        demand = int(round(BASE_DEMAND * np.exp(log_dev) * (p_med / p0) ** END_USER_ELASTICITY))
         results.append(kernel.step(actions, demand=max(demand, 1)))
-    traj = moments.trajectory_from_epoch_results(
-        results, model_id, classes, anchor_prices, authors
-    )
+    traj = moments.trajectory_from_epoch_results(results, model_id, classes, anchor_prices, authors)
     return traj[traj.epoch >= burn_in]
 
 
@@ -187,29 +185,27 @@ def run_esim1(bundle_rev: str | None, seeds: int, epochs: int, burn_in: int) -> 
         bundle = load_bundle(bundle_rev)
     markets = list(bundle["markets"])
     targets, author_hazard = moments.conditional_targets(markets, bundle["train_dates"])
-    log.info("market-conditional targets: %s | author cadence %.4f",
-             {k: v[0] for k, v in targets.items()}, author_hazard)
+    log.info(
+        "market-conditional targets: %s | author cadence %.4f",
+        {k: v[0] for k, v in targets.items()},
+        author_hazard,
+    )
     per_seed = []
     for seed in range(seeds):
-        trajs = [run_market(bundle, m, seed, epochs, burn_in, author_hazard)
-                 for m in markets]
+        trajs = [run_market(bundle, m, seed, epochs, burn_in, author_hazard) for m in markets]
         mom = moments.compute_moments(pd.concat(trajs, ignore_index=True))
         per_seed.append(mom)
-        log.info("seed %d distance %.4f", seed,
-                 moments.moment_distance(mom, targets)["distance"])
+        log.info("seed %d distance %.4f", seed, moments.moment_distance(mom, targets)["distance"])
     keys = sorted({k for m in per_seed for k in m if m[k] is not None})
     mean_moments = {
-        k: float(np.mean([m[k] for m in per_seed if m.get(k) is not None]))
-        for k in keys
+        k: float(np.mean([m[k] for m in per_seed if m.get(k) is not None])) for k in keys
     }
-    sd_moments = {
-        k: float(np.std([m[k] for m in per_seed if m.get(k) is not None]))
-        for k in keys
-    }
+    sd_moments = {k: float(np.std([m[k] for m in per_seed if m.get(k) is not None])) for k in keys}
     score = moments.moment_distance(mean_moments, targets)
     w2_ok = all(
         abs(score["relative_errors"].get(k) or 0) <= W2_MAX_REL_ERR
-        for k, (_, w) in targets.items() if w >= 2
+        for k, (_, w) in targets.items()
+        if w >= 2
     )
     gates = score["holdout_gates"]
     passed = (
@@ -268,9 +264,7 @@ def _write_run(result: dict, name: str) -> Path:
         commit_source_hash.update(committed.stdout)
         commit_source_hash.update(b"\0")
     current_source_digest = source_hash.hexdigest()
-    committed_source_digest = (
-        commit_source_hash.hexdigest() if commit_source_available else None
-    )
+    committed_source_digest = commit_source_hash.hexdigest() if commit_source_available else None
     input_hashes = {}
     for key, value in sorted(result.items()):
         if not key.startswith("source_") or not isinstance(value, str):
@@ -278,17 +272,25 @@ def _write_run(result: dict, name: str) -> Path:
         input_path = Path(value)
         if input_path.is_file():
             input_hashes[key] = hashlib.sha256(input_path.read_bytes()).hexdigest()
-    (d / "manifest.json").write_text(json.dumps({
-        "run_id": rid, "experiment": result.get("experiment"), "commit": commit,
-        "bundle_rev": result.get("bundle_rev"), "seeds": result.get("seeds"),
-        "result_sha256": hashlib.sha256(canonical_result).hexdigest(),
-        "market_env_source_sha256": current_source_digest,
-        "market_env_commit_source_sha256": committed_source_digest,
-        "market_env_source_matches_commit": bool(
-            committed_source_digest == current_source_digest
-        ),
-        "input_artifact_sha256": input_hashes,
-    }, indent=1))
+    (d / "manifest.json").write_text(
+        json.dumps(
+            {
+                "run_id": rid,
+                "experiment": result.get("experiment"),
+                "commit": commit,
+                "bundle_rev": result.get("bundle_rev"),
+                "seeds": result.get("seeds"),
+                "result_sha256": hashlib.sha256(canonical_result).hexdigest(),
+                "market_env_source_sha256": current_source_digest,
+                "market_env_commit_source_sha256": committed_source_digest,
+                "market_env_source_matches_commit": bool(
+                    committed_source_digest == current_source_digest
+                ),
+                "input_artifact_sha256": input_hashes,
+            },
+            indent=1,
+        )
+    )
     return d
 
 
@@ -393,13 +395,22 @@ def run_esim2(seeds: int = 5, train_epochs: int = 300_000) -> dict:
                 learned = "below_active" if cpd > 0.05 else "below_static"
             else:
                 learned = "above"
-            outcomes.append({"seed": seed, "learned_class": learned,
-                             "median_log_rel": round(med_rel, 3),
-                             "changes_per_day": round(cpd, 3),
-                             "share_at_anchor": round(at_anchor, 3)})
+            outcomes.append(
+                {
+                    "seed": seed,
+                    "learned_class": learned,
+                    "median_log_rel": round(med_rel, 3),
+                    "changes_per_day": round(cpd, 3),
+                    "share_at_anchor": round(at_anchor, 3),
+                }
+            )
         out[slot] = outcomes
-    result = {"experiment": "E-SIM2", "replaced_slot_outcomes": out,
-              "seeds": seeds, "train_epochs": train_epochs}
+    result = {
+        "experiment": "E-SIM2",
+        "replaced_slot_outcomes": out,
+        "seeds": seeds,
+        "train_epochs": train_epochs,
+    }
     _write_run(result, "esim2")
     return result
 
@@ -419,8 +430,12 @@ def run_esim3(seeds: int = 5) -> dict:
         rows = []
         for seed in range(seeds):
             r = train_symmetric(
-                InversePriceRouter(a), n_agents=3, mc=0.2,
-                max_epochs=300_000, stable_window=40_000, seed=seed * 13 + 1,
+                InversePriceRouter(a),
+                n_agents=3,
+                mc=0.2,
+                max_epochs=300_000,
+                stable_window=40_000,
+                seed=seed * 13 + 1,
             )
             final_prices = {k: float(v) for k, v in r["final_prices"].items()}
             costs = dict.fromkeys(final_prices, 0.2)
@@ -444,37 +459,39 @@ def run_esim3(seeds: int = 5) -> dict:
                     response, final_prices, name, rival_name, cut_frac=0.2, horizon=12
                 )
                 punishments.append(response_audit["verdict"] == "punish_and_revert")
-            rows.append({
-                "seed": seed,
-                "final_prices": final_prices,
-                "mean_price": float(np.mean(list(final_prices.values()))),
-                "mean_profit": r["mean_profit"],
-                "pi_nash": r["pi_nash"],
-                "pi_monopoly": r["pi_monopoly"],
-                "calvano_delta": r["calvano_delta"],
-                "converged": r["converged"],
-                "epochs_run": r["epochs_run"],
-                "max_deviation_gain_relative": audit["max_gain_rel_to_mean_profit"],
-                "equilibrium_consistent": audit["equilibrium_consistent"],
-                "punish_and_revert_share": float(np.mean(punishments)),
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "final_prices": final_prices,
+                    "mean_price": float(np.mean(list(final_prices.values()))),
+                    "mean_profit": r["mean_profit"],
+                    "pi_nash": r["pi_nash"],
+                    "pi_monopoly": r["pi_monopoly"],
+                    "calvano_delta": r["calvano_delta"],
+                    "converged": r["converged"],
+                    "epochs_run": r["epochs_run"],
+                    "max_deviation_gain_relative": audit["max_gain_rel_to_mean_profit"],
+                    "equilibrium_consistent": audit["equilibrium_consistent"],
+                    "punish_and_revert_share": float(np.mean(punishments)),
+                }
+            )
         deltas = [x["calvano_delta"] for x in rows if x["calvano_delta"] is not None]
         prices = [np.mean(list(x["final_prices"].values())) for x in rows]
-        sweep.append({
-            "exponent": a,
-            "mean_price": round(float(np.mean(prices)), 4),
-            "mean_delta": round(float(np.mean(deltas)), 4) if deltas else None,
-            "sd_delta": round(float(np.std(deltas)), 4) if deltas else None,
-            "n_delta_defined": len(deltas),
-            "converged_seeds": int(sum(x["converged"] for x in rows)),
-            "equilibrium_consistent_seeds": int(
-                sum(x["equilibrium_consistent"] for x in rows)
-            ),
-            "punish_and_revert_seed_share": round(float(np.mean([
-                x["punish_and_revert_share"] > 0 for x in rows
-            ])), 4),
-            "per_seed": rows,
-        })
+        sweep.append(
+            {
+                "exponent": a,
+                "mean_price": round(float(np.mean(prices)), 4),
+                "mean_delta": round(float(np.mean(deltas)), 4) if deltas else None,
+                "sd_delta": round(float(np.std(deltas)), 4) if deltas else None,
+                "n_delta_defined": len(deltas),
+                "converged_seeds": int(sum(x["converged"] for x in rows)),
+                "equilibrium_consistent_seeds": int(sum(x["equilibrium_consistent"] for x in rows)),
+                "punish_and_revert_seed_share": round(
+                    float(np.mean([x["punish_and_revert_share"] > 0 for x in rows])), 4
+                ),
+                "per_seed": rows,
+            }
+        )
     arm_prices = [row["mean_price"] for row in sweep]
     adjacent = []
     for left, right in zip(sweep[:-1], sweep[1:], strict=True):
@@ -482,12 +499,14 @@ def run_esim3(seeds: int = 5) -> dict:
             rrow["mean_price"] - lrow["mean_price"]
             for lrow, rrow in zip(left["per_seed"], right["per_seed"], strict=True)
         ]
-        adjacent.append({
-            "from_exponent": left["exponent"],
-            "to_exponent": right["exponent"],
-            "mean_price_difference": float(np.mean(differences)),
-            "paired_bootstrap_ci95": _paired_bootstrap_ci(differences),
-        })
+        adjacent.append(
+            {
+                "from_exponent": left["exponent"],
+                "to_exponent": right["exponent"],
+                "mean_price_difference": float(np.mean(differences)),
+                "paired_bootstrap_ci95": _paired_bootstrap_ci(differences),
+            }
+        )
     correlation = spearmanr([row["exponent"] for row in sweep], arm_prices)
     result = {
         "experiment": "E-SIM3",
@@ -531,8 +550,11 @@ def run_esim4(seeds: int = 5) -> dict:
     for arm, theta in arms.items():
         rows = []
         for seed in range(seeds):
-            router = (InversePriceRouter(2.0) if theta is None
-                      else CutPenaltyRouter(2.0, theta=theta, memory=7))
+            router = (
+                InversePriceRouter(2.0)
+                if theta is None
+                else CutPenaltyRouter(2.0, theta=theta, memory=7)
+            )
             strategies, costs = _stylized_world(seed * 17 + 3)
             del strategies["ActiveCut"]
             slot = "ActiveCut"
@@ -606,18 +628,18 @@ def run_esim4(seeds: int = 5) -> dict:
                     gamma=agent.gamma,
                     penalty_memory=7,
                 )
-            rows.append({
-                "seed": seed,
-                "learner_median_price": round(float(np.median(prices)), 4),
-                "learner_changes_per_day": round(reprices / 55, 3),
-                "market_mean_price": round(float(np.mean(
-                    [np.mean(list(quotes.values()))]
-                )), 4),
-                "max_deviation_gain_relative": audit["max_gain_rel_to_mean_profit"],
-                "equilibrium_consistent": audit["equilibrium_consistent"],
-                "cut_response": response_audit["verdict"],
-                "permanent_cut_audit": dynamic_audit,
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "learner_median_price": round(float(np.median(prices)), 4),
+                    "learner_changes_per_day": round(reprices / 55, 3),
+                    "market_mean_price": round(float(np.mean([np.mean(list(quotes.values()))])), 4),
+                    "max_deviation_gain_relative": audit["max_gain_rel_to_mean_profit"],
+                    "equilibrium_consistent": audit["equilibrium_consistent"],
+                    "cut_response": response_audit["verdict"],
+                    "permanent_cut_audit": dynamic_audit,
+                }
+            )
         out[arm] = rows
     contrasts = {}
     for outcome in (
@@ -644,10 +666,9 @@ def run_esim4(seeds: int = 5) -> dict:
             contrasts["learner_median_price"]["paired_bootstrap_ci95"][0] > 0
             or contrasts["learner_median_price"]["paired_bootstrap_ci95"][1] < 0
         ),
-        "penalty_on_permanent_cut_profitable_seeds": int(sum(
-            row["permanent_cut_audit"]["permanent_cut_profitable"]
-            for row in out["penalty_on"]
-        )),
+        "penalty_on_permanent_cut_profitable_seeds": int(
+            sum(row["permanent_cut_audit"]["permanent_cut_profitable"] for row in out["penalty_on"])
+        ),
         "claim_boundary": (
             "Paired common-seed simulation contrast under a calibrated steering "
             "penalty; not a causal estimate of the proprietary live router. A "
@@ -674,16 +695,15 @@ def run_esim4b(seeds: int = 4, train_epochs: int = 300_000) -> dict:
     arms = {
         "penalty_off": lambda: InversePriceRouter(2.0),
         "penalty_any": lambda: CutPenaltyRouter(2.0, theta=0.17, memory=7),
-        "penalty_cheapest": lambda: CutPenaltyRouter(
-            2.0, theta=0.17, memory=7, cheapest_only=True
-        ),
+        "penalty_cheapest": lambda: CutPenaltyRouter(2.0, theta=0.17, memory=7, cheapest_only=True),
     }
     out: dict[str, dict] = {}
     for model_id, m in bundle["markets"].items():
         provs = m["providers"]
         anchor = float(m["anchor_price"])
         below = [
-            (name, v) for name, v in provs.items()
+            (name, v)
+            for name, v in provs.items()
             if not v["is_author"] and v["anchor_class"].startswith("below")
         ]
         if not below:
@@ -692,8 +712,9 @@ def run_esim4b(seeds: int = 4, train_epochs: int = 300_000) -> dict:
         min_price = min(v["price"] for v in provs.values())
         tiers = bundle["cost"].get("provider_tiers", {})
         costs = {
-            name: _marginal_cost(tiers.get(name, "unknown"), float(v["price"]),
-                                 min_price, bundle["cost"])
+            name: _marginal_cost(
+                tiers.get(name, "unknown"), float(v["price"]), min_price, bundle["cost"]
+            )
             for name, v in provs.items()
         }
         grid = price_grid(anchor)
@@ -713,15 +734,19 @@ def run_esim4b(seeds: int = 4, train_epochs: int = 300_000) -> dict:
                     else:
                         margin = float(np.log(price / anchor)) if price > 0 else 0.0
                         strategies[name] = species_strategy(
-                            cls, bundle["species"],
-                            min((p for p, vv in provs.items() if vv["is_author"]),
-                                key=lambda p: provs[p]["price"]),
+                            cls,
+                            bundle["species"],
+                            min(
+                                (p for p, vv in provs.items() if vv["is_author"]),
+                                key=lambda p: provs[p]["price"],
+                            ),
                             margin_log=margin if cls in ("below_static", "above") else None,
                             seed=seed * 1000 + i,
                         )
                 specs = {
-                    name: ProviderSpec(provider=name, marginal_cost=costs[name],
-                                       physical_capacity=1)
+                    name: ProviderSpec(
+                        provider=name, marginal_cost=costs[name], physical_capacity=1
+                    )
                     for name in provs
                 }
                 agent = TabularQAgent(grid, seed=seed)
@@ -754,17 +779,25 @@ def run_esim4b(seeds: int = 4, train_epochs: int = 300_000) -> dict:
                     if hasattr(router, "advance"):
                         router.advance(quotes)
                     prices.append(quotes[slot])
-                rows.append({
-                    "seed": seed,
-                    "learner_median_rel_anchor": round(float(
-                        np.median(prices) / anchor), 4),
-                    "market_mean_rel_anchor": round(float(
-                        np.mean(list(quotes.values())) / anchor), 4),
-                })
+                rows.append(
+                    {
+                        "seed": seed,
+                        "learner_median_rel_anchor": round(float(np.median(prices) / anchor), 4),
+                        "market_mean_rel_anchor": round(
+                            float(np.mean(list(quotes.values())) / anchor), 4
+                        ),
+                    }
+                )
             market_out[arm] = rows
         out[model_id] = {"slot": slot, "n_providers": len(provs), "arms": market_out}
-    result = {"experiment": "E-SIM4b", "markets": out, "seeds": seeds,
-              "theta": 0.17, "memory": 7, "bundle_rev": bundle["rev"]}
+    result = {
+        "experiment": "E-SIM4b",
+        "markets": out,
+        "seeds": seeds,
+        "theta": 0.17,
+        "memory": 7,
+        "bundle_rev": bundle["rev"],
+    }
     _write_run(result, "esim4b")
     return result
 
@@ -814,9 +847,7 @@ def run_esim5(
             memory=int(source["memory_epochs"]),
             gamma=0.95,
         )
-        if not np.isclose(
-            mdp.permanent_high_value(), audit["stay_discounted_value"], atol=1e-10
-        ):
+        if not np.isclose(mdp.permanent_high_value(), audit["stay_discounted_value"], atol=1e-10):
             raise ValueError("reconstructed E-SIM4 stay value does not match archive")
         if not np.isclose(
             mdp.permanent_low_value(),
@@ -827,9 +858,7 @@ def run_esim5(
 
         exact = solve_exact(mdp)
         always_low = np.full(mdp.n_states, LOW, dtype=np.int8)
-        enumerated_low = evaluate_deterministic_policy(mdp, always_low)[
-            mdp.initial_state
-        ]
+        enumerated_low = evaluate_deterministic_policy(mdp, always_low)[mdp.initial_state]
         formula_error = abs(float(enumerated_low) - mdp.permanent_low_value())
         if exact.bellman_residual > 1e-10 or formula_error > 1e-10:
             raise RuntimeError("E-SIM5 exact-benchmark validity gate failed")
@@ -850,37 +879,38 @@ def run_esim5(
             evaluation_steps=evaluation_steps,
         )
         exact_initial = float(exact.values[mdp.initial_state])
-        aware["normalized_discounted_regret"] = (
-            float(aware["discounted_regret"]) / abs(exact_initial)
+        aware["normalized_discounted_regret"] = float(aware["discounted_regret"]) / abs(
+            exact_initial
         )
-        aliased["normalized_discounted_regret"] = (
-            float(aliased["discounted_regret"]) / abs(exact_initial)
+        aliased["normalized_discounted_regret"] = float(aliased["discounted_regret"]) / abs(
+            exact_initial
         )
-        rows.append({
-            "seed": seed,
-            "profile": {
-                "low_price": mdp.low_price,
-                "high_price": mdp.high_price,
-                "rival_prices": list(mdp.rival_prices),
-            },
-            "exact": {
-                "initial_action": int(exact.policy[mdp.initial_state]),
-                "initial_action_label": (
-                    "low" if exact.policy[mdp.initial_state] == LOW else "high"
-                ),
-                "initial_value": exact_initial,
-                "bellman_residual": exact.bellman_residual,
-                "iterations": exact.iterations,
-                "permanent_low_formula_error": formula_error,
-                "policy": exact.policy.tolist(),
-            },
-            "history_aware_q": aware,
-            "aliased_q": aliased,
-        })
+        rows.append(
+            {
+                "seed": seed,
+                "profile": {
+                    "low_price": mdp.low_price,
+                    "high_price": mdp.high_price,
+                    "rival_prices": list(mdp.rival_prices),
+                },
+                "exact": {
+                    "initial_action": int(exact.policy[mdp.initial_state]),
+                    "initial_action_label": (
+                        "low" if exact.policy[mdp.initial_state] == LOW else "high"
+                    ),
+                    "initial_value": exact_initial,
+                    "bellman_residual": exact.bellman_residual,
+                    "iterations": exact.iterations,
+                    "permanent_low_formula_error": formula_error,
+                    "policy": exact.policy.tolist(),
+                },
+                "history_aware_q": aware,
+                "aliased_q": aliased,
+            }
+        )
 
     price_differences = [
-        float(row["history_aware_q"]["median_price"])
-        - float(row["aliased_q"]["median_price"])
+        float(row["history_aware_q"]["median_price"]) - float(row["aliased_q"]["median_price"])
         for row in rows
     ]
     low_share_differences = [
@@ -895,12 +925,9 @@ def run_esim5(
     ]
     price_ci = _paired_bootstrap_ci(price_differences)
     exact_cuts = sum(row["exact"]["initial_action"] == LOW for row in rows)
-    aware_agrees = sum(
-        bool(row["history_aware_q"]["first_action_agrees_exact"]) for row in rows
-    )
+    aware_agrees = sum(bool(row["history_aware_q"]["first_action_agrees_exact"]) for row in rows)
     aware_low_regret = sum(
-        float(row["history_aware_q"]["normalized_discounted_regret"]) <= 0.05
-        for row in rows
+        float(row["history_aware_q"]["normalized_discounted_regret"]) <= 0.05 for row in rows
     )
     aliased_stays_high = sum(
         row["aliased_q"]["first_action"] == HIGH
@@ -931,13 +958,9 @@ def run_esim5(
         },
         "secondary": {
             "low_action_share_paired_mean": float(np.mean(low_share_differences)),
-            "low_action_share_paired_bootstrap_ci95": _paired_bootstrap_ci(
-                low_share_differences
-            ),
+            "low_action_share_paired_bootstrap_ci95": _paired_bootstrap_ci(low_share_differences),
             "normalized_regret_paired_mean": float(np.mean(regret_differences)),
-            "normalized_regret_paired_bootstrap_ci95": _paired_bootstrap_ci(
-                regret_differences
-            ),
+            "normalized_regret_paired_bootstrap_ci95": _paired_bootstrap_ci(regret_differences),
             "exact_cut_profiles": exact_cuts,
             "history_aware_exact_first_action": aware_agrees,
             "history_aware_low_regret": aware_low_regret,
@@ -1022,21 +1045,23 @@ def run_esim6(
             )
             exact_value = float(exact.values[mdp.initial_state])
             for learned in (primitive, option):
-                learned["normalized_discounted_regret"] = (
-                    float(learned["discounted_regret"]) / abs(exact_value)
+                learned["normalized_discounted_regret"] = float(learned["discounted_regret"]) / abs(
+                    exact_value
                 )
-            rows.append({
-                "seed": seed,
-                "memory": memory,
-                "exact_initial_action": int(exact.policy[mdp.initial_state]),
-                "exact_initial_action_label": (
-                    "low" if exact.policy[mdp.initial_state] == LOW else "high"
-                ),
-                "exact_initial_value": exact_value,
-                "exact_option_value_gap": exact_gap,
-                "primitive_q": primitive,
-                "commit_option_q": option,
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "memory": memory,
+                    "exact_initial_action": int(exact.policy[mdp.initial_state]),
+                    "exact_initial_action_label": (
+                        "low" if exact.policy[mdp.initial_state] == LOW else "high"
+                    ),
+                    "exact_initial_value": exact_value,
+                    "exact_option_value_gap": exact_gap,
+                    "primitive_q": primitive,
+                    "commit_option_q": option,
+                }
+            )
 
         regret_differences = [
             float(row["commit_option_q"]["normalized_discounted_regret"])
@@ -1059,45 +1084,45 @@ def run_esim6(
             and float(row["commit_option_q"]["normalized_discounted_regret"]) <= 0.05
             for row in rows
         )
-        sweep.append({
-            "memory": memory,
-            "exact_low_profiles": exact_low,
-            "primitive_success_profiles": primitive_success,
-            "option_success_profiles": option_success,
-            "primitive_mean_normalized_regret": float(np.mean([
-                row["primitive_q"]["normalized_discounted_regret"] for row in rows
-            ])),
-            "option_mean_normalized_regret": float(np.mean([
-                row["commit_option_q"]["normalized_discounted_regret"] for row in rows
-            ])),
-            "option_minus_primitive_regret": {
-                "paired_mean": float(np.mean(regret_differences)),
-                "paired_bootstrap_ci95": _paired_bootstrap_ci(regret_differences),
-            },
-            "option_minus_primitive_median_price": {
-                "paired_mean": float(np.mean(price_differences)),
-                "paired_bootstrap_ci95": _paired_bootstrap_ci(price_differences),
-            },
-            "rows": rows,
-        })
+        sweep.append(
+            {
+                "memory": memory,
+                "exact_low_profiles": exact_low,
+                "primitive_success_profiles": primitive_success,
+                "option_success_profiles": option_success,
+                "primitive_mean_normalized_regret": float(
+                    np.mean([row["primitive_q"]["normalized_discounted_regret"] for row in rows])
+                ),
+                "option_mean_normalized_regret": float(
+                    np.mean(
+                        [row["commit_option_q"]["normalized_discounted_regret"] for row in rows]
+                    )
+                ),
+                "option_minus_primitive_regret": {
+                    "paired_mean": float(np.mean(regret_differences)),
+                    "paired_bootstrap_ci95": _paired_bootstrap_ci(regret_differences),
+                },
+                "option_minus_primitive_median_price": {
+                    "paired_mean": float(np.mean(price_differences)),
+                    "paired_bootstrap_ci95": _paired_bootstrap_ci(price_differences),
+                },
+                "rows": rows,
+            }
+        )
 
     calibrated = next(row for row in sweep if row["memory"] == 7)
-    calibrated_ci = calibrated["option_minus_primitive_regret"][
-        "paired_bootstrap_ci95"
-    ]
+    calibrated_ci = calibrated["option_minus_primitive_regret"]["paired_bootstrap_ci95"]
     gates = {
-        "exact_option_values_equal_everywhere": bool(max(
-            row["exact_option_value_gap"]
-            for arm in sweep for row in arm["rows"]
-        ) <= 1e-10),
-        "primary_regret_ci_strictly_negative": bool(
-            calibrated_ci and calibrated_ci[1] < 0
+        "exact_option_values_equal_everywhere": bool(
+            max(row["exact_option_value_gap"] for arm in sweep for row in arm["rows"]) <= 1e-10
         ),
+        "primary_regret_ci_strictly_negative": bool(calibrated_ci and calibrated_ci[1] < 0),
         "option_success_at_least_16": calibrated["option_success_profiles"] >= 16,
         "option_low_regret_at_least_16": sum(
             float(row["commit_option_q"]["normalized_discounted_regret"]) <= 0.05
             for row in calibrated["rows"]
-        ) >= 16,
+        )
+        >= 16,
         "primitive_success_at_most_4": calibrated["primitive_success_profiles"] <= 4,
     }
     result = {
@@ -1146,9 +1171,7 @@ def run_esim7(
     if seeds != 20 or train_transitions != 300_000 or evaluation_transitions != 10_000:
         raise ValueError("E-SIM7 confirmatory design is frozen at 20/300000/10000")
     if not E_SIM4B_ARCHIVED_RUN.exists():
-        raise FileNotFoundError(
-            f"missing frozen E-SIM4b input: {E_SIM4B_ARCHIVED_RUN}"
-        )
+        raise FileNotFoundError(f"missing frozen E-SIM4b input: {E_SIM4B_ARCHIVED_RUN}")
     source = json.loads(E_SIM4B_ARCHIVED_RUN.read_text())
     if source.get("bundle_rev") != bundle_rev or source.get("seeds") != 4:
         raise ValueError("E-SIM4b archive does not match the frozen calibration")
@@ -1211,16 +1234,11 @@ def run_esim7(
         u_low = mdp.reward(0, LOW)
         ratio = (
             (u_high - u_penalized_low) / (u_low - u_penalized_low)
-            if u_low > u_penalized_low else np.nan
+            if u_low > u_penalized_low
+            else np.nan
         )
-        rational_boundary = (
-            float(np.log(ratio) / np.log(mdp.gamma))
-            if 0 < ratio < 1 else None
-        )
-        eligible = bool(
-            u_low > u_high > u_penalized_low
-            and exact.policy[mdp.initial_state] == LOW
-        )
+        rational_boundary = float(np.log(ratio) / np.log(mdp.gamma)) if 0 < ratio < 1 else None
+        eligible = bool(u_low > u_high > u_penalized_low and exact.policy[mdp.initial_state] == LOW)
         rows: list[dict] = []
         for seed in range(seeds):
             primitive = train_q(
@@ -1238,14 +1256,16 @@ def run_esim7(
             )
             exact_value = float(exact.values[mdp.initial_state])
             for learned in (primitive, option):
-                learned["normalized_discounted_regret"] = (
-                    float(learned["discounted_regret"]) / abs(exact_value)
+                learned["normalized_discounted_regret"] = float(learned["discounted_regret"]) / abs(
+                    exact_value
                 )
-            rows.append({
-                "seed": seed,
-                "primitive_q": primitive,
-                "commit_option_q": option,
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "primitive_q": primitive,
+                    "commit_option_q": option,
+                }
+            )
         regret_differences = [
             float(row["commit_option_q"]["normalized_discounted_regret"])
             - float(row["primitive_q"]["normalized_discounted_regret"])
@@ -1307,14 +1327,14 @@ def run_esim7(
         }
 
     eligible_markets = [
-        model_id for model_id, market in markets.items()
+        model_id
+        for model_id, market in markets.items()
         if market["profile"]["delayed_credit_eligible"]
     ]
     gates = {
-        "exact_option_values_equal_everywhere": bool(max(
-            market["profile"]["exact_option_value_gap"]
-            for market in markets.values()
-        ) <= 1e-10),
+        "exact_option_values_equal_everywhere": bool(
+            max(market["profile"]["exact_option_value_gap"] for market in markets.values()) <= 1e-10
+        ),
         "at_least_three_eligible_markets": len(eligible_markets) >= 3,
         "every_eligible_market_passes": bool(
             eligible_markets
@@ -1403,14 +1423,16 @@ def run_esim8(
                 )
                 exact_value = float(exact.values[mdp.initial_state])
                 for learned in (primitive, option):
-                    learned["normalized_discounted_regret"] = (
-                        float(learned["discounted_regret"]) / abs(exact_value)
-                    )
-                rows.append({
-                    "seed": seed,
-                    "primitive_q": primitive,
-                    "commit_option_q": option,
-                })
+                    learned["normalized_discounted_regret"] = float(
+                        learned["discounted_regret"]
+                    ) / abs(exact_value)
+                rows.append(
+                    {
+                        "seed": seed,
+                        "primitive_q": primitive,
+                        "commit_option_q": option,
+                    }
+                )
             differences = [
                 float(row["commit_option_q"]["normalized_discounted_regret"])
                 - float(row["primitive_q"]["normalized_discounted_regret"])
@@ -1419,34 +1441,31 @@ def run_esim8(
             interval = _paired_bootstrap_ci(differences)
             option_success = sum(
                 bool(row["commit_option_q"]["first_action_agrees_exact"])
-                and float(row["commit_option_q"]["normalized_discounted_regret"])
-                <= 0.05
+                and float(row["commit_option_q"]["normalized_discounted_regret"]) <= 0.05
                 for row in rows
             )
             primitive_success = sum(
                 bool(row["primitive_q"]["first_action_agrees_exact"])
-                and float(row["primitive_q"]["normalized_discounted_regret"])
-                <= 0.05
+                and float(row["primitive_q"]["normalized_discounted_regret"]) <= 0.05
                 for row in rows
             )
             cell_pass = bool(
-                interval
-                and interval[1] < 0
-                and option_success >= 16
-                and primitive_success <= 4
+                interval and interval[1] < 0 and option_success >= 16 and primitive_success <= 4
             )
-            cells.append({
-                "alpha": alpha,
-                "beta": beta,
-                "option_minus_primitive_regret": {
-                    "paired_mean": float(np.mean(differences)),
-                    "paired_bootstrap_ci95": interval,
-                },
-                "option_success_profiles": option_success,
-                "primitive_success_profiles": primitive_success,
-                "cell_robustness_gate": cell_pass,
-                "rows": rows,
-            })
+            cells.append(
+                {
+                    "alpha": alpha,
+                    "beta": beta,
+                    "option_minus_primitive_regret": {
+                        "paired_mean": float(np.mean(differences)),
+                        "paired_bootstrap_ci95": interval,
+                    },
+                    "option_success_profiles": option_success,
+                    "primitive_success_profiles": primitive_success,
+                    "cell_robustness_gate": cell_pass,
+                    "rows": rows,
+                }
+            )
     passing_cells = sum(cell["cell_robustness_gate"] for cell in cells)
     result = {
         "experiment": "E-SIM8",
@@ -1467,6 +1486,133 @@ def run_esim8(
         ),
     }
     _write_run(result, "esim8")
+    return result
+
+
+def run_esim9(
+    seeds: int = 20,
+    train_transitions: int = 300_000,
+    evaluation_transitions: int = 10_000,
+) -> dict:
+    """Multi-step TD replication of the E-SIM6 delayed-credit mechanism."""
+    from .state_aliasing import (
+        LOW,
+        BinaryCutPenaltyMDP,
+        solve_exact,
+        train_n_step_q,
+        train_option_q,
+        train_q,
+    )
+
+    _require_esim1_pass()
+    if seeds != 20 or train_transitions != 300_000 or evaluation_transitions != 10_000:
+        raise ValueError("E-SIM9 confirmatory design is frozen at 20/300000/10000")
+    source = json.loads(E_SIM4_AUDITED_RUN.read_text())
+    source_rows = source["arms"]["penalty_on"]
+    if source.get("seeds") != 20 or len(source_rows) != 20:
+        raise ValueError("frozen E-SIM4 input must contain exactly 20 seeds")
+
+    memory = 7
+    n_steps = memory + 1
+    rival_prices = (1.0, 1.0, float(np.exp(-0.4)), float(np.exp(0.34)))
+    rows: list[dict] = []
+    for source_row in source_rows:
+        audit = source_row["permanent_cut_audit"]
+        mdp = BinaryCutPenaltyMDP(
+            low_price=float(audit["best_permanent_cut"]["price"]),
+            high_price=float(source_row["learner_median_price"]),
+            marginal_cost=0.2,
+            rival_prices=rival_prices,
+            exponent=2.0,
+            theta=float(source["theta"]),
+            memory=memory,
+            gamma=0.95,
+        )
+        seed = int(source_row["seed"])
+        primitive = train_q(
+            mdp,
+            "history",
+            seed=seed,
+            train_steps=train_transitions,
+            evaluation_steps=evaluation_transitions,
+        )
+        multi_step = train_n_step_q(
+            mdp,
+            seed=seed,
+            n_steps=n_steps,
+            train_steps=train_transitions,
+            evaluation_steps=evaluation_transitions,
+        )
+        option = train_option_q(
+            mdp,
+            seed=seed,
+            train_transitions=train_transitions,
+            evaluation_transitions=evaluation_transitions,
+        )
+        exact = solve_exact(mdp)
+        if exact.policy[mdp.initial_state] != LOW:
+            raise RuntimeError("E-SIM9 frozen profile must be delayed-credit eligible")
+        exact_value = float(exact.values[mdp.initial_state])
+        for learned in (primitive, multi_step, option):
+            learned["normalized_discounted_regret"] = float(learned["discounted_regret"]) / abs(
+                exact_value
+            )
+        rows.append(
+            {
+                "seed": seed,
+                "primitive_q": primitive,
+                "n_step_q": multi_step,
+                "commit_option_q": option,
+            }
+        )
+
+    differences = [
+        float(row["n_step_q"]["normalized_discounted_regret"])
+        - float(row["primitive_q"]["normalized_discounted_regret"])
+        for row in rows
+    ]
+
+    def successful(learned: dict) -> bool:
+        return bool(
+            learned["first_action_agrees_exact"]
+            and float(learned["normalized_discounted_regret"]) <= 0.05
+        )
+
+    primitive_success = sum(successful(row["primitive_q"]) for row in rows)
+    n_step_success = sum(successful(row["n_step_q"]) for row in rows)
+    option_success = sum(successful(row["commit_option_q"]) for row in rows)
+    interval = _paired_bootstrap_ci(differences)
+    gates = {
+        "n_step_regret_ci_strictly_negative": bool(interval and interval[1] < 0),
+        "n_step_success_at_least_16": n_step_success >= 16,
+        "primitive_success_at_most_4": primitive_success <= 4,
+    }
+    result = {
+        "experiment": "E-SIM9",
+        "source_esim4": str(E_SIM4_AUDITED_RUN),
+        "seeds": seeds,
+        "memory": memory,
+        "n_steps": n_steps,
+        "train_transitions": train_transitions,
+        "evaluation_transitions": evaluation_transitions,
+        "rows": rows,
+        "primary": {
+            "estimand": "normalized_regret_n_step_minus_primitive",
+            "paired_mean": float(np.mean(differences)),
+            "paired_bootstrap_ci95": interval,
+        },
+        "primitive_success_profiles": primitive_success,
+        "n_step_success_profiles": n_step_success,
+        "option_success_profiles": option_success,
+        "mechanism_gates": gates,
+        "multi_step_credit_supported": bool(all(gates.values())),
+        "claim_boundary": (
+            "Controlled tabular-Q replication with primitive price paths held "
+            "fixed. Passing identifies multi-step temporal credit, not live-router "
+            "causality, provider conduct, equilibrium, or collusion."
+        ),
+    }
+    _write_run(result, "esim9")
     return result
 
 
@@ -1496,52 +1642,83 @@ def main() -> None:
         print(json.dumps(run_esim5(seeds=args.seeds), indent=1, default=str))
     elif args.experiment == "E-SIM6":
         result = run_esim6(seeds=args.seeds)
-        print(json.dumps({
-            "experiment": result["experiment"],
-            "primary": result["primary"],
-            "mechanism_gates": result["mechanism_gates"],
-            "delayed_credit_intervention_supported": (
-                result["delayed_credit_intervention_supported"]
-            ),
-        }, indent=1))
+        print(
+            json.dumps(
+                {
+                    "experiment": result["experiment"],
+                    "primary": result["primary"],
+                    "mechanism_gates": result["mechanism_gates"],
+                    "delayed_credit_intervention_supported": (
+                        result["delayed_credit_intervention_supported"]
+                    ),
+                },
+                indent=1,
+            )
+        )
     elif args.experiment == "E-SIM7":
         result = run_esim7(seeds=args.seeds)
-        print(json.dumps({
-            "experiment": result["experiment"],
-            "eligible_markets": result["eligible_markets"],
-            "transport_gates": result["transport_gates"],
-            "cross_market_transport_supported": (
-                result["cross_market_transport_supported"]
-            ),
-            "market_summaries": {
-                model_id: {
-                    "profile": market["profile"],
-                    "regret": market["option_minus_primitive_regret"],
-                    "option_success": market["option_success_profiles"],
-                    "primitive_success": market["primitive_success_profiles"],
-                    "gate": market["market_transport_gate"],
-                }
-                for model_id, market in result["markets"].items()
-            },
-        }, indent=1))
+        print(
+            json.dumps(
+                {
+                    "experiment": result["experiment"],
+                    "eligible_markets": result["eligible_markets"],
+                    "transport_gates": result["transport_gates"],
+                    "cross_market_transport_supported": (
+                        result["cross_market_transport_supported"]
+                    ),
+                    "market_summaries": {
+                        model_id: {
+                            "profile": market["profile"],
+                            "regret": market["option_minus_primitive_regret"],
+                            "option_success": market["option_success_profiles"],
+                            "primitive_success": market["primitive_success_profiles"],
+                            "gate": market["market_transport_gate"],
+                        }
+                        for model_id, market in result["markets"].items()
+                    },
+                },
+                indent=1,
+            )
+        )
     elif args.experiment == "E-SIM8":
         result = run_esim8(seeds=args.seeds)
-        print(json.dumps({
-            "experiment": result["experiment"],
-            "passing_cells": result["passing_cells"],
-            "robustness_gate": result["robustness_gate"],
-            "cells": [
+        print(
+            json.dumps(
                 {
-                    "alpha": cell["alpha"],
-                    "beta": cell["beta"],
-                    "regret": cell["option_minus_primitive_regret"],
-                    "option_success": cell["option_success_profiles"],
-                    "primitive_success": cell["primitive_success_profiles"],
-                    "gate": cell["cell_robustness_gate"],
-                }
-                for cell in result["cells"]
-            ],
-        }, indent=1))
+                    "experiment": result["experiment"],
+                    "passing_cells": result["passing_cells"],
+                    "robustness_gate": result["robustness_gate"],
+                    "cells": [
+                        {
+                            "alpha": cell["alpha"],
+                            "beta": cell["beta"],
+                            "regret": cell["option_minus_primitive_regret"],
+                            "option_success": cell["option_success_profiles"],
+                            "primitive_success": cell["primitive_success_profiles"],
+                            "gate": cell["cell_robustness_gate"],
+                        }
+                        for cell in result["cells"]
+                    ],
+                },
+                indent=1,
+            )
+        )
+    elif args.experiment == "E-SIM9":
+        result = run_esim9(seeds=args.seeds)
+        print(
+            json.dumps(
+                {
+                    "experiment": result["experiment"],
+                    "primary": result["primary"],
+                    "primitive_success_profiles": result["primitive_success_profiles"],
+                    "n_step_success_profiles": result["n_step_success_profiles"],
+                    "option_success_profiles": result["option_success_profiles"],
+                    "mechanism_gates": result["mechanism_gates"],
+                    "multi_step_credit_supported": result["multi_step_credit_supported"],
+                },
+                indent=1,
+            )
+        )
     else:
         raise SystemExit(f"unknown experiment {args.experiment}")
 

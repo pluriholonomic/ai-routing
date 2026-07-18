@@ -10,7 +10,9 @@ from orcap.market_env.state_aliasing import (
     option_outcome,
     solve_exact,
     solve_exact_with_option,
+    train_n_step_q,
     train_option_q,
+    train_q,
 )
 from orcap.market_env.strategies_qlearn import expected_profits
 
@@ -62,9 +64,7 @@ def test_permanent_low_formula_matches_policy_evaluation():
     mdp = example_mdp()
     always_low = np.full(mdp.n_states, LOW, dtype=np.int8)
     values = evaluate_deterministic_policy(mdp, always_low)
-    assert np.isclose(
-        values[mdp.initial_state], mdp.permanent_low_value(), atol=1e-10
-    )
+    assert np.isclose(values[mdp.initial_state], mdp.permanent_low_value(), atol=1e-10)
 
 
 def test_exact_solution_passes_bellman_and_prefers_profitable_cut():
@@ -98,9 +98,29 @@ def test_option_does_not_change_exact_feasible_value():
 
 def test_option_training_respects_exact_transition_budget():
     mdp = example_mdp()
-    result = train_option_q(
-        mdp, seed=3, train_transitions=101, evaluation_transitions=103
-    )
+    result = train_option_q(mdp, seed=3, train_transitions=101, evaluation_transitions=103)
     assert result["train_transitions"] == 101
     assert result["evaluation_transitions"] == 103
     assert result["exact_option_value_gap"] <= 1e-10
+
+
+def test_one_step_target_matches_primitive_q():
+    mdp = example_mdp()
+    primitive = train_q(
+        mdp,
+        "history",
+        seed=9,
+        train_steps=2_000,
+        stable_window=500,
+        evaluation_steps=100,
+    )
+    multi = train_n_step_q(
+        mdp,
+        seed=9,
+        n_steps=1,
+        train_steps=2_000,
+        stable_window=500,
+        evaluation_steps=100,
+    )
+    assert multi["q_table"] == primitive["q_table"]
+    assert multi["full_policy"] == primitive["full_policy"]
