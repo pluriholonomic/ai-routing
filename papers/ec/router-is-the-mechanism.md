@@ -40,7 +40,9 @@ sizes; verified-quality weighting w = q^b·p^(−a) with q measured by our
 deployed evaluation probes, which undoes the quality-shading adverse
 selection that price-only weights create (closed-form threshold
 b* ≈ 0.6–2); and fee decoupling (per-request rather than ad valorem),
-which removes the platform's incentive to prefer high prices. The lever
+which removes the platform's incentive to prefer high prices. All
+findings are for one marketplace (the largest), one buyer tier, and a
+registered re-estimation window; scope is stated throughout. The lever
 is the mechanism, not the conduct.
 
 ## 1. Introduction
@@ -272,6 +274,24 @@ data-center owners survive, which prices resilience at zero until the
 first correlated outage. The welfare-optimal a is interior once outage
 insurance is valued; the revenue-optimal a is small; the deployed a = 2
 is best rationalized as revenue-serving, not welfare-serving.⁴
+
+*Robustness (cost bands).* The welfare-increasing-in-a ordering holds at
+all four corners of the identified cost bands (c_L ∈ {0.05, 0.25},
+c_S ∈ {0.3, 0.7}): monotone in every case (e.g., at the adversarial
+corner c_L=0.25, c_S=0.3, welfare still rises 1.721 → 1.730 across
+a = 1.5 → 6.25).
+
+*Resilience-adjusted welfare.* Add a correlated-outage term: with
+probability ρ per epoch all owned capacity fails simultaneously; if the
+spot fleet has exited (profit below fixed cost F_S = 0.01), those
+requests are lost at value v. At ρ = 2%: welfare-adjusted values are
+1.802 (a=2, spot viable) vs 1.855–1.860 (a ≥ 4, spot exited) — sharp
+routing still wins, but the gap narrows fourfold; the ranking flips at
+ρ ≳ 5%. The honest design statement: softness is welfare-justified as
+outage insurance only for correlated-outage intensities above ~5% per
+epoch; below that, the right architecture is sharp routing PLUS priced
+capacity commitments (§7.4), not a soft exponent that pays every
+provider an insurance premium whether or not insurance is delivered.
 
 **E-MECH1 (the frontier with learners).** Replacing the FOC with
 Q-learning agents (5 seeds/arm) confirms the ordering — learned welfare
