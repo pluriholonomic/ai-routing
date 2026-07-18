@@ -1,0 +1,55 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "below_cost_share_by_cohort": {
+    "x1": {
+      "above": 0.688,
+      "adopter": 0.805,
+      "below_active": 0.917,
+      "below_static": 0.955
+    },
+    "x8": {
+      "above": 0.094,
+      "adopter": 0.293,
+      "below_active": 0.25,
+      "below_static": 0.295
+    },
+    "x32": {
+      "above": 0.031,
+      "adopter": 0.098,
+      "below_active": 0.25,
+      "below_static": 0.114
+    }
+  },
+  "tag_composition_by_cohort": {
+    "above": {
+      "web3": 0.063,
+      "china": 0.228
+    },
+    "adopter": {
+      "web3": 0.067,
+      "china": 0.133
+    },
+    "below_active": {
+      "web3": 0.043,
+      "china": 0.391
+    },
+    "below_static": {
+      "web3": 0.07,
+      "china": 0.297
+    }
+  },
+  "rel_price_by_tag": {
+    "web3": {
+      "median": 0.0,
+      "n": 24
+    },
+    "china": {
+      "median": -0.06195,
+      "n": 88
+    }
+  },
+  "loss_leader_within_provider_rank_slope_median": 0.093,
+  "n_providers_loss_leader": 24,
+  "read": "web3 emission subsidy: NO price signal. China input-cost geography: real (-6% relative; 39% of the active-undercutter cohort). Below-cost at x32 batching: ~25% of active undercutters (vs 3% of above) \u2014 subsidy or superior batching for a quarter of that cohort. Loss-leading on hot models: REJECTED (positive slope: hot models priced relatively HIGHER within provider portfolios \u2014 scarcity premia).",
+  "claim_boundary": "Tags are name-heuristics; cost bound uses single-stream tps and one GPU class; batching factors are assumptions, reported as a grid; PFOF/rebates unobservable here (C9 instrumentation)."
+}
