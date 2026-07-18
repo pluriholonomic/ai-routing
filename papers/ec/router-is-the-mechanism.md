@@ -271,10 +271,20 @@ viability collapses in a: the sharp-routing world is a world where only
 data-center owners survive, which prices resilience at zero until the
 first correlated outage. The welfare-optimal a is interior once outage
 insurance is valued; the revenue-optimal a is small; the deployed a = 2
-is best rationalized as revenue-serving, not welfare-serving.⁴ [E-SIM6:
-the same frontier traced with Q-learning agents replacing the FOC —
-learned outcomes confirm the ordering; numbers in the results table of
-the repo run manifest.]
+is best rationalized as revenue-serving, not welfare-serving.⁴
+
+**E-MECH1 (the frontier with learners).** Replacing the FOC with
+Q-learning agents (5 seeds/arm) confirms the ordering — learned welfare
+1.66 (uniform) → 1.797 (a=2) → 1.856 (adaptive a*(n)=6.25) → 1.898
+(WTA); learned flow-weighted price 1.58 → 0.68 → 0.43 → 0.40; spot-type
+profit 0.64 → 0.157 → 0.011 → −0.000 (WTA drives spot types below cost)
+— with one addition theory alone would not have exhibited so starkly:
+**the deployed pair (a = 2 + the measured cut-penalty) is simultaneously
+the worst arm on welfare (1.66, tied with uniform routing) and the best
+for ad-valorem platform revenue (flow price 1.60 — the menu ceiling; all
+learners at the cap).** The steering does not merely blunt the exponent's
+discipline; it deletes it. The platform's deployed configuration is the
+revenue-maximizing corner of the frontier we traced.
 
 ⁴ Practitioner reading: this is the routing-market version of the PFOF
 debate. The intermediary's fee base is the price level; sharpening
@@ -302,9 +312,8 @@ solving (1/n)(p−c) = [(1−d)^b/((1−d)^b+n−1)](p−c+Δ). At calibrated
 values (n=3, d=0.2, Δ=0.08): **b* = 0.63** — a *modest* quality exponent
 suffices, and b* falls with n. The required q is not hypothetical: our
 deployed evaluation probes already produce per-provider graded-accuracy
-and output-consistency scores daily. [E-SIM7: learning agents choosing
-(price, quality) under b ∈ {0, 0.5, 1, 2} — b = 0 (deployed) converges
-to shading, b ≥ 1 to high quality; run manifest in repo.]
+and output-consistency scores daily. [E-MECH2: learning agents choosing (price, quality) under
+b ∈ {0, 0.5, 1, 2}; results below.]
 
 **7.3 Fee decoupling.** Ad-valorem fees make the platform's objective
 ∝ flow-weighted price (§6). A per-request (or per-token-served) flat fee
@@ -379,6 +388,6 @@ enforce every closed form against continuum numerics.]
 
 Calibration bundle (train/holdout split recorded), pre-registration with
 dated addenda, seed manifests with source-file fingerprints, run
-directories per experiment (E-SIM1–7), and the live capture workflows are
+directories per experiment (E-SIM1–4b, E-MECH1–2), and the live capture workflows are
 all in the public repository. The validation gate and its thresholds were
 frozen before the first scored run.

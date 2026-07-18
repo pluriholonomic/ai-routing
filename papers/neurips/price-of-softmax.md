@@ -175,13 +175,17 @@ rule.
 *falls* (1.25 → 0.11), and spot-type profits go to zero (viability —
 resilience — collapses). A platform on percentage fees is paid to keep
 the market soft; welfare wants it sharp; resilience wants it interior.
-[E-SIM6 traces the same frontier with Q-learners across
-{uniform, a = 1, 2, 4, 6.25, 32, deployed-pair a=2+penalty}; run manifest
-in repo.] **6.2 The quality game.** Add a binary quality action: shading
+E-MECH1 traces the same frontier with Q-learners (5 seeds/arm):
+learned welfare 1.66 (uniform) → 1.797 (a=2) → 1.856 (adaptive 6.25) →
+1.898 (WTA); flow price monotone down 1.58 → 0.40; spot profit → below
+cost at WTA. The standout: **the deployed pair (a=2 + measured
+cut-penalty) is the worst-welfare, highest-revenue arm — all learners at
+the menu ceiling (flow price 1.60), welfare degraded to uniform-routing
+levels.** The steering deletes the exponent's discipline entirely. **6.2 The quality game.** Add a binary quality action: shading
 saves Δ = 0.08 at hidden damage d = 0.2. Under the deployed price-only
 weights, shading is dominant; under verified-quality weights q^b·p^(−a),
 high quality is an equilibrium iff b ≥ b* = 0.63 (closed form). Learners
-confirm the bifurcation [E-SIM7: b = 0 → shading; b ≥ 1 → quality]. The
+confirm the bifurcation [E-MECH2: b = 0 → shading; b ≥ 1 → quality]. The
 verification signal is not hypothetical: our deployed daily evaluation
 probes (graded public benchmarks + deterministic-output hashes per
 pinned provider) produce exactly the q this mechanism needs. **6.3
@@ -230,4 +234,4 @@ verification tests; validation gate frozen before the first scored run.
 A: proofs (single-crossing; FOC algebra; corner verification; envelope
 and IVT arguments for the steering threshold; patience-boundary root
 certification). B: environment API and calibration bundle schema. C: full
-run tables for E-SIM1–7 with per-seed outcomes.
+run tables for E-SIM1–4b, E-MECH1–2 with per-seed outcomes.

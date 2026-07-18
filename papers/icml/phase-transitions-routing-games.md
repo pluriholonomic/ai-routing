@@ -168,7 +168,7 @@ never profit from entering it.
 
 **5.1 Objective frontier under cost heterogeneity.** Two calibrated cost
 types (owned-capacity 0.10 ×2; spot-dependent 0.50 ×3). Theory FOCs and
-learner runs [E-SIM6] agree on the ordering: welfare ↑ in a (better
+learner runs [E-MECH1] agree on the ordering: welfare ↑ in a (better
 cost-sorting), ad-valorem platform revenue ↓ in a, spot-type viability
 ↓ 0 (the resilience cost of sharp routing). The deployed (a = 2,
 ad-valorem fee) pair is revenue-serving, not welfare-serving; a
@@ -176,7 +176,7 @@ thickness-adaptive a*(n) = n/(ℓ*(n−1)) pins markups and removes the
 critical line. **5.2 Quality learnability threshold.** Binary quality
 action; shading saves Δ = 0.08 at hidden damage d = 0.2. Weight
 q^b·p^(−a): all-high-quality is an equilibrium iff b ≥ b* = 0.63 (closed
-form). Learners bifurcate exactly [E-SIM7]: b = 0 (deployed) → learned
+form). Learners bifurcate exactly [E-MECH2]: b = 0 (deployed) → learned
 shading; b ≥ 1 → learned quality. The q signal exists operationally (our
 deployed daily evaluation probes: graded benchmarks and greedy-output
 hashes per provider).
@@ -216,4 +216,4 @@ manifests (commit, bundle hash, seed tree, source fingerprints),
 46 tests including 13 enforcing every closed form in §2 against continuum
 numerics, and the live-capture workflows that generated the panel.
 
-## Appendix A: proofs.  Appendix B: run tables (E-SIM1–7).
+## Appendix A: proofs.  Appendix B: run tables (E-SIM1–4b, E-MECH1–2).
