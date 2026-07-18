@@ -141,8 +141,12 @@ def _chat(client: httpx.Client, model_id: str, prompt: str, max_tokens: int,
             r = client.post(CHAT_URL, headers=_headers(), json=body, timeout=90)
             status = r.status_code
             if status == 200:
-                return r.json(), status
-            if status not in (429, 500, 502, 503):
+                try:
+                    return r.json(), status
+                except ValueError:
+                    # 200 with malformed body (keep-alive padding) — retry
+                    pass
+            elif status not in (429, 500, 502, 503):
                 return None, status
         except httpx.HTTPError:
             status = None
