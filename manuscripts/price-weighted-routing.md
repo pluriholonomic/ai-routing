@@ -326,8 +326,14 @@ hyperparameters): mean converged price 1.53 (a=0, uniform routing), 1.30
 (a=1; unbounded-Nash regime per Theorem 1(ii); Δ undefined there since
 π_N = π_M), 0.94 (a=2; Δ = 0.08 ± 0.13, single-seed runs with longer
 stability windows reach Δ = 0.47), 0.60 (a=4; Δ = 0.11 ± 0.07),
-competitive floor at a ≥ 8 (Nash below the grid; Δ = 0). Learners track
-the theory's comparative statics, sitting on or above Nash at every a.
+competitive floor at a ≥ 8 (Nash below the grid; Δ = 0). A finer grid at
+n=3 around the knife edge (a = 1.5 exactly on it) shows learning friction
+regularizes the theory's singularity: at a = 1.5 learners reach 1.10, not
+the ceiling 1.6 — near the edge the profit gradient toward higher prices
+vanishes (h → 1), so ε-greedy exploration cannot climb it — while at
+a = 2.5 they sustain 0.88 against Nash 0.5 (Δ = 0.31). The learned price
+is a smoothed, strictly decreasing function of a: the dial is robust to
+bounded rationality even where the equilibrium correspondence is not.
 
 **E-SIM4 — steering elevates prices.** Identical worlds ± the measured
 cut-penalty (θ=0.17, M=7), 8/8 seeds each arm: without the penalty the
@@ -335,6 +341,13 @@ learner in the undercutter slot converges to 0.72 (one tick below the
 interior region); with it, to the *menu ceiling* (1.60), and market mean
 price rises **0.96 → 1.14 (+18%)**. Theorem 2 predicts exactly this: at
 θ far below θ*, the best learnable reply is never-cut-price-high.
+
+*(On seed unanimity in E-SIM2/4: training uses expected-allocation
+rewards, so the environment is deterministic given actions; seeds enter
+only through Q-initialization and exploration paths. Unanimity therefore
+means the converged policies are attractors robust to exploration
+history, not that sampling noise was tested — the request-level kernel
+supplies that separately in E-SIM1.)*
 
 **E-SIM2 — species are technologies, not mistakes.** Unanimous across 8
 seeds per slot: a Q-learner replacing the active undercutter does not
