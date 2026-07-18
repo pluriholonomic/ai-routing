@@ -18,12 +18,21 @@ from .types import ProviderAction, ProviderSpec
 
 
 class CutPenaltyRouter(InversePriceRouter):
-    def __init__(self, exponent: float = 2.0, theta: float = 0.17, memory: int = 7) -> None:
+    """``cheapest_only=True`` penalizes a flagged provider only while it
+    holds the cheapest quote — the exact conditional our probe panel
+    measured (3.9% vs 23.3% is cheapest-with-recent-cut). The default
+    (False) penalizes any recent cutter. The two coincide at symmetric
+    profiles (any strict cut makes the deviant cheapest) and bracket the
+    unobserved treatment of non-cheapest cutters."""
+
+    def __init__(self, exponent: float = 2.0, theta: float = 0.17, memory: int = 7,
+                 cheapest_only: bool = False) -> None:
         super().__init__(exponent=exponent)
         if not 0 <= theta <= 1:
             raise ValueError("theta must lie in [0, 1]")
         self.theta = float(theta)
         self.memory = int(memory)
+        self.cheapest_only = bool(cheapest_only)
         self._history: deque[dict[str, float]] = deque(maxlen=self.memory)
 
     def advance(self, quotes: Mapping[str, float]) -> None:
@@ -43,8 +52,13 @@ class CutPenaltyRouter(InversePriceRouter):
         base = super().probabilities(specs, actions)
         if not base:
             return base
+        cheapest = min(base, key=lambda p: (actions[p].quote, p))
+        def penalized(p: str) -> bool:
+            if not self._recently_cut(p, actions[p].quote):
+                return False
+            return (p == cheapest) if self.cheapest_only else True
         weights = {
-            p: w * (self.theta if self._recently_cut(p, actions[p].quote) else 1.0)
+            p: w * (self.theta if penalized(p) else 1.0)
             for p, w in base.items()
         }
         total = sum(weights.values())

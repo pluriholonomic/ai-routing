@@ -246,9 +246,17 @@ def _write_run(result: dict, name: str) -> Path:
         ).stdout.strip()
     except OSError:
         commit = "unknown"
+    source_files = sorted(Path("src/orcap/market_env").glob("*.py"))
+    source_hash = hashlib.sha256()
+    for source in source_files:
+        source_hash.update(source.as_posix().encode())
+        source_hash.update(b"\0")
+        source_hash.update(source.read_bytes())
+        source_hash.update(b"\0")
     (d / "manifest.json").write_text(json.dumps({
         "run_id": rid, "experiment": result.get("experiment"), "commit": commit,
         "bundle_rev": result.get("bundle_rev"), "seeds": result.get("seeds"),
+        "market_env_source_sha256": source_hash.hexdigest(),
     }, indent=1))
     return d
 
@@ -260,6 +268,19 @@ def _require_esim1_pass() -> str:
         if r.get("passed") and r.get("seeds", 0) >= 20:
             return r["bundle_rev"]
     raise SystemExit("no passing confirmatory E-SIM1 run found; gate closed")
+
+
+def _paired_bootstrap_ci(
+    values: list[float], *, seed: int = 20260718, draws: int = 10_000
+) -> list[float] | None:
+    """Deterministic percentile interval for a paired mean contrast."""
+    if not values:
+        return None
+    sample = np.asarray(values, dtype=float)
+    rng = np.random.default_rng(seed)
+    indices = rng.integers(0, len(sample), size=(draws, len(sample)))
+    means = sample[indices].mean(axis=1)
+    return [float(x) for x in np.percentile(means, [2.5, 97.5])]
 
 
 def _stylized_world(seed: int):
@@ -356,6 +377,9 @@ def run_esim3(seeds: int = 5) -> dict:
     """Router price-sensitivity sweep: all-Q worlds under exponent a
     (softmax temperature 1/a). Deliverable: price level and Calvano Delta
     vs a — does a sharper router discipline learners?"""
+    from scipy.stats import spearmanr
+
+    from .diagnostics_collusion import cut_response, deviation_audit
     from .strategies_qlearn import train_symmetric
 
     _require_esim1_pass()
@@ -367,9 +391,42 @@ def run_esim3(seeds: int = 5) -> dict:
                 InversePriceRouter(a), n_agents=3, mc=0.2,
                 max_epochs=300_000, stable_window=40_000, seed=seed * 13 + 1,
             )
-            rows.append({k: r[k] for k in
-                         ("final_prices", "mean_profit", "pi_nash",
-                          "pi_monopoly", "calvano_delta", "converged")})
+            final_prices = {k: float(v) for k, v in r["final_prices"].items()}
+            costs = dict.fromkeys(final_prices, 0.2)
+            audit = deviation_audit(final_prices, costs, InversePriceRouter(a), 1.0, r["grid"])
+            punishments = []
+            names = sorted(final_prices)
+            for index, name in enumerate(names):
+                agent = r["agents"][index]
+
+                def response(quotes, *, _agent=agent, _name=name, _grid=r["grid"]):
+                    own = quotes[_name]
+                    rival = min(q for p, q in quotes.items() if p != _name)
+                    state = _agent.state_index(
+                        int(np.argmin(np.abs(_grid - own))),
+                        int(np.argmin(np.abs(_grid - rival))),
+                    )
+                    return float(_grid[_agent.greedy(state)])
+
+                rival_name = next(other for other in names if other != name)
+                response_audit = cut_response(
+                    response, final_prices, name, rival_name, cut_frac=0.2, horizon=12
+                )
+                punishments.append(response_audit["verdict"] == "punish_and_revert")
+            rows.append({
+                "seed": seed,
+                "final_prices": final_prices,
+                "mean_price": float(np.mean(list(final_prices.values()))),
+                "mean_profit": r["mean_profit"],
+                "pi_nash": r["pi_nash"],
+                "pi_monopoly": r["pi_monopoly"],
+                "calvano_delta": r["calvano_delta"],
+                "converged": r["converged"],
+                "epochs_run": r["epochs_run"],
+                "max_deviation_gain_relative": audit["max_gain_rel_to_mean_profit"],
+                "equilibrium_consistent": audit["equilibrium_consistent"],
+                "punish_and_revert_share": float(np.mean(punishments)),
+            })
         deltas = [x["calvano_delta"] for x in rows if x["calvano_delta"] is not None]
         prices = [np.mean(list(x["final_prices"].values())) for x in rows]
         sweep.append({
@@ -378,9 +435,47 @@ def run_esim3(seeds: int = 5) -> dict:
             "mean_delta": round(float(np.mean(deltas)), 4) if deltas else None,
             "sd_delta": round(float(np.std(deltas)), 4) if deltas else None,
             "n_delta_defined": len(deltas),
+            "converged_seeds": int(sum(x["converged"] for x in rows)),
+            "equilibrium_consistent_seeds": int(
+                sum(x["equilibrium_consistent"] for x in rows)
+            ),
+            "punish_and_revert_seed_share": round(float(np.mean([
+                x["punish_and_revert_share"] > 0 for x in rows
+            ])), 4),
+            "per_seed": rows,
         })
-    result = {"experiment": "E-SIM3", "sweep": sweep, "seeds": seeds,
-              "n_agents": 3}
+    arm_prices = [row["mean_price"] for row in sweep]
+    adjacent = []
+    for left, right in zip(sweep[:-1], sweep[1:], strict=True):
+        differences = [
+            rrow["mean_price"] - lrow["mean_price"]
+            for lrow, rrow in zip(left["per_seed"], right["per_seed"], strict=True)
+        ]
+        adjacent.append({
+            "from_exponent": left["exponent"],
+            "to_exponent": right["exponent"],
+            "mean_price_difference": float(np.mean(differences)),
+            "paired_bootstrap_ci95": _paired_bootstrap_ci(differences),
+        })
+    correlation = spearmanr([row["exponent"] for row in sweep], arm_prices)
+    result = {
+        "experiment": "E-SIM3",
+        "sweep": sweep,
+        "seeds": seeds,
+        "n_agents": 3,
+        "adjacent_paired_price_contrasts": adjacent,
+        "arm_mean_price_spearman": {
+            "rho": float(correlation.statistic),
+            "pvalue_descriptive": float(correlation.pvalue),
+        },
+        "adequate_convergence_all_arms": bool(
+            all(row["converged_seeds"] >= np.ceil(0.8 * seeds) for row in sweep)
+        ),
+        "claim_boundary": (
+            "The Spearman p-value is descriptive across six designed arms. "
+            "Seed-paired intervals and convergence gates are the inferential objects."
+        ),
+    }
     _write_run(result, "esim3")
     return result
 
@@ -390,6 +485,7 @@ def run_esim4(seeds: int = 5) -> dict:
     species world with the learner in the ActiveCut slot. Prediction from
     the JRW-inverse reading: penalizing recent cutters removes the payoff
     to undercutting -> less repricing, higher price level."""
+    from .diagnostics_collusion import cut_response, deviation_audit
     from .routers_steering import CutPenaltyRouter
     from .strategies_qlearn import TabularQAgent, expected_profits, price_grid
 
@@ -441,6 +537,23 @@ def run_esim4(seeds: int = 5) -> dict:
                 prices.append(quotes[slot])
                 reprices += abs(quotes[slot] - prev) > 1e-12
                 prev = quotes[slot]
+            audit = deviation_audit(quotes, costs, router, 1.0, grid)
+
+            def response(report, *, _agent=agent, _grid=grid, _slot=slot):
+                own = report[_slot]
+                rival = min(q for p, q in report.items() if p != _slot)
+                state = _agent.state_index(
+                    int(np.argmin(np.abs(_grid - own))),
+                    int(np.argmin(np.abs(_grid - rival))),
+                )
+                return float(_grid[_agent.greedy(state)])
+
+            rival_name = min(
+                (name for name in quotes if name != slot), key=lambda name: quotes[name]
+            )
+            response_audit = cut_response(
+                response, quotes, slot, rival_name, cut_frac=0.2, horizon=12
+            )
             rows.append({
                 "seed": seed,
                 "learner_median_price": round(float(np.median(prices)), 4),
@@ -448,11 +561,152 @@ def run_esim4(seeds: int = 5) -> dict:
                 "market_mean_price": round(float(np.mean(
                     [np.mean(list(quotes.values()))]
                 )), 4),
+                "max_deviation_gain_relative": audit["max_gain_rel_to_mean_profit"],
+                "equilibrium_consistent": audit["equilibrium_consistent"],
+                "cut_response": response_audit["verdict"],
             })
         out[arm] = rows
-    result = {"experiment": "E-SIM4", "arms": out, "seeds": seeds,
-              "theta": 0.17, "memory_epochs": 7}
+    contrasts = {}
+    for outcome in (
+        "learner_median_price",
+        "learner_changes_per_day",
+        "market_mean_price",
+    ):
+        differences = [
+            on[outcome] - off[outcome]
+            for off, on in zip(out["penalty_off"], out["penalty_on"], strict=True)
+        ]
+        contrasts[outcome] = {
+            "mean_paired_difference_penalty_on_minus_off": float(np.mean(differences)),
+            "paired_bootstrap_ci95": _paired_bootstrap_ci(differences),
+        }
+    result = {
+        "experiment": "E-SIM4",
+        "arms": out,
+        "seeds": seeds,
+        "theta": 0.17,
+        "memory_epochs": 7,
+        "paired_contrasts": contrasts,
+        "primary_interval_excludes_zero": bool(
+            contrasts["learner_median_price"]["paired_bootstrap_ci95"][0] > 0
+            or contrasts["learner_median_price"]["paired_bootstrap_ci95"][1] < 0
+        ),
+        "claim_boundary": (
+            "Paired common-seed simulation contrast under a calibrated steering "
+            "penalty; not a causal estimate of the proprietary live router."
+        ),
+    }
     _write_run(result, "esim4")
+    return result
+
+
+def run_esim4b(seeds: int = 4, train_epochs: int = 300_000) -> dict:
+    """R4: the steering counterfactual in the CALIBRATED markets. In each
+    bundle market the learner takes the slot of the most-undercutting
+    non-author provider; co-players are the fitted species at their real
+    prices; arms: penalty off / any-cutter / cheapest-only (the measured
+    conditional). Grid is in anchor multiples of the market's anchor."""
+    from .routers_steering import CutPenaltyRouter
+    from .strategies_qlearn import TabularQAgent, expected_profits, price_grid
+
+    _require_esim1_pass()
+    revs = sorted(CAL_OUT.glob("*/bundle.json"))
+    bundle = json.loads(revs[-1].read_text())
+    arms = {
+        "penalty_off": lambda: InversePriceRouter(2.0),
+        "penalty_any": lambda: CutPenaltyRouter(2.0, theta=0.17, memory=7),
+        "penalty_cheapest": lambda: CutPenaltyRouter(
+            2.0, theta=0.17, memory=7, cheapest_only=True
+        ),
+    }
+    out: dict[str, dict] = {}
+    for model_id, m in bundle["markets"].items():
+        provs = m["providers"]
+        anchor = float(m["anchor_price"])
+        below = [
+            (name, v) for name, v in provs.items()
+            if not v["is_author"] and v["anchor_class"].startswith("below")
+        ]
+        if not below:
+            continue
+        slot = min(below, key=lambda kv: kv[1]["price"])[0]
+        min_price = min(v["price"] for v in provs.values())
+        tiers = bundle["cost"].get("provider_tiers", {})
+        costs = {
+            name: _marginal_cost(tiers.get(name, "unknown"), float(v["price"]),
+                                 min_price, bundle["cost"])
+            for name, v in provs.items()
+        }
+        grid = price_grid(anchor)
+        market_out = {}
+        for arm, mk_router in arms.items():
+            rows = []
+            for seed in range(seeds):
+                router = mk_router()
+                strategies = {}
+                for i, (name, v) in enumerate(sorted(provs.items())):
+                    if name == slot:
+                        continue
+                    cls = v["anchor_class"]
+                    price = float(v["price"])
+                    if v["is_author"] or cls not in bundle["species"]:
+                        strategies[name] = StaticStrategy(price)
+                    else:
+                        margin = float(np.log(price / anchor)) if price > 0 else 0.0
+                        strategies[name] = species_strategy(
+                            cls, bundle["species"],
+                            min((p for p, vv in provs.items() if vv["is_author"]),
+                                key=lambda p: provs[p]["price"]),
+                            margin_log=margin if cls in ("below_static", "above") else None,
+                            seed=seed * 1000 + i,
+                        )
+                specs = {
+                    name: ProviderSpec(provider=name, marginal_cost=costs[name],
+                                       physical_capacity=1)
+                    for name in provs
+                }
+                agent = TabularQAgent(grid, seed=seed)
+                quotes = {name: float(v["price"]) for name, v in provs.items()}
+                own_idx = int(np.argmin(np.abs(grid - quotes[slot])))
+                for _t in range(train_epochs):
+                    rival_min = min(q for p, q in quotes.items() if p != slot)
+                    s = agent.state_index(own_idx, int(np.argmin(np.abs(grid - rival_min))))
+                    a = agent.act_index(s)
+                    quotes[slot] = float(grid[a])
+                    for p, strat in strategies.items():
+                        quotes[p] = strat.act(specs[p], dict(quotes)).quote
+                    pis = expected_profits(quotes, costs, router, 1.0)
+                    if hasattr(router, "advance"):
+                        router.advance(quotes)
+                    rival_min2 = min(q for p, q in quotes.items() if p != slot)
+                    s2 = agent.state_index(a, int(np.argmin(np.abs(grid - rival_min2))))
+                    agent.update(s, a, pis[slot], s2)
+                    own_idx = a
+                prices = []
+                for _t in range(56):
+                    rival_min = min(q for p, q in quotes.items() if p != slot)
+                    s = agent.state_index(
+                        int(np.argmin(np.abs(grid - quotes[slot]))),
+                        int(np.argmin(np.abs(grid - rival_min))),
+                    )
+                    quotes[slot] = float(grid[agent.greedy(s)])
+                    for p, strat in strategies.items():
+                        quotes[p] = strat.act(specs[p], dict(quotes)).quote
+                    if hasattr(router, "advance"):
+                        router.advance(quotes)
+                    prices.append(quotes[slot])
+                rows.append({
+                    "seed": seed,
+                    "learner_median_rel_anchor": round(float(
+                        np.median(prices) / anchor), 4),
+                    "market_mean_rel_anchor": round(float(
+                        np.mean(list(quotes.values())) / anchor), 4),
+                })
+            market_out[arm] = rows
+        out[model_id] = {"slot": slot, "n_providers": len(provs), "arms": market_out}
+    result = {"experiment": "E-SIM4b", "markets": out, "seeds": seeds,
+              "theta": 0.17, "memory": 7, "bundle_rev": bundle["rev"]}
+    _write_run(result, "esim4b")
     return result
 
 
@@ -476,6 +730,8 @@ def main() -> None:
         print(json.dumps(run_esim3(seeds=args.seeds), indent=1, default=str))
     elif args.experiment == "E-SIM4":
         print(json.dumps(run_esim4(seeds=args.seeds), indent=1, default=str))
+    elif args.experiment == "E-SIM4b":
+        print(json.dumps(run_esim4b(seeds=args.seeds), indent=1, default=str))
     else:
         raise SystemExit(f"unknown experiment {args.experiment}")
 
