@@ -1,0 +1,58 @@
+provider,tier,confidence,note
+Azure,dc_hyperscaler,high,
+Google,dc_hyperscaler,high,vertex
+Google Vertex,dc_hyperscaler,high,
+Amazon Bedrock,dc_hyperscaler,high,
+Cloudflare,dc_hyperscaler,high,
+DigitalOcean,dc_hyperscaler,high,
+OVH,dc_hyperscaler,high,
+Scaleway,dc_hyperscaler,high,
+IBM,dc_hyperscaler,high,watsonx
+Oracle,dc_hyperscaler,high,
+Alibaba,dc_hyperscaler,med,
+Baidu,dc_hyperscaler,med,
+Tencent,dc_hyperscaler,med,
+StreamLake,dc_hyperscaler,med,kuaishou cloud brand
+Ionos,dc_hyperscaler,med,
+Leaseweb,dc_hyperscaler,med,
+Vultr,dc_hyperscaler,med,
+Together,funded_neocloud,high,$500M+ owns clusters
+Fireworks,funded_neocloud,high,
+BaseTen,funded_neocloud,high,$135M+
+Lambda,funded_neocloud,high,owns DCs
+Nebius,funded_neocloud,high,owns DCs public
+CoreWeave,funded_neocloud,high,owns DCs public
+Crusoe,funded_neocloud,high,owns DCs
+WandB,funded_neocloud,med,coreweave-owned
+GMICloud,funded_neocloud,med,~$80-100M raised
+Nscale,funded_neocloud,med,
+SiliconFlow,funded_neocloud,low,
+Groq,own_silicon,high,
+Cerebras,own_silicon,high,
+SambaNova,own_silicon,high,
+DeepInfra,small_startup,med,~$18M
+Novita,small_startup,med,
+NovitaAI,small_startup,med,
+AtlasCloud,small_startup,med,
+NextBit,small_startup,med,
+Parasail,small_startup,med,
+Phala,small_startup,med,web3
+Venice,small_startup,med,
+Chutes,small_startup,high,bittensor
+Friendli,small_startup,med,
+Hyperbolic,small_startup,med,
+Targon,small_startup,med,
+Kluster,small_startup,med,
+Featherless,small_startup,med,
+Avian,small_startup,med,
+Mancer,small_startup,med,
+Enfer,small_startup,low,
+CrofAI,small_startup,low,
+OpenInference,small_startup,low,
+AkashML,small_startup,med,decentralized
+Inceptron,small_startup,low,
+Wafer,small_startup,low,
+Ambient,small_startup,low,
+NineteenAI,small_startup,low,
+InferenceNet,small_startup,low,
+Koyeb,small_startup,low,

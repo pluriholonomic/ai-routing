@@ -1,0 +1,88 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "n_pairs": 368,
+  "n_models_with_author": 95,
+  "anchor_class_shares": {
+    "below": 0.41,
+    "above": 0.345,
+    "adopter": 0.245
+  },
+  "tier_x_class_share": {
+    "dc_hyperscaler": {
+      "above": 0.404,
+      "adopter": 0.312,
+      "below": 0.284
+    },
+    "funded_neocloud": {
+      "above": 0.292,
+      "adopter": 0.246,
+      "below": 0.462
+    },
+    "own_silicon": {
+      "above": 0.75,
+      "adopter": 0.25,
+      "below": 0.0
+    },
+    "small_startup": {
+      "above": 0.347,
+      "adopter": 0.22,
+      "below": 0.434
+    },
+    "unknown": {
+      "above": 0.059,
+      "adopter": 0.059,
+      "below": 0.882
+    }
+  },
+  "behavior_by_class": {
+    "above": {
+      "n": 127,
+      "changes_per_day": 0.0454,
+      "median_rel": 0.291
+    },
+    "adopter": {
+      "n": 90,
+      "changes_per_day": 0.004,
+      "median_rel": 0.0
+    },
+    "below": {
+      "n": 151,
+      "changes_per_day": 0.23,
+      "median_rel": -0.4055
+    }
+  },
+  "behavior_by_tier": {
+    "dc_hyperscaler": {
+      "n": 109,
+      "adopter_share": 0.3119,
+      "below_share": 0.2844,
+      "changes_per_day": 0.1735
+    },
+    "funded_neocloud": {
+      "n": 65,
+      "adopter_share": 0.2462,
+      "below_share": 0.4615,
+      "changes_per_day": 0.0078
+    },
+    "own_silicon": {
+      "n": 4,
+      "adopter_share": 0.25,
+      "below_share": 0.0,
+      "changes_per_day": 0.0227
+    },
+    "small_startup": {
+      "n": 173,
+      "adopter_share": 0.2197,
+      "below_share": 0.4335,
+      "changes_per_day": 0.1124
+    },
+    "unknown": {
+      "n": 17,
+      "adopter_share": 0.0588,
+      "below_share": 0.8824,
+      "changes_per_day": 0.1123
+    }
+  },
+  "read": "adopters = the Together/BaseTen default-at-author-price pattern; below-deviators = the undercutting cohort; compare repricing activity and tier composition across classes",
+  "claim_boundary": "Capital tiers are a manually-curated registry with confidence flags (funding/ownership approximations, not audited financials); anchor classes only defined where an author-operated endpoint exists; author identification via the alias crosswalk."
+}
