@@ -332,8 +332,7 @@ solving (1/n)(p−c) = [(1−d)^b/((1−d)^b+n−1)](p−c+Δ). At calibrated
 values (n=3, d=0.2, Δ=0.08): **b* = 0.63** — a *modest* quality exponent
 suffices, and b* falls with n. The required q is not hypothetical: our
 deployed evaluation probes already produce per-provider graded-accuracy
-and output-consistency scores daily. [E-MECH2: learning agents choosing (price, quality) under
-b ∈ {0, 0.5, 1, 2}; results below.]
+and output-consistency scores daily. E-MECH2 (5 seeds, 600k epochs): learned hi-quality share rises 0.27 (b = 0, the deployed quality-blind rule) → 0.40 (b = 0.5) → 0.67 (b = 1) → 0.53 (b = 2). The direction matches the theory — quality weighting shifts learned play toward quality provision, with the largest jump crossing b* — but the bifurcation is noisy rather than sharp: the quality margin (Δ = 0.08) is small relative to price-learning noise in the doubled action space, and at b = 2 quality-weight and price competition interact. We report this as directional confirmation of the closed-form threshold, not a sharp learnability boundary.
 
 **7.3 Fee decoupling.** Ad-valorem fees make the platform's objective
 ∝ flow-weighted price (§6). A per-request (or per-token-served) flat fee

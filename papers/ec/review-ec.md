@@ -92,3 +92,15 @@ measured-mechanism identification, the steering theorem with its
 empirical parameter, and the platform-conflict result are each
 independently sufficient EC contributions, and together they make the
 strongest paper in this space I have reviewed.
+
+
+## Addendum (post-revision check)
+
+Conditions (i)–(iv) verified resolved: (i) the E-MECH2 table is now in
+the text with appropriately honest language — the learner evidence is
+directional (0.27 → 0.67 across b), not a sharp bifurcation, and the
+paper says so rather than overclaiming; this is the right call and does
+not weaken the design recommendation (the deployed b = 0 is the worst
+arm measured). (ii) resilience-adjusted frontier with the ~5% threshold
+stated; (iii) cost-band corners all monotone; (iv) scope sentence in the
+abstract. The ACCEPT stands.

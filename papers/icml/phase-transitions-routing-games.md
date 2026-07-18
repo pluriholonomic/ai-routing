@@ -176,8 +176,7 @@ thickness-adaptive a*(n) = n/(ℓ*(n−1)) pins markups and removes the
 critical line. **5.2 Quality learnability threshold.** Binary quality
 action; shading saves Δ = 0.08 at hidden damage d = 0.2. Weight
 q^b·p^(−a): all-high-quality is an equilibrium iff b ≥ b* = 0.63 (closed
-form). Learners bifurcate exactly [E-MECH2]: b = 0 (deployed) → learned
-shading; b ≥ 1 → learned quality. The q signal exists operationally (our
+form). E-MECH2 (5 seeds, 600k epochs): learned hi-quality share rises 0.27 (b = 0, the deployed quality-blind rule) → 0.40 (b = 0.5) → 0.67 (b = 1) → 0.53 (b = 2). The direction matches the theory — quality weighting shifts learned play toward quality provision, with the largest jump crossing b* — but the bifurcation is noisy rather than sharp: the quality margin (Δ = 0.08) is small relative to price-learning noise in the doubled action space, and at b = 2 quality-weight and price competition interact. We report this as directional confirmation of the closed-form threshold, not a sharp learnability boundary. The q signal exists operationally (our
 deployed daily evaluation probes: graded benchmarks and greedy-output
 hashes per provider).
 
