@@ -1,0 +1,76 @@
+{
+  "evidence_status": "provisional_descriptive",
+  "cohort_counts": {
+    "below_static": 128,
+    "above": 127,
+    "adopter": 90,
+    "below_active": 23
+  },
+  "bm_ladder_vs_below_active": {
+    "above": {
+      "median": 0.52,
+      "mean": 0.689,
+      "count": 96
+    },
+    "adopter": {
+      "median": 0.223,
+      "mean": 0.342,
+      "count": 99
+    },
+    "below_static": {
+      "median": 0.047,
+      "mean": 0.091,
+      "count": 143
+    }
+  },
+  "congestion_pricing_by_cohort": {
+    "above": {
+      "event_rate": 0.044,
+      "corr_event_util": null,
+      "n": 119
+    },
+    "adopter": {
+      "event_rate": 0.005,
+      "corr_event_util": null,
+      "n": 208
+    },
+    "below_active": {
+      "event_rate": 0.284,
+      "corr_event_util": 0.144,
+      "n": 69
+    },
+    "below_static": {
+      "event_rate": 0.0,
+      "corr_event_util": null,
+      "n": 242
+    }
+  },
+  "congestion_rationing_by_cohort": {
+    "above": {
+      "rl_dm_mean": -0.0011,
+      "rl_raw": 0.1357,
+      "util_median": 1.2265,
+      "n": 298
+    },
+    "adopter": {
+      "rl_dm_mean": 0.0349,
+      "rl_raw": 0.1921,
+      "util_median": 1.3324,
+      "n": 438
+    },
+    "below_active": {
+      "rl_dm_mean": -0.1138,
+      "rl_raw": 0.0839,
+      "util_median": 0.7971,
+      "n": 116
+    },
+    "below_static": {
+      "rl_dm_mean": -0.0044,
+      "rl_raw": 0.2057,
+      "util_median": 1.1795,
+      "n": 390
+    }
+  },
+  "read": "B-M ordering holds across cohorts but the frequency-attributable premium is only the below_static-vs-below_active gap (~5%); adopter/above premia are positioning, not commitment. Congestion pricing is infeasible for ~94% of pairs (they never reprice) and at most weak among active undercutters; rationing intensity is inversely ordered in repricing flexibility \u2014 the menu-rigidity mechanism at cohort level.",
+  "claim_boundary": "Cohorts defined on the same panel as outcomes (no holdout yet); utilization is router-estimated; below_active is small (23 pairs)."
+}
