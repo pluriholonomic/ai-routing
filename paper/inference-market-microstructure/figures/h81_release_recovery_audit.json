@@ -1,0 +1,93 @@
+{
+  "binary_outcomes_missing": 1,
+  "claim_boundary": "The recovery reports immutable missing-outcome identified sets for the frozen owned-account prefix. It does not create complete-data point inference, a Holm decision, market-wide routing, provider intent, equivalence, or welfare evidence.",
+  "confirmatory_prefix_blocks": 133,
+  "contrast_identified_sets": {
+    "fallback_option": {
+      "design_simultaneous_ci_high": null,
+      "design_simultaneous_ci_low": null,
+      "holm_p_greater": null,
+      "lower": 0.0444444444444444,
+      "negative_n": 45,
+      "positive_n": 39,
+      "randomization_p_greater": null,
+      "upper": 0.06666666666666665
+    },
+    "hidden_selection": {
+      "design_simultaneous_ci_high": 0.38607876574154787,
+      "design_simultaneous_ci_low": -0.38607876574154787,
+      "holm_p_greater": null,
+      "lower": 0.0,
+      "negative_n": 39,
+      "positive_n": 49,
+      "randomization_p_greater": null,
+      "upper": 0.0
+    },
+    "total_delegation": {
+      "design_simultaneous_ci_high": null,
+      "design_simultaneous_ci_low": null,
+      "holm_p_greater": null,
+      "lower": 0.0444444444444444,
+      "negative_n": 45,
+      "positive_n": 49,
+      "randomization_p_greater": null,
+      "upper": 0.06666666666666665
+    }
+  },
+  "files": [
+    "h81_release_recovery.pdf",
+    "h81_release_recovery.png",
+    "h81_release_recovery_table.tex",
+    "h81_release_recovery_paragraph.tex"
+  ],
+  "formal_primary_decision_available": false,
+  "paper_promotion_permitted_under_dated_recovery_amendment": true,
+  "paper_promotion_scope": "identified_sets_and_missingness_boundary_only",
+  "policy_identified_sets": {
+    "delegated_default": {
+      "lower": 1.0,
+      "n": 49,
+      "outcomes_missing": 0,
+      "outcomes_observed": 49,
+      "upper": 1.0
+    },
+    "price_only_no_fallback": {
+      "lower": 0.9333333333333333,
+      "n": 45,
+      "outcomes_missing": 1,
+      "outcomes_observed": 44,
+      "upper": 0.9555555555555556
+    },
+    "price_order_fallback": {
+      "lower": 1.0,
+      "n": 39,
+      "outcomes_missing": 0,
+      "outcomes_observed": 39,
+      "upper": 1.0
+    }
+  },
+  "primary_holm_family_complete": false,
+  "release_gate_prefix_blocks": 134,
+  "schema_version": "h81-release-missingness-recovery-v1",
+  "source_code_commit": "ce23fb46db7f2df7ab4c27055761de7ce09a0815",
+  "source_dataset_revision": "b31f9aa298bfcad020a8751c625c51a7c88fa1ac",
+  "source_first_access_marker_commit": "f66fb7fb557305a2fc492653afb97b32a5202ee2",
+  "source_manifest_sha256": "8150c182d455edc0c97662fcfe141bf369026246358c4415b5a55f49dab9b925",
+  "source_outcome_requery_permitted": false,
+  "source_release_commit": null,
+  "status": "missingness_aware_recovery_rendered",
+  "terminal_gate_block_policy": "price_order_fallback",
+  "validated_source_file_hashes": {
+    "assignment_only_gate.json": "5189677a815fa12bb885cbefd164004cf3e4b553f8f445ed771aac4ddab8d185",
+    "first_outcome_access.json": "ea00c7db5b35970096c658c37d465e065ace301d5003e4d48864614db36e2263",
+    "h81_contrasts.parquet": "825eadcf099d3d1eaed7ad220abee797b51006ebb349054beeafa1b2119b1daf",
+    "h81_eligibility_models.parquet": "a684bf58e632225a71d73a49a78b77a4ec6576ff8a186127ef0f62ba5bca4054",
+    "h81_eligibility_rows.parquet": "baffda4f7181e2a58728172db9a0a409cf577f8bad84d42df3825fd195c9dbd6",
+    "h81_eligibility_runs.parquet": "80d55ca7dc30d46334f8fb764e7833af04369175709ec2a1ec301fa8e96059ea",
+    "h81_intended_assignment_ledger.parquet": "66e0b72367d498709bc602b51c255b2652741e10da0a8c05ea2a24e0954c0dc4",
+    "h81_model_policy_panel.parquet": "acc2e36d1112803dc4fc3c2870fcf3339b4e46414ca1765e8268c58ada3eae63",
+    "h81_policy_panel.parquet": "9f2e673699a33cf10b8f5abe997e5fe6fde8191c18f797a33a58e8074bc23345",
+    "h81_release_report_error.json": "73a8494772f6391b5923d849657f706649e0b0262ec1aa87cc57812db375a024",
+    "h81_summary.json": "e2bd0b3c985bc4da90eafd9c97eabb230ce53e854c6525180d9c18a0c844718a"
+  }
+}
