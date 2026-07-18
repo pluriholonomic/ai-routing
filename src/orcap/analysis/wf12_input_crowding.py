@@ -128,6 +128,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     imps = imp.sort_values("dt").assign(dimp=lambda d: d.impact_pct.diff())
     for c in ("gpu_market", "dc_owner"):
         s = agg[agg.cls == c].sort_values("dt").merge(imps, on="dt")
+        s = s[s.ceil > 0]
         s = s.assign(dcap=np.log(s.ceil).diff(), dimp_prev=s.dimp.shift(1))
         ok = s.dropna(subset=["dcap", "dimp_prev"])
         if len(ok) >= 5:

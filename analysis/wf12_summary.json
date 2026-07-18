@@ -9,12 +9,12 @@
   "rationing_impact_beta_dc_owner_base": 0.0231,
   "rationing_impact_x_spotdep_pp_per_pt": -0.0722,
   "interaction_ci95": [
-    -0.1336,
-    -0.0126
+    -0.1403,
+    -0.0023
   ],
   "capacity_growth_vs_prior_day_thinning_corr": {
-    "gpu_market": NaN,
-    "dc_owner": NaN
+    "gpu_market": 0.29,
+    "dc_owner": -0.14
   },
   "read": "naive crowding (interaction > 0) REJECTED at first pass; the negative interaction + sequencing pattern fit endogenous thinning: spot-dependent sourcing thins the book and relieves their own rationing. No posted-price channel exists (within-model class gap ~ 0) \u2014 if crowding binds it taxes the FULL price (rationing/capacity), not the menu.",
   "claim_boundary": "11 joint days; provider capacity classes are name-heuristics (Together/Fireworks/Baseten own clusters AND rent \u2014 the 'gpu_market' class mixes exposure); fortuna ceilings are router estimates; the VAR and the exogenous-supply instrument gate at 60 days."
