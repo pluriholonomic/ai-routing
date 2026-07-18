@@ -29,6 +29,9 @@ dependencies = [
 bittensor = [
     "bittensor==10.5.0",
 ]
+router-conformance = [
+    "litellm==1.92.0",
+]
 
 [project.scripts]
 orcap = "orcap.cli:main"
