@@ -1,0 +1,39 @@
+name: evals
+# Daily eval probes: pinned quality fingerprints (hash agreement), graded
+# benchmark items (MMLU/GSM8K vs ground truth), and routing-by-shape
+# default probes. Artifact-buffered like the other collectors; HF gets the
+# nightly consolidated push. Cost bound: a few cents per day.
+
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: evals
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: run eval probes
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: uv run python -m orcap.capture_evals
+      - name: buffer output as workflow artifact (HF gets one consolidated push nightly)
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-${{ github.run_id }}
+          path: data/
+          retention-days: 7
+          compression-level: 0

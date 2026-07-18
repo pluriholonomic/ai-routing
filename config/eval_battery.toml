@@ -1,0 +1,53 @@
+# Versioned eval-probe battery (v1). Deterministic-answer prompts for
+# cross-provider greedy-output agreement testing; outputs are HASHED, never
+# stored. max_tokens per prompt kept small for cost bounds.
+version = "v1-20260718"
+
+[[prompts]]
+id = "arith1"
+text = "Compute 847 * 293. Reply with only the number."
+max_tokens = 16
+[[prompts]]
+id = "arith2"
+text = "What is the remainder when 2^20 is divided by 1000? Reply with only the number."
+max_tokens = 16
+[[prompts]]
+id = "string1"
+text = "Reverse the string 'inference' and reply with only the reversed string."
+max_tokens = 16
+[[prompts]]
+id = "code1"
+text = "What does this Python print? print(sum(range(10)) * len('abc')) Reply with only the output."
+max_tokens = 16
+[[prompts]]
+id = "code2"
+text = "What does this Python print? print(sorted(set('mississippi'))) Reply with only the output."
+max_tokens = 32
+[[prompts]]
+id = "logic1"
+text = "If all bloops are razzies and no razzies are lazzies, can a bloop be a lazzy? Reply yes or no only."
+max_tokens = 8
+[[prompts]]
+id = "fact1"
+text = "What is the chemical symbol for tungsten? Reply with only the symbol."
+max_tokens = 8
+[[prompts]]
+id = "extract1"
+text = "From 'Order #4821 shipped to Alice on 2024-03-15', extract the order number. Reply with only the number."
+max_tokens = 8
+[[prompts]]
+id = "json1"
+text = "Output a JSON object with keys a=1 and b=2, minified, nothing else."
+max_tokens = 24
+[[prompts]]
+id = "open1"
+text = "Explain in one sentence why the sky is blue."
+max_tokens = 48
+[[prompts]]
+id = "open2"
+text = "Write a haiku about queues."
+max_tokens = 48
+[[prompts]]
+id = "count1"
+text = "How many letter r's are in 'strawberry'? Reply with only the number."
+max_tokens = 8
