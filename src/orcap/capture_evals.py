@@ -64,6 +64,7 @@ MODELS_URL = f"{BASE_URL}/api/v1/models"
 N_MODELS = int(os.environ.get("ORCAP_EVAL_MODELS", "4"))
 N_PROVIDERS = int(os.environ.get("ORCAP_EVAL_PROVIDERS", "4"))
 PAD_TOKENS = 2000
+CIRCUIT_BREAK = 5  # consecutive failures before skipping a provider's remaining items
 
 def _headers() -> dict[str, str]:
     return {
@@ -158,11 +159,15 @@ def fingerprint_rows(client: httpx.Client, model_id: str, run_ts: str, dt: str,
                      bat: dict[str, Any]) -> list[dict[str, Any]]:
     rows = []
     eps = quoted_providers(client, model_id)
+    dead: dict[str, int] = {}
     # item-major order: consecutive requests hit DIFFERENT providers,
     # spacing out any one provider's per-key rate limit
     for p in bat["prompts"]:
         for ep in eps:
+            if dead.get(ep["provider"], 0) >= CIRCUIT_BREAK:
+                continue
             resp, status = _chat(client, model_id, p["text"], p["max_tokens"], ep["provider"])
+            dead[ep["provider"]] = 0 if resp else dead.get(ep["provider"], 0) + 1
             text = ""
             usage = {}
             finish = None
@@ -211,9 +216,13 @@ def graded_rows(client: httpx.Client, model_id: str, run_ts: str, dt: str,
                 items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows = []
     eps = quoted_providers(client, model_id)
+    dead: dict[str, int] = {}
     for it in items:
         for ep in eps:
+            if dead.get(ep["provider"], 0) >= CIRCUIT_BREAK:
+                continue
             resp, status = _chat(client, model_id, it["prompt"], it["max_tokens"], ep["provider"])
+            dead[ep["provider"]] = 0 if resp else dead.get(ep["provider"], 0) + 1
             text = ""
             usage = {}
             finish = None
