@@ -1,4 +1,71 @@
-# Referee report — "The Router Is the Demand Curve" (v1)
+# Referee reports — "The Router Is the Demand Curve"
+
+## Round 2 (final) — decision: ACCEPT (minor)
+
+All four required items landed, and two of them improved the paper beyond
+what the round-1 report asked for:
+
+**R1 resolved, upgraded.** The ε-corrected corollary is exactly what was
+requested: the FOC p/(p−c) = a(n−1)/n + |ε|/n is proved with the same
+single-crossing argument, verified against the full profit function at
+five (n, a, ε) points, and the duopoly headline "41× marginal cost at the
+measured elasticity" is both more defensible and more striking than the
+ceiling statement it replaces. The reviewer verifies the algebra: at
+n=2, a=2, |ε|=0.05, R = 1.025 and R/(R−1) = 41. Correct. One residual
+modeling choice — the inclusive-value aggregator P = (Σp^(−a))^(−1/a) for
+mapping the measured token-demand elasticity into the index — should be
+stated as such (minor).
+
+**R2 resolved honestly.** The symmetric-profile coincidence of the two
+conditioning rules is correct and neatly argued; the calibrated experiment
+runs both variants rather than picking the favorable one.
+
+**R3 resolved.** The echo/emergent split is now explicit and the paper
+leads with the two moments that carry weight. This reviewer considers the
+untargeted flow-elasticity replication the single best empirical fact in
+the paper.
+
+**R4 resolved, with the right scoping.** The calibrated steering
+experiment shows ceiling convergence in 4/4 markets under the broad rule,
+and — under the strict measured rule — an +81% rise in the bottom-of-book
+quote in the one market where the learner occupies the cheapest region,
+with escape elsewhere. The authors correctly note the unweighted market
+mean understates the effect under 1/p² flow concentration, and correctly
+scope the +81% to a single market (the panel has only four author-anchored
+calibrated markets; this is a data limit, not a design flaw). The
+bracketing framing (broad vs strict rule) is the honest way to handle the
+unobserved treatment of non-cheapest cutters.
+
+**Remaining minor items (camera-ready):** (i) state the inclusive-value
+mapping assumption; (ii) figures: the a-dial curve (theory Nash + learned
+prices overlaid) and the E-SIM4b per-market bars would carry §6; (iii)
+appendix with the six-line proofs written out; (iv) the 30-day
+recalibration already registered in the companion should be referenced as
+the standing robustness commitment for the fitted θ and species margins.
+
+**On theoretical rigor (the question this review was asked to answer):**
+the economic results ARE rigorous as now stated. Theorem 1 and Corollary 1
+are complete proofs at the level of an EC paper (single-crossing →
+uniqueness of best response; FOC algebra; corner verification; limits);
+Theorem 2's parts (i), (ii), (iv) are complete, and (iii) is an explicit
+computation with a numerically certified root — all thirteen closed-form
+claims are enforced by CI tests against continuum numerics. The knife-edge
+and floor statements are correctly attributed to the classical logit
+literature with the contribution located in the documented-rule mapping,
+the measured-parameter placement, and the steering theorem. No claim in
+the paper now outruns its proof or its data.
+
+**Decision: ACCEPT with minor revisions.** The combination — a documented
+allocation rule treated as a demand primitive, a markup floor that entry
+cannot remove, a measured steering parameter proved to sit deep inside its
+own deterrence region, and a pre-registered validated environment in which
+learning agents reproduce the observed market's pathologies — is novel,
+correct as stated, and of clear interest to both the EC mechanism-design
+audience and the NeurIPS multi-agent-learning audience.
+
+---
+
+# Round 1 report (historical) — "The Router Is the Demand Curve" (v1)
 
 *Venue standard: ACM EC / NeurIPS (economics-track). Reviewer instructed to
 assess specifically whether the economic results are, or can be made,

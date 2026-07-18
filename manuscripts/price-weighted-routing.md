@@ -172,7 +172,10 @@ gives R = 1.025 and
 
     p* = 41·c :
 
-the equilibrium duopoly price is forty-one times marginal cost. (Verified
+(The inclusive-value aggregator P is a modeling choice for mapping the
+measured token-demand elasticity into a price index; any aggregator with
+∂log P/∂log p_i = s_i + o(s_i) gives the same FOC to first order.)
+The equilibrium duopoly price is forty-one times marginal cost. (Verified
 against the full profit function to 4 decimals at (n, a, ε) ∈
 {(2,2,−.05), (3,2,−.05), (2,2,−.2), (5,2,−.05), (2,2,−1)}.) The
 elasticity wedge measured in the companion paper is thus a structural
@@ -326,7 +329,9 @@ hyperparameters): mean converged price 1.53 (a=0, uniform routing), 1.30
 (a=1; unbounded-Nash regime per Theorem 1(ii); Δ undefined there since
 π_N = π_M), 0.94 (a=2; Δ = 0.08 ± 0.13, single-seed runs with longer
 stability windows reach Δ = 0.47), 0.60 (a=4; Δ = 0.11 ± 0.07),
-competitive floor at a ≥ 8 (Nash below the grid; Δ = 0). A finer grid at
+competitive floor at a ≥ 8 (Nash below the grid; Δ = 0). Figure:
+`output/market_env/figs/exponent_dial.png` (theory curve, no-interior
+region shaded, learned points overlaid). A finer grid at
 n=3 around the knife edge (a = 1.5 exactly on it) shows learning friction
 regularizes the theory's singularity: at a = 1.5 learners reach 1.10, not
 the ceiling 1.6 — near the edge the profit gradient toward higher prices
@@ -335,12 +340,29 @@ a = 2.5 they sustain 0.88 against Nash 0.5 (Δ = 0.31). The learned price
 is a smoothed, strictly decreasing function of a: the dial is robust to
 bounded rationality even where the equilibrium correspondence is not.
 
-**E-SIM4 — steering elevates prices.** Identical worlds ± the measured
-cut-penalty (θ=0.17, M=7), 8/8 seeds each arm: without the penalty the
-learner in the undercutter slot converges to 0.72 (one tick below the
-interior region); with it, to the *menu ceiling* (1.60), and market mean
-price rises **0.96 → 1.14 (+18%)**. Theorem 2 predicts exactly this: at
-θ far below θ*, the best learnable reply is never-cut-price-high.
+**E-SIM4 — steering elevates prices.** Stylized 5-provider world ± the
+measured cut-penalty (θ=0.17, M=7), 8/8 seeds each arm: without the
+penalty the learner in the undercutter slot converges to 0.72; with it, to
+the *menu ceiling* (1.60), and market mean price rises **0.96 → 1.14
+(+18%)**. Theorem 2 predicts exactly this: at θ far below θ*, the best
+learnable reply is never-cut-price-high.
+
+**E-SIM4b — steering in the calibrated markets, both penalty variants.**
+The learner takes the real most-undercutting slot in each of the four
+calibrated markets (17–26 providers); arms: off / any-cutter /
+cheapest-only (the measured conditional). Any-cutter: the learner reaches
+the ceiling in **4/4 markets**; unweighted market mean rises +1 to +7pp —
+smaller than the stylized +18% because one agent is diluted across a deep
+book (and the unweighted mean understates the effect: under 1/p² routing,
+flow concentrates at the bottom of the book, exactly where the learner
+sits). Cheapest-only: the penalty binds only when the learner occupies the
+cheapest region — there (glm-5.1, the StreamLake slot) the bottom-of-book
+quote rises **0.40 → 0.725× anchor (+81%)**, i.e., the flow-dominant
+price nearly doubles; in the other markets the learner escapes by cutting
+above the minimum quote, exactly as the Theorem 2 remark predicts. The
+two variants bracket the unobserved rule: steering elevates prices
+everywhere under the broad reading, and elevates precisely the
+flow-dominant bottom-of-book price under the strict measured reading.
 
 *(On seed unanimity in E-SIM2/4: training uses expected-allocation
 rewards, so the environment is deterministic given actions; seeds enter
@@ -378,12 +400,15 @@ behavioral heterogeneity, and platform-steering counterfactuals.
 
 ## 8. Limitations and scope
 
-Theory assumes captive unit demand (measured end-user elasticity −0.05;
-the outside-option extension in Theorem 1(iii) bounds its effect), no
-capacity binding, and the documented rule rather than the (closed-source)
-implementation — our probe panel verifies the rule's realized behavior for
-one buyer tier only. The panel behind calibration is short (11–14 days at
-freeze; 30-day re-estimation registered); costs are identified sets; the
+Theory assumes captive unit demand in the baseline (Corollary 1 supplies
+the measured-elasticity version), no capacity binding, and the documented
+rule rather than the (closed-source) implementation — our probe panel
+verifies the rule's realized behavior for one buyer tier only. The panel
+behind calibration is short (11–14 days at freeze); the registered 30-day
+re-estimation (~2026-08-06, shared with the companion paper) is the
+standing robustness commitment for the fitted θ, species margins, and
+hazards — sign flips there reopen this paper's calibrated claims under the
+same rule that governs the companion. Costs are identified sets; the
 cut-penalty θ is a single scalar from one conditional slice. Learning
 results use tabular Q at Calvano hyperparameters; deep-RL and LLM-agent
 tiers are built but not yet confirmatory. The species world treats author
@@ -392,9 +417,72 @@ repricing as exogenous.
 ## 9. Conclusion
 
 The router is the demand curve. Its documented parameters place the
-marketplace in a regime where duopoly prices sit at the menu ceiling, entry
-cannot push markups below 100%, and the platform's own anti-cut steering
-pays providers to keep prices high. The observed market — rigid administered
-menus, an anchor-tie atom, undercutters whose cutting looks futile — is
-what equilibrium under this mechanism looks like. The lever is the
-mechanism, not the conduct.
+marketplace in a regime where duopoly prices sit at the menu ceiling (41×
+cost at the measured outside elasticity), entry cannot push markups below
+100%, and the platform's own anti-cut steering pays providers to keep
+prices high. The observed market — rigid administered menus, an anchor-tie
+atom, undercutters whose cutting looks futile — is what equilibrium under
+this mechanism looks like. The lever is the mechanism, not the conduct.
+
+## Appendix A. Proofs
+
+**Lemma 1.** s_i = w_i/(w_i+W_{−i}), w_i = p_i^(−a), W_{−i} = Σ_{j≠i} w_j
++ w_0. dw_i/dp_i = −(a/p_i)w_i, so ds_i/dp_i = (dw_i/dp_i)·W_{−i}/(w_i+
+W_{−i})² = −(a/p_i)·s_i(1−s_i). ∎
+
+**Lemma 2.** dπ_i/dp_i = D[s_i + (p_i−c_i)ds_i/dp_i] =
+D·s_i·[1 − a(1−s_i)(p_i−c_i)/p_i] = D·s_i·[1 − h(p_i)]. On (c_i, ∞):
+1−s_i(p) is strictly increasing (s_i strictly decreasing by Lemma 1) and
+positive; (p−c_i)/p = 1 − c_i/p is strictly increasing and positive; hence
+h is strictly increasing with h(c_i) = 0. So dπ_i/dp_i > 0 while h < 1 and
+< 0 after: π_i is strictly quasiconcave, and the maximizer on (c_i, p̄] is
+p̄ if h(p̄) ≤ 1, else the unique root of h = 1. ∎
+
+**Theorem 1(i).** At a symmetric interior profile, s_i = 1/n, so h(p) = 1
+reads a(1−1/n)(p−c)/p = 1, i.e. p/(p−c) = a(n−1)/n, giving the formula;
+p* > c requires a(n−1) > n. It is an equilibrium by Lemma 2 (each firm's
+unique best response given the others at p* is p*, since h crosses 1
+exactly there); uniqueness among symmetric interior candidates is
+immediate since the symmetric FOC has one solution. The symmetric corner
+p̄ is not an equilibrium when p̄ > p*: h(p̄) > h(p*) = 1, so a downward
+deviation is strictly profitable. ∎
+
+**Theorem 1(ii).** With all rivals at any common q and a(n−1) ≤ n, at the
+symmetric point h(q) = a(1−1/n)(q−c)/q < a(n−1)/n ≤ 1, so each firm
+strictly gains by raising price; the only symmetric profile with no
+profitable deviation is q = p̄, where quasiconcavity (Lemma 2) rules out
+downward deviations globally. ∎
+
+**Theorem 1(iii).** Any interior equilibrium satisfies each firm's FOC
+h(p_i) = 1 with s_i ∈ (0,1) (any w_0 ≥ 0 only lowers s_i), so
+(p_i−c_i)/p_i = 1/(a(1−s_i)) > 1/a, equivalently p_i > c_i·a/(a−1) for
+a > 1. Tightness: as s_i → 0 (n → ∞ or w_0 → ∞), the FOC gives
+(p−c)/p → 1/a. ∎
+
+**Corollary 1.** With D = D₀P^ε and ∂log P/∂log p_i = s_i,
+dlog π_i/dlog p_i = ε·s_i − a(1−s_i) + p_i/(p_i−c). Setting to zero at the
+symmetric point s = 1/n: p/(p−c) = a(n−1)/n + |ε|/n = R. Single crossing
+holds by the same monotonicity argument (each term of R(p)·(p−c)/p is
+increasing), so the symmetric equilibrium is p* = cR/(R−1) whenever R > 1
+and p̄ > p*. ∎
+
+**Theorem 2(i).** The flagged deviant maximizes
+g(p) = θp^(−2)(p−c)/(θp^(−2)+W) = θ(p−c)/(θ+Wp²). g′ = 0 ⇔
+θ(θ+Wp²) − θ(p−c)·2Wp = 0 ⇔ Wp² − 2Wcp − θ = 0 ⇔
+p = c + √(c² + θ/W) (positive root). Uniqueness by the sign pattern of g′
+(positive before the root, negative after). ∎
+
+**Theorem 2(ii).** v(θ) = g(p_dev(θ)) is continuous; by the envelope
+theorem v′(θ) = ∂g/∂θ = W p²(p−c)/(θ+Wp²)² > 0; v(0) = 0 < v̄ =
+(q−c)/n. If v(1) ≤ v̄ no cut is ever profitable (θ* = 1); otherwise the
+intermediate value theorem gives a unique θ* with v(θ*) = v̄, and
+deterrence holds iff θ ≤ θ*. ∎
+
+**Theorem 2(iii)–(iv).** Direct computation (PV decomposition over the
+flagged window and its complement; substitution of equal prices with one
+weight scaled by θ). The root δ† of max_p PV(p; δ) = 0 is certified
+numerically (0.9895 at the calibrated parameters; test
+`test_theorem2_patience_boundary`). ∎
+
+All closed forms in this appendix are enforced against continuum numerics
+by `tests/market_env/test_theory.py` (13 tests) in CI.
