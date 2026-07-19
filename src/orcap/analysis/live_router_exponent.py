@@ -228,7 +228,7 @@ def _read_tables(root: Path, names: tuple[str, ...]) -> pd.DataFrame:
     for name in names:
         paths = sorted((root / "curated" / name).glob("dt=*/*.parquet"))
         for path in paths:
-            frames.append(pq.read_table(path).to_pandas())
+            frames.append(pq.ParquetFile(path).read().to_pandas())
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 

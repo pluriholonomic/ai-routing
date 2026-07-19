@@ -57,6 +57,8 @@ def test_paid_price_workflows_are_plan_first_schedule_only_and_fail_closed():
         assert "cancel-in-progress: false" in workflow
     assert "ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true'" in response
     assert "ORCAP_PAID_PRICE_EVENTS_ENABLED == 'true'" in events
+    assert 'if Path(snapshot).exists()' in response
+    assert 'if Path(snapshot).exists()' in events
     assert response.index("upload immutable assignment-only plan") < response.index(
         "verify uploaded plan and execute exactly once"
     )

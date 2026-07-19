@@ -5,8 +5,11 @@ from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from orcap.analysis.live_router_exponent import (
+    _read_tables,
     build_observations,
     estimate_windows,
     render_dashboard,
@@ -108,3 +111,16 @@ def test_end_to_end_live_estimator_recovers_exponent_and_gates_thin_windows(tmp_
     text = dashboard.read_text()
     assert "Live owned-routing price exponent" in text
     assert "task_id" not in text
+
+
+def test_table_reader_avoids_partition_column_type_merging(tmp_path):
+    path = tmp_path / "curated/sample/dt=2026-07-19/row.parquet"
+    path.parent.mkdir(parents=True)
+    pq.write_table(
+        pa.Table.from_pandas(
+            pd.DataFrame([{"dt": "2026-07-19", "value": 1}]), preserve_index=False
+        ),
+        path,
+    )
+    frame = _read_tables(tmp_path, ("sample",))
+    assert frame.to_dict("records") == [{"dt": "2026-07-19", "value": 1}]

@@ -32,6 +32,7 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
+          from pathlib import Path
           from orcap.hf_snapshot_retry import snapshot_download_retry
 
           snapshot = snapshot_download_retry(
@@ -41,7 +42,10 @@ jobs:
               max_workers=8,
               stale_if_error=False,
           )
-          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          if Path(snapshot).exists():
+              shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          else:
+              Path("input-data").mkdir(parents=True, exist_ok=True)
           PY
       - name: overlay recent public capture artifacts
         env:
