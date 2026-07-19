@@ -506,6 +506,13 @@ variable `ORCAP_PAID_PRICE_STUDIES_ENABLED=true`, a code-enforced campaign
 window, and the dedicated secret. A skipped disabled workflow should not count
 as a remote-health failure until activation.
 
+Because this repository's GitHub scheduler supplies only about one hourly cron
+slot, the capture-completion run must carry bounded delayed W1 and W2 plan jobs.
+Each delayed job waits only until its preregistered target, freezes the current
+menu, uploads an immutable 90-day plan artifact, and then becomes eligible for
+paid execution. The hourly poll is reserved for W3/W4 recovery; it is not a
+substitute for the +15-minute or +60-minute timing windows.
+
 ### 7.2 Plan-first jobs
 
 Every paid workflow has separate `plan` and `execute` jobs.

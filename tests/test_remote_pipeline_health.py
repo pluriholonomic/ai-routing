@@ -61,6 +61,17 @@ def test_paid_price_workflows_are_plan_first_trigger_scoped_and_fail_closed():
     assert "github.event.workflow_run.conclusion == 'success'" in events
     assert "github.event_name == 'workflow_run'" in events
     assert "github.event_name == 'schedule' &&" not in events
+    assert "needs.plan.outputs.has_tasks == 'true'" in events
+    assert "plan_w1:" in events and "execute_w1:" in events
+    assert "plan_w2:" in events and "execute_w2:" in events
+    assert "--wave-id w1" in events and "--max-wait-seconds 1800" in events
+    assert "--wave-id w2" in events and "--max-wait-seconds 3600" in events
+    assert events.index("upload W1 plan before requests") < events.index(
+        "verify uploaded W1 plan and execute exactly once"
+    )
+    assert events.index("upload W2 plan before requests") < events.index(
+        "verify uploaded W2 plan and execute exactly once"
+    )
     assert 'if Path(snapshot).exists()' in response
     assert 'if Path(snapshot).exists()' in events
     assert response.index("upload immutable assignment-only plan") < response.index(
