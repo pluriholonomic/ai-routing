@@ -220,7 +220,9 @@ def test_frozen_bundle_quality_hash_is_rechecked_before_real_send(monkeypatch):
         capture._send_quality_assignment(None, assignment, bad)  # type: ignore[arg-type]
 
 
-def test_quality_send_uses_prospective_token_floor_and_minimal_reasoning(monkeypatch):
+def test_quality_send_uses_prospective_token_floor_and_disables_optional_reasoning(
+    monkeypatch,
+):
     _enable(monkeypatch)
     assignment = next(
         row for row in _bundle()["assignments"] if row["experiment_axis"] == "quality"
@@ -247,4 +249,4 @@ def test_quality_send_uses_prospective_token_floor_and_minimal_reasoning(monkeyp
     )
     assert completion is not None and generation is None and error is None and status == 200
     assert seen["body"]["max_tokens"] == 64
-    assert seen["body"]["reasoning"] == {"effort": "minimal", "exclude": True}
+    assert seen["body"]["reasoning"] == {"effort": "none", "exclude": True}

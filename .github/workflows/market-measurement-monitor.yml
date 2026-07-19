@@ -71,7 +71,9 @@ jobs:
         run: |
           mkdir -p trigger-artifacts
           gh run download "${{ github.event.workflow_run.id }}" --dir trigger-artifacts || true
-          if find trigger-artifacts -path '*/plan-data/curated/market_measurement_attempts/*/*.parquet' \
+          # actions/download-artifact strips the uploaded common plan-data/
+          # prefix, so match the stable table path rather than its staging root.
+          if find trigger-artifacts -path '*/curated/market_measurement_attempts/*/*.parquet' \
               -print -quit | grep -q .; then
             echo "has_execution=true" >> "$GITHUB_OUTPUT"
             echo "suffix=+actions-${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
@@ -79,9 +81,10 @@ jobs:
             echo "has_execution=false" >> "$GITHUB_OUTPUT"
             echo "suffix=" >> "$GITHUB_OUTPUT"
           fi
-          find trigger-artifacts -type d -name plan-data -print0 | \
+          find trigger-artifacts -type d -name curated -print0 | \
             while IFS= read -r -d '' directory; do
-              cp -R "$directory"/. input-data/
+              mkdir -p input-data/curated
+              cp -R "$directory"/. input-data/curated/
             done
       - name: build aggregate health, competition, liquidity, memory, and quality panel
         if: >-

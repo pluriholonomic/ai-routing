@@ -193,7 +193,11 @@ def _send_quality_assignment(
         "messages": [{"role": "user", "content": item["prompt"]}],
         "max_tokens": int(assignment["max_output_tokens"]),
         "temperature": 0,
-        "reasoning": {"effort": "minimal", "exclude": True},
+        # Public model metadata may expose only high reasoning efforts.  Asking
+        # for "minimal" can then be mapped upward and consume the entire small
+        # answer budget.  The benchmark needs only the final multiple-choice
+        # letter, so disable optional reasoning prospectively.
+        "reasoning": {"effort": "none", "exclude": True},
         "usage": {"include": True},
         "session_id": _session_id(assignment),
         "provider": provider,
