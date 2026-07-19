@@ -1,9 +1,13 @@
 name: price-event-probes
 
-# Hourly recovery planning detects public quote events, freezes all wave times,
-# and materializes any currently due assignments. Manual runs remain no-spend
-# because paid execution is schedule-only and separately feature-gated.
+# Successful public captures trigger planning while their final 5-minute menu is
+# still inside the freshness gate. The hourly schedule is recovery-only. Manual
+# and recovery runs remain no-spend; paid execution is capture-completion-only
+# and separately feature-gated.
 on:
+  workflow_run:
+    workflows: ["capture"]
+    types: [completed]
   schedule:
     - cron: "43 * * * *"
   workflow_dispatch:
@@ -18,6 +22,9 @@ permissions:
 
 jobs:
   plan:
+    if: >-
+      ${{ github.event_name != 'workflow_run' ||
+          github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -82,7 +89,8 @@ jobs:
   execute:
     needs: plan
     if: >-
-      ${{ github.event_name == 'schedule' &&
+      ${{ github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
           vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
           vars.ORCAP_PAID_PRICE_EVENTS_ENABLED == 'true' }}
     runs-on: ubuntu-latest
