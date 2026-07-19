@@ -28,6 +28,13 @@ arm or target time. Price increases are a prespecified sign placebo. Matched
 no-change controls use only pre-event model, provider count, quote rank,
 dispersion, time-of-week, and prior owned-selection support.
 
+Operationally, a successful 11-snapshot public-capture job triggers W0 planning.
+Bounded remote jobs wait to the already-frozen W1 and W2 target times, freeze a
+new contemporaneous menu, upload its hash-linked plan before any request, and
+then execute only if the paid gates are open. Hourly recovery handles the wider
+W3 and W4 windows. A job that starts after `latest_at` records the wave as
+missed and sends nothing; it never relabels or backfills the wave.
+
 ## Outcomes and claim boundary
 
 Primary discovery estimands are the change in moving-provider selection

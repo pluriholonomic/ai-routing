@@ -1,9 +1,9 @@
 name: price-event-probes
 
 # Successful public captures trigger planning while their final 5-minute menu is
-# still inside the freshness gate. The hourly schedule is recovery-only. Manual
-# and recovery runs remain no-spend; paid execution is capture-completion-only
-# and separately feature-gated.
+# still inside the freshness gate. Hash-linked delayed jobs cover the frozen
+# +15m and +60m waves; the hourly schedule recovers the wider +6h/+24h waves.
+# Manual runs remain no-spend and every paid job is separately feature-gated.
 on:
   workflow_run:
     workflows: ["capture"]
@@ -27,6 +27,9 @@ jobs:
           github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      has_tasks: ${{ steps.gates.outputs.has_tasks }}
+      has_near_waves: ${{ steps.gates.outputs.has_near_waves }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -85,12 +88,19 @@ jobs:
           retention-days: 90
           compression-level: 0
           overwrite: true
+      - name: publish outcome-free wave gates
+        id: gates
+        run: |
+          echo "has_tasks=$(jq -r '.summary.planned_tasks > 0' price-event-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "has_near_waves=$(jq -r '.summary.new_wave_rows > 0' price-event-plan.json)" >> "$GITHUB_OUTPUT"
 
   execute:
     needs: plan
     if: >-
-      ${{ github.event_name == 'workflow_run' &&
-          github.event.workflow_run.conclusion == 'success' &&
+      ${{ (github.event_name == 'schedule' ||
+           (github.event_name == 'workflow_run' &&
+            github.event.workflow_run.conclusion == 'success')) &&
+          needs.plan.outputs.has_tasks == 'true' &&
           vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
           vars.ORCAP_PAID_PRICE_EVENTS_ENABLED == 'true' }}
     runs-on: ubuntu-latest
@@ -110,7 +120,7 @@ jobs:
         run: |
           mkdir -p prior-execution plan-data/curated/paid_spend_ledger
           gh run download "${{ github.run_id }}" \
-            --pattern "price-event-execution-${{ github.run_id }}-*" \
+            --pattern "price-event-execution-*-${{ github.run_id }}-*" \
             --dir prior-execution || true
           find prior-execution -type d -name paid_spend_ledger -print0 | \
             while IFS= read -r -d '' ledger; do
@@ -133,7 +143,204 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: price-event-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          name: price-event-execution-base-${{ github.run_id }}-${{ github.run_attempt }}
+          path: plan-data/
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0
+
+  plan_w1:
+    needs: [plan, execute]
+    if: >-
+      ${{ github.event_name == 'workflow_run' &&
+          needs.plan.outputs.has_near_waves == 'true' &&
+          needs.execute.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      has_tasks: ${{ steps.gate.outputs.has_tasks }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: price-event-plan-${{ github.run_id }}
+      - name: recover authoritative attempts from the base wave
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior-execution plan-data/curated/paid_spend_ledger
+          gh run download "${{ github.run_id }}" \
+            --pattern "price-event-execution-*-${{ github.run_id }}-*" \
+            --dir prior-execution || true
+          find prior-execution -type d -name paid_spend_ledger -print0 | \
+            while IFS= read -r -d '' ledger; do
+              cp -R "$ledger"/. plan-data/curated/paid_spend_ledger/
+            done
+      - name: wait for and freeze the immutable W1 menu
+        env:
+          ORCAP_PRICE_EVENT_RUN_ID: github-${{ github.run_id }}-w1
+          ORCAP_PRICE_EVENT_SEED: ${{ github.run_id }}
+        run: >-
+          uv run python -m orcap.capture_price_events recover
+          --data-root plan-data
+          --output-root plan-data
+          --source-bundle price-event-plan.json
+          --bundle price-event-w1-plan.json
+          --wave-id w1
+          --wait
+          --max-wait-seconds 1800
+          --max-tasks 24
+      - name: upload W1 plan before requests
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-event-w1-plan-${{ github.run_id }}
+          path: |
+            price-event-w1-plan.json
+            plan-data/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: true
+      - name: publish W1 task gate
+        id: gate
+        run: echo "has_tasks=$(jq -r '.summary.planned_tasks > 0' price-event-w1-plan.json)" >> "$GITHUB_OUTPUT"
+
+  execute_w1:
+    needs: plan_w1
+    if: ${{ needs.plan_w1.outputs.has_tasks == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: price-event-w1-plan-${{ github.run_id }}
+      - name: verify uploaded W1 plan and execute exactly once
+        env:
+          OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
+          ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
+          ORCAP_PRICE_CAMPAIGN_START_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_START_UTC }}
+          ORCAP_PRICE_CAMPAIGN_END_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_END_UTC }}
+          ORCAP_PRICE_MAX_RUN_USD: ${{ vars.ORCAP_PRICE_EVENT_MAX_RUN_USD || '1.00' }}
+          ORCAP_PRICE_MAX_DAY_USD: ${{ vars.ORCAP_PRICE_MAX_DAY_USD || '25.00' }}
+          ORCAP_PRICE_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_PRICE_EVENT_MAX_CAMPAIGN_USD || '60.00' }}
+        run: >-
+          uv run python -m orcap.capture_price_events execute
+          --data-root plan-data
+          --bundle price-event-w1-plan.json
+      - name: preserve redacted W1 attempts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-event-execution-w1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: plan-data/
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0
+
+  plan_w2:
+    needs: [plan, plan_w1, execute_w1]
+    if: >-
+      ${{ always() &&
+          github.event_name == 'workflow_run' &&
+          needs.plan.outputs.has_near_waves == 'true' &&
+          needs.plan_w1.result == 'success' &&
+          (needs.execute_w1.result == 'success' ||
+           needs.execute_w1.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    outputs:
+      has_tasks: ${{ steps.gate.outputs.has_tasks }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: price-event-plan-${{ github.run_id }}
+      - name: recover authoritative attempts from earlier waves
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior-execution plan-data/curated/paid_spend_ledger
+          gh run download "${{ github.run_id }}" \
+            --pattern "price-event-execution-*-${{ github.run_id }}-*" \
+            --dir prior-execution || true
+          find prior-execution -type d -name paid_spend_ledger -print0 | \
+            while IFS= read -r -d '' ledger; do
+              cp -R "$ledger"/. plan-data/curated/paid_spend_ledger/
+            done
+      - name: wait for and freeze the immutable W2 menu
+        env:
+          ORCAP_PRICE_EVENT_RUN_ID: github-${{ github.run_id }}-w2
+          ORCAP_PRICE_EVENT_SEED: ${{ github.run_id }}
+        run: >-
+          uv run python -m orcap.capture_price_events recover
+          --data-root plan-data
+          --output-root plan-data
+          --source-bundle price-event-plan.json
+          --bundle price-event-w2-plan.json
+          --wave-id w2
+          --wait
+          --max-wait-seconds 3600
+          --max-tasks 24
+      - name: upload W2 plan before requests
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-event-w2-plan-${{ github.run_id }}
+          path: |
+            price-event-w2-plan.json
+            plan-data/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: true
+      - name: publish W2 task gate
+        id: gate
+        run: echo "has_tasks=$(jq -r '.summary.planned_tasks > 0' price-event-w2-plan.json)" >> "$GITHUB_OUTPUT"
+
+  execute_w2:
+    needs: plan_w2
+    if: ${{ needs.plan_w2.outputs.has_tasks == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: price-event-w2-plan-${{ github.run_id }}
+      - name: verify uploaded W2 plan and execute exactly once
+        env:
+          OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
+          ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
+          ORCAP_PRICE_CAMPAIGN_START_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_START_UTC }}
+          ORCAP_PRICE_CAMPAIGN_END_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_END_UTC }}
+          ORCAP_PRICE_MAX_RUN_USD: ${{ vars.ORCAP_PRICE_EVENT_MAX_RUN_USD || '1.00' }}
+          ORCAP_PRICE_MAX_DAY_USD: ${{ vars.ORCAP_PRICE_MAX_DAY_USD || '25.00' }}
+          ORCAP_PRICE_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_PRICE_EVENT_MAX_CAMPAIGN_USD || '60.00' }}
+        run: >-
+          uv run python -m orcap.capture_price_events execute
+          --data-root plan-data
+          --bundle price-event-w2-plan.json
+      - name: preserve redacted W2 attempts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-event-execution-w2-${{ github.run_id }}-${{ github.run_attempt }}
           path: plan-data/
           if-no-files-found: warn
           retention-days: 14
