@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from orcap.remote_health import WORKFLOWS, evaluate_workflow
+from orcap.remote_health import HF_PRICE_TABLES, WORKFLOWS, evaluate_workflow
 
 NOW = datetime(2026, 7, 13, 12, 0, tzinfo=UTC)
 
@@ -15,6 +15,12 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["capacity-policy-probes.yml"] == 180
     assert WORKFLOWS["hf-policy-probes.yml"] == 180
     assert WORKFLOWS["akash-close-events.yml"] == 1800
+    assert WORKFLOWS["paid-price-response.yml"] == 360
+    assert WORKFLOWS["price-event-probes.yml"] == 180
+    assert WORKFLOWS["price-tests-online.yml"] == 540
+    assert WORKFLOWS["live-router-exponent.yml"] == 540
+    assert "curated/price_response_assignments" in HF_PRICE_TABLES
+    assert "analysis/router_exponent_estimates" in HF_PRICE_TABLES
 
 
 def test_confirmatory_probe_workflows_share_concurrency_lock():
@@ -24,12 +30,55 @@ def test_confirmatory_probe_workflows_share_concurrency_lock():
     h95 = (workflows / "decomposition-replication.yml").read_text(encoding="utf-8")
     h87 = (workflows / "capacity-policy-probes.yml").read_text(encoding="utf-8")
     h96 = (workflows / "route-calibration.yml").read_text(encoding="utf-8")
+    price_response = (workflows / "paid-price-response.yml").read_text(encoding="utf-8")
+    price_events = (workflows / "price-event-probes.yml").read_text(encoding="utf-8")
     lock = "group: randomized-routing-probes"
     assert lock in h80
     assert lock in h81
     assert lock in h95
     assert lock in h87
     assert lock in h96
+    assert lock in price_response
+    assert lock in price_events
+
+
+def test_paid_price_workflows_are_plan_first_schedule_only_and_fail_closed():
+    root = Path(__file__).parents[1]
+    workflows = root / ".github" / "workflows"
+    response = (workflows / "paid-price-response.yml").read_text(encoding="utf-8")
+    events = (workflows / "price-event-probes.yml").read_text(encoding="utf-8")
+    for workflow in (response, events):
+        assert "jobs:\n  plan:" in workflow
+        assert "needs: plan" in workflow
+        assert "github.event_name == 'schedule'" in workflow
+        assert "ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true'" in workflow
+        assert "secrets.OPENROUTER_PRICE_EXPERIMENT_KEY" in workflow
+        assert "retention-days: 90" in workflow
+        assert "cancel-in-progress: false" in workflow
+    assert "ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true'" in response
+    assert "ORCAP_PAID_PRICE_EVENTS_ENABLED == 'true'" in events
+    assert response.index("upload immutable assignment-only plan") < response.index(
+        "verify uploaded plan and execute exactly once"
+    )
+    assert events.index("upload immutable event and assignment plan") < events.index(
+        "verify uploaded wave plan and execute due tasks"
+    )
+
+
+def test_price_workflows_are_assembled_analyzed_and_preregistered():
+    root = Path(__file__).parents[1]
+    assembler = (root / "scripts/assemble_artifacts.sh").read_text(encoding="utf-8")
+    assert "paid-price-response.yml" in assembler
+    assert "price-event-probes.yml" in assembler
+    for name in ("price-tests-online.yml", "live-router-exponent.yml"):
+        workflow = (root / ".github/workflows" / name).read_text(encoding="utf-8")
+        assert "workflow_run:" in workflow
+        assert 'workflows: ["compact"]' in workflow
+        assert "OPENROUTER_PRICE_EXPERIMENT_KEY" not in workflow
+    assert (
+        root / "experiments/openrouter-price-response-v1/preregistration.md"
+    ).is_file()
+    assert (root / "experiments/openrouter-price-event-v1/preregistration.md").is_file()
 
 
 def test_h96_remote_campaign_is_finite_budgeted_and_manual_preflight_only():

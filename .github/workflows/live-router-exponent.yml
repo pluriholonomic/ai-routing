@@ -1,0 +1,94 @@
+name: live-router-exponent
+
+on:
+  schedule:
+    - cron: "47 2,8,14,20 * * *"
+  workflow_run:
+    workflows: ["compact"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: live-router-exponent
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate only owned plans, menus, and redacted attempts
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          revision = HfApi(token=os.environ["HF_TOKEN"]).dataset_info(
+              "t4run/openrouter-market-history"
+          ).sha
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              revision=revision,
+              allow_patterns=[
+                  "curated/router_calibration_candidates/*/*.parquet",
+                  "curated/router_calibration_assignments/*/*.parquet",
+                  "curated/price_response_candidates/*/*.parquet",
+                  "curated/price_response_assignments/*/*.parquet",
+                  "curated/router_route_attempts/*/*.parquet",
+              ],
+              max_workers=16,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "data", dirs_exist_ok=True)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.write(f"ORCAP_HF_REVISION={revision}\n")
+          PY
+      - name: estimate rolling and expanding price exponents
+        run: uv run python -m orcap.analysis.live_router_exponent --data-root data
+      - name: publish aggregate exponent tables and dashboard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run orcap push
+          --message "live router exponent ${{ github.run_id }}"
+      - name: preserve aggregate exponent panel
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-router-exponent-${{ github.run_id }}
+          path: |
+            data/analysis/router_exponent_estimates/
+            data/analysis/router_exponent_scores/
+            data/reports/router-price-exponent.html
+          if-no-files-found: warn
+          retention-days: 14
+      - name: publish exponent dashboard to private HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="data/reports/router-price-exponent.html",
+              path_in_repo="router-price-exponent.html",
+              repo_id="t4run/openrouter-memo",
+              repo_type="space",
+              commit_message="live router-exponent dashboard refresh",
+          )
+          PY

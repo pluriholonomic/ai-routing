@@ -8,6 +8,7 @@ OUTCOME_BLINDED_STUDY_IDS = frozenset(
     {
         "openrouter-routing-crossover-v2",
         "openrouter-fallback-selection-decomposition-v1",
+        "openrouter-delegation-replication-v1",
         "openrouter-capacity-policy-v1",
         "openrouter-enforcement-policy-v1",
         "huggingface-policy-frontier-v1",

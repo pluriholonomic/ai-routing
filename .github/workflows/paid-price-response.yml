@@ -1,0 +1,134 @@
+name: paid-price-response
+
+# Plans run remotely even while paid execution is disabled. Paid execution
+# requires both repository feature flags, a dedicated key, and a valid campaign
+# window enforced again inside Python.
+on:
+  schedule:
+    - cron: "11 */4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: randomized-routing-probes
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate authoritative spend ledger
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=["curated/paid_spend_ledger/*/*.parquet"],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          PY
+      - name: overlay un-compacted paid artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_artifacts.sh 26 input-data
+      - name: stage only the spend ledger into the immutable plan bundle
+        run: |
+          mkdir -p plan-data/curated
+          if [ -d input-data/curated/paid_spend_ledger ]; then
+            cp -R input-data/curated/paid_spend_ledger plan-data/curated/
+          fi
+      - name: freeze candidate menus and all assignments
+        env:
+          ORCAP_PRICE_MODELS: ${{ vars.ORCAP_PRICE_MODELS }}
+          ORCAP_PRICE_SHAPES: ${{ vars.ORCAP_PRICE_SHAPES || 'short_chat' }}
+          ORCAP_PRICE_RUN_ID: github-${{ github.run_id }}
+          ORCAP_PRICE_RANDOMIZATION_SEED: ${{ github.run_id }}
+        run: >-
+          uv run python -m orcap.capture_price_response plan
+          --bundle price-plan.json
+          --curated-dir plan-data/curated
+          --max-tasks 48
+      - name: upload immutable assignment-only plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: paid-price-response-plan-${{ github.run_id }}
+          path: |
+            price-plan.json
+            plan-data/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: true
+      - name: validate source health and nonempty assignment plan
+        run: >-
+          uv run python -m orcap.capture_price_response validate-plan
+          --bundle price-plan.json
+          --require-tasks
+
+  execute:
+    needs: plan
+    if: >-
+      ${{ github.event_name == 'schedule' &&
+          vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
+          vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: paid-price-response-plan-${{ github.run_id }}
+      - name: recover prior attempts from a retried execution job
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior-execution plan-data/curated/paid_spend_ledger
+          gh run download "${{ github.run_id }}" \
+            --pattern "paid-price-response-execution-${{ github.run_id }}-*" \
+            --dir prior-execution || true
+          find prior-execution -type d -name paid_spend_ledger -print0 | \
+            while IFS= read -r -d '' ledger; do
+              cp -R "$ledger"/. plan-data/curated/paid_spend_ledger/
+            done
+      - name: verify uploaded plan and execute exactly once
+        env:
+          OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
+          ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
+          ORCAP_PRICE_CAMPAIGN_START_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_START_UTC }}
+          ORCAP_PRICE_CAMPAIGN_END_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_END_UTC }}
+          ORCAP_PRICE_MAX_RUN_USD: ${{ vars.ORCAP_PRICE_MAX_RUN_USD || '1.00' }}
+          ORCAP_PRICE_MAX_DAY_USD: ${{ vars.ORCAP_PRICE_MAX_DAY_USD || '25.00' }}
+          ORCAP_PRICE_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_PRICE_MAX_CAMPAIGN_USD || '300.00' }}
+        run: >-
+          uv run python -m orcap.capture_price_response execute
+          --bundle price-plan.json
+          --curated-dir plan-data/curated
+      - name: preserve redacted attempts and spend ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paid-price-response-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: plan-data/
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0

@@ -1,0 +1,65 @@
+name: price-tests-online
+
+on:
+  schedule:
+    - cron: "23 2,8,14,20 * * *"
+  workflow_run:
+    workflows: ["compact"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: price-tests-online
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: run revision-pinned public and owned-probe price tests
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_ANALYSIS_SOURCE: hf
+        run: >-
+          uv run python -m orcap.analysis.price_tests_online
+          --output-dir data/analysis/price-tests-online
+      - name: publish aggregate monitoring outputs
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run orcap push
+          --message "online price tests ${{ github.run_id }}"
+      - name: preserve aggregate panel
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: price-tests-online-${{ github.run_id }}
+          path: data/analysis/price-tests-online/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: publish price-test dashboard to private HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="data/analysis/price-tests-online/price-tests.html",
+              path_in_repo="price-tests.html",
+              repo_id="t4run/openrouter-memo",
+              repo_type="space",
+              commit_message="online price-test dashboard refresh",
+          )
+          PY

@@ -18,6 +18,10 @@ WORKFLOWS = {
     "capture.yml": 150,
     "decomposition-probes.yml": 180,
     "decomposition-replication.yml": 180,
+    "paid-price-response.yml": 360,
+    "price-event-probes.yml": 180,
+    "price-tests-online.yml": 540,
+    "live-router-exponent.yml": 540,
     "gpu.yml": 180,
     "hf-router.yml": 180,
     "hf-policy-probes.yml": 180,
@@ -35,6 +39,11 @@ WORKFLOWS = {
     "bittensor.yml": 540,
 }
 HF_MAX_AGE_MINUTES = 1800
+HF_PRICE_TABLES = {
+    "curated/price_response_assignments": 1800,
+    "curated/price_event_wave_plans": 1800,
+    "analysis/router_exponent_estimates": 720,
+}
 
 
 def _time(value: str) -> datetime:
@@ -147,6 +156,51 @@ def _hf_health(token: str, repo_id: str, now: datetime) -> dict[str, Any]:
     }
 
 
+def _hf_table_health(
+    token: str, repo_id: str, path: str, now: datetime, max_age_minutes: int
+) -> dict[str, Any]:
+    api = HfApi(token=token)
+    try:
+        entries = list(
+            api.list_repo_tree(
+                repo_id,
+                path_in_repo=path,
+                repo_type="dataset",
+                recursive=True,
+                expand=True,
+            )
+        )
+    except Exception as exc:
+        return {
+            "path": path,
+            "healthy": False,
+            "reason": f"table unavailable ({type(exc).__name__})",
+        }
+    dates = []
+    for entry in entries:
+        commit = getattr(entry, "last_commit", None)
+        created_at = getattr(commit, "date", None)
+        if isinstance(created_at, datetime):
+            dates.append(
+                created_at.replace(tzinfo=created_at.tzinfo or UTC).astimezone(UTC)
+            )
+    if not dates:
+        return {"path": path, "healthy": False, "reason": "no dated table objects"}
+    latest = max(dates)
+    age_minutes = (now - latest).total_seconds() / 60
+    return {
+        "path": path,
+        "healthy": age_minutes <= max_age_minutes,
+        "reason": (
+            "latest table object fresh"
+            if age_minutes <= max_age_minutes
+            else f"table stale ({age_minutes:.0f} minutes)"
+        ),
+        "age_minutes": round(age_minutes, 2),
+        "created_at": latest.isoformat(),
+    }
+
+
 def main() -> int:
     token = os.environ.get("GH_TOKEN")
     hf_token = os.environ.get("HF_TOKEN")
@@ -164,12 +218,32 @@ def main() -> int:
         for workflow, max_age in WORKFLOWS.items()
     ]
     sink = _hf_health(hf_token, "t4run/openrouter-market-history", now)
+    price_tables = [
+        _hf_table_health(
+            hf_token,
+            "t4run/openrouter-market-history",
+            path,
+            now,
+            max_age,
+        )
+        for path, max_age in HF_PRICE_TABLES.items()
+    ]
+    require_price_tables = (
+        os.environ.get("ORCAP_PRICE_MONITOR_TABLES_REQUIRED", "").lower() == "true"
+    )
+    tables_healthy = all(item["healthy"] for item in price_tables)
     result = {
         "checked_at": now.isoformat(),
         "repository": repo,
-        "healthy": all(item["healthy"] for item in workflows) and sink["healthy"],
+        "healthy": (
+            all(item["healthy"] for item in workflows)
+            and sink["healthy"]
+            and (tables_healthy or not require_price_tables)
+        ),
         "workflows": workflows,
         "data_sink": sink,
+        "price_table_sinks": price_tables,
+        "price_tables_required": require_price_tables,
     }
     Path("remote-health.json").write_text(
         json.dumps(result, indent=2, sort_keys=True), encoding="utf-8"
