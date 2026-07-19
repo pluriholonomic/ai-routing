@@ -41,6 +41,10 @@ def test_monitor_hydrates_only_isolated_tables_and_publishes_to_hf():
     assert "uv run orcap push" in text
     assert 'repo_id="t4run/openrouter-memo"' in text
     assert "Path(snapshot).exists()" in text
+    assert 'workflows: ["market-measurement"]' in text
+    assert 'workflows: ["market-measurement", "compact"]' not in text
+    assert "has_execution=true" in text
+    assert "steps.overlay.outputs.has_execution == 'true'" in text
 
 
 def test_nightly_hf_assembly_includes_the_new_workflow():

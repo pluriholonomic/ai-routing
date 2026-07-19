@@ -2,9 +2,10 @@ name: market-measurement-monitor
 
 on:
   schedule:
-    - cron: "47 3,9,15,21 * * *"
+    # Daily refresh after the 04:13 UTC compaction has ingested buffered rows.
+    - cron: "47 5 * * *"
   workflow_run:
-    workflows: ["market-measurement", "compact"]
+    workflows: ["market-measurement"]
     types: [completed]
   workflow_dispatch:
 
@@ -63,30 +64,47 @@ jobs:
               handle.write(f"revision={revision}\n")
           PY
       - name: overlay the triggering run before nightly compaction
+        id: overlay
         if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name == 'market-measurement' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p trigger-artifacts
           gh run download "${{ github.event.workflow_run.id }}" --dir trigger-artifacts || true
+          if find trigger-artifacts -path '*/plan-data/curated/market_measurement_attempts/*/*.parquet' \
+              -print -quit | grep -q .; then
+            echo "has_execution=true" >> "$GITHUB_OUTPUT"
+            echo "suffix=+actions-${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_execution=false" >> "$GITHUB_OUTPUT"
+            echo "suffix=" >> "$GITHUB_OUTPUT"
+          fi
           find trigger-artifacts -type d -name plan-data -print0 | \
             while IFS= read -r -d '' directory; do
               cp -R "$directory"/. input-data/
             done
       - name: build aggregate health, competition, liquidity, memory, and quality panel
+        if: >-
+          ${{ github.event_name != 'workflow_run' ||
+              steps.overlay.outputs.has_execution == 'true' }}
         run: >-
           uv run python -m orcap.analysis.market_measurement_monitor
           --data-root input-data
           --output-dir data/analysis/market-measurement
-          --source-revision "${{ steps.source.outputs.revision }}"
+          --source-revision "${{ steps.source.outputs.revision }}${{ steps.overlay.outputs.suffix }}"
       - name: publish aggregate monitoring outputs to HF dataset
+        if: >-
+          ${{ github.event_name != 'workflow_run' ||
+              steps.overlay.outputs.has_execution == 'true' }}
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: >-
           uv run orcap push
           --message "market measurement monitor ${{ github.run_id }}"
       - name: preserve aggregate panel
-        if: always()
+        if: >-
+          ${{ always() && (github.event_name != 'workflow_run' ||
+              steps.overlay.outputs.has_execution == 'true') }}
         uses: actions/upload-artifact@v4
         with:
           name: market-measurement-monitor-${{ github.run_id }}
@@ -94,6 +112,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
       - name: refresh private HF Space dashboard
+        if: >-
+          ${{ github.event_name != 'workflow_run' ||
+              steps.overlay.outputs.has_execution == 'true' }}
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
