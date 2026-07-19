@@ -13,9 +13,15 @@ for wf in capture.yml capacity-policy-probes.yml enforcement-policy-probes.yml d
       --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId"); do
     tmp="/tmp/art-$id"
     if gh run download "$id" --dir "$tmp" 2>/dev/null; then
-      # each artifact root holds the contents of the job's data/ tree
+      # Most artifact roots hold a data/ tree directly. Plan-first paid jobs
+      # upload both a JSON bundle and plan-data/, so unwrap that directory into
+      # the canonical data root instead of publishing plan-data/curated/*.
       for d in "$tmp"/*/; do
-        cp -R "$d". "$DEST"/ 2>/dev/null || true
+        if [ -d "${d}plan-data" ]; then
+          cp -R "${d}plan-data"/. "$DEST"/ 2>/dev/null || true
+        else
+          cp -R "$d". "$DEST"/ 2>/dev/null || true
+        fi
       done
       rm -rf "$tmp"
       count=$((count + 1))

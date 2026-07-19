@@ -24,8 +24,13 @@ for wf in $WORKFLOWS; do
     if gh run download "$id" --dir "$tmp" 2>/dev/null; then
       for directory in "$tmp"/*/; do
         [ -d "$directory" ] || continue
-        cp -R "$directory". "$DEST"/ 2>/dev/null || true
+        if [ -d "${directory}plan-data" ]; then
+          cp -R "${directory}plan-data"/. "$DEST"/ 2>/dev/null || true
+        else
+          cp -R "$directory". "$DEST"/ 2>/dev/null || true
+        fi
       done
+      rm -rf "$tmp"
       count=$((count + 1))
     fi
   done < <(
