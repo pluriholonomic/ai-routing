@@ -83,8 +83,8 @@ curvature of an automated market maker---and it is now the story of AI
 inference. On OpenRouter, the largest open inference marketplace, a
 buyer sends a request naming a model; a router selects which of $n$
 competing providers serves it. The default selection rule is documented
-in one sentence: filter recently failing providers, then choose with
-probability $\propto 1/\text{price}^2$. Nothing else a provider does
+in one sentence \cite{openrouter2026}: filter recently failing
+providers, then choose with probability $\propto 1/\text{price}^2$. Nothing else a provider does
 moves demand except through that rule (and one measured exception we
 return to at length). So the game providers play is not Bertrand, not
 search, not bargaining: it is pricing against a
@@ -213,7 +213,7 @@ ceiling); marginal costs $c_i$; a unit mass of requests arrives per
 epoch; the router selects $i$ first with probability
 $s_i = p_i^{-a}/\sum_j p_j^{-a}$. Profits $\pi_i = s_i (p_i - c_i)$.
 With logits $-a \log p_i$ this is softmax: \emph{the router is a logit demand system with inverse temperature
-$a$}.
+$a$}, and OpenRouter documents $a=2$ \cite{openrouter2026}.
 
 \begin{lemma}\label{lem:elasticity}
 $\partial s_i/\partial p_i = -(a/p_i)\, s_i(1-s_i)$: the own-price share
@@ -585,6 +585,12 @@ All closed forms are enforced by 13 continuous-integration tests
 against continuum numerics.
 
 \begin{thebibliography}{9}
+\bibitem{openrouter2026} OpenRouter. Provider routing:
+price-based load balancing (default strategy). Product documentation,
+\url{https://openrouter.ai/docs/features/provider-routing}; accessed
+2026-07-18; archived at
+\url{https://web.archive.org/web/20251121200046/https://openrouter.ai/docs/features/provider-routing}.
+
 \bibitem{anderson1992} S.~Anderson, A.~de~Palma, J.-F.~Thisse.
 \emph{Discrete Choice Theory of Product Differentiation}. MIT Press, 1992.
 \bibitem{calvano2020} E.~Calvano, G.~Calzolari, V.~Denicol\`o,

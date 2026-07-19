@@ -65,7 +65,7 @@ learn supra-competitive pricing in stylized logit markets (Calvano et
 al., 2020). Two things have been missing: a \emph{deployed} mechanism whose
 demand system is known exactly rather than assumed, and calibration
 discipline that makes the simulated market answerable to a real one. AI
-inference routing supplies both. The router's documented rule --- selection
+inference routing supplies both. The router's documented rule \cite{openrouter2026} --- selection
 $\propto p^{-2}$ --- \emph{is} a logit demand system; there is no demand estimation
 step, no structural assumption to argue about. And because we operate a
 live capture of the marketplace (prices at 5-minute grain, realized
@@ -254,5 +254,28 @@ A: proofs (single-crossing; FOC algebra; corner verification; envelope
 and IVT arguments for the steering threshold; patience-boundary root
 certification). B: environment API and calibration bundle schema. C: full
 run tables for E-SIM1--4b, E-MECH1--2 with per-seed outcomes.
+
+\begin{thebibliography}{9}
+\bibitem{openrouter2026} OpenRouter. Provider routing:
+price-based load balancing (default strategy). Product documentation,
+\url{https://openrouter.ai/docs/features/provider-routing}; accessed
+2026-07-18; archived at
+\url{https://web.archive.org/web/20251121200046/https://openrouter.ai/docs/features/provider-routing}.
+\bibitem{anderson1992} S.~Anderson, A.~de~Palma, J.-F.~Thisse.
+\emph{Discrete Choice Theory of Product Differentiation}. MIT Press, 1992.
+\bibitem{calvano2020} E.~Calvano, G.~Calzolari, V.~Denicol\`o,
+S.~Pastorello. Artificial intelligence, algorithmic pricing, and
+collusion. \emph{American Economic Review}, 2020.
+\bibitem{jrw2023} J.~Johnson, A.~Rhodes, M.~Wildenbeest. Platform design
+when sellers use pricing algorithms. \emph{Econometrica}, 2023.
+\bibitem{demirer2025} M.~Demirer, A.~Fradkin, S.~Peng, S.~Tadelis. The
+market for AI inference. NBER Working Paper 34608, 2025.
+\bibitem{angeris2020curvature} G.~Angeris, T.~Chitra. When does the tail
+wag the dog? Curvature and market making. arXiv:2012.08040, 2020.
+\bibitem{fish2024} S.~Fish, Y.~Gonczarowski, R.~Shorrer. Algorithmic
+collusion by large language models. arXiv:2404.00806, 2024.
+\bibitem{mckelvey1995} R.~McKelvey, T.~Palfrey. Quantal response
+equilibria for normal form games. \emph{Games and Economic Behavior}, 1995.
+\end{thebibliography}
 
 \end{document}

@@ -22,7 +22,7 @@ CI-enforced theory tests in the public `orcap` repository.*
 \begin{abstract}
 AI inference marketplaces route trillions of tokens per month through
 a softmax over provider prices with a \emph{published} exponent
-(selection probability $\propto p^{-a}$; deployed $a=2$). We study
+(selection probability $\propto p^{-a}$; deployed $a=2$) \cite{openrouter2026}. We study
 independent Q-learning across this one-parameter family of pricing
 games. The family has an exact phase structure:
 symmetric equilibrium price $p^*=c\,a(n-1)/(a(n-1)-n)$ diverges on the
@@ -235,5 +235,28 @@ manifests (commit, bundle hash, seed tree, source fingerprints),
 numerics, and the live-capture workflows that generated the panel.
 
 \section{Appendix A: proofs.  Appendix B: run tables (E-SIM1--4b, E-MECH1--2).}
+
+\begin{thebibliography}{9}
+\bibitem{openrouter2026} OpenRouter. Provider routing:
+price-based load balancing (default strategy). Product documentation,
+\url{https://openrouter.ai/docs/features/provider-routing}; accessed
+2026-07-18; archived at
+\url{https://web.archive.org/web/20251121200046/https://openrouter.ai/docs/features/provider-routing}.
+\bibitem{anderson1992} S.~Anderson, A.~de~Palma, J.-F.~Thisse.
+\emph{Discrete Choice Theory of Product Differentiation}. MIT Press, 1992.
+\bibitem{calvano2020} E.~Calvano, G.~Calzolari, V.~Denicol\`o,
+S.~Pastorello. Artificial intelligence, algorithmic pricing, and
+collusion. \emph{American Economic Review}, 2020.
+\bibitem{jrw2023} J.~Johnson, A.~Rhodes, M.~Wildenbeest. Platform design
+when sellers use pricing algorithms. \emph{Econometrica}, 2023.
+\bibitem{demirer2025} M.~Demirer, A.~Fradkin, S.~Peng, S.~Tadelis. The
+market for AI inference. NBER Working Paper 34608, 2025.
+\bibitem{angeris2020curvature} G.~Angeris, T.~Chitra. When does the tail
+wag the dog? Curvature and market making. arXiv:2012.08040, 2020.
+\bibitem{fish2024} S.~Fish, Y.~Gonczarowski, R.~Shorrer. Algorithmic
+collusion by large language models. arXiv:2404.00806, 2024.
+\bibitem{mckelvey1995} R.~McKelvey, T.~Palfrey. Quantal response
+equilibria for normal form games. \emph{Games and Economic Behavior}, 1995.
+\end{thebibliography}
 
 \end{document}
