@@ -16,6 +16,12 @@ import pyarrow.parquet as pq
 from ..market_measurement import STUDY_ID
 
 MIN_RANKABLE_CELL = 20
+CALIBRATION_RUN_IDS = frozenset(
+    {
+        "github-29699310501",
+        "github-29699876639",
+    }
+)
 
 
 def _read_table(data_root: Path, table: str) -> pd.DataFrame:
@@ -93,6 +99,7 @@ def _joined(data_root: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 def _health(joined: pd.DataFrame) -> pd.DataFrame:
     columns = [
         "run_id",
+        "analysis_phase",
         "planned",
         "attempted",
         "succeeded",
@@ -113,6 +120,9 @@ def _health(joined: pd.DataFrame) -> pd.DataFrame:
         rows.append(
             {
                 "run_id": run_id,
+                "analysis_phase": (
+                    "pilot" if str(run_id) in CALIBRATION_RUN_IDS else "confirmatory"
+                ),
                 "planned": planned,
                 "attempted": attempted,
                 "succeeded": succeeded,
@@ -128,6 +138,27 @@ def _health(joined: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows, columns=columns).sort_values("run_id")
+
+
+def _estimation_frames(
+    joined: pd.DataFrame, quality: pd.DataFrame, health: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame, set[str]]:
+    """Keep only complete, prospectively comparable confirmatory runs."""
+    if health.empty:
+        return joined.iloc[0:0].copy(), quality.iloc[0:0].copy(), set()
+    eligible = set(
+        health.loc[
+            health["analysis_phase"].eq("confirmatory")
+            & health["integrity_status"].eq("complete"),
+            "run_id",
+        ].astype(str)
+    )
+    estimation_joined = joined[joined["run_id"].astype(str).isin(eligible)].copy()
+    if quality.empty or "run_id" not in quality:
+        estimation_quality = quality.iloc[0:0].copy()
+    else:
+        estimation_quality = quality[quality["run_id"].astype(str).isin(eligible)].copy()
+    return estimation_joined, estimation_quality, eligible
 
 
 def _policy_metrics(joined: pd.DataFrame) -> pd.DataFrame:
@@ -317,10 +348,13 @@ def run(data_root: Path, output_dir: Path, *, source_revision: str | None = None
     output_dir.mkdir(parents=True, exist_ok=True)
     joined, attempts, quality = _joined(data_root)
     health = _health(joined)
-    policy = _policy_metrics(joined)
-    liquidity = _liquidity_metrics(joined)
-    memory = _memory_metrics(joined)
-    quality_metrics = _quality_metrics(quality)
+    estimation_joined, estimation_quality, eligible_runs = _estimation_frames(
+        joined, quality, health
+    )
+    policy = _policy_metrics(estimation_joined)
+    liquidity = _liquidity_metrics(estimation_joined)
+    memory = _memory_metrics(estimation_joined)
+    quality_metrics = _quality_metrics(estimation_quality)
     outputs = {
         "measurement-health.parquet": health,
         "policy-metrics.parquet": policy,
@@ -337,9 +371,15 @@ def run(data_root: Path, output_dir: Path, *, source_revision: str | None = None
         "assignment_rows": int(len(joined)),
         "attempt_rows": int(len(attempts)),
         "quality_rows": int(len(quality)),
-        "complete_runs": int((health.get("integrity_status") == "complete").sum())
-        if not health.empty
-        else 0,
+        "pilot_runs": int(health.get("analysis_phase", pd.Series(dtype=str)).eq("pilot").sum()),
+        "complete_runs": len(eligible_runs),
+        "confirmatory_assignment_rows": int(len(estimation_joined)),
+        "confirmatory_attempt_rows": int(
+            estimation_joined.get("attempt_observed_at", pd.Series(dtype=object))
+            .notna()
+            .sum()
+        ),
+        "confirmatory_quality_rows": int(len(estimation_quality)),
         "realized_cost_usd": float(health.get("realized_cost_usd", pd.Series(dtype=float)).sum()),
         "minimum_rankable_cell": MIN_RANKABLE_CELL,
         "claim_boundaries": {
@@ -384,7 +424,10 @@ width:100%;font-size:12px}}
 code{{background:#eef2f5;padding:2px 4px}}</style></head><body>
 <h1>OpenRouter owned-market measurement</h1>
 <p class="meta">Study <code>{STUDY_ID}</code>; source revision <code>{revision_label}</code>.
-Assignments: {len(joined)}. Attempts: {len(attempts)}. Quality rows: {len(quality)}.</p>
+All retained assignments: {len(joined)}; attempts: {len(attempts)}; quality rows:
+{len(quality)}. Confirmatory complete runs: {len(eligible_runs)}. Pilot runs and
+incomplete assignment-only plans appear in health accounting but are excluded
+from the estimates below.</p>
 <h2>Run integrity and spend</h2>{health_html}
 <h2>Policy outcomes</h2>{policy_html}
 <h2>Executable-liquidity batches</h2>{liquidity_html}

@@ -8,6 +8,11 @@ on:
     workflows: ["market-measurement"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Optional completed market-measurement run to overlay before compaction"
+        type: string
+        required: false
 
 concurrency:
   group: market-measurement-monitor
@@ -65,18 +70,23 @@ jobs:
           PY
       - name: overlay the triggering run before nightly compaction
         id: overlay
-        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name == 'market-measurement' }}
+        if: >-
+          ${{ (github.event_name == 'workflow_run' &&
+               github.event.workflow_run.name == 'market-measurement') ||
+              (github.event_name == 'workflow_dispatch' &&
+               inputs.source_run_id != '') }}
         env:
           GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.source_run_id }}
         run: |
           mkdir -p trigger-artifacts
-          gh run download "${{ github.event.workflow_run.id }}" --dir trigger-artifacts || true
+          gh run download "$SOURCE_RUN_ID" --dir trigger-artifacts || true
           # actions/download-artifact strips the uploaded common plan-data/
           # prefix, so match the stable table path rather than its staging root.
           if find trigger-artifacts -path '*/curated/market_measurement_attempts/*/*.parquet' \
               -print -quit | grep -q .; then
             echo "has_execution=true" >> "$GITHUB_OUTPUT"
-            echo "suffix=+actions-${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+            echo "suffix=+actions-$SOURCE_RUN_ID" >> "$GITHUB_OUTPUT"
           else
             echo "has_execution=false" >> "$GITHUB_OUTPUT"
             echo "suffix=" >> "$GITHUB_OUTPUT"
@@ -88,7 +98,8 @@ jobs:
             done
       - name: build aggregate health, competition, liquidity, memory, and quality panel
         if: >-
-          ${{ github.event_name != 'workflow_run' ||
+          ${{ github.event_name == 'schedule' ||
+              (github.event_name == 'workflow_dispatch' && inputs.source_run_id == '') ||
               steps.overlay.outputs.has_execution == 'true' }}
         run: >-
           uv run python -m orcap.analysis.market_measurement_monitor
@@ -97,7 +108,8 @@ jobs:
           --source-revision "${{ steps.source.outputs.revision }}${{ steps.overlay.outputs.suffix }}"
       - name: publish aggregate monitoring outputs to HF dataset
         if: >-
-          ${{ github.event_name != 'workflow_run' ||
+          ${{ github.event_name == 'schedule' ||
+              (github.event_name == 'workflow_dispatch' && inputs.source_run_id == '') ||
               steps.overlay.outputs.has_execution == 'true' }}
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -106,7 +118,8 @@ jobs:
           --message "market measurement monitor ${{ github.run_id }}"
       - name: preserve aggregate panel
         if: >-
-          ${{ always() && (github.event_name != 'workflow_run' ||
+          ${{ always() && (github.event_name == 'schedule' ||
+              (github.event_name == 'workflow_dispatch' && inputs.source_run_id == '') ||
               steps.overlay.outputs.has_execution == 'true') }}
         uses: actions/upload-artifact@v4
         with:
@@ -116,7 +129,8 @@ jobs:
           retention-days: 30
       - name: refresh private HF Space dashboard
         if: >-
-          ${{ github.event_name != 'workflow_run' ||
+          ${{ github.event_name == 'schedule' ||
+              (github.event_name == 'workflow_dispatch' && inputs.source_run_id == '') ||
               steps.overlay.outputs.has_execution == 'true' }}
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}

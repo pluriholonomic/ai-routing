@@ -45,6 +45,8 @@ def test_monitor_hydrates_only_isolated_tables_and_publishes_to_hf():
     assert 'workflows: ["market-measurement", "compact"]' not in text
     assert "has_execution=true" in text
     assert "steps.overlay.outputs.has_execution == 'true'" in text
+    assert "source_run_id:" in text
+    assert 'gh run download "$SOURCE_RUN_ID"' in text
     assert "*/curated/market_measurement_attempts/*/*.parquet" in text
     assert "*/plan-data/curated/market_measurement_attempts/*/*.parquet" not in text
     assert "-type d -name curated" in text

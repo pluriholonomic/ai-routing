@@ -6,11 +6,18 @@ import threading
 import time
 from datetime import UTC, datetime
 
+import pandas as pd
 import pyarrow.parquet as pq
 import pytest
 
 import orcap.capture_market_measurement as capture
-from orcap.analysis.market_measurement_monitor import run as run_monitor
+from orcap.analysis.market_measurement_monitor import (
+    CALIBRATION_RUN_IDS,
+    _estimation_frames,
+)
+from orcap.analysis.market_measurement_monitor import (
+    run as run_monitor,
+)
 from orcap.market_measurement import build_market_assignments, market_manifest
 
 
@@ -198,8 +205,6 @@ def test_execute_is_concurrent_redacted_graded_exact_once_and_monitored(
 def test_monitor_never_reads_the_mixed_generic_attempt_table(tmp_path):
     mixed = tmp_path / "curated" / "router_route_attempts" / "dt=2026-07-19"
     mixed.mkdir(parents=True)
-    import pandas as pd
-
     pd.DataFrame(
         [{"study_id": "h95-blinded", "metadata_json": json.dumps({"task_id": "secret"})}]
     ).to_parquet(mixed / "mixed.parquet", index=False)
@@ -207,6 +212,50 @@ def test_monitor_never_reads_the_mixed_generic_attempt_table(tmp_path):
     summary = run_monitor(tmp_path, output, source_revision="test")
     assert summary["assignment_rows"] == 0
     assert summary["attempt_rows"] == 0
+
+
+def test_monitor_excludes_pilots_and_incomplete_plans_from_estimation():
+    pilot = next(iter(CALIBRATION_RUN_IDS))
+    confirmatory = "github-confirmatory"
+    preflight = "github-no-spend"
+    joined = pd.DataFrame(
+        [
+            {"run_id": pilot, "task_id": "pilot", "experiment_axis": "quality"},
+            {
+                "run_id": confirmatory,
+                "task_id": "confirmatory",
+                "experiment_axis": "quality",
+            },
+            {"run_id": preflight, "task_id": "preflight", "experiment_axis": "quality"},
+        ]
+    )
+    quality = pd.DataFrame(
+        [
+            {"run_id": pilot, "task_id": "pilot"},
+            {"run_id": confirmatory, "task_id": "confirmatory"},
+        ]
+    )
+    health = pd.DataFrame(
+        [
+            {"run_id": pilot, "analysis_phase": "pilot", "integrity_status": "complete"},
+            {
+                "run_id": confirmatory,
+                "analysis_phase": "confirmatory",
+                "integrity_status": "complete",
+            },
+            {
+                "run_id": preflight,
+                "analysis_phase": "confirmatory",
+                "integrity_status": "incomplete",
+            },
+        ]
+    )
+    estimation_joined, estimation_quality, eligible = _estimation_frames(
+        joined, quality, health
+    )
+    assert eligible == {confirmatory}
+    assert estimation_joined["task_id"].tolist() == ["confirmatory"]
+    assert estimation_quality["task_id"].tolist() == ["confirmatory"]
 
 
 def test_frozen_bundle_quality_hash_is_rechecked_before_real_send(monkeypatch):
