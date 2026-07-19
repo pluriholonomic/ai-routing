@@ -42,7 +42,7 @@ def test_confirmatory_probe_workflows_share_concurrency_lock():
     assert lock in price_events
 
 
-def test_paid_price_workflows_are_plan_first_schedule_only_and_fail_closed():
+def test_paid_price_workflows_are_plan_first_trigger_scoped_and_fail_closed():
     root = Path(__file__).parents[1]
     workflows = root / ".github" / "workflows"
     response = (workflows / "paid-price-response.yml").read_text(encoding="utf-8")
@@ -50,13 +50,17 @@ def test_paid_price_workflows_are_plan_first_schedule_only_and_fail_closed():
     for workflow in (response, events):
         assert "jobs:\n  plan:" in workflow
         assert "needs: plan" in workflow
-        assert "github.event_name == 'schedule'" in workflow
         assert "ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true'" in workflow
         assert "secrets.OPENROUTER_PRICE_EXPERIMENT_KEY" in workflow
         assert "retention-days: 90" in workflow
         assert "cancel-in-progress: false" in workflow
+    assert "github.event_name == 'schedule'" in response
     assert "ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true'" in response
     assert "ORCAP_PAID_PRICE_EVENTS_ENABLED == 'true'" in events
+    assert 'workflows: ["capture"]' in events
+    assert "github.event.workflow_run.conclusion == 'success'" in events
+    assert "github.event_name == 'workflow_run'" in events
+    assert "github.event_name == 'schedule' &&" not in events
     assert 'if Path(snapshot).exists()' in response
     assert 'if Path(snapshot).exists()' in events
     assert response.index("upload immutable assignment-only plan") < response.index(
