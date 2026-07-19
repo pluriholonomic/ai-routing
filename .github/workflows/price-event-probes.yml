@@ -50,7 +50,7 @@ jobs:
       - name: overlay recent public capture artifacts
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./scripts/assemble_artifacts.sh 26 input-data
+        run: ./scripts/assemble_price_artifacts.sh 3 input-data event
       - name: stage only the spend ledger into the immutable plan bundle
         run: |
           mkdir -p plan-data/curated
