@@ -193,6 +193,7 @@ def _send_quality_assignment(
         "messages": [{"role": "user", "content": item["prompt"]}],
         "max_tokens": int(assignment["max_output_tokens"]),
         "temperature": 0,
+        "reasoning": {"effort": "minimal", "exclude": True},
         "usage": {"include": True},
         "session_id": _session_id(assignment),
         "provider": provider,

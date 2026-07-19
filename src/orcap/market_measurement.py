@@ -186,7 +186,7 @@ def build_market_assignments(
     block_id = eligible[0]
     rows = by_block[block_id]
     candidates = collapse_provider_candidates(rows)
-    a, b = candidates[0], candidates[1]
+    a, b, c = candidates[0], candidates[1], candidates[2]
     broad = broad_cap(rows)
     top_two = rectangular_cap(rows, 2)
     shape_row = candidates[0]
@@ -196,8 +196,9 @@ def build_market_assignments(
     shape_id = str(shape_row.get("shape_id") or "short_chat")
     a_tag = str(a.get("endpoint_tag") or "")
     b_tag = str(b.get("endpoint_tag") or "")
+    c_tag = str(c.get("endpoint_tag") or "")
     all_tags = [str(row.get("endpoint_tag") or "") for row in candidates]
-    if not a_tag or not b_tag or any(not tag for tag in all_tags):
+    if not a_tag or not b_tag or not c_tag or any(not tag for tag in all_tags):
         raise ValueError("eligible market-measurement candidates need exact endpoint tags")
 
     assignments: list[dict[str, Any]] = []
@@ -226,7 +227,9 @@ def build_market_assignments(
             if quality
             else input_tokens
         )
-        task_output = int(quality_item["max_tokens"]) if quality else output_tokens
+        # Six tokens can be consumed entirely by mandatory/minimal reasoning.
+        # The first paid pilot established 64 as the prospective floor.
+        task_output = max(int(quality_item["max_tokens"]), 64) if quality else output_tokens
         task_id = f"{STUDY_ID}|{run_id}|{block_id}|{policy}|{replicate}"
         requested_provider = str(requested.get("provider_name") or "") if requested else None
         requested_tag = str(requested.get("endpoint_tag") or "") if requested else None
@@ -322,7 +325,7 @@ def build_market_assignments(
         session_group=sticky_group,
     )
 
-    for label, selected, tag in (("a", a, a_tag), ("b", b, b_tag)):
+    for label, selected, tag in (("a", a, a_tag), ("b", b, b_tag), ("c", c, c_tag)):
         for level in (1, 2, 4):
             batch = f"liquidity|{block_id}|{label}|c{level}"
             for slot in range(level):
@@ -344,6 +347,7 @@ def build_market_assignments(
             ("default", None, None),
             ("a", a, a_tag),
             ("b", b, b_tag),
+            ("c", c, c_tag),
         ):
             kwargs = {}
             if selected is not None and tag is not None:

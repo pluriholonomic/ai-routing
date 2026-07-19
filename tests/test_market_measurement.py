@@ -68,13 +68,13 @@ def test_assignment_panel_is_deterministic_rectangular_and_complete():
     )
     assert first == second
     assert summary == second_summary
-    assert len(first) == 36
+    assert len(first) == 45
     assert len({row["task_id"] for row in first}) == len(first)
     assert summary["axis_counts"] == {
         "competition": 14,
         "memory": 2,
-        "liquidity": 14,
-        "quality": 6,
+        "liquidity": 21,
+        "quality": 8,
     }
     assert all(row["task_quote_cap_usd"] > 0 for row in first)
     assert all(row["payload_retained"] is False for row in first)
@@ -88,6 +88,14 @@ def test_assignment_panel_is_deterministic_rectangular_and_complete():
         if row["experiment_axis"] == "liquidity":
             batches.setdefault(row["execution_batch"], []).append(row)
     assert all(len(rows) == rows[0]["concurrency_level"] for rows in batches.values())
+    assert {
+        row["policy"] for row in first if row["experiment_axis"] == "quality"
+    } == {"quality_default", "quality_a", "quality_b", "quality_c"}
+    assert all(
+        row["max_output_tokens"] == 64
+        for row in first
+        if row["experiment_axis"] == "quality"
+    )
 
 
 def test_plan_has_no_prompt_answer_or_secret_payload_fields():

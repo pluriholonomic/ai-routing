@@ -172,7 +172,7 @@ def test_execute_is_concurrent_redacted_graded_exact_once_and_monitored(
         (tmp_path / "curated" / "market_measurement_quality").glob("dt=*/*.parquet")
     )
     quality = pq.ParquetFile(quality_path).read().to_pandas()
-    assert len(quality) == 6
+    assert len(quality) == 8
     assert quality[quality["quality_item_id"] == "mmlu-b"]["correct"].all()
     assert not quality[quality["quality_item_id"] == "mmlu-a"]["correct"].any()
     assert "prompt" not in quality.columns
@@ -218,3 +218,33 @@ def test_frozen_bundle_quality_hash_is_rechecked_before_real_send(monkeypatch):
     _enable(monkeypatch)
     with pytest.raises(RuntimeError, match="no longer matches"):
         capture._send_quality_assignment(None, assignment, bad)  # type: ignore[arg-type]
+
+
+def test_quality_send_uses_prospective_token_floor_and_minimal_reasoning(monkeypatch):
+    _enable(monkeypatch)
+    assignment = next(
+        row for row in _bundle()["assignments"] if row["experiment_axis"] == "quality"
+    )
+    item = {row["item_id"]: row for row in _items()}[assignment["quality_item_id"]]
+    seen = {}
+
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"choices": [{"message": {"content": "B"}}]}
+
+    class Client:
+        @staticmethod
+        def post(_url, *, headers, json):
+            seen["headers"] = headers
+            seen["body"] = json
+            return Response()
+
+    completion, generation, error, status = capture._send_quality_assignment(
+        Client(), assignment, item  # type: ignore[arg-type]
+    )
+    assert completion is not None and generation is None and error is None and status == 200
+    assert seen["body"]["max_tokens"] == 64
+    assert seen["body"]["reasoning"] == {"effort": "minimal", "exclude": True}
