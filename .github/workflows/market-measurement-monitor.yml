@@ -53,7 +53,11 @@ jobs:
               max_workers=8,
               stale_if_error=False,
           )
-          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          if Path(snapshot).exists():
+              shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          else:
+              # Empty is the correct state before the campaign's first artifact.
+              Path("input-data").mkdir(parents=True, exist_ok=True)
           Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
           with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
               handle.write(f"revision={revision}\n")

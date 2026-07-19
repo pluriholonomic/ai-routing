@@ -25,6 +25,7 @@ def test_capture_workflow_is_plan_first_gated_budgeted_and_h95_isolated():
     assert "OPENROUTER_API_KEY" not in text
     assert "decomposition-replication" not in text
     assert "execute_paid" in text
+    assert "Path(snapshot).exists()" in text
 
 
 def test_monitor_hydrates_only_isolated_tables_and_publishes_to_hf():
@@ -39,6 +40,7 @@ def test_monitor_hydrates_only_isolated_tables_and_publishes_to_hf():
     assert "revision=revision" in text
     assert "uv run orcap push" in text
     assert 'repo_id="t4run/openrouter-memo"' in text
+    assert "Path(snapshot).exists()" in text
 
 
 def test_nightly_hf_assembly_includes_the_new_workflow():
