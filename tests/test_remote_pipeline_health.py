@@ -23,11 +23,26 @@ def test_confirmatory_probe_workflows_share_concurrency_lock():
     h81 = (workflows / "decomposition-probes.yml").read_text(encoding="utf-8")
     h95 = (workflows / "decomposition-replication.yml").read_text(encoding="utf-8")
     h87 = (workflows / "capacity-policy-probes.yml").read_text(encoding="utf-8")
+    h96 = (workflows / "route-calibration.yml").read_text(encoding="utf-8")
     lock = "group: randomized-routing-probes"
     assert lock in h80
     assert lock in h81
     assert lock in h95
     assert lock in h87
+    assert lock in h96
+
+
+def test_h96_remote_campaign_is_finite_budgeted_and_manual_preflight_only():
+    root = Path(__file__).parents[1]
+    workflow = (root / ".github/workflows/route-calibration.yml").read_text(
+        encoding="utf-8"
+    )
+    assembler = (root / "scripts/assemble_artifacts.sh").read_text(encoding="utf-8")
+    assert 'cron: "37 1,5,9,13,17,21 19,20 7 *"' in workflow
+    assert 'ORCAP_H96_MAX_RUN_USD: "0.35"' in workflow
+    assert "--scheduled" in workflow
+    assert "--preflight-only" in workflow
+    assert "route-calibration.yml" in assembler
 
 
 def _run(*, minutes_ago, status="completed", conclusion="success"):

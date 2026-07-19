@@ -1,0 +1,49 @@
+name: route-calibration
+
+# H96 is a finite, two-day paid calibration of the public shadow router. The
+# dated cron has 12 intended starts. The collector enforces the UTC window and
+# a $0.35 per-run stop loss, so its maximum scheduled stop loss is $4.20.
+on:
+  schedule:
+    - cron: "37 1,5,9,13,17,21 19,20 7 *"
+  workflow_dispatch:
+
+concurrency:
+  # Serialize with H81/H95 and every other owned OpenRouter randomized probe.
+  group: randomized-routing-probes
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  calibration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: freeze public menus and run route-calibration assignments
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ORCAP_H96_CAMPAIGN_START_UTC: "2026-07-19T01:00:00Z"
+          ORCAP_H96_CAMPAIGN_END_UTC: "2026-07-21T01:00:00Z"
+          ORCAP_H96_MAX_RUN_USD: "0.35"
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            uv run python -m orcap.capture_route_calibration --scheduled
+          else
+            uv run python -m orcap.capture_route_calibration --preflight-only
+          fi
+      - name: preserve candidates, assignments, and private owned attempts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-calibration-${{ github.run_id }}
+          path: data/
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0

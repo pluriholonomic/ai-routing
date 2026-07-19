@@ -1,0 +1,4 @@
+interface:
+  display_name: "ORCAP Strategic Routing Simulation"
+  short_description: "Run calibrated routing market simulations"
+  default_prompt: "Use $orcap-strategic-routing-simulation to design, run, validate, and interpret a strategic routing simulation."
