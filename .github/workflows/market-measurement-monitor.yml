@@ -1,0 +1,107 @@
+name: market-measurement-monitor
+
+on:
+  schedule:
+    - cron: "47 3,9,15,21 * * *"
+  workflow_run:
+    workflows: ["market-measurement", "compact"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: market-measurement-monitor
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate isolated tables at one immutable HF revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          snapshot = snapshot_download_retry(
+              repo,
+              repo_type="dataset",
+              revision=revision,
+              allow_patterns=[
+                  "curated/market_measurement_assignments/*/*.parquet",
+                  "curated/market_measurement_attempts/*/*.parquet",
+                  "curated/market_measurement_quality/*/*.parquet",
+              ],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: overlay the triggering run before nightly compaction
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name == 'market-measurement' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p trigger-artifacts
+          gh run download "${{ github.event.workflow_run.id }}" --dir trigger-artifacts || true
+          find trigger-artifacts -type d -name plan-data -print0 | \
+            while IFS= read -r -d '' directory; do
+              cp -R "$directory"/. input-data/
+            done
+      - name: build aggregate health, competition, liquidity, memory, and quality panel
+        run: >-
+          uv run python -m orcap.analysis.market_measurement_monitor
+          --data-root input-data
+          --output-dir data/analysis/market-measurement
+          --source-revision "${{ steps.source.outputs.revision }}"
+      - name: publish aggregate monitoring outputs to HF dataset
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run orcap push
+          --message "market measurement monitor ${{ github.run_id }}"
+      - name: preserve aggregate panel
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-measurement-monitor-${{ github.run_id }}
+          path: data/analysis/market-measurement/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: refresh private HF Space dashboard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="data/analysis/market-measurement/market-measurement.html",
+              path_in_repo="market-measurement.html",
+              repo_id="t4run/openrouter-memo",
+              repo_type="space",
+              commit_message="market measurement dashboard refresh",
+          )
+          PY
