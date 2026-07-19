@@ -33,6 +33,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_PRICE_MONITOR_TABLES_REQUIRED: ${{ vars.ORCAP_PRICE_MONITOR_TABLES_REQUIRED }}
         run: uv run python scripts/check_remote_pipelines.py
       - name: retain machine-readable health report
         if: always()

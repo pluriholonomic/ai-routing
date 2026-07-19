@@ -5,9 +5,10 @@ from orcap.analysis import wf7_pinned_asymmetry as wf7
 from orcap.analysis.blinding import OUTCOME_BLINDED_STUDY_IDS, exclude_outcome_blinded
 from orcap.capture_capacity_policy_probes import STUDY_ID as H87_STUDY_ID
 from orcap.capture_decomposition_probes import STUDY_ID as H81_STUDY_ID
+from orcap.capture_decomposition_replication import STUDY_ID as H95_STUDY_ID
 from orcap.capture_enforcement_policy_probes import STUDY_ID as H88_STUDY_ID
-from orcap.capture_probes import STUDY_ID as H80_STUDY_ID
 from orcap.capture_hf_policy_probes import STUDY_ID as H89_STUDY_ID
+from orcap.capture_probes import STUDY_ID as H80_STUDY_ID
 
 
 class _FrameResult:
@@ -45,12 +46,13 @@ def test_shared_filter_excludes_every_power_gated_study():
             _attempt("capacity_safe", "openrouter-capacity-policy-v1", "h87"),
             _attempt("enforcement_safe", "openrouter-enforcement-policy-v1", "h88"),
             _attempt("hf_fastest", "huggingface-policy-frontier-v1", "h89"),
+            _attempt("delegated_default", H95_STUDY_ID, "h95"),
         ]
     )
 
     filtered, excluded = exclude_outcome_blinded(frame)
 
-    assert excluded == 5
+    assert excluded == 6
     assert filtered["event_id"].tolist() == ["legacy"]
 
 
@@ -61,6 +63,7 @@ def test_shared_contract_covers_each_prospective_collector():
         H87_STUDY_ID,
         H88_STUDY_ID,
         H89_STUDY_ID,
+        H95_STUDY_ID,
     }
 
 
