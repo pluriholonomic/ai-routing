@@ -72,6 +72,15 @@ def test_price_workflows_are_assembled_analyzed_and_preregistered():
     assembler = (root / "scripts/assemble_artifacts.sh").read_text(encoding="utf-8")
     assert "paid-price-response.yml" in assembler
     assert "price-event-probes.yml" in assembler
+    price_assembler = (root / "scripts/assemble_price_artifacts.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "paid-price-response.yml price-event-probes.yml" in price_assembler
+    assert 'WORKFLOWS="$WORKFLOWS capture.yml"' in price_assembler
+    response = (root / ".github/workflows/paid-price-response.yml").read_text()
+    events = (root / ".github/workflows/price-event-probes.yml").read_text()
+    assert "assemble_price_artifacts.sh 26 input-data paid" in response
+    assert "assemble_price_artifacts.sh 3 input-data event" in events
     for name in ("price-tests-online.yml", "live-router-exponent.yml"):
         workflow = (root / ".github/workflows" / name).read_text(encoding="utf-8")
         assert "workflow_run:" in workflow
