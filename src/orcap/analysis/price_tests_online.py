@@ -21,7 +21,6 @@ from . import (
     h46_rolling_routing_elasticity,
     h93_cross_router_price_policy,
     h94_cross_router_pass_through,
-    h97_critical_memory_empirical,
 )
 
 STUDY_ID = "openrouter-online-price-tests-v1"
@@ -47,6 +46,62 @@ def _run_safely(
         }
 
 
+def _synchronization_monitor(output_dir: Path) -> dict[str, Any]:
+    """Track same-direction quote updates without assigning causal intent."""
+    changes = data.q(
+        f"""
+        select changed_at_run_ts, model_id, provider_name,
+               try_cast(old_value as double) old_price,
+               try_cast(new_value as double) new_price
+        from read_parquet(
+          '{data.table_glob("pricing_changes", layer="derived")}',
+          union_by_name=true
+        )
+        where field = 'price_completion'
+          and try_cast(old_value as double) > 0
+          and try_cast(new_value as double) > 0
+          and old_value != new_value
+        """
+    ).df()
+    if changes.empty:
+        result = {
+            "evidence_status": "power_gated",
+            "n_price_changes": 0,
+            "claim_boundary": "No synchronization result without public price changes.",
+        }
+    else:
+        changes["direction"] = (changes["new_price"] > changes["old_price"]).map(
+            {True: "raise", False: "cut"}
+        )
+        cells = (
+            changes.groupby(["changed_at_run_ts", "model_id", "direction"])[
+                "provider_name"
+            ]
+            .nunique()
+            .reset_index(name="providers")
+        )
+        cells["provider_pairs"] = cells["providers"] * (cells["providers"] - 1) // 2
+        result = {
+            "evidence_status": "descriptive_synchronization_monitor",
+            "n_price_changes": int(len(changes)),
+            "n_models": int(changes["model_id"].nunique()),
+            "n_providers": int(changes["provider_name"].nunique()),
+            "same_direction_pairs": int(cells["provider_pairs"].sum()),
+            "multi_provider_cells": int((cells["providers"] >= 2).sum()),
+            "claim_boundary": (
+                "Same-clock, same-direction public quote moves are descriptive. They do not "
+                "identify shared algorithms, communication, intent, or a causal response."
+            ),
+        }
+        output_dir.mkdir(parents=True, exist_ok=True)
+        cells.to_parquet(output_dir / "synchronization-cells.parquet", index=False)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "summary.json").write_text(
+        json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return result
+
+
 def run(output_dir: Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     runners: dict[str, Callable[[Path], dict[str, Any]]] = {
@@ -57,7 +112,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "h46": h46_rolling_routing_elasticity.run,
         "h93": h93_cross_router_price_policy.run,
         "h94": h94_cross_router_pass_through.run,
-        "h97": h97_critical_memory_empirical.run,
+        "sync": _synchronization_monitor,
     }
     with data.pinned_analysis_source() as source:
         results = {
@@ -68,11 +123,11 @@ def run(output_dir: Path) -> dict[str, Any]:
         ("P1", "routing price elasticity", "h46"),
         ("P2", "within-model posted-price dispersion", "h2"),
         ("P3", "pricing technology and update cadence", "bm1"),
-        ("P4", "post-cut owned-routing response", "h97"),
+        ("P4", "post-cut routing-flow response", "h42"),
         ("P5", "quote fading and adverse-selection proxy", "h42"),
         ("P6", "model-author benchmark basis", "h13"),
         ("P7", "cadence-premium segmentation", "bm1"),
-        ("P8", "same-direction quote synchronization", "h97"),
+        ("P8", "same-direction quote synchronization", "sync"),
         ("P9", "cross-router posted-price pass-through", "h94"),
     ]
     rows = [
