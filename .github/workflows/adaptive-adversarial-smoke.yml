@@ -1,0 +1,62 @@
+name: adaptive-adversarial-smoke
+
+on:
+  pull_request:
+    paths:
+      - "src/orcap/market_env/routers_adaptive.py"
+      - "src/orcap/market_env/exploitability.py"
+      - "src/orcap/analysis/adaptive_adversarial_*.py"
+      - "tests/**/*adaptive_adversarial*"
+      - "config/adaptive_adversarial_v1.toml"
+      - ".github/workflows/adaptive-adversarial-*.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/orcap/market_env/routers_adaptive.py"
+      - "src/orcap/market_env/exploitability.py"
+      - "src/orcap/analysis/adaptive_adversarial_*.py"
+      - "tests/**/*adaptive_adversarial*"
+      - "config/adaptive_adversarial_v1.toml"
+      - ".github/workflows/adaptive-adversarial-*.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: adaptive-adversarial-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync
+      - name: adversarial-router tests
+        run: >-
+          uv run pytest -q
+          tests/market_env/test_adaptive_adversarial.py
+          tests/test_adaptive_adversarial_replay.py
+          tests/test_adaptive_adversarial_simulation.py
+          tests/test_adaptive_adversarial_report.py
+          tests/test_adaptive_adversarial_protocol.py
+          tests/test_adaptive_router.py
+      - name: adversarial-router lint
+        run: >-
+          uv run ruff check
+          src/orcap/market_env/routers_adaptive.py
+          src/orcap/market_env/exploitability.py
+          src/orcap/analysis/adaptive_adversarial_replay.py
+          src/orcap/analysis/adaptive_adversarial_simulation.py
+          src/orcap/analysis/adaptive_adversarial_report.py
+          tests/market_env/test_adaptive_adversarial.py
+          tests/test_adaptive_adversarial_replay.py
+          tests/test_adaptive_adversarial_simulation.py
+          tests/test_adaptive_adversarial_report.py
+          tests/test_adaptive_adversarial_protocol.py
+

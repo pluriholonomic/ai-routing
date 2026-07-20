@@ -1,0 +1,81 @@
+name: adaptive-adversarial-monitor
+
+on:
+  schedule:
+    - cron: "41 7 * * *"
+  workflow_run:
+    workflows: ["adaptive-adversarial-screening"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: adaptive-adversarial-monitor
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate latest published adversarial summaries
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os, shutil
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          snapshot = snapshot_download_retry(
+              repo, repo_type="dataset", revision=revision,
+              allow_patterns=[
+                  "analysis/adaptive-router-adversarial/adaptive-adversarial-summary.json",
+                  "analysis/adaptive-router-adversarial-simulation/adaptive-adversarial-simulation-summary.json",
+              ],
+              max_workers=4, stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: rebuild bounded scorecard
+        run: >-
+          uv run python -m orcap.analysis.adaptive_adversarial_report
+          --replay input-data/analysis/adaptive-router-adversarial/adaptive-adversarial-summary.json
+          --simulation input-data/analysis/adaptive-router-adversarial-simulation/adaptive-adversarial-simulation-summary.json
+          --output-dir data/analysis/adaptive-router-adversarial-scorecard
+          --source-revision "${{ steps.source.outputs.revision }}"
+      - name: publish monitor
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "adaptive adversarial monitor ${{ github.run_id }}"
+      - name: refresh private HF Space dashboard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj=(
+                  "data/analysis/adaptive-router-adversarial-scorecard/"
+                  "adaptive-adversarial-scorecard.html"
+              ),
+              path_in_repo="adaptive-adversarial-scorecard.html",
+              repo_id="t4run/openrouter-memo", repo_type="space",
+              commit_message="adaptive adversarial scorecard",
+          )
+          PY
+

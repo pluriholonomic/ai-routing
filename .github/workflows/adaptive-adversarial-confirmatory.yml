@@ -1,0 +1,125 @@
+name: adaptive-adversarial-confirmatory
+
+on:
+  workflow_dispatch:
+    inputs:
+      hf_revision:
+        description: "Exact immutable HF dataset revision"
+        type: string
+        required: true
+      release_phrase:
+        description: "Enter RELEASE exactly"
+        type: string
+        required: true
+
+concurrency:
+  group: adaptive-adversarial-confirmatory-v1
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: ${{ inputs.release_phrase == 'RELEASE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: write immutable marker before outcome access
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          SOURCE_REVISION: ${{ inputs.hf_revision }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          uv run python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          from huggingface_hub import HfApi
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo = "t4run/openrouter-market-history"
+          marker = "releases/adaptive-router-adversarial-v1/RELEASE_MARKER.json"
+          if api.file_exists(repo_id=repo, filename=marker, repo_type="dataset"):
+              raise RuntimeError("confirmatory release marker already exists; refusing rerun")
+          config = Path("config/adaptive_adversarial_v1.toml").read_bytes()
+          payload = {
+              "study_id": "adaptive-router-adversarial-v1",
+              "source_revision": os.environ["SOURCE_REVISION"],
+              "source_commit": os.environ["SOURCE_COMMIT"],
+              "config_sha256": hashlib.sha256(config).hexdigest(),
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "status": "release_started_marker_first",
+          }
+          api.upload_file(
+              path_or_fileobj=json.dumps(payload, indent=2, sort_keys=True).encode(),
+              path_in_repo=marker, repo_id=repo, repo_type="dataset",
+              commit_message="mark adaptive adversarial confirmatory release",
+          )
+          PY
+      - name: hydrate exact frozen endpoint revision
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          SOURCE_REVISION: ${{ inputs.hf_revision }}
+        run: |
+          uv run python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          revision = os.environ["SOURCE_REVISION"]
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history", repo_type="dataset", revision=revision,
+              allow_patterns=["curated/endpoints_snapshots/*/*.parquet"],
+              max_workers=12, stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
+          PY
+      - name: run frozen historical release
+        run: >-
+          uv run python -m orcap.analysis.adaptive_adversarial_replay
+          --data-root input-data
+          --output-dir data/analysis/adaptive-router-adversarial-confirmatory
+          --max-menus 20000
+          --max-attack-providers 4
+          --bootstrap-draws 2000
+      - name: run frozen strategic release
+        run: >-
+          uv run python -m orcap.analysis.adaptive_adversarial_simulation
+          --data-root input-data
+          --output-dir data/analysis/adaptive-router-adversarial-simulation-confirmatory
+          --max-menus 1000
+          --learning-menus 12
+          --learning-steps 5000
+          --learning-seeds 30
+          --q-learning-epochs 300000
+      - name: build frozen release scorecard
+        run: >-
+          uv run python -m orcap.analysis.adaptive_adversarial_report
+          --replay data/analysis/adaptive-router-adversarial-confirmatory/adaptive-adversarial-summary.json
+          --simulation data/analysis/adaptive-router-adversarial-simulation-confirmatory/adaptive-adversarial-simulation-summary.json
+          --output-dir data/analysis/adaptive-router-adversarial-scorecard-confirmatory
+          --source-revision "${{ inputs.hf_revision }}"
+      - name: preserve exact source revision
+        run: |
+          cp hf-revision.txt data/analysis/adaptive-router-adversarial-confirmatory/
+          cp hf-revision.txt data/analysis/adaptive-router-adversarial-simulation-confirmatory/
+          cp hf-revision.txt data/analysis/adaptive-router-adversarial-scorecard-confirmatory/
+      - name: publish immutable confirmatory outputs
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "adaptive adversarial confirmatory ${{ github.run_id }}"
+      - name: preserve release artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-adversarial-confirmatory-${{ github.run_id }}
+          path: data/analysis/*confirmatory/
+          if-no-files-found: warn
+          retention-days: 90
+

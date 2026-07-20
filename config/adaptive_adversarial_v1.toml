@@ -1,0 +1,46 @@
+schema_version = 1
+study_id = "adaptive-router-adversarial-v1"
+status = "screening"
+seed = 20260720
+
+[historical_replay]
+max_attack_providers = 4
+quote_multipliers = [0.60, 0.75, 0.90, 1.00, 1.01, 1.05, 1.10, 1.25, 1.50]
+cost_fractions = [0.25, 0.50, 0.75]
+bootstrap_draws = 1000
+cluster = "model-day"
+
+[simulation]
+max_providers = 4
+demand = 120
+cost_fractions = [0.25, 0.50, 0.75]
+capacity_regimes = ["scarce", "balanced", "spare"]
+capacity_multipliers = [0.75, 1.00, 2.00]
+deviation_multipliers = [0.60, 0.80, 1.00, 1.01, 1.05, 1.20, 1.50]
+coalition_size = 2
+
+[screening]
+historical_menus = 5000
+simulation_menus = 200
+learning_menus = 8
+learning_steps = 2000
+learning_seeds = 10
+q_learning_epochs = 100000
+
+[confirmatory]
+historical_menus = 20000
+simulation_menus = 1000
+learning_menus = 12
+learning_steps = 5000
+learning_seeds = 30
+q_learning_epochs = 300000
+
+[hardened_router]
+exploration_floor = 0.10
+smoothing_alpha = 0.25
+commitment_epochs = 12
+max_share_ratio_per_epoch = 1.50
+operator_share_cap = 0.60
+max_cost_premium = 0.02
+max_reliability_loss = 0.002
+upward_quote_tolerance = 0.0
