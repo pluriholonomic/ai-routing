@@ -10,13 +10,13 @@ tasks and no paid outcomes. The paid discovery window is prospectively set to
 $1 per-run, $25 rolling-day, and $300 campaign caps and uses the dedicated
 `OPENROUTER_PRICE_EXPERIMENT_KEY`.
 
-The scheduled workflow carries those frozen UTC endpoints as fallbacks and is
-enabled when the study-specific repository variable is either unset or true;
-setting `ORCAP_PAID_PRICE_RESPONSE_ENABLED=false` is the immediate kill switch.
-The existing global paid-study gate must still be true.
+The scheduled workflow carries those frozen UTC endpoints as fallbacks. The
+existing global paid-study gate is the kill switch and must be true. The stale
+study-specific false variable is not an activation gate during this fixed,
+expiring window; the Python campaign and budget gates remain authoritative.
 
 The first execution is a one-time CI canary triggered by adding the immutable
-`activation-canary-v1` marker on `main`. It uses the ordinary frozen plan,
+activation marker on `main`. It uses the ordinary frozen plan,
 budget, redaction, artifact, and concurrency paths. Later executions retain the
 preregistered four-hour schedule; ordinary pushes do not trigger requests.
 

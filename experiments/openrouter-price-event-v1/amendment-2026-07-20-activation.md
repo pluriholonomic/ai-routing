@@ -9,10 +9,10 @@ zero paid outcomes before this amendment. The discovery window is
 2026-07-20T04:00:00Z through 2026-07-27T04:00:00Z, with the frozen $1 per-run,
 $25 rolling-day, and $60 event-campaign caps.
 
-The scheduled workflow carries those frozen UTC endpoints as fallbacks and is
-enabled when the study-specific repository variable is either unset or true;
-setting `ORCAP_PAID_PRICE_EVENTS_ENABLED=false` is the immediate kill switch.
-The existing global paid-study gate must still be true.
+The scheduled workflow carries those frozen UTC endpoints as fallbacks. The
+existing global paid-study gate is the kill switch and must be true. The stale
+study-specific false variable is not an activation gate during this fixed,
+expiring window; the Python campaign and budget gates remain authoritative.
 
 Outcome-free base, W1, and W2 planning may run without the paid-execution lock.
 Every base, W1, and W2 paid job remains in the

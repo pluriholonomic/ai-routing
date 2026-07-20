@@ -3,7 +3,7 @@ name: price-event-probes
 # Successful public captures trigger planning while their final 5-minute menu is
 # still inside the freshness gate. Hash-linked delayed jobs cover the frozen
 # +15m and +60m waves; the hourly schedule recovers the wider +6h/+24h waves.
-# Manual runs remain no-spend and every paid job is separately feature-gated.
+# Manual runs remain no-spend and every paid job retains the global gate.
 on:
   workflow_run:
     workflows: ["capture"]
@@ -97,9 +97,7 @@ jobs:
            (github.event_name == 'workflow_run' &&
             github.event.workflow_run.conclusion == 'success')) &&
           needs.plan.outputs.has_tasks == 'true' &&
-          vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
-          (vars.ORCAP_PAID_PRICE_EVENTS_ENABLED == '' ||
-           vars.ORCAP_PAID_PRICE_EVENTS_ENABLED == 'true') }}
+          vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' }}
     concurrency:
       group: randomized-routing-probes
       cancel-in-progress: false

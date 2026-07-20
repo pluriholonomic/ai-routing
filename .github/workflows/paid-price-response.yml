@@ -1,13 +1,13 @@
 name: paid-price-response
 
 # Plans run remotely even while paid execution is disabled. Paid execution
-# requires both repository feature flags, a dedicated key, and a valid campaign
+# requires the global repository gate, a dedicated key, and a valid campaign
 # window enforced again inside Python.
 on:
   push:
     branches: [main]
     paths:
-      - "experiments/openrouter-price-response-v1/activation-canary-v1"
+      - "experiments/openrouter-price-response-v1/activation-canary-v*"
   schedule:
     - cron: "11 */4 * * *"
   workflow_dispatch:
@@ -89,9 +89,7 @@ jobs:
     needs: plan
     if: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'push') &&
-          vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
-          (vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == '' ||
-           vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true') }}
+          vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' }}
     concurrency:
       group: randomized-routing-probes
       cancel-in-progress: false
