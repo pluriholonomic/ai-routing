@@ -1,17 +1,16 @@
-schema_version = 2
-study_id = "adaptive-router-adversarial-v2"
-status = "superseded_before_release"
-superseded_reason = "deterministic UCB rewards made nominal seeds exact duplicates"
+schema_version = 3
+study_id = "adaptive-router-adversarial-v3"
+status = "frozen_future_only"
 seed = 20260720
-frozen_at_utc = "2026-07-20T21:44:09Z"
+frozen_at_utc = "2026-07-20T23:47:38Z"
 
 [population]
-development_data_through = "2026-07-20"
-test_start_date = "2026-07-21"
-test_end_date = "2026-08-03"
-release_not_before_utc = "2026-08-04T00:00:00Z"
+development_data_through = "2026-07-21"
+test_start_date = "2026-07-22"
+test_end_date = "2026-08-04"
+release_not_before_utc = "2026-08-05T00:00:00Z"
 minimum_distinct_dates = 14
-minimum_historical_menus = 5000
+minimum_historical_menus = 4500
 
 [historical_replay]
 max_menus = 5000
@@ -33,6 +32,7 @@ coalition_size = 2
 learning_menus = 8
 learning_steps = 2000
 learning_seeds = 10
+learning_reward = "realized_multinomial_routed_quantity_with_capacity_clipping"
 q_learning_epochs = 100000
 
 [hardened_router]

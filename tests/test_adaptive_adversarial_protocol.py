@@ -40,22 +40,33 @@ def test_preregistration_preserves_paid_study_boundary():
     assert "does not identify actual" in text
 
 
-def test_v2_protocol_is_future_only_and_workflow_cannot_release_v1():
-    path = Path("config/adaptive_adversarial_v2.toml")
+def test_v3_protocol_is_future_only_and_workflow_cannot_release_superseded_v2():
+    with Path("config/adaptive_adversarial_v2.toml").open("rb") as handle:
+        superseded = tomllib.load(handle)
+    assert superseded["status"] == "superseded_before_release"
+    path = Path("config/adaptive_adversarial_v3.toml")
     with path.open("rb") as handle:
         protocol = tomllib.load(handle)
-    assert protocol["schema_version"] == 2
+    assert protocol["schema_version"] == 3
     assert protocol["status"] == "frozen_future_only"
     assert protocol["population"]["development_data_through"] < protocol["population"][
         "test_start_date"
     ]
-    assert protocol["population"]["test_start_date"] == "2026-07-21"
-    assert protocol["population"]["test_end_date"] == "2026-08-03"
+    assert protocol["population"]["test_start_date"] == "2026-07-22"
+    assert protocol["population"]["test_end_date"] == "2026-08-04"
+    assert tuple(protocol["historical_replay"]["quote_multipliers"]) == QUOTE_MULTIPLIERS
+    assert tuple(protocol["simulation"]["deviation_multipliers"]) == (
+        DEVIATION_MULTIPLIERS
+    )
+    assert protocol["simulation"]["learning_reward"].startswith(
+        "realized_multinomial"
+    )
     workflow = Path(
         ".github/workflows/adaptive-adversarial-confirmatory.yml"
     ).read_text(encoding="utf-8")
-    assert "adaptive-router-adversarial-v2" in workflow
-    assert "--start-date 2026-07-21" in workflow
-    assert "--end-date 2026-08-03" in workflow
+    assert "adaptive-router-adversarial-v3" in workflow
+    assert "--start-date 2026-07-22" in workflow
+    assert "--end-date 2026-08-04" in workflow
+    assert "adaptive-router-adversarial-v2" not in workflow
     assert "config/adaptive_adversarial_v1.toml" not in workflow
     assert "write immutable marker before eligible-row access" in workflow

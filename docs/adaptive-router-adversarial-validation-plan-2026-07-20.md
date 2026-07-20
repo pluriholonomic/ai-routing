@@ -1,8 +1,8 @@
 # Adaptive router adversarial-validation plan
 
 **Date:** 2026-07-20  
-**Status:** execution in progress; v1 is outcome-informed screening and a later
-future-only v2 must carry confirmatory claims  
+**Status:** v1 screening executed remotely; v2 superseded before release after a
+seed-integrity failure; corrected future-only v3 is frozen and remotely scheduled
 **Applies to:** `openrouter-adaptive-monotone-v1` router family and the strategic-routing
 market environment
 
@@ -639,3 +639,22 @@ Classify the result as follows:
 Even the strongest classification does not establish dominant-strategy truthfulness,
 absence of collusion, or market-wide welfare. Those require stronger mechanism results
 or direct market-level experimental access.
+
+## 15. Executed screening and prospective release
+
+The full v1 screen completed in GitHub Actions run `29780088479` against immutable HF
+revision `0a7c6bef4acb87f81c9d22b1748e7a610107a03e`. Its artifact contains 4,878 historical
+menus, 652,680 quote-attack rows, 7,200 strategic cells, 320 UCB runs, and 40 bounded
+Q-learning runs. The screening verdict is mixed: the hardened mechanism is much less
+manipulable under historical, static, coalition, and sequential-best-response attacks,
+but leaves larger residual deviation gains after the deterministic-reward UCB learning
+path. Full results and boundaries are recorded in
+`docs/adaptive-router-adversarial-screening-results-2026-07-20.md`.
+
+The UCB audit also showed that its nominal seeds were duplicates because the only seeded
+object was an economically irrelevant within-epoch permutation. Version 2 was therefore
+superseded before release. Version 3 uses realized multinomial routed quantities with
+capacity clipping, retains the adverse UCB acceptance threshold, moves the untouched
+test window to 2026-07-22 through 2026-08-04, and is eligible to release once after
+2026-08-05. The scheduled marker-first workflow runs remotely and does not depend on
+this computer.

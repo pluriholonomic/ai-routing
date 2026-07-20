@@ -204,7 +204,12 @@ def train_ucb_market(
     steps: int,
     seed: int,
 ) -> dict[str, Any]:
-    """Independent UCB price learners with seeded asynchronous action order."""
+    """Independent UCB price learners observing realized routed quantities.
+
+    Each epoch draws one multinomial allocation from the router probabilities,
+    then clips service at admitted capacity.  This preserves the market-wide
+    demand constraint while making seeds genuine independent routing paths.
+    """
     rng = np.random.default_rng(seed)
     names = sorted(specs)
     grids = {
@@ -234,13 +239,30 @@ def train_ucb_market(
             arm = agents[provider].choose(step)
             selected[provider] = arm
             actions[provider] = ProviderAction(float(grids[provider][arm]))
-        profile = expected_capacity_profits(router, specs, actions, demand=demand)
-        for provider in names:
-            agents[provider].update(selected[provider], profile.profits[provider])
+        probabilities = router.probabilities(specs, actions)
+        probability_vector = np.array(
+            [probabilities.get(provider, 0.0) for provider in names], dtype=float
+        )
+        if probability_vector.sum() <= 0:
+            routed = np.zeros(len(names), dtype=int)
+        else:
+            probability_vector /= probability_vector.sum()
+            routed = rng.multinomial(demand, probability_vector)
+        realized_profits = {}
+        for index, provider in enumerate(names):
+            spec = specs[provider]
+            action = actions[provider]
+            admitted = spec.physical_capacity * action.admitted_capacity_fraction
+            served = min(float(routed[index]), admitted)
+            realized_profits[provider] = float(
+                served * (action.quote - spec.marginal_cost)
+                - spec.physical_capacity * spec.capital_cost_per_slot
+            )
+            agents[provider].update(selected[provider], realized_profits[provider])
         if hasattr(router, "advance"):
             router.advance(specs, actions)
         if step >= max(0, steps - 100):
-            tail_profits.append(float(np.mean(list(profile.profits.values()))))
+            tail_profits.append(float(np.mean(list(realized_profits.values()))))
             tail_quotes.append(float(np.mean([action.quote for action in actions.values()])))
 
     greedy_actions = {
@@ -265,6 +287,7 @@ def train_ucb_market(
         "final_mean_profit": float(np.mean(list(final.profits.values()))),
         "max_deviation_gain": audit["max_gain"],
         "max_deviation_gain_relative": audit["max_gain_relative_to_mean_abs_profit"],
+        "training_reward": "realized multinomial routed quantity with capacity clipping",
     }
 
 
@@ -522,6 +545,7 @@ def run_simulation(
         "q_learning_runs": len(q_learning),
         "learning_steps": learning_steps,
         "learning_seeds": learning_seeds,
+        "learning_reward": "realized multinomial routed quantity with capacity clipping",
         "q_learning_epochs": q_learning_epochs,
         "date_window": {
             "start_date": start_date,

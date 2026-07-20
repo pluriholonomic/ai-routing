@@ -89,10 +89,10 @@ def test_future_only_scorecard_requires_support_and_all_frozen_gates(tmp_path):
         "models": 20,
         "dates": 14,
         "date_window": {
-            "start_date": "2026-07-21",
-            "end_date": "2026-08-03",
-            "observed_min": "2026-07-21",
-            "observed_max": "2026-08-03",
+            "start_date": "2026-07-22",
+            "end_date": "2026-08-04",
+            "observed_min": "2026-07-22",
+            "observed_max": "2026-08-04",
         },
         "policies": [
             {
@@ -117,10 +117,10 @@ def test_future_only_scorecard_requires_support_and_all_frozen_gates(tmp_path):
         "learning_runs": 320,
         "q_learning_runs": 40,
         "date_window": {
-            "start_date": "2026-07-21",
-            "end_date": "2026-08-03",
-            "observed_min": "2026-07-21",
-            "observed_max": "2026-08-03",
+            "start_date": "2026-07-22",
+            "end_date": "2026-08-04",
+            "observed_min": "2026-07-22",
+            "observed_max": "2026-08-04",
         },
         "policies": [
             {
@@ -160,7 +160,7 @@ def test_future_only_scorecard_requires_support_and_all_frozen_gates(tmp_path):
         replay_path=replay_path,
         simulation_path=simulation_path,
         out_dir=tmp_path / "out",
-        protocol_config=Path("config/adaptive_adversarial_v2.toml"),
+        protocol_config=Path("config/adaptive_adversarial_v3.toml"),
     )
     assert result["status"] == "confirmatory_complete"
     assert result["verdict"] == "future_only_confirmatory_passed"

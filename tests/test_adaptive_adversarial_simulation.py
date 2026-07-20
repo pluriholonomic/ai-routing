@@ -72,6 +72,24 @@ def test_ucb_market_is_seeded_and_retains_exploitability_audit():
     )
     assert first == second
     assert first["max_deviation_gain"] >= -1e-12
+    different = train_ucb_market(
+        router_for("baseline_eta2"),
+        specs,
+        actions,
+        demand=30,
+        steps=100,
+        seed=5,
+    )
+    reference = train_ucb_market(
+        router_for("baseline_eta2"),
+        specs,
+        actions,
+        demand=30,
+        steps=100,
+        seed=4,
+    )
+    assert different["mean_tail_profit"] != reference["mean_tail_profit"]
+    assert "realized multinomial" in different["training_reward"]
 
 
 def test_q_screen_is_bounded_and_serializable():
