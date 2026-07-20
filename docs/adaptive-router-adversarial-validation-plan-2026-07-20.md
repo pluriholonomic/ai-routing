@@ -658,3 +658,11 @@ capacity clipping, retains the adverse UCB acceptance threshold, moves the untou
 test window to 2026-07-22 through 2026-08-04, and is eligible to release once after
 2026-08-05. The scheduled marker-first workflow runs remotely and does not depend on
 this computer.
+
+A post-freeze engineering audit of the corrected stochastic learner was also completed
+on eight historical menus. Every menu-policy cell produced ten distinct realized
+tail-profit paths. The hardened rule reduced mean absolute post-UCB deviation gain to
+0.534 of inverse-square, but its normalized ratio was 4.062 because mean provider profit
+contracted even more. This audit validates the seed correction and sharpens the
+denominator interpretation; it is not a prospective outcome, does not satisfy the
+version-3 gate, and did not change any frozen parameter or threshold.

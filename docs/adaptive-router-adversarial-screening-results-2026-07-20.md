@@ -102,3 +102,29 @@ observation process to seeded realized multinomial routed quantities with capaci
 clipping, moves the untouched test window forward, and retains the post-UCB maximum
 ratio of 0.60. A future failure will be published as a failure.
 
+## Post-freeze stochastic-learner engineering audit
+
+After freezing version 3, we ran its corrected learner on eight sampled historical
+menus dated 2026-07-07 through 2026-07-19 from immutable local HF tree
+`e82185f55616359fcb6d874ebcd3e5cd4b0fd444`. This is a software and denominator audit,
+not the prospective version-3 result, and it cannot be used to change the frozen rule
+or threshold.
+
+All 32 menu-policy cells had ten distinct realized tail-profit observations across the
+ten seeds. Thus stochastic routing now changes the learning path as intended. The
+corrected result is more nuanced than version 1:
+
+| Post-UCB quantity | Inverse-square | Hardened | Hardened / baseline |
+|---|---:|---:|---:|
+| Mean normalized deviation gain | 0.2931 | 1.1905 | 4.0618 |
+| 95th-percentile normalized deviation gain | 0.6154 | 5.3549 | 8.7015 |
+| Mean absolute deviation gain | 2.69e-4 | 1.44e-4 | 0.5341 |
+| 95th-percentile absolute deviation gain | 6.35e-4 | 5.25e-4 | 0.8263 |
+| Median absolute deviation gain | 2.31e-4 | 4.40e-5 | 0.1902 |
+
+The hardened rule had a higher mean absolute deviation gain on only one of eight menus.
+It therefore reduces absolute deviation opportunities in this diagnostic while still
+failing the frozen normalized gate: provider profit falls faster than deviation gain.
+This separates a profit-compression or denominator problem from a claim that the rule
+creates larger dollar deviations. The 100-epoch Q-learning portion was only a smoke
+test and carries no convergence or collusion interpretation.
