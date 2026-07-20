@@ -20,6 +20,11 @@ activation marker on `main`. It uses the ordinary frozen plan,
 budget, redaction, artifact, and concurrency paths. Later executions retain the
 preregistered four-hour schedule; ordinary pushes do not trigger requests.
 
+After the canary finishes, the one-time `ingest-canary-v1` marker triggers the
+existing data-only compactor so the redacted execution artifact reaches the
+remote Hugging Face ledger without waiting for the next nightly fold. This
+marker cannot trigger a paid job.
+
 Outcome-free planning no longer occupies the `randomized-routing-probes`
 concurrency group. Every paid execution job still uses that exact lock, so it
 cannot overlap H95 or another owned OpenRouter randomized execution. H95's

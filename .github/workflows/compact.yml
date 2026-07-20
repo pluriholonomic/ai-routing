@@ -10,6 +10,7 @@ on:
       - ".github/workflows/compact.yml"
       - "src/orcap/compact.py"
       - "scripts/assemble_artifacts.sh"
+      - "experiments/openrouter-price-response-v1/ingest-canary-v1"
   schedule:
     # Run after the UTC-day inputs have landed. The 04:13 slot also gives the
     # remote watchdog time to observe a recovery before its 06:47 check.
