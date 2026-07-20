@@ -1,0 +1,160 @@
+name: adaptive-router
+
+# Separate prospective study. It never amends H81, H95, H96, or the existing
+# market-measurement assignments. Every paid run consumes an uploaded plan.
+on:
+  schedule:
+    - cron: "17 0,6,12,18 21-31 7 *"
+    - cron: "17 0,6,12,18 1-3 8 *"
+  workflow_dispatch:
+    inputs:
+      execute_paid:
+        description: "Execute the uploaded plan after all gates"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      has_tasks: ${{ steps.plan_state.outputs.has_tasks }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate authoritative horizon and spend state
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from pathlib import Path
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=[
+                  "curated/paid_spend_ledger/*/*.parquet",
+                  "curated/adaptive_router_assignments/*/*.parquet",
+                  "curated/adaptive_router_attempts/*/*.parquet",
+              ],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          if Path(snapshot).exists():
+              shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          else:
+              Path("input-data").mkdir(parents=True, exist_ok=True)
+          PY
+      - name: overlay uncompacted paid checkpoints
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_price_artifacts.sh 48 input-data paid
+      - name: stage only horizon and spend state
+        run: |
+          mkdir -p plan-data/curated
+          for table in paid_spend_ledger adaptive_router_assignments adaptive_router_attempts; do
+            if [ -d "input-data/curated/$table" ]; then
+              cp -R "input-data/curated/$table" plan-data/curated/
+            fi
+          done
+      - name: freeze public menu, policy probabilities, and provider draws
+        env:
+          ORCAP_ADAPTIVE_ROUTER_MODELS: ${{ vars.ORCAP_ADAPTIVE_ROUTER_MODELS }}
+          ORCAP_ADAPTIVE_ROUTER_SHAPES: ${{ vars.ORCAP_ADAPTIVE_ROUTER_SHAPES || 'short_chat,output_heavy' }}
+          ORCAP_ADAPTIVE_ROUTER_RUN_ID: github-${{ github.run_id }}
+          ORCAP_ADAPTIVE_ROUTER_SEED: ${{ github.run_id }}
+        run: >-
+          uv run python -m orcap.capture_adaptive_router plan
+          --bundle adaptive-router-plan.json
+          --curated-dir plan-data/curated
+          --data-root plan-data
+          --max-blocks 3
+      - name: upload immutable assignment-only plan before requests
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-router-plan-${{ github.run_id }}
+          path: |
+            adaptive-router-plan.json
+            plan-data/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: true
+      - name: validate manifest and expose fixed-horizon state
+        id: plan_state
+        run: |
+          uv run python -m orcap.capture_adaptive_router validate-plan \
+            --bundle adaptive-router-plan.json
+          uv run python - <<'PY'
+          import json, os
+          bundle = json.load(open("adaptive-router-plan.json", encoding="utf-8"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"has_tasks={'true' if bundle['assignments'] else 'false'}\n")
+          PY
+
+  execute:
+    needs: plan
+    if: >-
+      ${{ needs.plan.outputs.has_tasks == 'true' &&
+          vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
+          vars.ORCAP_ADAPTIVE_ROUTER_ENABLED == 'true' &&
+          (github.event_name == 'schedule' || github.event.inputs.execute_paid == 'true') }}
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: adaptive-router-plan-${{ github.run_id }}
+      - name: recover checkpoint from a retried execution job
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior-execution plan-data/curated/paid_spend_ledger
+          gh run download "${{ github.run_id }}" \
+            --pattern "adaptive-router-execution-${{ github.run_id }}-*" \
+            --dir prior-execution || true
+          find prior-execution -type d -name paid_spend_ledger -print0 | \
+            while IFS= read -r -d '' ledger; do
+              cp -R "$ledger"/. plan-data/curated/paid_spend_ledger/
+            done
+      - name: execute frozen provider draws exactly once
+        env:
+          OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
+          ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
+          ORCAP_ADAPTIVE_ROUTER_ENABLED: ${{ vars.ORCAP_ADAPTIVE_ROUTER_ENABLED }}
+          ORCAP_ADAPTIVE_ROUTER_START_UTC: ${{ vars.ORCAP_ADAPTIVE_ROUTER_START_UTC || '2026-07-21T00:00:00Z' }}
+          ORCAP_ADAPTIVE_ROUTER_END_UTC: ${{ vars.ORCAP_ADAPTIVE_ROUTER_END_UTC || '2026-08-04T03:00:00Z' }}
+          ORCAP_ADAPTIVE_ROUTER_MAX_RUN_USD: ${{ vars.ORCAP_ADAPTIVE_ROUTER_MAX_RUN_USD || '0.75' }}
+          ORCAP_ADAPTIVE_ROUTER_MAX_DAY_USD: ${{ vars.ORCAP_ADAPTIVE_ROUTER_MAX_DAY_USD || '5.00' }}
+          ORCAP_ADAPTIVE_ROUTER_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_ADAPTIVE_ROUTER_MAX_CAMPAIGN_USD || '40.00' }}
+        run: >-
+          uv run python -m orcap.capture_adaptive_router execute
+          --bundle adaptive-router-plan.json
+          --curated-dir plan-data/curated
+      - name: preserve redacted attempts, assignments, and spend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-router-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: plan-data/
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0

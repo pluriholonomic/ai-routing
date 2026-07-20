@@ -19,6 +19,9 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["price-event-probes.yml"] == 180
     assert WORKFLOWS["price-tests-online.yml"] == 540
     assert WORKFLOWS["live-router-exponent.yml"] == 540
+    assert WORKFLOWS["adaptive-router.yml"] == 540
+    assert WORKFLOWS["adaptive-router-monitor.yml"] == 1800
+    assert WORKFLOWS["adaptive-router-counterfactual.yml"] == 1800
     assert "curated/price_response_assignments" in HF_PRICE_TABLES
     assert "analysis/router_exponent_estimates" in HF_PRICE_TABLES
 
@@ -32,6 +35,7 @@ def test_confirmatory_probe_workflows_share_concurrency_lock():
     h96 = (workflows / "route-calibration.yml").read_text(encoding="utf-8")
     price_response = (workflows / "paid-price-response.yml").read_text(encoding="utf-8")
     price_events = (workflows / "price-event-probes.yml").read_text(encoding="utf-8")
+    adaptive = (workflows / "adaptive-router.yml").read_text(encoding="utf-8")
     lock = "group: randomized-routing-probes"
     assert lock in h80
     assert lock in h81
@@ -40,6 +44,7 @@ def test_confirmatory_probe_workflows_share_concurrency_lock():
     assert lock in h96
     assert lock in price_response
     assert lock in price_events
+    assert lock in adaptive
 
 
 def test_paid_price_workflows_are_plan_first_trigger_scoped_and_fail_closed():

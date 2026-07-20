@@ -1,0 +1,110 @@
+name: adaptive-router-monitor
+
+on:
+  schedule:
+    - cron: "57 5 * * *"
+  workflow_run:
+    workflows: ["adaptive-router"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Optional adaptive-router run to overlay"
+        type: string
+        required: false
+
+concurrency:
+  group: adaptive-router-monitor
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate isolated tables at one immutable HF revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          snapshot = snapshot_download_retry(
+              repo, repo_type="dataset", revision=revision,
+              allow_patterns=[
+                  "curated/adaptive_router_assignments/*/*.parquet",
+                  "curated/adaptive_router_attempts/*/*.parquet",
+              ],
+              max_workers=8, stale_if_error=False,
+          )
+          if Path(snapshot).exists():
+              shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          else:
+              Path("input-data").mkdir(parents=True, exist_ok=True)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: overlay triggering execution before nightly compaction
+        if: >-
+          ${{ (github.event_name == 'workflow_run') ||
+              (github.event_name == 'workflow_dispatch' && inputs.source_run_id != '') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.source_run_id }}
+        run: |
+          mkdir -p trigger-artifacts
+          gh run download "$SOURCE_RUN_ID" --dir trigger-artifacts || true
+          find trigger-artifacts -type d -name curated -print0 | \
+            while IFS= read -r -d '' directory; do
+              mkdir -p input-data/curated
+              cp -R "$directory"/. input-data/curated/
+            done
+      - name: validate assignments and update fixed-horizon monitor
+        run: >-
+          uv run python -m orcap.analysis.adaptive_router_monitor
+          --data-root input-data
+          --output-dir data/analysis/adaptive-router-live
+          --source-revision "${{ steps.source.outputs.revision }}"
+      - name: publish operational monitor and any fixed-horizon release
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "adaptive router monitor ${{ github.run_id }}"
+      - name: preserve monitor artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-router-monitor-${{ github.run_id }}
+          path: data/analysis/adaptive-router-live/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: refresh private HF Space dashboard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="data/analysis/adaptive-router-live/adaptive-router-live.html",
+              path_in_repo="adaptive-router-live.html",
+              repo_id="t4run/openrouter-memo",
+              repo_type="space",
+              commit_message="adaptive router live monitor",
+          )
+          PY

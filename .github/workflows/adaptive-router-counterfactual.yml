@@ -1,0 +1,65 @@
+name: adaptive-router-counterfactual
+
+on:
+  workflow_run:
+    workflows: ["compact"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: adaptive-router-counterfactual
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate endpoint menus at one immutable revision
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          snapshot = snapshot_download_retry(
+              repo, repo_type="dataset", revision=revision,
+              allow_patterns=["curated/endpoints_snapshots/*/*.parquet"],
+              max_workers=12, stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
+          PY
+      - name: fit on the temporal prefix and replay on the holdout
+        run: >-
+          uv run python -m orcap.analysis.adaptive_router_counterfactual
+          --data-root input-data
+          --output-dir data/analysis/adaptive-router-counterfactual
+          --bootstrap-draws 1000
+      - name: preserve exact source revision
+        run: cp hf-revision.txt data/analysis/adaptive-router-counterfactual/
+      - name: publish counterfactual tables and figures
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "adaptive router counterfactual ${{ github.run_id }}"
+      - name: preserve analysis artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-router-counterfactual-${{ github.run_id }}
+          path: data/analysis/adaptive-router-counterfactual/
+          if-no-files-found: error
+          retention-days: 30
