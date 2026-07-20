@@ -10,6 +10,11 @@ tasks and no paid outcomes. The paid discovery window is prospectively set to
 $1 per-run, $25 rolling-day, and $300 campaign caps and uses the dedicated
 `OPENROUTER_PRICE_EXPERIMENT_KEY`.
 
+The scheduled workflow carries those frozen UTC endpoints as fallbacks and is
+enabled when the study-specific repository variable is either unset or true;
+setting `ORCAP_PAID_PRICE_RESPONSE_ENABLED=false` is the immediate kill switch.
+The existing global paid-study gate must still be true.
+
 Outcome-free planning no longer occupies the `randomized-routing-probes`
 concurrency group. Every paid execution job still uses that exact lock, so it
 cannot overlap H95 or another owned OpenRouter randomized execution. H95's

@@ -86,7 +86,8 @@ jobs:
     if: >-
       ${{ github.event_name == 'schedule' &&
           vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
-          vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true' }}
+          (vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == '' ||
+           vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true') }}
     concurrency:
       group: randomized-routing-probes
       cancel-in-progress: false
@@ -117,8 +118,8 @@ jobs:
         env:
           OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
           ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
-          ORCAP_PRICE_CAMPAIGN_START_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_START_UTC }}
-          ORCAP_PRICE_CAMPAIGN_END_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_END_UTC }}
+          ORCAP_PRICE_CAMPAIGN_START_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_START_UTC || '2026-07-20T05:00:00Z' }}
+          ORCAP_PRICE_CAMPAIGN_END_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_END_UTC || '2026-07-27T05:00:00Z' }}
           ORCAP_PRICE_MAX_RUN_USD: ${{ vars.ORCAP_PRICE_MAX_RUN_USD || '1.00' }}
           ORCAP_PRICE_MAX_DAY_USD: ${{ vars.ORCAP_PRICE_MAX_DAY_USD || '25.00' }}
           ORCAP_PRICE_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_PRICE_MAX_CAMPAIGN_USD || '300.00' }}
