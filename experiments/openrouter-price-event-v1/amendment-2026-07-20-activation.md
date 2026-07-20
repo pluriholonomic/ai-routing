@@ -6,7 +6,7 @@ Date: 2026-07-20 UTC
 
 Assignment-only planning produced 108 payload-free event-wave assignments and
 zero paid outcomes before this amendment. The discovery window is
-2026-07-20T05:00:00Z through 2026-07-27T05:00:00Z, with the frozen $1 per-run,
+2026-07-20T04:00:00Z through 2026-07-27T04:00:00Z, with the frozen $1 per-run,
 $25 rolling-day, and $60 event-campaign caps.
 
 The scheduled workflow carries those frozen UTC endpoints as fallbacks and is

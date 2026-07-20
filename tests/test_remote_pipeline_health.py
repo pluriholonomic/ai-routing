@@ -56,13 +56,15 @@ def test_paid_price_workflows_are_plan_first_trigger_scoped_and_fail_closed():
         assert "cancel-in-progress: false" in workflow
         assert "\nconcurrency:\n  group: randomized-routing-probes" not in workflow
     assert "github.event_name == 'schedule'" in response
+    assert "github.event_name == 'push'" in response
+    assert "activation-canary-v1" in response
     assert "vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == ''" in response
     assert "vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true'" in response
     assert "vars.ORCAP_PAID_PRICE_EVENTS_ENABLED == ''" in events
     assert "vars.ORCAP_PAID_PRICE_EVENTS_ENABLED == 'true'" in events
     for workflow in (response, events):
-        assert "2026-07-20T05:00:00Z" in workflow
-        assert "2026-07-27T05:00:00Z" in workflow
+        assert "2026-07-20T04:00:00Z" in workflow
+        assert "2026-07-27T04:00:00Z" in workflow
     assert 'workflows: ["capture"]' in events
     assert "github.event.workflow_run.conclusion == 'success'" in events
     assert "github.event_name == 'workflow_run'" in events

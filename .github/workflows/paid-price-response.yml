@@ -4,6 +4,10 @@ name: paid-price-response
 # requires both repository feature flags, a dedicated key, and a valid campaign
 # window enforced again inside Python.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "experiments/openrouter-price-response-v1/activation-canary-v1"
   schedule:
     - cron: "11 */4 * * *"
   workflow_dispatch:
@@ -84,7 +88,7 @@ jobs:
   execute:
     needs: plan
     if: >-
-      ${{ github.event_name == 'schedule' &&
+      ${{ (github.event_name == 'schedule' || github.event_name == 'push') &&
           vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
           (vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == '' ||
            vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true') }}
@@ -118,8 +122,8 @@ jobs:
         env:
           OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
           ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
-          ORCAP_PRICE_CAMPAIGN_START_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_START_UTC || '2026-07-20T05:00:00Z' }}
-          ORCAP_PRICE_CAMPAIGN_END_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_END_UTC || '2026-07-27T05:00:00Z' }}
+          ORCAP_PRICE_CAMPAIGN_START_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_START_UTC || '2026-07-20T04:00:00Z' }}
+          ORCAP_PRICE_CAMPAIGN_END_UTC: ${{ vars.ORCAP_PRICE_CAMPAIGN_END_UTC || '2026-07-27T04:00:00Z' }}
           ORCAP_PRICE_MAX_RUN_USD: ${{ vars.ORCAP_PRICE_MAX_RUN_USD || '1.00' }}
           ORCAP_PRICE_MAX_DAY_USD: ${{ vars.ORCAP_PRICE_MAX_DAY_USD || '25.00' }}
           ORCAP_PRICE_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_PRICE_MAX_CAMPAIGN_USD || '300.00' }}
