@@ -77,6 +77,47 @@ def test_candidate_assignment_attempt_join_preserves_missing_menu_selection():
     assert observations[0]["providers"] == ["a", "b"]
 
 
+def test_market_measurement_default_choices_enter_exponent_without_duplicate_attempts():
+    candidates = pd.DataFrame(
+        [
+            {
+                "block_id": "market-block",
+                "provider_name": provider,
+                "expected_quote_usd": quote,
+                "compatible": True,
+            }
+            for provider, quote in (("A", 1.0), ("B", 2.0), ("C", 3.0))
+        ]
+    )
+    assignments = pd.DataFrame(
+        [
+            {
+                "task_id": "market-task",
+                "run_id": "market-run",
+                "block_id": "market-block",
+                "model_id": "model/market",
+                "shape_id": "short_chat",
+                "policy": "default_broad",
+                "observed_at": "assignment-time-must-not-shadow-attempt",
+            }
+        ]
+    )
+    attempt = {
+        "study_id": "openrouter-market-measurement-v1",
+        "metadata_json": json.dumps({"task_id": "market-task"}),
+        "observed_at": "2026-07-19T00:00:00Z",
+        "selected_provider": "B",
+        "outcome": "succeeded",
+        "cost_usd": 0.1,
+        "latency_ms": 10,
+    }
+    observations = build_observations(candidates, assignments, pd.DataFrame([attempt, attempt]))
+
+    assert len(observations) == 1
+    assert observations[0]["policy"] == "default_broad"
+    assert observations[0]["selected_index"] == 1
+
+
 def test_end_to_end_live_estimator_recovers_exponent_and_gates_thin_windows(tmp_path):
     rng = np.random.default_rng(12)
     rows = []

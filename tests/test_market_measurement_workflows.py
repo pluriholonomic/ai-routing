@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_capture_workflow_is_plan_first_gated_budgeted_and_h95_isolated():
     text = (ROOT / ".github/workflows/market-measurement.yml").read_text()
     assert "group: randomized-routing-probes" in text
+    assert "\nconcurrency:\n  group: randomized-routing-probes" not in text
     assert text.index("upload immutable assignment-only plan") < text.index(
         "verify uploaded plan and execute exactly once"
     )

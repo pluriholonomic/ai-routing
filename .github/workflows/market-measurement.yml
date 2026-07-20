@@ -13,12 +13,6 @@ on:
         required: true
         default: false
 
-concurrency:
-  # H95 and the other randomized paid probes use this same lock. Scientific
-  # isolation is more important than running at the exact cron minute.
-  group: randomized-routing-probes
-  cancel-in-progress: false
-
 permissions:
   actions: read
   contents: read
@@ -97,6 +91,11 @@ jobs:
       ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
           vars.ORCAP_MARKET_MEASUREMENT_ENABLED == 'true' &&
           (github.event_name == 'schedule' || github.event.inputs.execute_paid == 'true') }}
+    # Outcome-free planning may overlap other workflows. Only paid requests
+    # share H95's lock, preserving temporal isolation without cancelling plans.
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:

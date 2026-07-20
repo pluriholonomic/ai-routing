@@ -27,7 +27,11 @@ from .router_exponent import (
 )
 
 STUDY_ID = "openrouter-live-price-exponent-v1"
-OWNED_STUDIES = {"openrouter-route-calibration-v1", "openrouter-price-response-v1"}
+OWNED_STUDIES = {
+    "openrouter-route-calibration-v1",
+    "openrouter-price-response-v1",
+    "openrouter-market-measurement-v1",
+}
 
 
 def _metadata(value: Any) -> dict[str, Any]:
@@ -51,13 +55,19 @@ def build_observations(
         return []
     attempts["_metadata"] = attempts["metadata_json"].map(_metadata)
     attempts["task_id"] = attempts["_metadata"].map(lambda item: item.get("task_id"))
-    attempts = attempts.dropna(subset=["task_id"])
+    attempts = (
+        attempts.dropna(subset=["task_id"])
+        .sort_values("observed_at")
+        .drop_duplicates(["study_id", "task_id"], keep="last")
+    )
     assignments = assignments[assignments["policy"].isin(PRIMARY_POLICIES)].copy()
+    assignments = assignments.drop_duplicates("task_id", keep="last")
+    attempts = attempts.rename(columns={"observed_at": "attempt_observed_at"})
     joined = assignments.merge(
         attempts[
             [
                 "task_id",
-                "observed_at",
+                "attempt_observed_at",
                 "selected_provider",
                 "outcome",
                 "cost_usd",
@@ -90,7 +100,7 @@ def build_observations(
                 "model_id": row.get("model_id"),
                 "shape_id": row.get("shape_id"),
                 "policy": row.get("policy"),
-                "observed_at": row["observed_at"],
+                "observed_at": row["attempt_observed_at"],
                 "providers": providers,
                 "costs": np.asarray(
                     [float(item["expected_quote_usd"]) for item in menu], dtype=float
@@ -212,14 +222,19 @@ def render_dashboard(estimates: pd.DataFrame, scores: pd.DataFrame, output: Path
             + "</p></section>"
         )
     score_table = scores.to_html(index=False, border=0) if not scores.empty else "<p>No scores.</p>"
-    html = """<!doctype html><meta charset="utf-8"><title>Router price exponent</title>
+    html = (
+        """<!doctype html><meta charset="utf-8"><title>Router price exponent</title>
 <style>body{font:15px system-ui;max-width:1100px;margin:40px auto;padding:0 20px;color:#17202a}
 main{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
 section{border:1px solid #ccd3da;border-radius:8px;padding:16px}.eta{font-size:26px;margin:8px 0}
 table{border-collapse:collapse;width:100%;margin-top:24px}
 th,td{padding:7px;border-bottom:1px solid #ddd}
 </style><h1>Live owned-routing price exponent</h1><p>Unsupported windows withhold eta by design.</p>
-<main>""" + "".join(cards) + "</main><h2>Predictive scores</h2>" + score_table
+<main>"""
+        + "".join(cards)
+        + "</main><h2>Predictive scores</h2>"
+        + score_table
+    )
     output.write_text(html, encoding="utf-8")
 
 
@@ -234,12 +249,25 @@ def _read_tables(root: Path, names: tuple[str, ...]) -> pd.DataFrame:
 
 def run(data_root: Path = DATA_DIR) -> dict[str, Any]:
     candidates = _read_tables(
-        data_root, ("router_calibration_candidates", "price_response_candidates")
+        data_root,
+        (
+            "router_calibration_candidates",
+            "price_response_candidates",
+            "market_measurement_candidates",
+        ),
     )
     assignments = _read_tables(
-        data_root, ("router_calibration_assignments", "price_response_assignments")
+        data_root,
+        (
+            "router_calibration_assignments",
+            "price_response_assignments",
+            "market_measurement_assignments",
+        ),
     )
-    attempts = _read_tables(data_root, ("router_route_attempts",))
+    attempts = _read_tables(
+        data_root,
+        ("router_route_attempts", "market_measurement_attempts"),
+    )
     observations = build_observations(candidates, assignments, attempts)
     estimates, scores = estimate_windows(observations)
     run_id, dt = run_timestamp(), dt_partition()

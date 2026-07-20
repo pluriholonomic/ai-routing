@@ -8,10 +8,6 @@ on:
     - cron: "11 */4 * * *"
   workflow_dispatch:
 
-concurrency:
-  group: randomized-routing-probes
-  cancel-in-progress: false
-
 permissions:
   actions: read
   contents: read
@@ -91,6 +87,9 @@ jobs:
       ${{ github.event_name == 'schedule' &&
           vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
           vars.ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true' }}
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

@@ -20,6 +20,7 @@ import os
 import random
 import secrets
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -342,9 +343,7 @@ def _provider_cap(candidates: list[dict[str, Any]]) -> tuple[float, float]:
     cheapest = candidates[: min(3, len(candidates))]
     return (
         2.0 * max(float(row["prompt_price_per_token"]) for row in cheapest) * 1_000_000,
-        2.0
-        * max(float(row["completion_price_per_token"]) for row in cheapest)
-        * 1_000_000,
+        2.0 * max(float(row["completion_price_per_token"]) for row in cheapest) * 1_000_000,
     )
 
 
@@ -521,12 +520,62 @@ def build_plan(
     return candidates_out, assignments, executable, summary
 
 
+def limit_plan_blocks(
+    candidates: list[dict[str, Any]],
+    assignments: list[dict[str, Any]],
+    executable: list[dict[str, Any]],
+    summary: dict[str, Any],
+    *,
+    max_blocks: int,
+    selection_seed: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Keep complete randomized blocks under the remote execution-time budget.
+
+    The original pilot attempted every eligible model-shape block in one
+    sequential job.  A block-level shard preserves every within-block policy
+    assignment, including the sticky-session ordering, while allowing each
+    completed request to be checkpointed before the Actions timeout.
+    """
+    if max_blocks <= 0:
+        raise ValueError("max_blocks must be positive")
+    block_ids = sorted({str(row["block_id"]) for row in assignments})
+    if len(block_ids) <= max_blocks:
+        return (
+            candidates,
+            assignments,
+            executable,
+            summary
+            | {
+                "eligible_blocks_before_limit": len(block_ids),
+                "execution_block_limit": max_blocks,
+                "execution_block_offset": 0,
+            },
+        )
+    offset = int(selection_seed) % len(block_ids)
+    selected = [block_ids[(offset + index) % len(block_ids)] for index in range(max_blocks)]
+    selected_set = set(selected)
+    limited_candidates = [row for row in candidates if str(row["block_id"]) in selected_set]
+    limited_assignments = [row for row in assignments if str(row["block_id"]) in selected_set]
+    limited_executable = [row for row in executable if str(row["block_id"]) in selected_set]
+    limited_summary = summary | {
+        "eligible_blocks_before_limit": len(block_ids),
+        "eligible_blocks": len(selected),
+        "execution_block_limit": max_blocks,
+        "execution_block_offset": offset,
+        "selected_block_ids": selected,
+        "candidate_rows": len(limited_candidates),
+        "planned_requests": len(limited_assignments),
+        "planned_quote_cap_usd": sum(
+            float(row["task_quote_cap_usd"]) for row in limited_assignments
+        ),
+    }
+    return limited_candidates, limited_assignments, limited_executable, limited_summary
+
+
 def _fetch_generation(client: httpx.Client, generation_id: str) -> dict[str, Any] | None:
     for _ in range(GENERATION_POLL_ATTEMPTS):
         time.sleep(GENERATION_POLL_SECONDS)
-        response = client.get(
-            GENERATION_URL, params={"id": generation_id}, headers=_headers()
-        )
+        response = client.get(GENERATION_URL, params={"id": generation_id}, headers=_headers())
         if response.status_code == 200:
             return response.json()
     return None
@@ -539,9 +588,7 @@ def _send_task(
     tools, tool_choice = _request_tools(shape)
     body: dict[str, Any] = {
         "model": task["model_id"],
-        "messages": [
-            {"role": "user", "content": _shape_prompt(shape, task["prompt_nonce"])}
-        ],
+        "messages": [{"role": "user", "content": _shape_prompt(shape, task["prompt_nonce"])}],
         "max_tokens": shape.max_output_tokens,
         "temperature": 0,
         "usage": {"include": True},
@@ -631,6 +678,7 @@ def execute_plan(
     *,
     max_run_usd: float,
     jitter: bool = True,
+    checkpoint: Callable[[list[dict[str, Any]]], None] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     planned = sum(float(task["task_quote_cap_usd"]) for task in tasks)
     if planned > max_run_usd:
@@ -649,6 +697,8 @@ def execute_plan(
         attempt = _attempt_record(task, completion, generation, error, status)
         attempts.append(attempt)
         realized += float(attempt.get("cost_usd") or 0.0)
+        if checkpoint is not None:
+            checkpoint(list(attempts))
         if jitter:
             time.sleep(random.uniform(0.25, 0.75))
     return attempts, {
@@ -670,9 +720,7 @@ def _write_rows(
     if not rows:
         return None
     dt = dt_partition()
-    materialized = [
-        row | {"payload_retained": False, "run_ts": run_id, "dt": dt} for row in rows
-    ]
+    materialized = [row | {"payload_retained": False, "run_ts": run_id, "dt": dt} for row in rows]
     return write_partition(
         pa.Table.from_pylist(materialized, schema=schema),
         table_name,
@@ -692,6 +740,14 @@ def run(
     seed_text = os.environ.get("ORCAP_H96_RANDOMIZATION_SEED")
     run_seed = int(seed_text, 0) if seed_text else secrets.randbits(64)
     max_run_usd = float(os.environ.get("ORCAP_H96_MAX_RUN_USD", DEFAULT_MAX_RUN_USD))
+    max_blocks_text = os.environ.get("ORCAP_H96_MAX_BLOCKS_PER_RUN")
+    attempt_dt = dt_partition(now)
+    attempts_path: Path | None = None
+
+    def checkpoint(rows: list[dict[str, Any]]) -> None:
+        nonlocal attempts_path
+        attempts_path = write_attempts(rows, run_ts=run_id, dt=attempt_dt, curated_dir=curated_dir)
+
     with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as client:
         candidates, assignments, tasks, summary = build_plan(
             client,
@@ -699,6 +755,15 @@ def run(
             run_seed=run_seed,
             preflight_only=preflight_only,
         )
+        if max_blocks_text:
+            candidates, assignments, tasks, summary = limit_plan_blocks(
+                candidates,
+                assignments,
+                tasks,
+                summary,
+                max_blocks=int(max_blocks_text),
+                selection_seed=run_seed,
+            )
         candidates_path = _write_rows(
             candidates,
             CALIBRATION_CANDIDATE_SCHEMA,
@@ -725,16 +790,23 @@ def run(
             }
         else:
             attempts, execution = execute_plan(
-                client, tasks, max_run_usd=max_run_usd, jitter=True
+                client,
+                tasks,
+                max_run_usd=max_run_usd,
+                jitter=True,
+                checkpoint=checkpoint,
             )
-    attempts_path = write_attempts(
-        attempts, run_ts=run_id, dt=dt_partition(now), curated_dir=curated_dir
+    if attempts and attempts_path is None:
+        checkpoint(attempts)
+    return (
+        summary
+        | execution
+        | {
+            "candidates_path": str(candidates_path) if candidates_path else None,
+            "assignments_path": str(assignments_path) if assignments_path else None,
+            "attempts_path": str(attempts_path) if attempts_path else None,
+        }
     )
-    return summary | execution | {
-        "candidates_path": str(candidates_path) if candidates_path else None,
-        "assignments_path": str(assignments_path) if assignments_path else None,
-        "attempts_path": str(attempts_path) if attempts_path else None,
-    }
 
 
 def main() -> None:

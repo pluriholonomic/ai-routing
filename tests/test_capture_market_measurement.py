@@ -18,7 +18,7 @@ from orcap.analysis.market_measurement_monitor import (
 from orcap.analysis.market_measurement_monitor import (
     run as run_monitor,
 )
-from orcap.market_measurement import build_market_assignments, market_manifest
+from orcap.market_measurement import PLAN_VERSION, build_market_assignments, market_manifest
 
 
 def _candidates() -> list[dict]:
@@ -87,9 +87,7 @@ def _enable(monkeypatch):
     monkeypatch.setenv("ORCAP_MARKET_MEASUREMENT_END_UTC", "2026-07-20T00:00:00Z")
 
 
-def test_execute_refuses_disabled_missing_specific_gate_tamper_and_budget(
-    monkeypatch, tmp_path
-):
+def test_execute_refuses_disabled_missing_specific_gate_tamper_and_budget(monkeypatch, tmp_path):
     bundle = _bundle()
     with pytest.raises(RuntimeError, match="paid price studies are disabled"):
         capture.execute_bundle(bundle, curated_dir=tmp_path / "curated")
@@ -110,9 +108,7 @@ def test_execute_refuses_disabled_missing_specific_gate_tamper_and_budget(
         )
 
 
-def test_execute_is_concurrent_redacted_graded_exact_once_and_monitored(
-    monkeypatch, tmp_path
-):
+def test_execute_is_concurrent_redacted_graded_exact_once_and_monitored(monkeypatch, tmp_path):
     _enable(monkeypatch)
     monkeypatch.setattr(capture, "_quality_item_map", lambda: {i["item_id"]: i for i in _items()})
     bundle = _bundle()
@@ -220,13 +216,24 @@ def test_monitor_excludes_pilots_and_incomplete_plans_from_estimation():
     preflight = "github-no-spend"
     joined = pd.DataFrame(
         [
-            {"run_id": pilot, "task_id": "pilot", "experiment_axis": "quality"},
+            {
+                "run_id": pilot,
+                "task_id": "pilot",
+                "experiment_axis": "quality",
+                "plan_version": "market-measurement-plan-v1",
+            },
             {
                 "run_id": confirmatory,
                 "task_id": "confirmatory",
                 "experiment_axis": "quality",
+                "plan_version": PLAN_VERSION,
             },
-            {"run_id": preflight, "task_id": "preflight", "experiment_axis": "quality"},
+            {
+                "run_id": preflight,
+                "task_id": "preflight",
+                "experiment_axis": "quality",
+                "plan_version": PLAN_VERSION,
+            },
         ]
     )
     quality = pd.DataFrame(
@@ -250,9 +257,7 @@ def test_monitor_excludes_pilots_and_incomplete_plans_from_estimation():
             },
         ]
     )
-    estimation_joined, estimation_quality, eligible = _estimation_frames(
-        joined, quality, health
-    )
+    estimation_joined, estimation_quality, eligible = _estimation_frames(joined, quality, health)
     assert eligible == {confirmatory}
     assert estimation_joined["task_id"].tolist() == ["confirmatory"]
     assert estimation_quality["task_id"].tolist() == ["confirmatory"]
@@ -294,7 +299,9 @@ def test_quality_send_uses_prospective_token_floor_and_disables_optional_reasoni
             return Response()
 
     completion, generation, error, status = capture._send_quality_assignment(
-        Client(), assignment, item  # type: ignore[arg-type]
+        Client(),
+        assignment,
+        item,  # type: ignore[arg-type]
     )
     assert completion is not None and generation is None and error is None and status == 200
     assert seen["body"]["max_tokens"] == 64

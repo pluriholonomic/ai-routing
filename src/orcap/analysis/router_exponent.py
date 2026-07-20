@@ -11,7 +11,14 @@ import pandas as pd
 from scipy.optimize import minimize_scalar
 from scipy.special import logsumexp
 
-PRIMARY_POLICIES = frozenset({"default_budgeted_iid", "default_loose_fresh", "openrouter_default"})
+PRIMARY_POLICIES = frozenset(
+    {
+        "default_budgeted_iid",
+        "default_loose_fresh",
+        "default_broad",
+        "openrouter_default",
+    }
+)
 
 
 def probabilities(costs: np.ndarray, eta: float) -> np.ndarray:
@@ -34,9 +41,7 @@ def negative_log_likelihood(eta: float, observations: Sequence[dict[str, Any]]) 
     return total
 
 
-def _profile_nll(
-    grid: np.ndarray, observations: Sequence[dict[str, Any]]
-) -> np.ndarray:
+def _profile_nll(grid: np.ndarray, observations: Sequence[dict[str, Any]]) -> np.ndarray:
     """Vectorized likelihood profile used repeatedly by online bootstraps."""
     total = np.zeros(len(grid), dtype=float)
     for observation in observations:
@@ -202,9 +207,7 @@ def support_status(
     covered = [row for row in observations if row.get("selected_index") is not None]
     models = {str(row.get("model_id") or "") for row in covered if row.get("model_id")}
     providers = {
-        str(row.get("selected_provider") or "")
-        for row in covered
-        if row.get("selected_provider")
+        str(row.get("selected_provider") or "") for row in covered if row.get("selected_provider")
     }
     blocks = {str(row.get("block_id") or "") for row in covered if row.get("block_id")}
     coverage = len(covered) / total if total else 0.0
@@ -218,9 +221,7 @@ def support_status(
         costs = np.asarray(raw_costs if raw_costs is not None else [], dtype=float)
         if len(costs) >= 2 and np.all(costs > 0):
             log_ratios.append(float(np.log(costs.max() / costs.min())))
-    price_iqr = (
-        float(np.subtract(*np.percentile(log_ratios, [75, 25]))) if log_ratios else 0.0
-    )
+    price_iqr = float(np.subtract(*np.percentile(log_ratios, [75, 25]))) if log_ratios else 0.0
     failures = []
     if len(covered) < minimum_choices:
         failures.append("choices")

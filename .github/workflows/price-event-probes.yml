@@ -12,10 +12,6 @@ on:
     - cron: "43 * * * *"
   workflow_dispatch:
 
-concurrency:
-  group: randomized-routing-probes
-  cancel-in-progress: false
-
 permissions:
   actions: read
   contents: read
@@ -103,6 +99,9 @@ jobs:
           needs.plan.outputs.has_tasks == 'true' &&
           vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
           vars.ORCAP_PAID_PRICE_EVENTS_ENABLED == 'true' }}
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -212,6 +211,9 @@ jobs:
   execute_w1:
     needs: plan_w1
     if: ${{ needs.plan_w1.outputs.has_tasks == 'true' }}
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -312,6 +314,9 @@ jobs:
   execute_w2:
     needs: plan_w2
     if: ${{ needs.plan_w2.outputs.has_tasks == 'true' }}
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

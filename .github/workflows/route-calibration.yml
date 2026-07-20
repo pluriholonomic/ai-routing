@@ -19,7 +19,7 @@ permissions:
 jobs:
   calibration:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -32,6 +32,10 @@ jobs:
           ORCAP_H96_CAMPAIGN_START_UTC: "2026-07-19T01:00:00Z"
           ORCAP_H96_CAMPAIGN_END_UTC: "2026-07-21T01:00:00Z"
           ORCAP_H96_MAX_RUN_USD: "0.35"
+          # The original all-block job could not finish before its timeout.
+          # Shard by whole randomized blocks; the collector checkpoints every
+          # completed request into the always-uploaded artifact.
+          ORCAP_H96_MAX_BLOCKS_PER_RUN: "3"
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
             uv run python -m orcap.capture_route_calibration --scheduled

@@ -111,6 +111,21 @@ def test_stale_source_registers_no_paid_plan(tmp_path):
     assert bundle["summary"]["planned_tasks"] == 0
 
 
+def test_missing_public_snapshots_fail_closed_with_a_valid_empty_plan(tmp_path):
+    bundle = build_event_bundle(
+        FakeClient(),
+        data_root=tmp_path,
+        run_id="20260719T020000Z",
+        seed=71,
+        now=datetime(2026, 7, 19, 2, 0, tzinfo=UTC),
+    )
+
+    assert bundle["summary"]["source_healthy"] is False
+    assert bundle["summary"]["planned_tasks"] == 0
+    assert bundle["summary"]["source_failures"] == ["public_menu_unavailable:RuntimeError"]
+    validate_event_bundle(bundle)
+
+
 def test_event_timing_manifest_rejects_registry_and_wave_tampering(tmp_path):
     _write_snapshots(tmp_path)
     bundle = build_event_bundle(

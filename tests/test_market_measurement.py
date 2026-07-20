@@ -88,13 +88,14 @@ def test_assignment_panel_is_deterministic_rectangular_and_complete():
         if row["experiment_axis"] == "liquidity":
             batches.setdefault(row["execution_batch"], []).append(row)
     assert all(len(rows) == rows[0]["concurrency_level"] for rows in batches.values())
-    assert {
-        row["policy"] for row in first if row["experiment_axis"] == "quality"
-    } == {"quality_default", "quality_a", "quality_b", "quality_c"}
+    assert {row["policy"] for row in first if row["experiment_axis"] == "quality"} == {
+        "quality_default",
+        "quality_a",
+        "quality_b",
+        "quality_c",
+    }
     assert all(
-        row["max_output_tokens"] == 64
-        for row in first
-        if row["experiment_axis"] == "quality"
+        row["max_output_tokens"] == 64 for row in first if row["experiment_axis"] == "quality"
     )
 
 
@@ -164,3 +165,37 @@ def test_fewer_than_three_providers_produces_no_paid_plan():
     assert assignments == []
     assert summary["planned_tasks"] == 0
     assert summary["planned_quote_cap_usd"] == 0
+
+
+def test_seeded_top_pool_rotation_diversifies_models_without_outcomes():
+    rows = []
+    for index in range(6):
+        for provider_index, provider in enumerate(("a", "b", "c"), start=1):
+            price = provider_index * (1 + index / 20) * 1e-7
+            rows.append(
+                {
+                    "block_id": f"block-{index}",
+                    "model_id": f"author/model-{index}",
+                    "shape_id": "short_chat",
+                    "provider_name": provider,
+                    "endpoint_tag": f"tag-{index}-{provider}",
+                    "prompt_price_per_token": price,
+                    "completion_price_per_token": price,
+                    "expected_quote_usd": price * 104,
+                    "conservative_quote_usd": price * 104,
+                    "conservative_input_tokens": 96,
+                    "max_output_tokens": 8,
+                    "compatible": True,
+                }
+            )
+    selected = set()
+    for seed in range(12):
+        assignments, summary = build_market_assignments(
+            rows, quality_items(), run_id=f"run-{seed}", seed=seed
+        )
+        selected.add(assignments[0]["model_id"])
+        assert summary["selection_pool_size"] == 5
+        assert 1 <= summary["selected_information_rank"] <= 5
+        assert summary["selection_rule"].startswith("seeded_rotation")
+
+    assert len(selected) >= 3

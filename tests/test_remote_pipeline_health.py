@@ -54,6 +54,7 @@ def test_paid_price_workflows_are_plan_first_trigger_scoped_and_fail_closed():
         assert "secrets.OPENROUTER_PRICE_EXPERIMENT_KEY" in workflow
         assert "retention-days: 90" in workflow
         assert "cancel-in-progress: false" in workflow
+        assert "\nconcurrency:\n  group: randomized-routing-probes" not in workflow
     assert "github.event_name == 'schedule'" in response
     assert "ORCAP_PAID_PRICE_RESPONSE_ENABLED == 'true'" in response
     assert "ORCAP_PAID_PRICE_EVENTS_ENABLED == 'true'" in events
@@ -101,6 +102,13 @@ def test_price_workflows_are_assembled_analyzed_and_preregistered():
         assert "workflow_run:" in workflow
         assert 'workflows: ["compact"]' in workflow
         assert "OPENROUTER_PRICE_EXPERIMENT_KEY" not in workflow
+    exponent = (root / ".github/workflows/live-router-exponent.yml").read_text()
+    for table in (
+        "market_measurement_candidates",
+        "market_measurement_assignments",
+        "market_measurement_attempts",
+    ):
+        assert table in exponent
     assert (
         root / "experiments/openrouter-price-response-v1/preregistration.md"
     ).is_file()
@@ -115,6 +123,8 @@ def test_h96_remote_campaign_is_finite_budgeted_and_manual_preflight_only():
     assembler = (root / "scripts/assemble_artifacts.sh").read_text(encoding="utf-8")
     assert 'cron: "37 1,5,9,13,17,21 19,20 7 *"' in workflow
     assert 'ORCAP_H96_MAX_RUN_USD: "0.35"' in workflow
+    assert 'ORCAP_H96_MAX_BLOCKS_PER_RUN: "3"' in workflow
+    assert "timeout-minutes: 50" in workflow
     assert "--scheduled" in workflow
     assert "--preflight-only" in workflow
     assert "route-calibration.yml" in assembler

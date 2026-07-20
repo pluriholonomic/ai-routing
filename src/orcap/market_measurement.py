@@ -23,7 +23,8 @@ from .price_experiments import (
 )
 
 STUDY_ID = "openrouter-market-measurement-v1"
-PLAN_VERSION = "market-measurement-plan-v1"
+PLAN_VERSION = "market-measurement-plan-v2"
+SELECTION_POOL_SIZE = 5
 
 MARKET_MEASUREMENT_ASSIGNMENT_SCHEMA = pa.schema(
     [
@@ -100,9 +101,7 @@ def _sha(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def _quote_cap(
-    cap: Mapping[str, Any], *, input_tokens: int, output_tokens: int
-) -> float:
+def _quote_cap(cap: Mapping[str, Any], *, input_tokens: int, output_tokens: int) -> float:
     return (
         float(cap["prompt_per_mtok"]) * input_tokens / 1_000_000
         + float(cap["completion_per_mtok"]) * output_tokens / 1_000_000
@@ -183,7 +182,10 @@ def build_market_assignments(
             ],
         }
 
-    block_id = eligible[0]
+    selection_pool = eligible[: min(SELECTION_POOL_SIZE, len(eligible))]
+    selection_index = int(_sha(f"{seed}|market-selection")[:16], 16) % len(selection_pool)
+    block_id = selection_pool[selection_index]
+    selected_rank = eligible.index(block_id) + 1
     rows = by_block[block_id]
     candidates = collapse_provider_candidates(rows)
     a, b, c = candidates[0], candidates[1], candidates[2]
@@ -223,9 +225,7 @@ def build_market_assignments(
         quality = quality_item is not None
         task_shape = "quality_mmlu" if quality else shape_id
         task_input = (
-            max(128, math.ceil(len(str(quality_item["prompt"])) / 3))
-            if quality
-            else input_tokens
+            max(128, math.ceil(len(str(quality_item["prompt"])) / 3)) if quality else input_tokens
         )
         # Six tokens can be consumed entirely by mandatory/minimal reasoning.
         # The first paid pilot established 64 as the prospective floor.
@@ -377,9 +377,10 @@ def build_market_assignments(
         "candidate_blocks": len(by_block),
         "planned_blocks": 1,
         "planned_tasks": len(assignments),
-        "planned_quote_cap_usd": sum(
-            float(row["task_quote_cap_usd"]) for row in assignments
-        ),
+        "planned_quote_cap_usd": sum(float(row["task_quote_cap_usd"]) for row in assignments),
+        "selection_rule": "seeded_rotation_within_top_public_information_pool",
+        "selection_pool_size": len(selection_pool),
+        "selected_information_rank": selected_rank,
         "selected_block_scores": [
             {"block_id": block_id, "public_information_score": _block_score(rows)}
         ],
@@ -389,8 +390,16 @@ def build_market_assignments(
             for axis in ("competition", "memory", "liquidity", "quality")
         },
         "skipped_blocks": [
-            {"block_id": other, "reason": "lower_public_information_score"}
-            for other in eligible[1:]
+            {
+                "block_id": other,
+                "reason": (
+                    "not_selected_by_seeded_top_pool_rotation"
+                    if other in selection_pool
+                    else "outside_top_public_information_pool"
+                ),
+            }
+            for other in eligible
+            if other != block_id
         ],
     }
     return assignments, summary

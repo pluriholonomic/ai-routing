@@ -13,7 +13,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from ..market_measurement import STUDY_ID
+from ..market_measurement import PLAN_VERSION, STUDY_ID
 
 MIN_RANKABLE_CELL = 20
 CALIBRATION_RUN_IDS = frozenset(
@@ -146,13 +146,14 @@ def _estimation_frames(
     """Keep only complete, prospectively comparable confirmatory runs."""
     if health.empty:
         return joined.iloc[0:0].copy(), quality.iloc[0:0].copy(), set()
-    eligible = set(
+    complete = set(
         health.loc[
-            health["analysis_phase"].eq("confirmatory")
-            & health["integrity_status"].eq("complete"),
+            health["analysis_phase"].eq("confirmatory") & health["integrity_status"].eq("complete"),
             "run_id",
         ].astype(str)
     )
+    versioned = set(joined.loc[joined.get("plan_version").eq(PLAN_VERSION), "run_id"].astype(str))
+    eligible = complete & versioned
     estimation_joined = joined[joined["run_id"].astype(str).isin(eligible)].copy()
     if quality.empty or "run_id" not in quality:
         estimation_quality = quality.iloc[0:0].copy()
@@ -180,9 +181,7 @@ def _policy_metrics(joined: pd.DataFrame) -> pd.DataFrame:
     if joined.empty:
         return pd.DataFrame(columns=columns)
     rows = []
-    for keys, group in joined.groupby(
-        ["model_id", "experiment_axis", "policy"], dropna=False
-    ):
+    for keys, group in joined.groupby(["model_id", "experiment_axis", "policy"], dropna=False):
         attempted = int(group["attempt_observed_at"].notna().sum())
         succeeded = int((group["outcome"] == "succeeded").sum())
         successful = group[group["outcome"] == "succeeded"]
@@ -196,9 +195,7 @@ def _policy_metrics(joined: pd.DataFrame) -> pd.DataFrame:
                 "attempted": attempted,
                 "succeeded": succeeded,
                 "success_rate": succeeded / attempted if attempted else None,
-                "selected_provider_count": int(
-                    successful["selected_provider"].dropna().nunique()
-                ),
+                "selected_provider_count": int(successful["selected_provider"].dropna().nunique()),
                 "selected_provider_hhi": _hhi(successful["selected_provider"]),
                 "median_latency_ms": _quantile(successful["latency_ms"], 0.5),
                 "p95_latency_ms": _quantile(successful["latency_ms"], 0.95),
@@ -251,9 +248,7 @@ def _liquidity_metrics(joined: pd.DataFrame) -> pd.DataFrame:
                 "median_latency_ms": _quantile(group["latency_ms"], 0.5),
                 "p95_latency_ms": _quantile(group["latency_ms"], 0.95),
                 "quote_cap_usd": float(
-                    pd.to_numeric(group["task_quote_cap_usd"], errors="coerce")
-                    .fillna(0)
-                    .sum()
+                    pd.to_numeric(group["task_quote_cap_usd"], errors="coerce").fillna(0).sum()
                 ),
                 "realized_cost_usd": float(
                     pd.to_numeric(group["cost_usd"], errors="coerce").fillna(0).sum()
@@ -311,9 +306,7 @@ def _quality_metrics(quality: pd.DataFrame) -> pd.DataFrame:
     if quality.empty:
         return pd.DataFrame(columns=columns)
     rows = []
-    for keys, group in quality.groupby(
-        ["model_id", "policy", "requested_provider"], dropna=False
-    ):
+    for keys, group in quality.groupby(["model_id", "policy", "requested_provider"], dropna=False):
         answered = int(group["correct"].notna().sum())
         correct = int((group["correct"] == True).sum())  # noqa: E712
         costs = pd.to_numeric(group["cost_usd"], errors="coerce").dropna()
@@ -375,9 +368,7 @@ def run(data_root: Path, output_dir: Path, *, source_revision: str | None = None
         "complete_runs": len(eligible_runs),
         "confirmatory_assignment_rows": int(len(estimation_joined)),
         "confirmatory_attempt_rows": int(
-            estimation_joined.get("attempt_observed_at", pd.Series(dtype=object))
-            .notna()
-            .sum()
+            estimation_joined.get("attempt_observed_at", pd.Series(dtype=object)).notna().sum()
         ),
         "confirmatory_quality_rows": int(len(estimation_quality)),
         "realized_cost_usd": float(health.get("realized_cost_usd", pd.Series(dtype=float)).sum()),
@@ -442,9 +433,7 @@ from the estimates below.</p>
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, default=Path("input-data"))
-    parser.add_argument(
-        "--output-dir", type=Path, default=Path("data/analysis/market-measurement")
-    )
+    parser.add_argument("--output-dir", type=Path, default=Path("data/analysis/market-measurement"))
     parser.add_argument("--source-revision")
     args = parser.parse_args()
     print(

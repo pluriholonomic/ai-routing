@@ -171,6 +171,65 @@ def test_execute_plan_aborts_before_request_when_quote_cap_exceeds_budget(monkey
     assert called is False
 
 
+def test_block_limit_preserves_complete_randomized_blocks() -> None:
+    candidates, assignments, executable, summary = h96.build_plan(
+        _PlanClient(),
+        run_id="20260720T050000Z",
+        run_seed=31,
+        preflight_only=False,
+        models=("org/model-a", "org/model-b"),
+        shapes=(
+            h96.RequestShape("short_chat", 64, 96, 8),
+            h96.RequestShape("output_heavy", 128, 192, 128),
+        ),
+    )
+    limited = h96.limit_plan_blocks(
+        candidates,
+        assignments,
+        executable,
+        summary,
+        max_blocks=2,
+        selection_seed=7,
+    )
+    limited_candidates, limited_assignments, limited_executable, limited_summary = limited
+    selected = {row["block_id"] for row in limited_assignments}
+
+    assert len(selected) == 2
+    assert len(limited_assignments) == len(limited_executable) == 16
+    assert {row["block_id"] for row in limited_candidates} == selected
+    assert all(
+        {row["policy"] for row in limited_assignments if row["block_id"] == block_id}
+        == set(h96.POLICY_COUNTS)
+        for block_id in selected
+    )
+    assert limited_summary["eligible_blocks_before_limit"] == 4
+    assert limited_summary["eligible_blocks"] == 2
+    assert limited_summary["planned_requests"] == 16
+
+
+def test_execute_plan_checkpoints_after_every_attempt(monkeypatch) -> None:
+    tasks = [{"task_id": f"task-{index}", "task_quote_cap_usd": 0.01} for index in range(3)]
+    monkeypatch.setattr(h96, "_send_task", lambda _client, _task: ({}, {}, None, 200))
+    monkeypatch.setattr(
+        h96,
+        "_attempt_record",
+        lambda task, *_args: {"event_id": task["task_id"], "cost_usd": 0.001},
+    )
+    checkpoint_sizes = []
+
+    attempts, summary = h96.execute_plan(
+        object(),
+        tasks,
+        max_run_usd=0.10,
+        jitter=False,
+        checkpoint=lambda rows: checkpoint_sizes.append(len(rows)),
+    )
+
+    assert len(attempts) == 3
+    assert summary["attempted_requests"] == 3
+    assert checkpoint_sizes == [1, 2, 3]
+
+
 def test_send_task_uses_unique_session_and_tool_controls(monkeypatch) -> None:
     seen = {}
 
@@ -183,9 +242,7 @@ def test_send_task_uses_unique_session_and_tool_controls(monkeypatch) -> None:
     monkeypatch.setattr(h96, "_fetch_generation", lambda client, generation_id: None)
     task = {
         "model_id": "org/model",
-        "shape": h96.RequestShape(
-            "tool_call", 256, 512, 32, ("tools", "tool_choice")
-        ),
+        "shape": h96.RequestShape("tool_call", 256, 512, 32, ("tools", "tool_choice")),
         "prompt_nonce": "nonce",
         "session_id": "secret-session",
         "provider_control": {"require_parameters": True},

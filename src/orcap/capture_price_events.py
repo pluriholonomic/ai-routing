@@ -67,9 +67,7 @@ def validate_event_bundle(bundle: dict[str, Any]) -> None:
         bundle["assignments"],
         bundle["summary"],
     )
-    expected = event_manifest(
-        bundle["event_registry"], bundle["wave_plans"], bundle["manifest"]
-    )
+    expected = event_manifest(bundle["event_registry"], bundle["wave_plans"], bundle["manifest"])
     if bundle.get("event_manifest") != expected:
         raise ValueError("price-event timing manifest mismatch")
 
@@ -209,9 +207,7 @@ def _freeze_due_waves(
     candidates: list[dict[str, Any]] = []
     failures: list[str] = []
     for (event_id, selected_wave, model_id), _ in (
-        pd.DataFrame(due).groupby(["event_id", "wave_id", "model_id"], sort=True)
-        if due
-        else []
+        pd.DataFrame(due).groupby(["event_id", "wave_id", "model_id"], sort=True) if due else []
     ):
         frozen, block_failures = freeze_candidates(
             client,
@@ -221,12 +217,9 @@ def _freeze_due_waves(
             shapes=(next(shape for shape in SHAPES if shape.shape_id == "short_chat"),),
         )
         failures.extend(
-            f"{event_id}|{selected_wave}|{model_id}|{failure}"
-            for failure in block_failures
+            f"{event_id}|{selected_wave}|{model_id}|{failure}" for failure in block_failures
         )
-        block_id = (
-            f"{EVENT_STUDY_ID}|{event_id}|{selected_wave}|{model_id}|short_chat"
-        )
+        block_id = f"{EVENT_STUDY_ID}|{event_id}|{selected_wave}|{model_id}|short_chat"
         for row in frozen:
             row.update({"study_id": EVENT_STUDY_ID, "block_id": block_id})
         candidates.extend(frozen)
@@ -244,7 +237,41 @@ def build_event_bundle(
     max_tasks: int = DEFAULT_MAX_TASKS,
 ) -> dict[str, Any]:
     now = (now or datetime.now(UTC)).astimezone(UTC)
-    previous, current, detected_at = recent_public_menus(data_root)
+    try:
+        previous, current, detected_at = recent_public_menus(data_root)
+    except (KeyError, RuntimeError, ValueError) as exc:
+        summary = {
+            "study_id": EVENT_STUDY_ID,
+            "plan_version": PLAN_VERSION,
+            "run_id": run_id,
+            "seed": str(seed),
+            "source_healthy": False,
+            "event_detection_source_healthy": False,
+            "execution_menu_source_healthy": False,
+            "source_failures": [f"public_menu_unavailable:{type(exc).__name__}"],
+            "source_snapshot_run": None,
+            "new_events": 0,
+            "new_wave_rows": 0,
+            "due_wave_tasks": 0,
+            "planned_tasks": 0,
+            "planned_quote_cap_usd": 0.0,
+            "preflight_only": True,
+            "claim_boundary": (
+                "No paid task is issued without two valid public endpoint snapshots."
+            ),
+        }
+        manifest = plan_manifest([], [], summary)
+        bundle = {
+            "format": "orcap-price-event-plan-v1",
+            "candidates": [],
+            "assignments": [],
+            "event_registry": [],
+            "wave_plans": [],
+            "summary": summary,
+            "manifest": manifest,
+        }
+        bundle["event_manifest"] = event_manifest([], [], manifest)
+        return bundle
     source_healthy = now - _parse_run(detected_at) <= timedelta(minutes=30)
     new_events = detect_price_events(
         previous,
@@ -279,9 +306,7 @@ def build_event_bundle(
         "new_wave_rows": len(new_waves),
         "due_wave_tasks": len(due),
         "planned_tasks": len(assignments),
-        "planned_quote_cap_usd": sum(
-            float(row["task_quote_cap_usd"]) for row in assignments
-        ),
+        "planned_quote_cap_usd": sum(float(row["task_quote_cap_usd"]) for row in assignments),
         "preflight_only": True,
         "claim_boundary": (
             "Public quote events and owned requests only; no private order flow or intent."
@@ -332,9 +357,7 @@ def build_recovery_bundle(
         "run_id": run_id,
         "seed": str(seed),
         "recovery_wave_id": wave_id,
-        "source_event_manifest_sha256": source_bundle["event_manifest"][
-            "event_manifest_sha256"
-        ],
+        "source_event_manifest_sha256": source_bundle["event_manifest"]["event_manifest_sha256"],
         "source_healthy": not menu_failures,
         "event_detection_source_healthy": None,
         "execution_menu_source_healthy": not menu_failures,
@@ -343,9 +366,7 @@ def build_recovery_bundle(
         "new_wave_rows": 0,
         "due_wave_tasks": len(due),
         "planned_tasks": len(assignments),
-        "planned_quote_cap_usd": sum(
-            float(row["task_quote_cap_usd"]) for row in assignments
-        ),
+        "planned_quote_cap_usd": sum(float(row["task_quote_cap_usd"]) for row in assignments),
         "preflight_only": True,
         "claim_boundary": (
             "Public quote events and owned requests only; no private order flow or intent."
@@ -385,9 +406,7 @@ def wait_for_wave(
         return 0.0
     seconds = max(0.0, (max(targets) - now).total_seconds())
     if seconds > max_wait_seconds:
-        raise RuntimeError(
-            f"wave {wave_id} target is {seconds:.0f}s away, beyond wait cap"
-        )
+        raise RuntimeError(f"wave {wave_id} target is {seconds:.0f}s away, beyond wait cap")
     if seconds:
         sleeper(seconds)
     return seconds
