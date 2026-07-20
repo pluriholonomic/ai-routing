@@ -1,0 +1,56 @@
+schema_version = 2
+study_id = "adaptive-router-adversarial-v2"
+status = "frozen_future_only"
+seed = 20260720
+frozen_at_utc = "2026-07-20T21:44:09Z"
+
+[population]
+development_data_through = "2026-07-20"
+test_start_date = "2026-07-21"
+test_end_date = "2026-08-03"
+release_not_before_utc = "2026-08-04T00:00:00Z"
+minimum_distinct_dates = 14
+minimum_historical_menus = 5000
+
+[historical_replay]
+max_menus = 5000
+max_attack_providers = 4
+quote_multipliers = [0.60, 0.75, 0.90, 1.00, 1.01, 1.05, 1.10, 1.25, 1.50]
+cost_fractions = [0.25, 0.50, 0.75]
+bootstrap_draws = 2000
+cluster = "model-day"
+
+[simulation]
+max_menus = 200
+max_providers = 4
+demand = 120
+cost_fractions = [0.25, 0.50, 0.75]
+capacity_regimes = ["scarce", "balanced", "spare"]
+capacity_multipliers = [0.75, 1.00, 2.00]
+deviation_multipliers = [0.60, 0.80, 1.00, 1.01, 1.05, 1.20, 1.50]
+coalition_size = 2
+learning_menus = 8
+learning_steps = 2000
+learning_seeds = 10
+q_learning_epochs = 100000
+
+[hardened_router]
+exploration_floor = 0.10
+smoothing_alpha = 0.25
+commitment_epochs = 12
+max_share_ratio_per_epoch = 1.50
+operator_share_cap = 0.60
+max_cost_premium = 0.02
+max_reliability_loss = 0.002
+upward_quote_tolerance = 0.0
+
+[acceptance]
+historical_mean_max_share_gain_ratio_max = 0.35
+historical_p95_max_share_gain_ratio_max = 0.50
+historical_quote_fade_share_ratio_max = 0.75
+historical_mean_sybil_gain_max = 0.005
+simulation_mean_unilateral_exploitability_ratio_max = 0.25
+simulation_p95_unilateral_exploitability_ratio_max = 0.25
+simulation_mean_coalition_exploitability_ratio_max = 0.50
+simulation_p95_coalition_exploitability_ratio_max = 0.75
+post_ucb_mean_exploitability_ratio_max = 0.60

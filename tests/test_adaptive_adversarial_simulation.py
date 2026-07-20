@@ -131,3 +131,49 @@ def test_replay_and_simulation_execute_end_to_end_on_parquet_fixture(tmp_path):
     ).read_text(encoding="utf-8")
     assert "NaN" not in serialized
     assert json.loads(serialized)["status"] == "complete"
+
+
+def test_future_only_date_window_rejects_pre_freeze_menus(tmp_path):
+    root = tmp_path / "data"
+    for date in ("2026-07-20", "2026-07-21"):
+        source = root / "curated" / "endpoints_snapshots" / f"dt={date}"
+        source.mkdir(parents=True)
+        compact = date.replace("-", "")
+        pd.DataFrame(
+            {
+                "run_ts": [f"{compact}T000000Z"] * 3,
+                "dt": [date] * 3,
+                "model_id": ["example/model"] * 3,
+                "provider_name": ["A", "B", "C"],
+                "tag": ["a", "b", "c"],
+                "price_prompt": [0.01, 0.012, 0.015],
+                "price_completion": [0.01, 0.012, 0.015],
+                "uptime_last_30m": [99.0, 98.0, 97.0],
+                "status": [0, 0, 0],
+            }
+        ).to_parquet(source / "fixture.parquet", index=False)
+    replay = run_replay(
+        data_root=root,
+        out_dir=tmp_path / "replay-future",
+        max_menus=10,
+        max_attack_providers=1,
+        bootstrap_draws=5,
+        start_date="2026-07-21",
+        end_date="2026-07-21",
+    )
+    simulation = run_simulation(
+        data_root=root,
+        out_dir=tmp_path / "simulation-future",
+        max_menus=10,
+        learning_menus=1,
+        learning_steps=2,
+        learning_seeds=1,
+        q_learning_epochs=2,
+        demand=12,
+        start_date="2026-07-21",
+        end_date="2026-07-21",
+    )
+    assert replay["date_window"]["observed_min"] == "2026-07-21"
+    assert replay["date_window"]["observed_max"] == "2026-07-21"
+    assert simulation["date_window"]["observed_min"] == "2026-07-21"
+    assert simulation["date_window"]["observed_max"] == "2026-07-21"

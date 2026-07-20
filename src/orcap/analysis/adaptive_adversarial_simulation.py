@@ -355,9 +355,25 @@ def run_simulation(
     learning_seeds: int = 10,
     q_learning_epochs: int = 100_000,
     demand: int = 120,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
-    menus = _sample_menus(load_hourly_menus(data_root), max_menus)
+    menus = load_hourly_menus(data_root)
+    available_dates = pd.to_datetime(menus["dt"], utc=True, errors="raise")
+    if start_date is not None:
+        start = pd.Timestamp(start_date, tz="UTC")
+        menus = menus.loc[available_dates >= start].copy()
+        available_dates = available_dates.loc[menus.index]
+    if end_date is not None:
+        end = pd.Timestamp(end_date, tz="UTC")
+        menus = menus.loc[available_dates <= end].copy()
+    if menus.empty:
+        raise ValueError(
+            "no eligible menus after applying the frozen date window "
+            f"[{start_date or '-infinity'}, {end_date or '+infinity'}]"
+        )
+    menus = _sample_menus(menus, max_menus)
     static_rows = []
     br_rows = []
     learning_rows = []
@@ -507,6 +523,12 @@ def run_simulation(
         "learning_steps": learning_steps,
         "learning_seeds": learning_seeds,
         "q_learning_epochs": q_learning_epochs,
+        "date_window": {
+            "start_date": start_date,
+            "end_date": end_date,
+            "observed_min": pd.Timestamp(static["dt"].min()).date().isoformat(),
+            "observed_max": pd.Timestamp(static["dt"].max()).date().isoformat(),
+        },
         "policies": policy_summary.to_dict(orient="records"),
         "learning": learning_summary.to_dict(orient="records"),
         "q_learning": (
@@ -544,6 +566,8 @@ def main() -> None:
     parser.add_argument("--learning-seeds", type=int, default=10)
     parser.add_argument("--q-learning-epochs", type=int, default=100_000)
     parser.add_argument("--demand", type=int, default=120)
+    parser.add_argument("--start-date")
+    parser.add_argument("--end-date")
     args = parser.parse_args()
     print(
         json.dumps(
@@ -556,6 +580,8 @@ def main() -> None:
                 learning_seeds=args.learning_seeds,
                 q_learning_epochs=args.q_learning_epochs,
                 demand=args.demand,
+                start_date=args.start_date,
+                end_date=args.end_date,
             ),
             indent=2,
         )

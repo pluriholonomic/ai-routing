@@ -39,3 +39,23 @@ def test_preregistration_preserves_paid_study_boundary():
     assert "existing 120-block paid adaptive" in text
     assert "does not identify actual" in text
 
+
+def test_v2_protocol_is_future_only_and_workflow_cannot_release_v1():
+    path = Path("config/adaptive_adversarial_v2.toml")
+    with path.open("rb") as handle:
+        protocol = tomllib.load(handle)
+    assert protocol["schema_version"] == 2
+    assert protocol["status"] == "frozen_future_only"
+    assert protocol["population"]["development_data_through"] < protocol["population"][
+        "test_start_date"
+    ]
+    assert protocol["population"]["test_start_date"] == "2026-07-21"
+    assert protocol["population"]["test_end_date"] == "2026-08-03"
+    workflow = Path(
+        ".github/workflows/adaptive-adversarial-confirmatory.yml"
+    ).read_text(encoding="utf-8")
+    assert "adaptive-router-adversarial-v2" in workflow
+    assert "--start-date 2026-07-21" in workflow
+    assert "--end-date 2026-08-03" in workflow
+    assert "config/adaptive_adversarial_v1.toml" not in workflow
+    assert "write immutable marker before eligible-row access" in workflow

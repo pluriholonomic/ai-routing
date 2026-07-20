@@ -1,10 +1,16 @@
 name: adaptive-adversarial-confirmatory
 
 on:
+  schedule:
+    - cron: "23 7 * * *"
   workflow_dispatch:
     inputs:
       hf_revision:
-        description: "Exact immutable HF dataset revision"
+        description: "Exact immutable HF dataset revision; blank selects latest"
+        type: string
+        required: false
+      protocol_phrase:
+        description: "Enter FUTURE_ONLY_V2 exactly"
         type: string
         required: true
       release_phrase:
@@ -13,7 +19,7 @@ on:
         required: true
 
 concurrency:
-  group: adaptive-adversarial-confirmatory-v1
+  group: adaptive-adversarial-confirmatory-v2
   cancel-in-progress: false
 
 permissions:
@@ -21,7 +27,6 @@ permissions:
 
 jobs:
   release:
-    if: ${{ inputs.release_phrase == 'RELEASE' }}
     runs-on: ubuntu-latest
     timeout-minutes: 355
     steps:
@@ -30,10 +35,79 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --no-dev
-      - name: write immutable marker before outcome access
+      - name: validate frozen horizon and resolve an immutable complete revision
+        id: source
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          SOURCE_REVISION: ${{ inputs.hf_revision }}
+          REQUESTED_REVISION: ${{ inputs.hf_revision }}
+          PROTOCOL_PHRASE: ${{ inputs.protocol_phrase }}
+          RELEASE_PHRASE: ${{ inputs.release_phrase }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          uv run python - <<'PY'
+          import datetime as dt
+          import os
+          import tomllib
+          from pathlib import Path
+          from huggingface_hub import HfApi
+
+          protocol = tomllib.loads(Path("config/adaptive_adversarial_v2.toml").read_text())
+          if protocol["status"] != "frozen_future_only":
+              raise RuntimeError("v2 protocol is not frozen")
+          release_at = dt.datetime.fromisoformat(
+              protocol["population"]["release_not_before_utc"].replace("Z", "+00:00")
+          )
+          if dt.datetime.now(dt.timezone.utc) < release_at:
+              if os.environ["EVENT_NAME"] == "schedule":
+                  with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+                      handle.write("should_release=false\n")
+                  raise SystemExit(0)
+              raise RuntimeError(f"release is forbidden before {release_at.isoformat()}")
+          if os.environ["EVENT_NAME"] == "workflow_dispatch":
+              if os.environ["PROTOCOL_PHRASE"] != "FUTURE_ONLY_V2":
+                  raise RuntimeError("incorrect protocol phrase")
+              if os.environ["RELEASE_PHRASE"] != "RELEASE":
+                  raise RuntimeError("incorrect release phrase")
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo = "t4run/openrouter-market-history"
+          marker = "releases/adaptive-router-adversarial-v2/RELEASE_MARKER.json"
+          if api.file_exists(repo_id=repo, filename=marker, repo_type="dataset"):
+              with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+                  handle.write("should_release=false\n")
+              raise SystemExit(0)
+          requested = os.environ.get("REQUESTED_REVISION", "").strip()
+          revision = requested or str(api.dataset_info(repo).sha)
+          files = api.list_repo_files(repo_id=repo, repo_type="dataset", revision=revision)
+          start = dt.date.fromisoformat(protocol["population"]["test_start_date"])
+          end = dt.date.fromisoformat(protocol["population"]["test_end_date"])
+          expected = []
+          cursor = start
+          while cursor <= end:
+              expected.append(cursor.isoformat())
+              cursor += dt.timedelta(days=1)
+          missing = [
+              date for date in expected
+              if not any(
+                  path.startswith(f"curated/endpoints_snapshots/dt={date}/")
+                  for path in files
+              )
+          ]
+          if missing:
+              if os.environ["EVENT_NAME"] == "schedule":
+                  with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+                      handle.write("should_release=false\n")
+                  raise SystemExit(0)
+              raise RuntimeError(f"future-only partitions are incomplete: {missing}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write("should_release=true\n")
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: write immutable marker before eligible-row access
+        if: ${{ steps.source.outputs.should_release == 'true' }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          SOURCE_REVISION: ${{ steps.source.outputs.revision }}
           SOURCE_COMMIT: ${{ github.sha }}
         run: |
           uv run python - <<'PY'
@@ -43,12 +117,12 @@ jobs:
 
           api = HfApi(token=os.environ["HF_TOKEN"])
           repo = "t4run/openrouter-market-history"
-          marker = "releases/adaptive-router-adversarial-v1/RELEASE_MARKER.json"
+          marker = "releases/adaptive-router-adversarial-v2/RELEASE_MARKER.json"
           if api.file_exists(repo_id=repo, filename=marker, repo_type="dataset"):
-              raise RuntimeError("confirmatory release marker already exists; refusing rerun")
-          config = Path("config/adaptive_adversarial_v1.toml").read_bytes()
+              raise RuntimeError("v2 release marker already exists; refusing any rerun")
+          config = Path("config/adaptive_adversarial_v2.toml").read_bytes()
           payload = {
-              "study_id": "adaptive-router-adversarial-v1",
+              "study_id": "adaptive-router-adversarial-v2",
               "source_revision": os.environ["SOURCE_REVISION"],
               "source_commit": os.environ["SOURCE_COMMIT"],
               "config_sha256": hashlib.sha256(config).hexdigest(),
@@ -58,13 +132,14 @@ jobs:
           api.upload_file(
               path_or_fileobj=json.dumps(payload, indent=2, sort_keys=True).encode(),
               path_in_repo=marker, repo_id=repo, repo_type="dataset",
-              commit_message="mark adaptive adversarial confirmatory release",
+              commit_message="mark adaptive adversarial v2 release",
           )
           PY
       - name: hydrate exact frozen endpoint revision
+        if: ${{ steps.source.outputs.should_release == 'true' }}
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          SOURCE_REVISION: ${{ inputs.hf_revision }}
+          SOURCE_REVISION: ${{ steps.source.outputs.revision }}
         run: |
           uv run python - <<'PY'
           import os, shutil
@@ -80,46 +155,91 @@ jobs:
           shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
           Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
           PY
-      - name: run frozen historical release
+      - name: run frozen future-only historical release
+        if: ${{ steps.source.outputs.should_release == 'true' }}
         run: >-
           uv run python -m orcap.analysis.adaptive_adversarial_replay
           --data-root input-data
-          --output-dir data/analysis/adaptive-router-adversarial-confirmatory
-          --max-menus 20000
+          --output-dir data/analysis/adaptive-router-adversarial-confirmatory-v2
+          --start-date 2026-07-21
+          --end-date 2026-08-03
+          --max-menus 5000
           --max-attack-providers 4
           --bootstrap-draws 2000
-      - name: run frozen strategic release
+      - name: run frozen future-only strategic release
+        if: ${{ steps.source.outputs.should_release == 'true' }}
         run: >-
           uv run python -m orcap.analysis.adaptive_adversarial_simulation
           --data-root input-data
-          --output-dir data/analysis/adaptive-router-adversarial-simulation-confirmatory
-          --max-menus 1000
-          --learning-menus 12
-          --learning-steps 5000
-          --learning-seeds 30
-          --q-learning-epochs 300000
-      - name: build frozen release scorecard
+          --output-dir data/analysis/adaptive-router-adversarial-simulation-confirmatory-v2
+          --start-date 2026-07-21
+          --end-date 2026-08-03
+          --max-menus 200
+          --learning-menus 8
+          --learning-steps 2000
+          --learning-seeds 10
+          --q-learning-epochs 100000
+      - name: build frozen future-only scorecard
+        if: ${{ steps.source.outputs.should_release == 'true' }}
         run: >-
           uv run python -m orcap.analysis.adaptive_adversarial_report
-          --replay data/analysis/adaptive-router-adversarial-confirmatory/adaptive-adversarial-summary.json
-          --simulation data/analysis/adaptive-router-adversarial-simulation-confirmatory/adaptive-adversarial-simulation-summary.json
-          --output-dir data/analysis/adaptive-router-adversarial-scorecard-confirmatory
-          --source-revision "${{ inputs.hf_revision }}"
-      - name: preserve exact source revision
+          --replay data/analysis/adaptive-router-adversarial-confirmatory-v2/adaptive-adversarial-summary.json
+          --simulation data/analysis/adaptive-router-adversarial-simulation-confirmatory-v2/adaptive-adversarial-simulation-summary.json
+          --output-dir data/analysis/adaptive-router-adversarial-scorecard-confirmatory-v2
+          --source-revision "${{ steps.source.outputs.revision }}"
+          --protocol-config config/adaptive_adversarial_v2.toml
+      - name: preserve exact source revision and protocol
+        if: ${{ steps.source.outputs.should_release == 'true' }}
         run: |
-          cp hf-revision.txt data/analysis/adaptive-router-adversarial-confirmatory/
-          cp hf-revision.txt data/analysis/adaptive-router-adversarial-simulation-confirmatory/
-          cp hf-revision.txt data/analysis/adaptive-router-adversarial-scorecard-confirmatory/
-      - name: publish immutable confirmatory outputs
+          for directory in \
+            data/analysis/adaptive-router-adversarial-confirmatory-v2 \
+            data/analysis/adaptive-router-adversarial-simulation-confirmatory-v2 \
+            data/analysis/adaptive-router-adversarial-scorecard-confirmatory-v2
+          do
+            cp hf-revision.txt "$directory/"
+            cp config/adaptive_adversarial_v2.toml "$directory/"
+          done
+      - name: publish immutable confirmatory outputs regardless of sign
+        if: ${{ steps.source.outputs.should_release == 'true' }}
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: uv run orcap push --message "adaptive adversarial confirmatory ${{ github.run_id }}"
+        run: uv run orcap push --message "adaptive adversarial v2 confirmatory ${{ github.run_id }}"
+      - name: write immutable completion record
+        if: ${{ steps.source.outputs.should_release == 'true' }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          SOURCE_REVISION: ${{ steps.source.outputs.revision }}
+        run: |
+          uv run python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from huggingface_hub import HfApi
+
+          scorecard = json.loads(Path(
+              "data/analysis/adaptive-router-adversarial-scorecard-confirmatory-v2/"
+              "adaptive-adversarial-scorecard.json"
+          ).read_text())
+          payload = {
+              "study_id": "adaptive-router-adversarial-v2",
+              "source_revision": os.environ["SOURCE_REVISION"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "status": "release_complete",
+              "verdict": scorecard["verdict"],
+          }
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj=json.dumps(payload, indent=2, sort_keys=True).encode(),
+              path_in_repo=(
+                  "releases/adaptive-router-adversarial-v2/RELEASE_COMPLETE.json"
+              ),
+              repo_id="t4run/openrouter-market-history", repo_type="dataset",
+              commit_message="complete adaptive adversarial v2 release",
+          )
+          PY
       - name: preserve release artifact
-        if: always()
+        if: ${{ always() && steps.source.outputs.should_release == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: adaptive-adversarial-confirmatory-${{ github.run_id }}
-          path: data/analysis/*confirmatory/
+          name: adaptive-adversarial-confirmatory-v2-${{ github.run_id }}
+          path: data/analysis/*confirmatory-v2/
           if-no-files-found: warn
           retention-days: 90
-
