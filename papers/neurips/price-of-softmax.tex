@@ -42,8 +42,9 @@ software invariants, held-out moments, simulator causality, strategic robustness
 and live transport.  The first calibration task decomposes price and score:
 22,330 public-menu snapshots imply 1.40--10.98 percentage points of mechanical
 share from benchmark undercutting, while a prospective owned-choice panel for
-the latent score remains support-gated.  Two simulator studies show why this
-boundary matters.  Marginal-preserving signal coupling raises buyer price by
+the latent score remains support-gated.  Separately, two synthetic learner
+benchmarks test failure modes without explaining the public share surface.
+Marginal-preserving signal coupling raises buyer price by
 0.118 in a focal UCB/UCB game but by $-0.00047$ across heterogeneous learners.
 A hardened score reduces one-shot quote and identity manipulation, yet leaves
 9.68 times more normalized post-UCB exploitability in its first learning screen.
@@ -86,12 +87,21 @@ common random numbers across mechanism arms.  Provider observations expose
 public quotes and only the provider's own realized settlement; rival cost,
 capacity, and reliability remain private.
 
-The environment includes random, inverse-price, quality-adjusted, price-cut
-memory, menu-projected, and hardened adaptive routers.  Provider policies include
+The environment includes random, inverse-price, quality-adjusted, synthetic
+price-cut-memory, menu-projected, and hardened adaptive routers.  Provider policies include
 static regimes, calibrated species, tabular Q-learning, UCB, epsilon-greedy, and
 an optional LLM adapter.  Global finite-grid best responses, two-provider
 coalitions, identity splitting, fading quotes, and sequential response oracles
-audit strategic robustness.
+audit strategic robustness.  The memory router is an adversarial benchmark with
+a declared transition law; it is not calibrated from the public price panel.
+
+Two tasks are intentionally orthogonal.  E0 measures a contemporaneous
+price--score manipulation surface.  E1 asks whether particular learners fail
+under correlated signals and reward memory inside a synthetic game.  Neither
+task supplies the missing transition equation for the other.  They can be joined
+only after owned routing outcomes show that lagged price or quality histories
+predict a future score beyond the current menu and after a causal design
+separates memory from unobserved eligibility.
 
 Our evaluation has four main findings.
 
@@ -101,7 +111,7 @@ Across seven models, resetting active quotes to model-author benchmarks removes
 1.40--10.98 percentage points of conditional shadow share.  A prospective paid
 panel estimates the non-price score and its interaction with undercutting; it is
 still accruing, so no score result is imputed.
-\item An exact signal-order intervention validates a narrow
+\item In a separate synthetic benchmark, an exact signal-order intervention validates a narrow
 Hansen--Misra--Pai-style mechanism \citep{hansenmisrapai2021}.  In a focal
 two-UCB prisoner's-dilemma game, preserving common signal order increases
 exploration coupling, joint high-price play, and buyer price.  The two-seed
@@ -372,6 +382,11 @@ violating held-out completion, fidelity, entry, and learning-regret gates.
 
 \subsection{E1: common signals and heterogeneous learners}
 
+E1 is an adversarial learning benchmark, not a proposed explanation of E0's
+cross-model shadow-share time series.  Its memory and signal processes are
+declared simulator primitives.  A live-market interpretation requires a
+separate transport experiment on lagged routing scores and quality outcomes.
+
 Two providers choose low price 0.65 or high price 1.00 at marginal cost 0.20.
 With router exponent 5, the one-period payoffs satisfy the prisoner's-dilemma
 ordering
@@ -396,9 +411,11 @@ paired cells the mean buyer-price effect is 0.0131 and the positive share is
 claim.  A simulator that published only the focal UCB panel would give the wrong
 design impression.
 
-\subsection{Empirical HMP bridge}
+\subsection{Failed external transport audit for E1}
 
-The empirical bridge is an ordered family: (SC1) excess residual quote coupling;
+This audit does not connect E1 to E0's market-share accounting.  It asks whether
+four necessary properties of the synthetic signal mechanism are even visible in
+the external aggregate panel.  The ordered family is: (SC1) excess residual quote coupling;
 (SC2) preperiod routing signal-to-noise gradient; (SC3) coupled-versus-independent
 elasticity wedge; and (SC4) forward transition toward premium states.  The latest
 aggregate monitor has 766 completion-price events, seven mechanism days, 19
@@ -532,8 +549,8 @@ collusion, communication, dumping, or literal front-running.
 The central finding is that routing-market simulation needs a refusal mechanism
 and an explicit price--score boundary.  Public menus calibrate strategic
 price-induced transfers; owned choices are required for hidden scoring; neither
-licenses cost, welfare, or conduct claims by itself.
-The focal UCB result is real inside its game and fails across heterogeneous agents.
+licenses cost, welfare, conduct, or score-memory claims by itself.  The focal
+UCB result is real inside its separate synthetic game and fails across heterogeneous agents.
 The hardened router resists one-step manipulation and fails its first learning
 gate.  The public quote signal is nominal and fails concentration and family
 completion.  A property ladder makes those boundaries executable.  That is what
