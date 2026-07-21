@@ -36,7 +36,10 @@ one model.
 
 - `wf19_model_comparison_timeseries.{pdf,png}` is generated from the frozen
   WF19 parquet and excludes zero-priced endpoints.
-- The three LaTeX sources include the same claim boundary in their captions.
+- The EC and NeurIPS sources include the price-surface claim boundary in their
+  captions. The ICML source intentionally excludes the price figures and states
+  that the separate evidence ledger is not an input to its payoffs, memory law,
+  or confirmatory gates.
 - The EC, ICML, and NeurIPS PDFs build without missing references.
 - The new figure and neighboring pages were rasterized and visually inspected;
   labels, legends, axes, and captions are readable with no clipping.
