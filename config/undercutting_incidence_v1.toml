@@ -1,9 +1,9 @@
 [study]
 id = "undercutting-incidence-v1"
 frozen_label_artifact_revision = "d4a13616c9a7646cf2c13b67b21eef632f93306a"
-frozen_label_source_revision = "cc045919595d2f8b0c211c128ac3e535f9b8c008"
+frozen_label_source_revision = "6e65d203f535f92ab4b3366e38d8f127e66d50bd"
 frozen_labels_sha256 = "047b9eafa3d2741ab25aa807ee8f1ad8dc8a55fdd3687df5f27e1087427529bc"
-frozen_summary_sha256 = "9edba31133191ac2b4ece4413c3e9195539aea92623e4624ec1a28f035977c6d"
+frozen_summary_sha256 = "e4f5f30932b5c20bcecf9d837dc3f44399c834ecb1e38bfac4cb603317a9e6c8"
 
 [transitions]
 max_gap_minutes = 30

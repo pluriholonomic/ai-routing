@@ -1,9 +1,27 @@
 from __future__ import annotations
 
+import hashlib
+
 import pandas as pd
 import pytest
 
 from orcap.analysis import wf19_undercutting_incidence as wf19
+
+
+def test_frozen_artifact_ignores_stale_local_copy(tmp_path, monkeypatch):
+    name = "wf16_summary.json"
+    (tmp_path / name).write_bytes(b"stale")
+    pinned = tmp_path / "pinned.json"
+    pinned.write_bytes(b"pinned")
+    expected = hashlib.sha256(b"pinned").hexdigest()
+    monkeypatch.setenv("ORCAP_ANALYSIS_SOURCE", "hf")
+    monkeypatch.setattr(wf19, "hf_hub_download", lambda *args, **kwargs: str(pinned))
+
+    observed = wf19._artifact_path(
+        tmp_path, name, revision="immutable", expected_sha256=expected
+    )
+
+    assert observed == pinned
 
 
 def _panel() -> pd.DataFrame:

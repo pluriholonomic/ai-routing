@@ -42,15 +42,20 @@ def load_protocol(path: Path = DEFAULT_CONFIG) -> tuple[dict[str, Any], str]:
     return tomllib.loads(payload.decode("utf-8")), hashlib.sha256(payload).hexdigest()
 
 
-def _artifact_path(out_dir: Path, name: str, *, revision: str) -> Path:
-    """Resolve a local or revision-pinned published WF-16 artifact."""
+def _artifact_path(
+    out_dir: Path, name: str, *, revision: str, expected_sha256: str
+) -> Path:
+    """Resolve an exact local copy or the revision-pinned WF-16 artifact."""
     local_candidates = (
         out_dir / name,
         Path(DATA_DIR) / WF16_BUNDLE / name,
         ROOT / "data" / WF16_BUNDLE / name,
     )
     for candidate in local_candidates:
-        if candidate.is_file():
+        if (
+            candidate.is_file()
+            and hashlib.sha256(candidate.read_bytes()).hexdigest() == expected_sha256
+        ):
             return candidate
     if os.environ.get("ORCAP_ANALYSIS_SOURCE", "hf") == "local":
         raise FileNotFoundError(f"required frozen WF16 artifact is absent: {name}")
@@ -71,9 +76,17 @@ def load_frozen_labels(
     study = protocol["study"]
     revision = str(study["frozen_label_artifact_revision"])
     labels_path = _artifact_path(
-        out_dir, "wf16_provider_type_labels.parquet", revision=revision
+        out_dir,
+        "wf16_provider_type_labels.parquet",
+        revision=revision,
+        expected_sha256=str(study["frozen_labels_sha256"]),
     )
-    summary_path = _artifact_path(out_dir, "wf16_summary.json", revision=revision)
+    summary_path = _artifact_path(
+        out_dir,
+        "wf16_summary.json",
+        revision=revision,
+        expected_sha256=str(study["frozen_summary_sha256"]),
+    )
     expected_hashes = {
         labels_path: str(study["frozen_labels_sha256"]),
         summary_path: str(study["frozen_summary_sha256"]),
