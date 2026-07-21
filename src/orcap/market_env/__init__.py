@@ -37,3 +37,10 @@ __all__ = [
     "Workload",
     "load_scenario",
 ]
+from .rl_env import ParallelStep, ProviderObservation, StrategicRoutingParallelEnv
+
+__all__ = [
+    "ParallelStep",
+    "ProviderObservation",
+    "StrategicRoutingParallelEnv",
+]

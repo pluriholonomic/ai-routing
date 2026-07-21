@@ -1,0 +1,47 @@
+{
+  "wf18": {
+    "github_run": 29834114219,
+    "code_revision": "4e89018c1d4dfac26935dcd79f659f406447a3c3",
+    "dataset_revision": "e4174d08a6c0e18ac0adf9a9f26b6a917f7f1ed8",
+    "factorial_rows": 1440,
+    "paired_cells": 720,
+    "focal": {
+      "exploration_coupling": 0.21362048594832792,
+      "all_high_share": 0.3388518518518519,
+      "buyer_price": 0.11824864273904624,
+      "buyer_price_positive_share": 0.6944444444444444
+    },
+    "heterogeneous": {
+      "exploration_coupling": -0.00301399164789305,
+      "all_high_share": -0.0015041152263374465,
+      "buyer_price": -0.00046976124808261117,
+      "buyer_price_positive_share": 0.49074074074074076
+    },
+    "mechanism_validated": false,
+    "empirical_sc1_p": 0.04997501249375312,
+    "empirical_sc1_max_pair_share": 0.8728306403351287,
+    "empirical_family_complete": false
+  },
+  "adaptive_adversarial": {
+    "github_run": 29780088479,
+    "code_revision": "b7908e09e496a0714cef3a28a138739af6e8d44c",
+    "dataset_revision": "0a7c6bef4acb87f81c9d22b1748e7a610107a03e",
+    "inverse_square": {
+      "mean_max_allocation_gain": 0.2262,
+      "mean_fading_quote_share": 0.4638,
+      "mean_sybil_share_gain": 0.1499,
+      "mean_unilateral_exploitability": 0.6664,
+      "mean_two_provider_exploitability": 0.4976,
+      "post_ucb_normalized_exploitability": 0.4057
+    },
+    "hardened": {
+      "mean_max_allocation_gain": 0.03,
+      "mean_fading_quote_share": 0.2422,
+      "mean_sybil_share_gain": 0.0,
+      "mean_unilateral_exploitability": 0.0,
+      "mean_two_provider_exploitability": 0.069,
+      "post_ucb_normalized_exploitability": 3.9291
+    },
+    "status": "mixed_screen_not_confirmatory"
+  }
+}
