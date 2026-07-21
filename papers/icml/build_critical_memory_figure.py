@@ -54,7 +54,7 @@ def main() -> None:
         label=r"option $q_o=0.1$",
     )
     axes[0].set_yscale("log")
-    axes[0].set_xlabel("Router memory M")
+    axes[0].set_xlabel("Platform memory M")
     axes[0].set_ylabel("Expected primitive transitions")
     axes[0].set_title("A. Exponential fresh-path gap")
     axes[0].legend(frameon=False, fontsize=6)
@@ -78,7 +78,7 @@ def main() -> None:
     for axis in axes[1:]:
         axis.axvline(9.2402, color="#555555", ls="--", lw=0.8)
         axis.text(9.35, axis.get_ylim()[1] * 0.92, r"$M^*$", fontsize=7, va="top")
-        axis.set_xlabel("Router memory M")
+        axis.set_xlabel("Platform memory M")
         axis.legend(frameon=False, fontsize=6)
     axes[1].set_ylabel("Exact first-action rate")
     axes[1].set_ylim(-0.05, 1.08)

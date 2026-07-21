@@ -21,8 +21,8 @@
 \newcommand{\Prb}{\mathbb{P}}
 \newcommand{\SNR}{\operatorname{SNR}}
 
-\title{Critical Memory in Price--Score Learners:\\
-Exponential Late-Credit Gaps in Routing Markets}
+\title{Critical Memory in Stateful Pricing Learners:\\
+Exponential Late-Credit Gaps}
 \author{Anonymous Authors}
 \date{}
 
@@ -30,16 +30,16 @@ Exponential Late-Credit Gaps in Routing Markets}
 \maketitle
 
 \begin{abstract}
-A router can make a profitable price cut hard to learn without making it
-unprofitable.  We study a price--score rule that temporarily penalizes a
-provider after a cut.  The resulting MDP has two boundaries: a rational memory
+A stateful allocation rule can make a profitable price cut hard to learn
+without making it unprofitable.  We study a buyer that temporarily penalizes a
+seller after a cut.  The resulting MDP has two boundaries: a rational memory
 threshold above which staying high is optimal and a finite-time threshold above
 which fresh evidence for a profitable persistent cut is exponentially rare.
 After downstream values become usable, a learner cutting with conditional
 probability at most $q$ sees a fresh length-$M$ path within $T$ steps with
 probability at most $Tq^M$.  A path-equivalent commitment option reduces path
 proposal time to linear while preserving feasible primitive paths and optimal
-value.  In a frozen calibrated game, primitive Q-learning chooses the rational
+value.  In a frozen numerical game, primitive Q-learning chooses the rational
 action in 1/20 seeds at $M=7$, versus 19/20 with the option; paired regret falls
 by 0.0643 (95\% interval $[0.0493,0.0755]$).  All seeds cover every state--action
 pair, but failed learners stop revisiting deep cut states; ordered batch Bellman
@@ -53,19 +53,18 @@ collusion.
 Independent pricing algorithms can coordinate through market feedback even
 without communication.  Existing results emphasize reward signal quality,
 parallel experimentation, and the scoring rule faced by each learner
-\citep{hansen2021,calvano2020}.  A different friction appears when the market
+\citep{hansen2021,calvano2020}.  A different friction appears when a platform
 itself remembers actions.  A price cut can pay poorly today, yet become
-profitable only after enough consecutive cuts erase a router penalty.  No
+profitable only after enough consecutive cuts erase a ranking penalty.  No
 single experiment reveals the long-run return.
 
-AI inference routing provides a concrete instance.  Providers sell execution
-of a common open-weight model, while a router combines posted price with hidden
-eligibility and service scores.  On 22,330 public-menu snapshots for seven
-models, benchmark-reset counterfactuals imply 1.40--10.98 percentage points of
-price-induced active-provider share; these are rule quantities, not realized
-flow.  A prospective owned-choice panel now estimates the latent score but has
-not crossed its support gate.  We ask what learning problem arises when such a
-score itself remembers price actions.
+AI inference routing is one possible application, but current routing data do
+not identify this state.  Public menus measure contemporaneous prices; owned
+choices can eventually identify a current reduced-form score.  Neither shows
+that the score remembers earlier prices or quality.  No paid probe randomizes a
+memory rule.  We therefore use no market-share estimate as evidence for the
+temporal mechanism in this paper.  The object here is the learning problem
+conditional on a declared history-dependent allocation rule.
 
 This distinction matters for both algorithmic-collusion and mechanism-design
 claims.  A high learned price can arise because high pricing is an equilibrium,
@@ -89,56 +88,32 @@ Our contributions are fourfold.
   value and feasible primitive paths while replacing exponential path-proposal
   time by a linear term.  This is an interface result, not a change in provider
   payoffs.
-  \item We test the mechanism in a frozen, calibrated finite MDP.  The option
+  \item We test the mechanism in a frozen, prespecified finite MDP.  The option
   closes the local gap at intermediate memory and becomes harmful beyond the
   rational boundary.  A frozen trace replay separates early discovery from late
   credit starvation.  State observability, cross-market severity, and a
   conventional multi-step return each fail prespecified tests.
 \end{enumerate}
 
-\section{Routing game and economic boundary}
+\section{Stateful pricing game and economic boundary}
 
-One market is a model--workload pair.  Provider $i$ posts price $p_i$, has
-marginal cost $c_i$, and receives first-route share
-\begin{equation}
-  s_i(p,\alpha)=\frac{p_i^{-a}e^{\alpha_i}}
-  {\sum_jp_j^{-a}e^{\alpha_j}},\qquad a>0.
-  \label{eq:share}
-\end{equation}
-The latent score $\alpha_i$ is reduced-form: quality, health, capacity,
-eligibility, and router preference may all enter.  Defining
-$p_i^{\mathrm{eff}}=p_i e^{-\alpha_i/a}$ makes \cref{eq:share} exactly an
-inverse-power rule in effective prices.  Relative score obeys
-\begin{equation}
-\alpha_i-\alpha_j=\log(s_i/s_j)+a\log(p_i/p_j).
-\label{eq:scoreodds}
-\end{equation}
-With fixed score and demand, profit is $s_i(p,\alpha)(p_i-c_i)$ and
-$\partial\log s_i/\partial\log p_i=-a(1-s_i)$.  If instead
-$\alpha_i=h_i(\log p_i)$, the negative elasticity becomes
-$(1-s_i)(a-h_i')$: score feedback can attenuate or amplify the value of a cut.
-At a symmetric interior equilibrium with equal fixed scores,
-\begin{equation}
- p^*=c\frac{a(n-1)}{a(n-1)-n},
- \label{eq:static}
-\end{equation}
-which exists only if $a(n-1)>n$.  The deployed value $a=2$ is the duopoly
-knife edge.  This static fact motivates the environment but is not our main
-learning result.
+A seller repeatedly chooses a high quote $H$ or low quote $L$.  The buyer's
+declared allocation rule carries a binary penalty state.  A low quote remains
+penalized until the previous $M$ quotes are also low; after that run, the
+penalty clears.  The state can represent a prominence rule, a reserve-ranking
+flag, or any other disclosed history-dependent procurement policy.  We do not
+assume that a particular live router implements it.
 
-Now fix rivals and restrict one provider to a high quote $H$ and low quote
-$L$.  A low quote receives score $\alpha=\log\theta<0$ until the previous $M$
-quotes are also low, after which its score returns to zero.  This is equivalent
-to a temporary increase in effective price from $L$ to
-$L\theta^{-1/a}$ even though the displayed quote is unchanged.
-Write $u_H$ for profit at $H$, $u_{\theta L}$ for penalized profit at $L$,
-and $u_L$ for unpenalized profit at $L$.  The economically interesting
+Let $u_H$ be seller profit at $H$, $u_{\theta L}$ penalized profit at $L$, and
+$u_L$ unpenalized profit at $L$.  These quantities may be generated by any
+demand or allocation system.  The theory requires only the economically
+interesting
 ordering is
 \begin{equation}
   u_L>u_H>u_{\theta L}.
   \label{eq:ordering}
 \end{equation}
-Thus cutting loses while the flag is active but wins after it clears.
+ordering: cutting loses while the flag is active but wins after it clears.
 
 \begin{theorem}[Rational memory boundary]
 From an all-high history, an infinite-horizon optimal policy either stays high
@@ -154,7 +129,7 @@ $M^*=\log[(u_H-u_{\theta L})/(u_L-u_{\theta L})]/\log\gamma$.
 \label{thm:rational}
 \end{theorem}
 
-In the frozen calibrated profile,
+In the frozen numerical profile,
 $(u_H,u_{\theta L},u_L)=(0.1067535,0.0351280,0.1501829)$ and
 $\gamma=0.95$, giving $M^*=9.2402$.  Exact dynamic programming cuts for
 integer $M\le9$ and stays high for $M\ge10$.  This boundary is derived before
@@ -277,8 +252,9 @@ rather than $q^M$.  This is the exponential temporal-abstraction gap shown in
 \section{Experimental design}
 
 The experiment is a controlled finite-MDP mechanism test, not a reduced-form
-test on provider prices.  Its high and low quotes and router penalty are frozen
-from an audited market profile.  Exact value iteration supplies the target
+test on observed seller prices.  Its high and low quotes, payoffs, and penalty
+are frozen before simulation and chosen to satisfy \cref{eq:ordering}; they are
+not structural estimates from a live marketplace.  Exact value iteration supplies the target
 action.  Tabular Q-learning uses 300,000 primitive transitions, discount
 $0.95$, and 20 prespecified seeds.  The option learner receives the same
 primitive transition budget; an option consumes its full duration.  A
@@ -303,52 +279,14 @@ deterministic empirical transition table from visited pairs.  Batch Bellman
 sweeps then test whether coverage is sufficient when update order is repaired.
 The checkpoints are diagnostics, not preregistered readiness estimates.
 
-\paragraph{Displayed-price and latent-score calibration.}
-The public calibration layer evaluates 22,330 snapshots for seven models at a
-fixed request shape and point exponent $a=1.6483$.  Resetting active quotes to
-the model-author benchmark removes median active shadow share ranging from 1.40
-points for Kimi K2.6 to 10.98 points for GLM-5.2.  The latter has a 27.3\%
-median equivalent discount and transfers 5.40 points from anchor-priced
-providers under the rule.  These exact menu counterfactuals calibrate the
-possible payoff scale; they do not measure realized provider traffic.
-
-The complementary GLM-5.2 panel uses fresh owned choices to estimate
-\cref{eq:scoreodds} at the frozen exponent, plus a randomized explicit
-price-sort arm.  It starts prospectively at 21 July 22:00 UTC, excludes four
-earlier observed choices, and reports nothing until at least 40 choices, 20
-blocks, and three selected providers.  Publication requires 800 choices, 100
-blocks, seven days, and 90\% menu coverage.  At this freeze it is accruing with
-zero eligible choices.  Even after the gate, a level score wedge calibrates
-$(u_H,u_{\theta L},u_L)$ but does not identify the memory length $M$ or validate
-the live temporal mechanism.
-
-\begin{figure*}[t]
- \centering
- \includegraphics[width=0.98\textwidth]{../../data/analysis/undercutting-incidence-v1/wf19_cross_model_elasticity.pdf}
- \caption{Public-price calibration across seven models.  Benchmark resets
- identify deterministic share transfers under a declared inverse-power rule,
- not realized market share.  The prospective owned-choice layer is required to
- estimate the price-equivalent latent score and remains support-gated.}
- \label{fig:price-score-calibration}
-\end{figure*}
-
-\begin{figure*}[t]
- \centering
- \includegraphics[width=0.98\textwidth]{../../data/analysis/undercutting-incidence-v1/wf19_model_comparison_timeseries.pdf}
- \caption{Comparable hourly price dynamics across models.  Panels report the
- benchmark discount, deterministic excess undercutter shadow share, and
- absolute group arc elasticity under the frozen point exponent.  These series
- calibrate payoff magnitudes and regime duration; they neither identify live
- latent scores nor realized demand.  Zero-priced endpoints are excluded.}
- \label{fig:price-time-calibration}
-\end{figure*}
-
-The live empirical bridge is deliberately weaker.  In the latest hosted
-panel, the primary same-regime covariance statistic exceeds its randomization
-null by $0.0256$ with one-sided $p=0.0500$, but one provider-pair accounts for
-$87.3\%$ of eligible events, the identity-shuffle diagnostic has $p=0.992$,
-and downstream family gates are underpowered.  This supports studying
-signal-coupling mechanisms; it does not validate them as provider conduct.
+\paragraph{External-market non-entry statement.}
+The repository also contains public-menu shadow-share accounting and a
+prospective owned-choice score estimator.  Neither artifact enters the payoffs,
+memory length, transition law, or result selection in this paper.  A
+contemporaneous score wedge cannot identify $M$; price persistence cannot show
+that the buyer stores price history; and no existing probe randomizes memory.
+Connecting this theorem to inference routing is therefore a future transport
+test, not an empirical contribution of this draft.
 
 \section{Results}
 
@@ -400,7 +338,7 @@ interval $[0,0.0113]$.  The supported result is option-specific temporal
 abstraction in the controlled MDP, not a claim that any longer return solves
 delayed credit.
 
-\section{Implications for pricing mechanisms}
+\section{Implications for stateful platform design}
 
 The two boundaries separate three regimes.
 \begin{enumerate}
@@ -411,18 +349,19 @@ The two boundaries separate three regimes.
  horizon.  A platform can sustain high learned prices without communication or
  supra-rational reward coupling.
  \item If $M\le\min\{M^*,M_c\}$, ordinary exploration can expose the low path;
- reward SNR and cross-agent signal coupling again become first-order.
+ ordinary reward noise and unmodeled cross-agent feedback again become first-order.
 \end{enumerate}
 
-This yields a design warning.  Router memory can look anti-gaming because it
+This yields a design warning.  Platform memory can look anti-gaming because it
 disciplines short-lived cuts, yet the same rule can suppress efficient
 persistent cuts by altering learnability.  Conversely, exposing a commitment
 action can restore price competition below $M^*$ but cause excessive cutting
-above it.  A safer router would expose the state and a cancellable multi-period
+above it.  A safer platform would expose the state and a cancellable multi-period
 quote schedule only when a deviation audit predicts that persistent cutting
 raises provider value and buyer surplus.  The theorem supplies a testable
 screen, not a universally optimal policy.
 
+\paragraph{Illustrative inference-routing application.}
 The target score must also match the economic objective.  A user-cost router
 scores payment, latency, and failure; a welfare router substitutes resource cost
 for payment and values delivered quality; a revenue router may favor high spend
@@ -437,7 +376,9 @@ provider pays high fixed cost but may rationally cut to maintain utilization; a
 spot-dependent provider has less sunk exposure but state-dependent scarcity
 cost; an anchor adopter may not update displayed price at all.  A router that
 hides score memory can therefore trap low-short-run-cost providers while doing
-little to passive anchors.  Practical implementation should expose the score
+little to passive anchors.  This is a theoretical comparative static, not an
+interpretation of the current provider panel.  Practical implementation should
+expose the score
 state, offer cancellable multi-period quote commitments, use
 execution-contingent capacity rather than fundraising or provider identity as a
 proxy, and charge fees separately from selected spend.
@@ -450,7 +391,7 @@ support high prices and that results depend sharply on algorithms and timing
 independent bandit experiments become strategically coupled through the
 aggregate price used to score arms \citep{hansen2021}.  Johnson--Rhodes--
 Wildenbeest study platform steering when sellers use pricing algorithms
-\citep{johnson2023}.  Our contribution is orthogonal: a router's own-history
+\citep{johnson2023}.  Our contribution is orthogonal: a platform's own-history
 rule creates a finite-time fresh-support barrier even when reward differences
 are otherwise easy to estimate.
 
@@ -468,17 +409,16 @@ applies only to learners that require fresh downstream support.  It does not
 characterize algorithms that plan over a known model, retain replay sufficient
 for exact offline backups, or deliberately schedule low runs.  The diagnostic
 checkpoint is post hoc and does not identify when a Q-value becomes usable.
-The calibrated experiment fixes rivals, uses two prices, and studies tabular Q.
-Twenty seeds identify Monte Carlo variability, not
-uncertainty in live-market parameters.  Cross-market severe-trap transport
-fails, and no paid probe randomizes router memory.  The empirical covariance
-screen is concentrated and family-incomplete.  We therefore claim a theorem,
-a controlled mechanism, and a reproducible local counterfactual---not provider
-intent, tacit collusion, communication, or live-router causality.
+The controlled experiment fixes rivals, uses two prices, and studies tabular Q.
+Twenty seeds identify Monte Carlo variability, not uncertainty in live-market
+parameters.  Cross-profile severe-trap transport fails, and no paid probe
+randomizes a memory rule.  We therefore claim a theorem, a controlled mechanism,
+and a reproducible numerical counterfactual---not observed market share,
+provider intent, tacit collusion, communication, or live-router causality.
 
 \section{Conclusion}
 
-Market memory creates two distinct thresholds.  The rational threshold says
+Platform memory creates two distinct thresholds.  The rational threshold says
 whether persistent cutting is valuable; the finite-time threshold says whether
 a bounded ordered-credit learner can obtain fresh support after its downstream
 values become usable.  Between them, high learned prices can persist despite a
@@ -547,14 +487,14 @@ The post-hoc trace artifact
 replay script.  It is admitted only after all 20 Q-tables match the frozen
 E-SIM6 artifact; separate tests reconcile seed-level actions, early hits, and
 late depth counts.
-The public price-transfer and prospective latent-score claims are frozen in
-\texttt{../price-score-evidence-2026-07-21.json}; the latter is explicitly an
-accruing design with no numerical score result.  Its remote monitor conditions
-on exact owned-request menus and never pools H81 or H95 outcomes.
+The separate price--score evidence ledger is not an input to this paper's
+payoffs, memory length, transition law, or confirmatory gates.  This exclusion
+is intentional and is checked in the manuscript evidence audit.
 
 \bibliographystyle{plainnat}
 \begingroup
-\footnotesize
+\scriptsize
+\setlength{\bibsep}{0pt plus 0.3ex}
 \bibliography{references}
 \endgroup
 
