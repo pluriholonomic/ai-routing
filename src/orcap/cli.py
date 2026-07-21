@@ -615,6 +615,7 @@ def main() -> None:
             "wf14": "wf14_cohort_mechanisms",
             "wf15": "wf15_spread_explanations",
             "wf16": "wf16_provider_type_validation",
+            "wf17": "wf17_within_type_collusion",
             "bm1": "bm1_pricing_technology",
             "bm2": "bm2_fast_slow_reactions",
             "bm3": "bm3_quality_adjusted_premium",

@@ -46,6 +46,14 @@ jobs:
           uv run orcap analyze
           --hypothesis wf16
           --out data/analysis/provider-type-validation-v1
+      - name: run within-regime collusion screens
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+        run: >-
+          uv run orcap analyze
+          --hypothesis wf17
+          --out data/analysis/provider-type-validation-v1
       - name: validate release bundle and privacy boundary
         run: |
           uv run python - <<'PY'
@@ -68,6 +76,14 @@ jobs:
               "wf16_provider_type_validation.png",
               "wf16_provider_type_validation.pdf",
               "source-revision.txt",
+              "wf17_within_type_response.parquet",
+              "wf17_price_clustering_cells.parquet",
+              "wf17_punishment_events.parquet",
+              "wf17_leadership.parquet",
+              "wf17_memory_panel.parquet",
+              "wf17_summary.json",
+              "wf17_within_type_collusion.png",
+              "wf17_within_type_collusion.pdf",
           ]
           missing = [name for name in required if not (root / name).is_file()]
           if missing:
@@ -75,6 +91,9 @@ jobs:
           summary = json.loads((root / "wf16_summary.json").read_text())
           if summary["dumping_supported"] is not False:
               raise SystemExit("v1 dumping claim boundary was altered")
+          collusion = json.loads((root / "wf17_summary.json").read_text())
+          if collusion["collusion_identified"] is not False:
+              raise SystemExit("v1 collusion claim boundary was altered")
           if summary["source"]["revision"] != Path("hf-revision.txt").read_text().strip():
               raise SystemExit("analysis revision does not match frozen revision")
           forbidden = {"prompt", "messages", "response_text", "input_text", "output_text"}

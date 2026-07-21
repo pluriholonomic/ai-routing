@@ -1,0 +1,25 @@
+[study]
+id = "within-type-collusion-v1"
+
+[thresholds]
+anchor_match_rtol = 0.000001
+
+[windows]
+response_hours = 24.0
+placebo_shift_hours = 48.0
+punishment_response_hours = 24.0
+revert_hours = 96.0
+episode_gap_hours = 96.0
+reversion_fraction = 0.99
+
+[inference]
+label_permutations = 2000
+bootstrap_draws = 5000
+seed = 20260720
+minimum_train_events = 10
+minimum_test_events = 10
+
+[identification]
+anchor_clustering_never_scores = true
+minimum_independent_legs_for_candidate = 2
+collusion_is_not_identified = true
