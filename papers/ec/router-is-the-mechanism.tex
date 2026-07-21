@@ -28,31 +28,30 @@
 
 \begin{document}
 
-\title{Displayed Prices, Hidden Clearing:\\
-Property Tests and Mechanism Design for AI Inference Routing}
+\title{Displayed Prices, Hidden Scores:\\
+Market-Share Manipulation and Mechanism Design for AI Inference Routing}
 
 \author{Tarun Chitra}
 \affiliation{\institution{Gauntlet}\city{New York}\country{USA}}
 \email{tarun@gauntlet.xyz}
 
 \begin{abstract}
-Open-weight models create a real-time market for partly substitutable execution.
-Harnesses originate token demand, routers choose where to buy execution, and
-providers sell perishable compute under a common model label.  We ask what can
-be learned about this market when prices are public but clearing, capacity, and
-quality are only partly observed.  Five-minute menus, router enforcement state,
-and owned requests reject a simple public-order-book description: a documented
-inverse-price heuristic is not the realized allocation law, active undercutting
-is transient, and a registered response screen detects no excess rival reaction.
-We then derive mechanism results that survive this limited identification.  A
-price-only Gibbs router has an exact welfare-regret identity for omitted service
-attributes; uniformly accurate scores are near-optimal; but no quote-only rule
-can be robustly efficient when reserved capacity is hidden.  These results imply
-an auditable design using execution-contingent prices, capacity commitments,
-quality scores, exploration, and fees separated from selected spend.  A
-held-out replay reduces a quote-coupling proxy by 49.3\% at a 2.08\% displayed-
-price premium, but does not identify welfare.  The contribution is a set of
-property tests and implementable mechanism bounds, not a conduct claim.
+Open-weight models create a real-time market for partly substitutable execution:
+harnesses originate token demand, routers buy execution, and providers sell
+perishable compute under a common model label.  We separate the router into an
+observable price layer and a latent non-price score.  Across 22,330 public-menu
+snapshots for seven models, resetting below-benchmark quotes removes 1.40--10.98
+percentage points of mechanically implied provider share; for GLM-5.2 the median
+transfer is 10.98 points, including 5.40 points from anchor-priced providers.
+These are rule counterfactuals, not realized flow.  We show that a latent score
+is equivalent to a provider-specific price transformation, derive how it
+attenuates or amplifies undercutting elasticity, and preregister its estimation
+from owned choices.  The score is still accruing and no result is imputed.  An
+exact Gibbs-regret identity and a hidden-capacity impossibility theorem then
+motivate execution-contingent commitments, audited quality, bounded exploration,
+and fees separated from selected spend.  The contribution is an estimable
+price--score decomposition and implementable mechanism bounds, not a conduct
+claim.
 \end{abstract}
 
 \maketitle
@@ -94,7 +93,8 @@ state; mechanical shadow routing reveals the implications of an explicit rule;
 owned requests reveal realized policy for one account and workload; and only
 router or provider logs could reveal market-wide flow or private capacity.
 
-The empirical results are primarily property tests.  They tell us which simple
+The empirical results are primarily property tests and rule counterfactuals.
+They tell us which simple
 market descriptions are incompatible with the observations, and thereby narrow
 the set of mechanisms worth designing.  Four posted-price regimes are highly
 persistent except for active undercutting.  A registered response screen finds
@@ -105,14 +105,21 @@ of-service advantage in the current holdout.  Owned routing remains too narrow
 to infer market share.  An HMP-style signal-coupling screen has the predicted
 sign but fails its randomization test, concentration gate, and downstream power
 gates.  These results do not say strategic interaction is absent; they say its
-current identified set is large.
+current identified set is large.  Separately, the public price surface reveals
+economically large conditional share transfers: in seven model panels, active
+discounts mechanically displace passive providers before hidden scoring is
+applied.  A prospective paid panel now asks whether latent scoring disciplines
+or amplifies those transfers.
 
-We make three mechanism-design contributions.
+We make four mechanism-design contributions.
 
 \begin{enumerate}[leftmargin=*,nosep]
 \item We formulate separate user, router, provider, and planner objectives for
 inference routing.  The formulation makes explicit why price-only, router-
 revenue, and welfare objectives need not agree.
+\item We prove a score--price equivalence and elasticity decomposition.  A
+provider's relative non-price score is a price-equivalent subsidy or penalty;
+its interaction with the price rule determines the return to undercutting.
 \item For entropy-regularized routing, we prove an exact regret identity: using
 a price-only score instead of the full generalized execution cost loses exactly
 a scaled KL divergence.  A uniform score-error bound then gives a robust
@@ -235,11 +242,63 @@ The result explains why the routing exponent controls price incentives
 $a=2$ into a structural market model.  Private eligibility and quality change
 both $s_i$ and the derivative providers face.
 
+\subsection{Displayed price and latent score}
+
+Let $\alpha_i$ denote a stable reduced-form non-price score on a fixed request
+class and exact eligible menu.  The score-adjusted rule is
+\begin{equation}
+s_i(p,\alpha)=
+\frac{p_i^{-a}e^{\alpha_i}}{\sum_j p_j^{-a}e^{\alpha_j}}.
+\label{eq:pricescore}
+\end{equation}
+The parameter is deliberately not called quality.  It bundles quality, latency,
+health, capacity, eligibility mismatch, and any persistent router preference
+not represented by public price.
+
+\begin{proposition}[Score--price equivalence and elasticity]
+\label{prop:scoreprice}
+Under \eqref{eq:pricescore}, define
+$p_i^{\rm eff}=p_i\exp(-\alpha_i/a)$.  Then
+$s_i(p,\alpha)=s_i(p^{\rm eff},0)$ and, for any two providers with positive
+conditional selection probability,
+\begin{equation}
+\alpha_i-\alpha_j
+=\log\frac{s_i}{s_j}+a\log\frac{p_i}{p_j}.
+\label{eq:relativealpha}
+\end{equation}
+If $\alpha_i=h_i(\log p_i)$ while rival scores and prices are locally fixed,
+\begin{equation}
+-\frac{\partial\log s_i}{\partial\log p_i}
+=(1-s_i)\{a-h_i'(\log p_i)\}.
+\label{eq:scoreelasticity}
+\end{equation}
+\end{proposition}
+
+Equation~\eqref{eq:scoreelasticity} is the mechanism object.  A score that
+falls with an aggressive cut has $h_i'>0$ and attenuates price-induced share
+capture; a score that rewards the same cut beyond its explicit price term has
+$h_i'<0$ and amplifies it.  Equation~\eqref{eq:relativealpha} identifies a
+relative level wedge from repeated owned choices conditional on exact menus and
+a frozen $a$.  It does not identify the derivative without score movement or a
+rule intervention.
+
+For a below-benchmark provider, let $p^{(b,i)}$ replace only $p_i$ by the
+model-author benchmark.  Define the unilateral price-induced share gain and its
+score interaction as
+\begin{align}
+\Delta_i(\alpha)&=s_i(p,\alpha)-s_i(p^{(b,i)},\alpha),\\
+\Gamma_i&=\Delta_i(\alpha)-\Delta_i(0).
+\label{eq:interaction}
+\end{align}
+Negative $\Gamma_i$ means scoring attenuates the share benefit of undercutting;
+positive $\Gamma_i$ means it amplifies it.  These one-provider counterfactuals
+are not additive when several providers undercut simultaneously.
+
 \subsection{The cost of omitting quality}
 
 Let the generalized execution cost of provider $i$ be
 \begin{equation}
-g_i=a\log p_i+\lambda_L\widehat L_i+lambda_F\widehat r_i
+g_i=a\log p_i+\lambda_L\widehat L_i+\lambda_F\widehat r_i
 -\lambda_Q\widehat q_i-\lambda_K\log \widehat K_i,
 \label{eq:score}
 \end{equation}
@@ -365,6 +424,62 @@ undercutting could also reflect promotion windows, capacity shocks, or menu
 corrections.  The testable implication is duration: future data should estimate
 transition hazards as a function of benchmark gap, capacity state, and update
 frequency, with provider-model fixed effects.
+
+\subsection{The displayed-price transfer surface}
+\label{sec:pricesurface}
+
+We evaluate a 1,000-input-token, 256-output-token request on 22,330 frozen
+snapshots for seven open-weight models between 7 and 21 July.  For every
+snapshot, we reset active-undercutter quotes to the contemporaneous model-author
+benchmark and recompute the inverse-power surface at the independently estimated
+point exponent $a=1.6483$; $[1.26,2.04]$ is a rule sensitivity range, not a
+sampling interval.  Share conservation holds to $2.8\times10^{-16}$.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{../../data/analysis/undercutting-incidence-v1/wf19_cross_model_elasticity.pdf}
+\Description{Cross-model public-price time series and benchmark-reset
+counterfactuals compare the active-undercutter share advantage with losses borne
+by anchor, author, and other providers.}
+\caption{Displayed-price share transfer, conditional on a frozen inverse-power
+rule.  Median benchmark discounts range from 13.0\% to 40.0\%; median excess
+active share ranges from 1.40 to 10.98 percentage points.  GLM-5.2 has a 27.3\%
+median equivalent discount, 10.98 points of excess active share, and 5.40 points
+of anchor loss.  These are deterministic rule counterfactuals, not realized
+market share or causal demand elasticities.}
+\label{fig:pricesurface}
+\end{figure*}
+
+The cross-model heterogeneity is informative even with that boundary.  A 40\%
+GLM-5 discount maps to 6.39 excess share points, while a smaller 27.3\%
+GLM-5.2 discount maps to 10.98 points because the surrounding menus differ.
+Thus the strategic value of a cut depends on the full menu and starting share,
+not only its percentage size.  Passive loss is an accounting identity under the
+rule, but who bears it is not: anchors bear 5.40 points for GLM-5.2 and only 0.27
+for MiniMax M2.7.
+
+\subsection{Prospective identification of scoring beyond price}
+
+The GLM-5.2 paid campaign freezes two default-route requests, one explicit
+price-sort request, pins, and exclusion controls in each 15-minute block.  A
+prospective amendment begins at 22:00 UTC on 21 July, after four earlier default
+choices were observed; those four choices are excluded from this analysis.
+Conditional multinomial choice estimates \eqref{eq:pricescore} with $a=1.6483$
+and a fixed ridge penalty.  It reports relative $\alpha_i$ versus Z.AI, the
+price-equivalent discount $1-e^{-\alpha_i/a}$, whole-block cluster intervals,
+and the mean within-menu total variation between price-only and score-adjusted
+probabilities.  Five-fold whole-block log-loss improvement measures information
+beyond price in bits per choice; a conditional Monte Carlo test holds every menu
+and quote fixed.
+
+The interaction in \eqref{eq:interaction} is the primary economic output.  The
+within-block price-sort arm separately estimates how explicitly changing the
+routing rule affects cheapest-provider selection.  Diagnostic estimates require
+40 covered prospective choices, 20 blocks, and three selected providers;
+paper-strength interpretation requires 800 choices, 100 blocks, seven days, and
+90\% candidate coverage.  At this manuscript freeze the prospective cell has
+zero eligible choices and is reported as accruing.  This is a design result, not
+a latent-score result.
 
 \begin{figure*}
 \centering
@@ -507,6 +622,32 @@ The score need not collapse every objective into one undocumented number.  The
 router can publish a Pareto frontier over user generalized cost, router revenue,
 provider viability, concentration, and completion.  Different user classes can
 choose points on that frontier, provided the accounting is explicit.
+
+\subsection{Three objective vectors, three mechanisms}
+
+The same evidence can support several explicit objectives without pretending
+they coincide.  Let $x$ be delivered allocation and let $q_i,r_i,L_i,c_i$ denote
+verified quality, failure risk, latency, and resource cost:
+\begin{align}
+G_U(x)&=\sum_i x_i[p_i+\lambda_LL_i+\lambda_Fr_i-v(q_i)],\\
+G_W(x)&=\sum_i x_i[c_i+\lambda_LL_i+\lambda_Fr_i-v(q_i)],\\
+G_R(x)&=-\sum_i x_i[f_i(p_i)-C_{\mathrm{retry},i}-C_{\mathrm{SLA},i}].
+\label{eq:threeobjectives}
+\end{align}
+An entropy-regularized router can minimize any one by using its corresponding
+score.  The user-cost and welfare rules differ because price is a transfer in
+$G_W$ but a cost in $G_U$; an ad-valorem revenue rule may rank a high price above
+a low price; and a quality-first rule can rationally buy expensive execution
+when verified fidelity is valuable.  None dominates without value, cost, and
+participation restrictions.
+
+Our implementation recommendation is a declared Pareto menu, not one secret
+scalar: (i) a user generalized-cost arm, (ii) a resilience-constrained welfare
+arm using cost bounds and capacity commitments, and (iii) a quality-priority arm
+with a spend cap.  Router revenue is reported as an outcome or constrained
+floor, not silently inserted into the user score.  Provider entry, investment,
+and best responses are recomputed for each arm in simulation; the live
+experiment randomizes only arms that pass completion and fidelity safety floors.
 
 \subsection{Robust policy optimization}
 
@@ -663,6 +804,17 @@ $1-a(p_i-c_i)(1-s_i)/p_i=0$, yielding the Lerner expression.  At a
 symmetric profile $s_i=1/n$; solving for $p$ gives the formula.  A finite positive
 solution requires $a(n-1)>n$. \hfill$\square$
 
+\paragraph{Proof of Proposition~\ref{prop:scoreprice}.}
+Substitution gives
+$(p_i^{\rm eff})^{-a}=p_i^{-a}e^{\alpha_i}$, proving allocation
+equivalence.  Taking the log odds of $i$ and $j$ yields
+$\log(s_i/s_j)=-a\log(p_i/p_j)+\alpha_i-\alpha_j$ and hence
+\eqref{eq:relativealpha}.  Finally differentiate
+$\log s_i=-a\log p_i+h_i(\log p_i)-\log\sum_jp_j^{-a}e^{\alpha_j}$
+with respect to $\log p_i$.  The direct term is $-a+h_i'$ and its contribution
+to the log denominator is $s_i(-a+h_i')$, giving
+$(1-s_i)(-a+h_i')$. \hfill$\square$
+
 \paragraph{Proof of Theorem~\ref{thm:kl}.}
 The Gibbs minimizer satisfies $x_i^g=e^{-\eta g_i}/Z_g$, so
 $g_i=-\eta^{-1}\log x_i^g-\eta^{-1}\log Z_g$.  Substitution into
@@ -704,6 +856,15 @@ The concentrated WF18 screen with nominal $p=0.050$ does not identify collusion,
 communication, or a provider algorithm.  The adaptive replay does not identify
 welfare or equilibrium, and the simulator intervention does not establish live-
 market causality.
+
+The displayed-price transfer surface uses 22,330 snapshots and seven models at
+one request shape.  It identifies exact benchmark-reset effects under the stated
+inverse-power rule, not realized selections.  The latent-score analysis is a
+post-start prospective amendment with a 21 July 22:00 UTC cutoff; the first four
+choices are excluded, and no score estimate is reported before its support gate.
+Its relative fixed effect remains a composite routing residual even after the
+gate.  The frozen claim snapshot is
+\texttt{papers/price-score-evidence-2026-07-21.json}.
 
 The welfare audit evaluates ten necessary decentralization conditions: five are
 not identified, three are approximately consistent, one is inconsistent because
