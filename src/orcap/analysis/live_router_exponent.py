@@ -31,6 +31,7 @@ OWNED_STUDIES = {
     "openrouter-route-calibration-v1",
     "openrouter-price-response-v1",
     "openrouter-market-measurement-v1",
+    "openrouter-glm52-routing-v1",
 }
 
 
@@ -254,6 +255,7 @@ def run(data_root: Path = DATA_DIR) -> dict[str, Any]:
             "router_calibration_candidates",
             "price_response_candidates",
             "market_measurement_candidates",
+            "glm52_routing_candidates",
         ),
     )
     assignments = _read_tables(
@@ -262,6 +264,7 @@ def run(data_root: Path = DATA_DIR) -> dict[str, Any]:
             "router_calibration_assignments",
             "price_response_assignments",
             "market_measurement_assignments",
+            "glm52_routing_assignments",
         ),
     )
     attempts = _read_tables(

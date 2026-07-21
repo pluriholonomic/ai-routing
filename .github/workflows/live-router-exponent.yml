@@ -51,6 +51,8 @@ jobs:
                   "curated/market_measurement_candidates/*/*.parquet",
                   "curated/market_measurement_assignments/*/*.parquet",
                   "curated/market_measurement_attempts/*/*.parquet",
+                  "curated/glm52_routing_candidates/*/*.parquet",
+                  "curated/glm52_routing_assignments/*/*.parquet",
                   "curated/router_route_attempts/*/*.parquet",
               ],
               max_workers=16,

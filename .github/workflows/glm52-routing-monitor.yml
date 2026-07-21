@@ -1,0 +1,98 @@
+name: glm52-routing-monitor
+
+on:
+  schedule:
+    - cron: "12 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: glm52-routing-monitor
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate isolated GLM-5.2 tables at one immutable HF revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          snapshot = snapshot_download_retry(
+              repo,
+              repo_type="dataset",
+              revision=revision,
+              allow_patterns=[
+                  "curated/glm52_routing_candidates/*/*.parquet",
+                  "curated/glm52_routing_assignments/*/*.parquet",
+                  "curated/glm52_routing_attempts/*/*.parquet",
+              ],
+              max_workers=12,
+              stale_if_error=False,
+          )
+          if Path(snapshot).exists():
+              shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          else:
+              Path("input-data").mkdir(parents=True, exist_ok=True)
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: overlay live assignment and execution artifacts before compaction
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_price_artifacts.sh 48 input-data glm52
+      - name: build support, calibration, QoS, and time-series panel
+        run: >-
+          uv run python -m orcap.analysis.glm52_routing_monitor
+          --data-root input-data
+          --output-dir data/analysis/glm52-routing-v1
+          --source-revision "${{ steps.source.outputs.revision }}+live-actions-overlay"
+      - name: publish aggregate monitoring outputs to HF dataset
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run orcap push
+          --message "GLM-5.2 routing monitor ${{ github.run_id }}"
+      - name: preserve aggregate panel and figures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glm52-routing-monitor-${{ github.run_id }}
+          path: data/analysis/glm52-routing-v1/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: refresh private HF Space dashboard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="data/analysis/glm52-routing-v1/glm52-routing.html",
+              path_in_repo="glm52-routing.html",
+              repo_id="t4run/openrouter-memo",
+              repo_type="space",
+              commit_message="GLM-5.2 routing dashboard refresh",
+          )
+          PY

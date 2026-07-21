@@ -24,6 +24,8 @@ WORKFLOWS = {
     "undercutting-incidence.yml": 540,
     "live-router-exponent.yml": 540,
     "adaptive-router.yml": 540,
+    "glm52-routing.yml": 90,
+    "glm52-routing-monitor.yml": 180,
     "adaptive-router-monitor.yml": 1800,
     "adaptive-router-counterfactual.yml": 1800,
     "hmp-signal-coupling-monitor.yml": 1800,
@@ -49,6 +51,7 @@ HF_PRICE_TABLES = {
     "curated/price_event_wave_plans": 1800,
     "analysis/router_exponent_estimates": 720,
     "analysis/undercutting-incidence-v1": 720,
+    "analysis/glm52-routing-v1": 180,
 }
 
 

@@ -7,8 +7,14 @@ DEST=${2:-data}
 SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
 mkdir -p "$DEST"
 count=0
-for wf in capture.yml capacity-policy-probes.yml enforcement-policy-probes.yml decomposition-probes.yml decomposition-replication.yml route-calibration.yml paid-price-response.yml price-event-probes.yml market-measurement.yml adaptive-router.yml evals.yml gpu.yml hf-router.yml hf-policy-probes.yml livepeer.yml probes.yml router-catalogs.yml watchers.yml; do
-  for id in $(gh run list --workflow "$wf" --status success --limit 40 \
+for wf in capture.yml capacity-policy-probes.yml enforcement-policy-probes.yml decomposition-probes.yml decomposition-replication.yml route-calibration.yml paid-price-response.yml price-event-probes.yml market-measurement.yml glm52-routing.yml adaptive-router.yml evals.yml gpu.yml hf-router.yml hf-policy-probes.yml livepeer.yml probes.yml router-catalogs.yml watchers.yml; do
+  limit=40
+  # The GLM panel produces four immutable runs per hour; 120 covers the full
+  # 26-hour assembly window without silently dropping pre-compaction blocks.
+  if [ "$wf" = "glm52-routing.yml" ]; then
+    limit=120
+  fi
+  for id in $(gh run list --workflow "$wf" --status success --limit "$limit" \
       --json databaseId,createdAt \
       --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId"); do
     tmp="/tmp/art-$id"

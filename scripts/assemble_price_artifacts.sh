@@ -1,6 +1,6 @@
 #!/bin/bash
 # Overlay only the small inputs needed by paid price planning.
-# Usage: assemble_price_artifacts.sh [hours-back] [dest] [paid|event]
+# Usage: assemble_price_artifacts.sh [hours-back] [dest] [paid|event|glm52]
 set -euo pipefail
 
 HOURS=${1:-26}
@@ -8,10 +8,16 @@ DEST=${2:-input-data}
 MODE=${3:-paid}
 SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
 WORKFLOWS="paid-price-response.yml price-event-probes.yml market-measurement.yml adaptive-router.yml"
+LIMIT=40
 if [ "$MODE" = "event" ]; then
   WORKFLOWS="$WORKFLOWS capture.yml"
+elif [ "$MODE" = "glm52" ]; then
+  # This study runs every 15 minutes. Read enough immutable checkpoints to
+  # reconstruct two rolling days of spend before nightly HF compaction.
+  WORKFLOWS="glm52-routing.yml"
+  LIMIT=220
 elif [ "$MODE" != "paid" ]; then
-  echo "mode must be paid or event" >&2
+  echo "mode must be paid, event, or glm52" >&2
   exit 2
 fi
 
@@ -34,7 +40,7 @@ for wf in $WORKFLOWS; do
       count=$((count + 1))
     fi
   done < <(
-    gh run list --workflow "$wf" --status success --limit 40 \
+    gh run list --workflow "$wf" --status success --limit "$LIMIT" \
       --json databaseId,createdAt \
       --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId"
   )

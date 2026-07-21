@@ -1,0 +1,140 @@
+name: glm52-routing
+
+# Prospective, high-frequency owned-routing panel for GLM-5.2. Every run
+# uploads a complete assignment-only plan before the paid job can begin.
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+    inputs:
+      execute_paid:
+        description: "Execute the uploaded GLM-5.2 plan after all gates"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate authoritative spend ledger
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from pathlib import Path
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=["curated/paid_spend_ledger/*/*.parquet"],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          if Path(snapshot).exists():
+              shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          else:
+              Path("input-data").mkdir(parents=True, exist_ok=True)
+          PY
+      - name: overlay two days of uncompacted GLM-5.2 spend checkpoints
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_price_artifacts.sh 48 input-data glm52
+      - name: stage only spend history into immutable execution directory
+        run: |
+          mkdir -p plan-data/curated
+          if [ -d input-data/curated/paid_spend_ledger ]; then
+            cp -R input-data/curated/paid_spend_ledger plan-data/curated/
+          fi
+      - name: freeze GLM-5.2 public menu and randomized assignments
+        env:
+          ORCAP_GLM52_ROUTING_RUN_ID: github-${{ github.run_id }}
+          ORCAP_GLM52_ROUTING_SEED: ${{ github.run_id }}
+        run: >-
+          uv run python -m orcap.capture_glm52_routing plan
+          --bundle glm52-routing-plan.json
+          --curated-dir plan-data/curated
+      - name: upload immutable assignment-only plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: glm52-routing-plan-${{ github.run_id }}
+          path: |
+            glm52-routing-plan.json
+            plan-data/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: true
+      - name: validate source health, manifest, targets, and task count
+        run: >-
+          uv run python -m orcap.capture_glm52_routing validate-plan
+          --bundle glm52-routing-plan.json
+          --require-tasks
+
+  execute:
+    needs: plan
+    if: >-
+      ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
+          vars.ORCAP_GLM52_ROUTING_ENABLED == 'true' &&
+          (github.event_name == 'schedule' || github.event.inputs.execute_paid == 'true') }}
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: glm52-routing-plan-${{ github.run_id }}
+      - name: recover prior spend checkpoint from a retried execution job
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior-execution plan-data/curated/paid_spend_ledger
+          gh run download "${{ github.run_id }}" \
+            --pattern "glm52-routing-execution-${{ github.run_id }}-*" \
+            --dir prior-execution || true
+          find prior-execution -type d -name paid_spend_ledger -print0 | \
+            while IFS= read -r -d '' ledger; do
+              cp -R "$ledger"/. plan-data/curated/paid_spend_ledger/
+            done
+      - name: verify uploaded plan and execute exactly once
+        env:
+          OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
+          ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
+          ORCAP_GLM52_ROUTING_ENABLED: ${{ vars.ORCAP_GLM52_ROUTING_ENABLED }}
+          ORCAP_GLM52_ROUTING_START_UTC: ${{ vars.ORCAP_GLM52_ROUTING_START_UTC }}
+          ORCAP_GLM52_ROUTING_END_UTC: ${{ vars.ORCAP_GLM52_ROUTING_END_UTC }}
+          ORCAP_GLM52_ROUTING_MAX_RUN_USD: ${{ vars.ORCAP_GLM52_ROUTING_MAX_RUN_USD || '0.10' }}
+          ORCAP_GLM52_ROUTING_MAX_DAY_USD: ${{ vars.ORCAP_GLM52_ROUTING_MAX_DAY_USD || '5.00' }}
+          ORCAP_GLM52_ROUTING_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_GLM52_ROUTING_MAX_CAMPAIGN_USD || '50.00' }}
+        run: >-
+          uv run python -m orcap.capture_glm52_routing execute
+          --bundle glm52-routing-plan.json
+          --curated-dir plan-data/curated
+      - name: preserve redacted attempts and spend ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glm52-routing-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: plan-data/
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0

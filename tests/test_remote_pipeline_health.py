@@ -21,12 +21,15 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["undercutting-incidence.yml"] == 540
     assert WORKFLOWS["live-router-exponent.yml"] == 540
     assert WORKFLOWS["adaptive-router.yml"] == 540
+    assert WORKFLOWS["glm52-routing.yml"] == 90
+    assert WORKFLOWS["glm52-routing-monitor.yml"] == 180
     assert WORKFLOWS["adaptive-router-monitor.yml"] == 1800
     assert WORKFLOWS["adaptive-router-counterfactual.yml"] == 1800
     assert WORKFLOWS["hmp-signal-coupling-monitor.yml"] == 1800
     assert "curated/price_response_assignments" in HF_PRICE_TABLES
     assert "analysis/router_exponent_estimates" in HF_PRICE_TABLES
     assert "analysis/undercutting-incidence-v1" in HF_PRICE_TABLES
+    assert "analysis/glm52-routing-v1" in HF_PRICE_TABLES
 
 
 def test_confirmatory_probe_workflows_share_concurrency_lock():
@@ -39,6 +42,7 @@ def test_confirmatory_probe_workflows_share_concurrency_lock():
     price_response = (workflows / "paid-price-response.yml").read_text(encoding="utf-8")
     price_events = (workflows / "price-event-probes.yml").read_text(encoding="utf-8")
     adaptive = (workflows / "adaptive-router.yml").read_text(encoding="utf-8")
+    glm52 = (workflows / "glm52-routing.yml").read_text(encoding="utf-8")
     lock = "group: randomized-routing-probes"
     assert lock in h80
     assert lock in h81
@@ -48,6 +52,7 @@ def test_confirmatory_probe_workflows_share_concurrency_lock():
     assert lock in price_response
     assert lock in price_events
     assert lock in adaptive
+    assert lock in glm52
 
 
 def test_paid_price_workflows_are_plan_first_trigger_scoped_and_fail_closed():
@@ -120,6 +125,8 @@ def test_price_workflows_are_assembled_analyzed_and_preregistered():
         "market_measurement_candidates",
         "market_measurement_assignments",
         "market_measurement_attempts",
+        "glm52_routing_candidates",
+        "glm52_routing_assignments",
     ):
         assert table in exponent
     assert (
