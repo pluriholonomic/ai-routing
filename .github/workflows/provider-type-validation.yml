@@ -1,0 +1,97 @@
+name: provider-type-validation
+
+on:
+  schedule:
+    - cron: "37 7 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: provider-type-validation-v1
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: freeze immutable dataset revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from pathlib import Path
+          from huggingface_hub import HfApi
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: run frozen train-holdout validation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+        run: >-
+          uv run orcap analyze
+          --hypothesis wf16
+          --out data/analysis/provider-type-validation-v1
+      - name: validate release bundle and privacy boundary
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+
+          root = Path("data/analysis/provider-type-validation-v1")
+          required = [
+              "wf16_provider_type_labels.parquet",
+              "wf16_holdout_transitions.parquet",
+              "wf16_qos_panel.parquet",
+              "wf16_author_pass_through.parquet",
+              "wf16_capacity_panel.parquet",
+              "wf16_paid_fill_panel.parquet",
+              "wf16_active_response.parquet",
+              "wf16_quote_fades.parquet",
+              "wf16_dumping_candidates.parquet",
+              "wf16_summary.json",
+              "wf16_provider_type_validation.png",
+              "wf16_provider_type_validation.pdf",
+              "source-revision.txt",
+          ]
+          missing = [name for name in required if not (root / name).is_file()]
+          if missing:
+              raise SystemExit(f"missing required outputs: {missing}")
+          summary = json.loads((root / "wf16_summary.json").read_text())
+          if summary["dumping_supported"] is not False:
+              raise SystemExit("v1 dumping claim boundary was altered")
+          if summary["source"]["revision"] != Path("hf-revision.txt").read_text().strip():
+              raise SystemExit("analysis revision does not match frozen revision")
+          forbidden = {"prompt", "messages", "response_text", "input_text", "output_text"}
+          for path in root.glob("*.parquet"):
+              overlap = forbidden.intersection(pd.read_parquet(path).columns)
+              if overlap:
+                  raise SystemExit(f"payload-adjacent columns in {path}: {sorted(overlap)}")
+          PY
+      - name: publish aggregate validation outputs
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "provider type validation v1 ${{ github.run_id }}"
+      - name: preserve immutable validation artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provider-type-validation-v1-${{ github.run_id }}
+          path: data/analysis/provider-type-validation-v1/
+          if-no-files-found: error
+          retention-days: 90

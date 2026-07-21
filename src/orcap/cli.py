@@ -608,6 +608,13 @@ def main() -> None:
             "pm5_heldout": "pm5_heldout_matched_market",
             "pm6": "pm6_event_reclassification",
             "pm9": "pm9_author_anchor",
+            # Temporally frozen provider behavior types plus independent
+            # holdout mechanism screens. WF16 does not consume WF13-WF15
+            # artifacts and therefore avoids their same-panel classification.
+            "wf13": "wf13_provider_strata",
+            "wf14": "wf14_cohort_mechanisms",
+            "wf15": "wf15_spread_explanations",
+            "wf16": "wf16_provider_type_validation",
             "bm1": "bm1_pricing_technology",
             "bm2": "bm2_fast_slow_reactions",
             "bm3": "bm3_quality_adjusted_premium",

@@ -1,0 +1,25 @@
+[study]
+id = "provider-type-validation-v1"
+train_fraction = 0.60
+
+[thresholds]
+minimum_train_days = 5
+minimum_holdout_days = 3
+anchor_adoption_share = 0.80
+anchor_match_rtol = 0.000001
+active_changes_per_day = 0.05
+
+[windows]
+author_pass_through_hours = 96.0
+rival_response_hours = 24.0
+placebo_shift_hours = 48.0
+fade_hours = 168.0
+
+[cost_screen]
+gpu_hourly_cost_usd = 1.04
+batching_factor = 32.0
+
+[identification]
+labels_are_behavioral = true
+dumping_requires_unobserved_cost_and_recoupment = true
+exclude_blinded_h81_h95_outcomes = true
