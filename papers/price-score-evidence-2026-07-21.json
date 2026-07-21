@@ -1,0 +1,98 @@
+{
+  "frozen_at": "2026-07-21T22:00:00Z",
+  "claim_spine": {
+    "price_layer": "Deterministic inverse-power shadow-share accounting on frozen public menus.",
+    "score_layer": "Prospective reduced-form provider fixed effects in owned routing choices conditional on exact frozen menus and eta=1.6482780609377246.",
+    "interaction": "Difference between unilateral undercutting share gain under the score-adjusted and price-only rules.",
+    "boundary": "The price layer is not realized market share. The score layer bundles QoS, health, capacity, eligibility mismatch, and router preferences. Neither layer identifies intent, collusion, dumping, profit, or market-wide flow."
+  },
+  "public_price_layer": {
+    "study_id": "undercutting-incidence-v1",
+    "source_dataset": "t4run/openrouter-market-history",
+    "source_revision": "2c8407c99baf184bc83e67117676701206c5694a",
+    "coverage_start": "2026-07-07T02:46:09+00:00",
+    "coverage_end": "2026-07-21T20:23:51+00:00",
+    "models": 7,
+    "snapshots": 22330,
+    "point_eta": 1.6482780609377246,
+    "eta_sensitivity": [1.26, 2.04],
+    "by_model": {
+      "deepseek/deepseek-v4-flash": {
+        "median_benchmark_discount": 0.31000000000000016,
+        "median_active_excess_shadow_share_pp": 3.7919339393341662,
+        "median_anchor_shadow_share_loss_pp": 1.39139173998859,
+        "median_group_arc_elasticity": -1.5385909639132829
+      },
+      "minimax/minimax-m2.7": {
+        "median_benchmark_discount": 0.1837836569611594,
+        "median_active_excess_shadow_share_pp": 5.709990124517403,
+        "median_anchor_shadow_share_loss_pp": 0.2687698645987946,
+        "median_group_arc_elasticity": -1.2878323078742875
+      },
+      "moonshotai/kimi-k2.6": {
+        "median_benchmark_discount": 0.1689969604863223,
+        "median_active_excess_shadow_share_pp": 1.4043872525628485,
+        "median_anchor_shadow_share_loss_pp": 0.3054265001628781,
+        "median_group_arc_elasticity": -1.5685296754971236
+      },
+      "qwen/qwen3.6-27b": {
+        "median_benchmark_discount": 0.21188222923238687,
+        "median_active_excess_shadow_share_pp": 4.10023136901345,
+        "median_anchor_shadow_share_loss_pp": 0.5512888127792187,
+        "median_group_arc_elasticity": -1.4526213984662075
+      },
+      "z-ai/glm-4.6": {
+        "median_benchmark_discount": 0.12998624484181587,
+        "median_active_excess_shadow_share_pp": 3.5869011964774042,
+        "median_anchor_shadow_share_loss_pp": 1.595559563805904,
+        "median_group_arc_elasticity": -1.3284475821629889
+      },
+      "z-ai/glm-5": {
+        "median_benchmark_discount": 0.4,
+        "median_active_excess_shadow_share_pp": 6.3865751517462845,
+        "median_anchor_shadow_share_loss_pp": 1.4828564085968803,
+        "median_group_arc_elasticity": -1.5113148856249932
+      },
+      "z-ai/glm-5.2": {
+        "median_benchmark_discount": 0.2727690601895931,
+        "median_active_excess_shadow_share_pp": 10.977049267387779,
+        "median_anchor_shadow_share_loss_pp": 5.403373381980147,
+        "median_group_arc_elasticity": -1.1550971967027932
+      }
+    },
+    "evidence_status": "descriptive_cross_model_price_rule_accounting"
+  },
+  "prospective_score_layer": {
+    "study_id": "openrouter-glm52-routing-v1",
+    "analysis_commit": "285523e6c8979e41d6f646d4a8392e613ada78ca",
+    "github_actions_run": 29870703816,
+    "analysis_start": "2026-07-21T22:00:00Z",
+    "monitor_snapshot": {
+      "covered_default_choices_all_campaign": 4,
+      "covered_blocks_all_campaign": 2,
+      "eligible_score_choices": 0,
+      "eligible_score_blocks": 0,
+      "status": "accruing"
+    },
+    "diagnostic_gate": {
+      "covered_choices": 40,
+      "blocks": 20,
+      "selected_providers": 3
+    },
+    "publication_gate": {
+      "covered_choices": 800,
+      "blocks": 100,
+      "duration_days": 7,
+      "candidate_coverage": 0.9
+    },
+    "primary_outputs": [
+      "mean probability mass reallocated beyond price",
+      "whole-block cross-validated bits per choice beyond price",
+      "relative provider score and price-equivalent discount versus Z.AI",
+      "conditional price-only Monte Carlo test",
+      "score attenuation or amplification of unilateral undercutting gain",
+      "within-block price-sorted versus default cheapest-provider contrast"
+    ],
+    "evidence_status": "prospective_accruing_no_outcome_claim"
+  }
+}
