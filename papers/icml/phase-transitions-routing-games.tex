@@ -21,7 +21,7 @@
 \newcommand{\Prb}{\mathbb{P}}
 \newcommand{\SNR}{\operatorname{SNR}}
 
-\title{Critical Memory in Pricing Learners:\\
+\title{Critical Memory in Price--Score Learners:\\
 Exponential Late-Credit Gaps in Routing Markets}
 \author{Anonymous Authors}
 \date{}
@@ -30,29 +30,22 @@ Exponential Late-Credit Gaps in Routing Markets}
 \maketitle
 
 \begin{abstract}
-A marketplace can make a profitable price cut hard to learn without making it
-unprofitable.  We study an inference router that discounts a provider after a
-cut until its trailing price history is cleared.  The resulting pricing MDP
-has an exact rational memory boundary.  Below it, cutting is optimal; above it,
-staying high is optimal.  We prove a separate finite-time boundary: after a
-learner's downstream value estimates become usable, if it chooses the
-exploratory cut with conditional probability at most $q$, observing a fresh
-length-$M$ cut path within $T$ further steps has probability at most $Tq^M$.
-Thus the memory that defeats a fixed late-learning horizon grows only
-logarithmically in $T$, even when rewards have high signal.  A path-equivalent
-commitment option reduces the corresponding path proposal time to linear while
-preserving every primitive price path and the optimal value.
-In a frozen calibrated routing game, primitive Q-learning selects the rational
-action in 1/20 seeds at $M=7$, versus 19/20 with the option; the paired regret
-change is $-0.0643$ (seed-bootstrap 95\% interval
-$[-0.0755,-0.0493]$).  A trace replay shows that all 20 primitive learners
-cover every state--action pair and reach the all-low state within 901 steps,
-yet none of the 19 failures reaches depth five after step 100,000.  Ordered
-batch Bellman sweeps on the same observed transitions recover the rational cut
-in 20/20 seeds.  The intervention reverses beyond the rational boundary,
-where primitive learning is correct and commitment overcuts.  Full state and
-an eight-step TD target do not close the gap.  The result isolates a temporal
-credit mechanism; it is not evidence of live-provider collusion.
+A router can make a profitable price cut hard to learn without making it
+unprofitable.  We study a price--score rule that temporarily penalizes a
+provider after a cut.  The resulting MDP has two boundaries: a rational memory
+threshold above which staying high is optimal and a finite-time threshold above
+which fresh evidence for a profitable persistent cut is exponentially rare.
+After downstream values become usable, a learner cutting with conditional
+probability at most $q$ sees a fresh length-$M$ path within $T$ steps with
+probability at most $Tq^M$.  A path-equivalent commitment option reduces path
+proposal time to linear while preserving feasible primitive paths and optimal
+value.  In a frozen calibrated game, primitive Q-learning chooses the rational
+action in 1/20 seeds at $M=7$, versus 19/20 with the option; paired regret falls
+by 0.0643 (95\% interval $[0.0493,0.0755]$).  All seeds cover every state--action
+pair, but failed learners stop revisiting deep cut states; ordered batch Bellman
+sweeps recover the optimum in 20/20.  The option overcuts beyond the rational
+boundary.  The result isolates a temporal credit mechanism, not live-provider
+collusion.
 \end{abstract}
 
 \section{Introduction}
@@ -66,13 +59,13 @@ profitable only after enough consecutive cuts erase a router penalty.  No
 single experiment reveals the long-run return.
 
 AI inference routing provides a concrete instance.  Providers sell execution
-of a common open-weight model, and a router maps posted prices and eligibility
-signals into request allocation.  For a documented price-weighted rule,
-selection weight is proportional to inverse squared price
-\citep{openrouter2026}.  Public endpoint aggregates also associate recent
-price cutting with lower selection in one buyer tier.  We do not interpret
-that association causally.  We ask what learning problem such a
-history-dependent allocation rule would create if imposed.
+of a common open-weight model, while a router combines posted price with hidden
+eligibility and service scores.  On 22,330 public-menu snapshots for seven
+models, benchmark-reset counterfactuals imply 1.40--10.98 percentage points of
+price-induced active-provider share; these are rule quantities, not realized
+flow.  A prospective owned-choice panel now estimates the latent score but has
+not crossed its support gate.  We ask what learning problem arises when such a
+score itself remembers price actions.
 
 This distinction matters for both algorithmic-collusion and mechanism-design
 claims.  A high learned price can arise because high pricing is an equilibrium,
@@ -108,12 +101,23 @@ Our contributions are fourfold.
 One market is a model--workload pair.  Provider $i$ posts price $p_i$, has
 marginal cost $c_i$, and receives first-route share
 \begin{equation}
-  s_i(p)=\frac{p_i^{-a}}{\sum_jp_j^{-a}},\qquad a>0.
+  s_i(p,\alpha)=\frac{p_i^{-a}e^{\alpha_i}}
+  {\sum_jp_j^{-a}e^{\alpha_j}},\qquad a>0.
   \label{eq:share}
 \end{equation}
-With fixed demand, profit is $s_i(p)(p_i-c_i)$.  The rule gives
-$\partial\log s_i/\partial\log p_i=-a(1-s_i)$; hence the router exponent
-sets the own-price elasticity directly.  At a symmetric interior equilibrium,
+The latent score $\alpha_i$ is reduced-form: quality, health, capacity,
+eligibility, and router preference may all enter.  Defining
+$p_i^{\mathrm{eff}}=p_i e^{-\alpha_i/a}$ makes \cref{eq:share} exactly an
+inverse-power rule in effective prices.  Relative score obeys
+\begin{equation}
+\alpha_i-\alpha_j=\log(s_i/s_j)+a\log(p_i/p_j).
+\label{eq:scoreodds}
+\end{equation}
+With fixed score and demand, profit is $s_i(p,\alpha)(p_i-c_i)$ and
+$\partial\log s_i/\partial\log p_i=-a(1-s_i)$.  If instead
+$\alpha_i=h_i(\log p_i)$, the negative elasticity becomes
+$(1-s_i)(a-h_i')$: score feedback can attenuate or amplify the value of a cut.
+At a symmetric interior equilibrium with equal fixed scores,
 \begin{equation}
  p^*=c\frac{a(n-1)}{a(n-1)-n},
  \label{eq:static}
@@ -123,7 +127,10 @@ knife edge.  This static fact motivates the environment but is not our main
 learning result.
 
 Now fix rivals and restrict one provider to a high quote $H$ and low quote
-$L$.  A low quote is penalized until the previous $M$ quotes are also low.
+$L$.  A low quote receives score $\alpha=\log\theta<0$ until the previous $M$
+quotes are also low, after which its score returns to zero.  This is equivalent
+to a temporary increase in effective price from $L$ to
+$L\theta^{-1/a}$ even though the displayed quote is unchanged.
 Write $u_H$ for profit at $H$, $u_{\theta L}$ for penalized profit at $L$,
 and $u_L$ for unpenalized profit at $L$.  The economically interesting
 ordering is
@@ -296,6 +303,35 @@ deterministic empirical transition table from visited pairs.  Batch Bellman
 sweeps then test whether coverage is sufficient when update order is repaired.
 The checkpoints are diagnostics, not preregistered readiness estimates.
 
+\paragraph{Displayed-price and latent-score calibration.}
+The public calibration layer evaluates 22,330 snapshots for seven models at a
+fixed request shape and point exponent $a=1.6483$.  Resetting active quotes to
+the model-author benchmark removes median active shadow share ranging from 1.40
+points for Kimi K2.6 to 10.98 points for GLM-5.2.  The latter has a 27.3\%
+median equivalent discount and transfers 5.40 points from anchor-priced
+providers under the rule.  These exact menu counterfactuals calibrate the
+possible payoff scale; they do not measure realized provider traffic.
+
+The complementary GLM-5.2 panel uses fresh owned choices to estimate
+\cref{eq:scoreodds} at the frozen exponent, plus a randomized explicit
+price-sort arm.  It starts prospectively at 21 July 22:00 UTC, excludes four
+earlier observed choices, and reports nothing until at least 40 choices, 20
+blocks, and three selected providers.  Publication requires 800 choices, 100
+blocks, seven days, and 90\% menu coverage.  At this freeze it is accruing with
+zero eligible choices.  Even after the gate, a level score wedge calibrates
+$(u_H,u_{\theta L},u_L)$ but does not identify the memory length $M$ or validate
+the live temporal mechanism.
+
+\begin{figure*}[t]
+ \centering
+ \includegraphics[width=0.98\textwidth]{../../data/analysis/undercutting-incidence-v1/wf19_cross_model_elasticity.pdf}
+ \caption{Public-price calibration across seven models.  Benchmark resets
+ identify deterministic share transfers under a declared inverse-power rule,
+ not realized market share.  The prospective owned-choice layer is required to
+ estimate the price-equivalent latent score and remains support-gated.}
+ \label{fig:price-score-calibration}
+\end{figure*}
+
 The live empirical bridge is deliberately weaker.  In the latest hosted
 panel, the primary same-regime covariance statistic exceeds its randomization
 null by $0.0256$ with one-sided $p=0.0500$, but one provider-pair accounts for
@@ -375,6 +411,25 @@ above it.  A safer router would expose the state and a cancellable multi-period
 quote schedule only when a deviation audit predicts that persistent cutting
 raises provider value and buyer surplus.  The theorem supplies a testable
 screen, not a universally optimal policy.
+
+The target score must also match the economic objective.  A user-cost router
+scores payment, latency, and failure; a welfare router substitutes resource cost
+for payment and values delivered quality; a revenue router may favor high spend
+under ad-valorem fees; and a quality-priority router maximizes verified fidelity
+subject to budget.  These objectives generate different payoff triples and
+hence different $M^*$.  The commitment option should be evaluated on a Pareto
+frontier over user cost, welfare bounds, router revenue, quality, completion,
+and provider exploitability rather than on price alone.
+
+Provider technology shifts the same boundary.  An owned or reserved-capacity
+provider pays high fixed cost but may rationally cut to maintain utilization; a
+spot-dependent provider has less sunk exposure but state-dependent scarcity
+cost; an anchor adopter may not update displayed price at all.  A router that
+hides score memory can therefore trap low-short-run-cost providers while doing
+little to passive anchors.  Practical implementation should expose the score
+state, offer cancellable multi-period quote commitments, use
+execution-contingent capacity rather than fundraising or provider identity as a
+proxy, and charge fees separately from selected spend.
 
 \section{Related work}
 
@@ -481,6 +536,10 @@ The post-hoc trace artifact
 replay script.  It is admitted only after all 20 Q-tables match the frozen
 E-SIM6 artifact; separate tests reconcile seed-level actions, early hits, and
 late depth counts.
+The public price-transfer and prospective latent-score claims are frozen in
+\texttt{../price-score-evidence-2026-07-21.json}; the latter is explicitly an
+accruing design with no numerical score result.  Its remote monitor conditions
+on exact owned-request menus and never pools H81 or H95 outcomes.
 
 \bibliographystyle{plainnat}
 \begingroup
