@@ -1,0 +1,40 @@
+[study]
+study_id = "openrouter-score-memory-v1"
+prospective_start_utc = "2026-07-22T00:00:00Z"
+model_ids = ["z-ai/glm-5.2"]
+frozen_eta = 1.6482780609377246
+ridge = 1.0
+
+[memory]
+lag_blocks = [1, 4, 16, 48, 96, 288, 672]
+finite_runs = [1, 4, 16, 48]
+hmm_stay_probability = 0.95
+hmm_undercut_probability_low = 0.80
+hmm_undercut_probability_high = 0.20
+
+[support]
+minimum_choices = 800
+minimum_blocks = 100
+minimum_days = 28.0
+minimum_providers = 3
+minimum_menu_coverage = 0.90
+minimum_price_events = 30
+minimum_quality_events = 30
+minimum_quality_tasks_per_stratum = 100
+minimum_randomized_blocks_per_arm = 100
+
+[quality]
+items_per_run = 2
+minimum_output_tokens = 64
+campaign_start_utc = "2026-07-22T00:00:00Z"
+campaign_end_utc = "2026-08-19T00:00:00Z"
+max_run_usd = 0.25
+max_day_usd = 2.00
+max_campaign_usd = 30.00
+
+[routing_successor]
+campaign_start_utc = "2026-08-04T21:15:00Z"
+campaign_end_utc = "2026-08-19T00:00:00Z"
+max_run_usd = 0.10
+max_day_usd = 5.00
+max_campaign_usd = 50.00

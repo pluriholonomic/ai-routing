@@ -1,0 +1,104 @@
+name: score-memory-monitor
+
+on:
+  schedule:
+    - cron: "27 * * * *"
+  workflow_run:
+    workflows: ["glm52-routing", "score-memory-routing", "score-memory-quality"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: score-memory-monitor
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate isolated inputs at one immutable HF revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          snapshot = snapshot_download_retry(
+              repo,
+              repo_type="dataset",
+              revision=revision,
+              allow_patterns=[
+                  "curated/glm52_routing_candidates/*/*.parquet",
+                  "curated/glm52_routing_assignments/*/*.parquet",
+                  "curated/glm52_routing_attempts/*/*.parquet",
+                  "curated/score_memory_quality/*/*.parquet",
+              ],
+              max_workers=12,
+              stale_if_error=False,
+          )
+          if Path(snapshot).exists():
+              shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          else:
+              Path("input-data").mkdir(parents=True, exist_ok=True)
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: overlay uncompacted owned-choice and quality artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_price_artifacts.sh 48 input-data score-memory
+      - name: build aggregate future-fold memory and quality panel
+        run: >-
+          uv run python -m orcap.analysis.score_memory_monitor
+          --data-root input-data
+          --output-dir data/analysis/score-memory-v1
+          --config config/score_memory_v1.toml
+          --source-revision "${{ steps.source.outputs.revision }}+live-actions-overlay"
+      - name: publish aggregate outputs to private HF dataset
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: >-
+          uv run orcap push
+          --message "score memory monitor ${{ github.run_id }}"
+      - name: preserve aggregate tables and figures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: score-memory-monitor-${{ github.run_id }}
+          path: data/analysis/score-memory-v1/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: refresh private HF Space dashboard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="data/analysis/score-memory-v1/score-memory.html",
+              path_in_repo="score-memory.html",
+              repo_id="t4run/openrouter-memo",
+              repo_type="space",
+              commit_message="score memory dashboard refresh",
+          )
+          PY

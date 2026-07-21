@@ -1,6 +1,6 @@
 #!/bin/bash
 # Overlay only the small inputs needed by paid price planning.
-# Usage: assemble_price_artifacts.sh [hours-back] [dest] [paid|event|glm52]
+# Usage: assemble_price_artifacts.sh [hours-back] [dest] [paid|event|glm52|score-memory-routing|score-memory-quality|score-memory]
 set -euo pipefail
 
 HOURS=${1:-26}
@@ -16,8 +16,19 @@ elif [ "$MODE" = "glm52" ]; then
   # reconstruct two rolling days of spend before nightly HF compaction.
   WORKFLOWS="glm52-routing.yml"
   LIMIT=220
+elif [ "$MODE" = "score-memory-quality" ]; then
+  WORKFLOWS="score-memory-quality.yml"
+  LIMIT=40
+elif [ "$MODE" = "score-memory-routing" ]; then
+  WORKFLOWS="score-memory-routing.yml"
+  LIMIT=220
+elif [ "$MODE" = "score-memory" ]; then
+  # The analysis overlays both high-frequency owned choices and the separate
+  # six-hour fidelity bank before nightly Hugging Face compaction.
+  WORKFLOWS="glm52-routing.yml score-memory-routing.yml score-memory-quality.yml"
+  LIMIT=220
 elif [ "$MODE" != "paid" ]; then
-  echo "mode must be paid, event, or glm52" >&2
+  echo "mode must be paid, event, glm52, score-memory-routing, score-memory-quality, or score-memory" >&2
   exit 2
 fi
 

@@ -293,3 +293,33 @@ and start timestamp are frozen.
   of sign; the environment paper can report a failed connection without
   weakening its methodological contribution.
 
+## 10. Execution status: 22 July 2026
+
+The plan is implemented prospectively under `openrouter-score-memory-v1`.
+
+- `config/score_memory_v1.toml` freezes the exponent, lag grid, finite-run grid,
+  regime filter, support gates, campaign windows, and budgets.
+- `src/orcap/analysis/score_memory.py` builds strictly lagged price and quality
+  states, fits the no-memory, geometric, finite-run, and regime families, and
+  evaluates them on expanding whole-block future folds. Future-price and
+  circular-history controls are included. Same-block outcomes cannot enter the
+  state used for that block.
+- `src/orcap/analysis/score_memory_monitor.py` joins exact GLM menus, owned
+  choices, pinned operational outcomes, and the separate fidelity bank. It
+  publishes only aggregate model, quality, policy, support, and figure outputs.
+- `score-memory-quality.yml` runs every six hours. It freezes two benchmark
+  items, eight default/pinned quality tasks, and a three-arm randomized
+  complete-block owned-router trial before any paid request.
+- The router arms are current price only, 24-hour geometric quality, and a
+  24-hour finite failure window. They share pre-block state, use randomized
+  order and fresh sessions, and never update one another's state.
+- The original GLM campaign is not extended. The separately identified
+  `score-memory-routing.yml` successor starts automatically after its frozen end
+  and preserves the 15-minute cadence through the 28-day memory horizon.
+- Nightly compaction ingests both new workflows into the private Hugging Face
+  dataset; the hourly aggregate monitor refreshes `score-memory.html` in the
+  private Space.
+
+No memory result is promoted by implementation alone. The monitor begins as
+`accruing`, and the manuscript-entry rules above remain binding regardless of
+the sign of early estimates.

@@ -1,0 +1,161 @@
+name: score-memory-routing
+
+on:
+  schedule:
+    # The successor is preregistered only after the original GLM-5.2 horizon.
+    # Restrict cron activation to that fixed August window so the dormant
+    # campaign does not consume a runner every 15 minutes beforehand.
+    - cron: "12,27,42,57 21-23 4 8 *"
+    - cron: "12,27,42,57 * 5-18 8 *"
+  workflow_dispatch:
+    inputs:
+      execute_paid:
+        description: "Execute only if the successor campaign window is open"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate authoritative spend ledger
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from pathlib import Path
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=["curated/paid_spend_ledger/*/*.parquet"],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          if Path(snapshot).exists():
+              shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          else:
+              Path("input-data").mkdir(parents=True, exist_ok=True)
+          PY
+      - name: overlay uncompacted successor spend checkpoints
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_price_artifacts.sh 48 input-data score-memory-routing
+      - name: stage only spend history into immutable execution directory
+        run: |
+          mkdir -p plan-data/curated
+          if [ -d input-data/curated/paid_spend_ledger ]; then
+            cp -R input-data/curated/paid_spend_ledger plan-data/curated/
+          fi
+      - name: freeze successor public menu and randomized assignments
+        env:
+          ORCAP_SCORE_MEMORY_ROUTING_RUN_ID: github-${{ github.run_id }}
+          ORCAP_SCORE_MEMORY_ROUTING_SEED: ${{ github.run_id }}
+        run: >-
+          uv run python -m orcap.capture_score_memory_routing plan
+          --bundle score-memory-routing-plan.json
+          --curated-dir plan-data/curated
+      - name: upload immutable assignment-only plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: score-memory-routing-plan-${{ github.run_id }}
+          path: |
+            score-memory-routing-plan.json
+            plan-data/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: true
+      - name: validate source, manifest, targets, and task count
+        run: >-
+          uv run python -m orcap.capture_score_memory_routing validate-plan
+          --bundle score-memory-routing-plan.json
+          --require-tasks
+
+  execute:
+    needs: plan
+    if: >-
+      ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
+          vars.ORCAP_SCORE_MEMORY_ROUTING_ENABLED == 'true' &&
+          (github.event_name == 'schedule' || github.event.inputs.execute_paid == 'true') }}
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: score-memory-routing-plan-${{ github.run_id }}
+      - name: check frozen successor campaign window
+        id: window
+        env:
+          START: ${{ vars.ORCAP_SCORE_MEMORY_ROUTING_START_UTC }}
+          END: ${{ vars.ORCAP_SCORE_MEMORY_ROUTING_END_UTC }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          now = datetime.now(UTC)
+          start = datetime.fromisoformat(os.environ["START"].replace("Z", "+00:00"))
+          end = datetime.fromisoformat(os.environ["END"].replace("Z", "+00:00"))
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"open={'true' if start <= now <= end else 'false'}\n")
+          PY
+      - name: recover prior spend checkpoint from a retried execution job
+        if: ${{ steps.window.outputs.open == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior-execution plan-data/curated/paid_spend_ledger
+          gh run download "${{ github.run_id }}" \
+            --pattern "score-memory-routing-execution-${{ github.run_id }}-*" \
+            --dir prior-execution || true
+          find prior-execution -type d -name paid_spend_ledger -print0 | \
+            while IFS= read -r -d '' ledger; do
+              cp -R "$ledger"/. plan-data/curated/paid_spend_ledger/
+            done
+      - name: verify uploaded plan and execute exactly once
+        if: ${{ steps.window.outputs.open == 'true' }}
+        env:
+          OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
+          ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
+          ORCAP_SCORE_MEMORY_ROUTING_ENABLED: ${{ vars.ORCAP_SCORE_MEMORY_ROUTING_ENABLED }}
+          ORCAP_SCORE_MEMORY_ROUTING_START_UTC: ${{ vars.ORCAP_SCORE_MEMORY_ROUTING_START_UTC }}
+          ORCAP_SCORE_MEMORY_ROUTING_END_UTC: ${{ vars.ORCAP_SCORE_MEMORY_ROUTING_END_UTC }}
+          ORCAP_SCORE_MEMORY_ROUTING_MAX_RUN_USD: ${{ vars.ORCAP_SCORE_MEMORY_ROUTING_MAX_RUN_USD || '0.10' }}
+          ORCAP_SCORE_MEMORY_ROUTING_MAX_DAY_USD: ${{ vars.ORCAP_SCORE_MEMORY_ROUTING_MAX_DAY_USD || '5.00' }}
+          ORCAP_SCORE_MEMORY_ROUTING_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_SCORE_MEMORY_ROUTING_MAX_CAMPAIGN_USD || '50.00' }}
+        run: >-
+          uv run python -m orcap.capture_score_memory_routing execute
+          --bundle score-memory-routing-plan.json
+          --curated-dir plan-data/curated
+      - name: preserve redacted attempts and spend ledger
+        if: ${{ always() && steps.window.outputs.open == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: score-memory-routing-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: plan-data/
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0

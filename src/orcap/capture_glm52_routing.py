@@ -129,6 +129,12 @@ def execute_bundle(
     data_root: Path | None = None,
     now: datetime | None = None,
     send: Any = _send_assignment,
+    study_id: str = STUDY_ID,
+    enabled_env: str = "ORCAP_GLM52_ROUTING_ENABLED",
+    start_env: str = "ORCAP_GLM52_ROUTING_START_UTC",
+    end_env: str = "ORCAP_GLM52_ROUTING_END_UTC",
+    budget_env_prefix: str = "ORCAP_GLM52_ROUTING",
+    campaign_label: str = "GLM-5.2",
 ) -> dict[str, Any]:
     """Execute an immutable plan once after source, campaign, and spend gates."""
     validate_manifest(
@@ -141,20 +147,20 @@ def execute_bundle(
         raise RuntimeError("source-health gate failed; refusing paid execution")
     if os.environ.get("ORCAP_PAID_PRICE_STUDIES_ENABLED", "").lower() != "true":
         raise RuntimeError("paid price studies are disabled")
-    if os.environ.get("ORCAP_GLM52_ROUTING_ENABLED", "").lower() != "true":
-        raise RuntimeError("GLM-5.2 routing study is disabled")
+    if os.environ.get(enabled_env, "").lower() != "true":
+        raise RuntimeError(f"{campaign_label} routing study is disabled")
     if not os.environ.get("OPENROUTER_PRICE_EXPERIMENT_KEY"):
         raise RuntimeError("dedicated paid experiment key is unavailable")
-    start = os.environ.get("ORCAP_GLM52_ROUTING_START_UTC")
-    end = os.environ.get("ORCAP_GLM52_ROUTING_END_UTC")
+    start = os.environ.get(start_env)
+    end = os.environ.get(end_env)
     if not start or not end or not campaign_open(start, end, now):
-        raise RuntimeError("paid execution refused outside the GLM-5.2 campaign")
+        raise RuntimeError(f"paid execution refused outside the {campaign_label} campaign")
 
     now = (now or datetime.now(UTC)).astimezone(UTC)
     limits = BudgetLimits(
-        float(os.environ.get("ORCAP_GLM52_ROUTING_MAX_RUN_USD", DEFAULT_LIMITS.per_run_usd)),
-        float(os.environ.get("ORCAP_GLM52_ROUTING_MAX_DAY_USD", DEFAULT_LIMITS.per_day_usd)),
-        float(os.environ.get("ORCAP_GLM52_ROUTING_MAX_CAMPAIGN_USD", DEFAULT_LIMITS.campaign_usd)),
+        float(os.environ.get(f"{budget_env_prefix}_MAX_RUN_USD", DEFAULT_LIMITS.per_run_usd)),
+        float(os.environ.get(f"{budget_env_prefix}_MAX_DAY_USD", DEFAULT_LIMITS.per_day_usd)),
+        float(os.environ.get(f"{budget_env_prefix}_MAX_CAMPAIGN_USD", DEFAULT_LIMITS.campaign_usd)),
     )
     historical = _spend_rows(data_root or curated_dir.parent)
     task_ids = [str(row["task_id"]) for row in assignments]
@@ -163,12 +169,12 @@ def execute_bundle(
     existing = {
         str(row.get("task_id") or "")
         for row in historical
-        if str(row.get("study_id") or "") == STUDY_ID
+        if str(row.get("study_id") or "") == study_id
     }
     overlap = sorted(set(task_ids) & existing)
     if overlap:
         raise RuntimeError(f"refusing to re-execute {len(overlap)} GLM-5.2 task(s)")
-    spent_day, spent_campaign = reconstruct_spend(historical, now=now, study_id=STUDY_ID)
+    spent_day, spent_campaign = reconstruct_spend(historical, now=now, study_id=study_id)
     check_budget(
         planned_usd=float(bundle["summary"]["planned_quote_cap_usd"]),
         spent_day_usd=spent_day,
@@ -189,7 +195,7 @@ def execute_bundle(
                     error,
                     status,
                     manifest_sha256=str(bundle["manifest"]["manifest_sha256"]),
-                    study_id=STUDY_ID,
+                    study_id=study_id,
                     observed_at=observed_at,
                 )
             )
@@ -206,7 +212,7 @@ def execute_bundle(
     )
     ledger_rows = [
         {
-            "study_id": STUDY_ID,
+            "study_id": study_id,
             "run_id": run_id,
             "task_id": assignment["task_id"],
             "observed_at": attempt["observed_at"],
@@ -225,7 +231,7 @@ def execute_bundle(
         curated_dir,
     )
     result = {
-        "study_id": STUDY_ID,
+        "study_id": study_id,
         "run_id": run_id,
         "manifest_sha256": bundle["manifest"]["manifest_sha256"],
         "planned_requests": len(assignments),
