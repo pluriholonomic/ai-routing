@@ -97,6 +97,10 @@ def test_summary_and_figures_preserve_claim_boundary(tmp_path):
     assert summary["maximum_absolute_share_conservation_error"] < 1e-12
     assert "not realized market share" in summary["boundary"]
     rel.render_cross_model_figures(tmp_path, panel)
-    for stem in ("wf19_cross_model_timeseries", "wf19_cross_model_elasticity"):
+    for stem in (
+        "wf19_cross_model_timeseries",
+        "wf19_model_comparison_timeseries",
+        "wf19_cross_model_elasticity",
+    ):
         assert (tmp_path / f"{stem}.png").is_file()
         assert (tmp_path / f"{stem}.pdf").is_file()

@@ -444,6 +444,77 @@ def render_cross_model_figures(out_dir: Any, panel: pd.DataFrame) -> None:
         fig.savefig(out_dir / f"wf19_cross_model_timeseries.{extension}", dpi=220)
     plt.close(fig)
 
+    # A compact, shared-axis view makes between-model movements legible without
+    # conflating the price-rule counterfactual with realized routing.  The
+    # faceted figure above remains useful for tracing who bears the mechanical
+    # share displacement; this view is the paper-facing model comparison.
+    palette = {
+        model_id: color
+        for model_id, color in zip(
+            models,
+            (
+                "#0072B2",
+                "#D55E00",
+                "#009E73",
+                "#CC79A7",
+                "#E69F00",
+                "#56B4E9",
+                "#6A3D9A",
+            ),
+            strict=False,
+        )
+    }
+    fig, axes = plt.subplots(
+        3,
+        1,
+        figsize=(12.4, 8.3),
+        sharex=True,
+        constrained_layout=True,
+    )
+    metrics = (
+        ("equivalent_active_discount_fraction", 100.0, "A. Benchmark discount (%)"),
+        ("active_excess_shadow_share", 100.0, "B. Excess undercutter shadow share (pp)"),
+        ("group_arc_price_elasticity", -1.0, "C. Absolute group arc elasticity"),
+    )
+    for model_id in models:
+        group = time[time["model_id"] == model_id].sort_values("hour")
+        label = _display_model(model_id)
+        for axis, (metric, scale, ylabel) in zip(axes, metrics, strict=True):
+            values = scale * group[metric]
+            axis.plot(
+                group["hour"],
+                values,
+                color=palette[model_id],
+                linewidth=1.55,
+                label=label,
+            )
+            axis.set_ylabel(ylabel)
+            axis.grid(axis="y", alpha=0.2)
+    axes[0].legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.34),
+        ncol=4,
+        frameon=False,
+        fontsize=8,
+    )
+    axes[0].set_ylim(bottom=0)
+    axes[1].set_ylim(bottom=0)
+    axes[2].set_ylim(bottom=0)
+    axes[-1].set_xlabel("Public quote timestamp (UTC)")
+    fig.suptitle(
+        "Benchmark undercutting and price-rule sensitivity across models\n"
+        "Hourly medians; fixed short-chat quote; point routing exponent 1.648",
+        fontsize=13,
+        y=1.035,
+    )
+    for extension in ("png", "pdf"):
+        fig.savefig(
+            out_dir / f"wf19_model_comparison_timeseries.{extension}",
+            dpi=220,
+            bbox_inches="tight",
+        )
+    plt.close(fig)
+
     moving = point[point["current_undercutters"] > 0].copy()
     summary_rows = []
     for model_id, group in moving.groupby("model_id", sort=True):
