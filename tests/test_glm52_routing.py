@@ -164,6 +164,11 @@ def test_execution_is_exact_once_redacted_budgeted_and_monitored(monkeypatch, tm
     assert summary["support_status"] == "accruing"
     assert (output / "glm52-routing.html").is_file()
     assert (output / "glm52_routing_monitor.png").is_file()
+    assert (output / "glm52_nonprice_provider_scores.parquet").is_file()
+    assert (output / "glm52_score_adjusted_undercutting.parquet").is_file()
+    assert (output / "glm52_price_sort_rule_contrast.parquet").is_file()
+    assert summary["nonprice_scoring"]["status"] == "accruing"
+    assert summary["nonprice_scoring"]["covered_choices"] == 0
 
     with pytest.raises(RuntimeError, match="re-execute"):
         capture.execute_bundle(

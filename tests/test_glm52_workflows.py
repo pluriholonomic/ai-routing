@@ -40,6 +40,9 @@ def test_glm52_monitor_reads_only_isolated_tables_and_publishes_aggregates():
     assert "router_route_attempts" not in text
     assert "assemble_price_artifacts.sh 48 input-data glm52" in text
     assert "orcap.analysis.glm52_routing_monitor" in text
+    assert "Price manipulation" in (
+        ROOT / "src/orcap/analysis/glm52_routing_monitor.py"
+    ).read_text()
     assert "uv run orcap push" in text
     assert 'repo_id="t4run/openrouter-memo"' in text
 
@@ -58,3 +61,6 @@ def test_glm52_artifacts_feed_compaction_and_live_exponent():
     assert "glm52_routing_assignments" in exponent_workflow
     assert "openrouter-glm52-routing-v1" in exponent_code
     assert (ROOT / "experiments/openrouter-glm52-routing-v1/preregistration.md").is_file()
+    assert (
+        ROOT / "experiments/openrouter-glm52-routing-v1/nonprice-scoring-amendment.md"
+    ).is_file()

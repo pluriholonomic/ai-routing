@@ -19,6 +19,7 @@ import pyarrow.parquet as pq
 
 from ..glm52_routing import BENCHMARK_KEY, PAIR_KEYS, STUDY_ID
 from ..price_experiments import collapse_provider_candidates, provider_key
+from .nonprice_scoring import estimate_nonprice_scoring, price_sort_rule_contrast
 from .router_exponent import fit_exponent, probabilities
 
 ETA_LOW = 1.26
@@ -29,6 +30,7 @@ MIN_BLOCKS = 100
 MIN_DAYS = 7.0
 MIN_COVERAGE = 0.90
 BOOTSTRAP_DRAWS = 5_000
+NONPRICE_PROSPECTIVE_START_UTC = "2026-07-21T22:00:00Z"
 
 
 def _read_table(root: Path, table: str) -> pd.DataFrame:
@@ -133,6 +135,9 @@ def analyze(
     pd.DataFrame,
     pd.DataFrame,
     pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
     dict[str, Any],
 ]:
     candidate_menus: dict[str, list[dict[str, Any]]] = {}
@@ -142,6 +147,7 @@ def analyze(
 
     run_rows: list[dict[str, Any]] = []
     choice_rows: list[dict[str, Any]] = []
+    rule_choice_rows: list[dict[str, Any]] = []
     for block_id, menu in candidate_menus.items():
         providers = [provider_key(row.get("provider_name")) for row in menu]
         costs = np.asarray([float(row["expected_quote_usd"]) for row in menu], dtype=float)
@@ -216,6 +222,24 @@ def analyze(
                     "providers": providers,
                     "costs": costs,
                     "selected_index": providers.index(selected) if covered else None,
+                }
+            )
+        for row in block_assignments[
+            block_assignments["policy"].isin(["default_broad", "price_sorted"])
+        ].to_dict("records"):
+            selected = provider_key(row.get("selected_provider"))
+            covered_policy = row.get("outcome") == "succeeded" and selected in providers
+            rule_choice_rows.append(
+                {
+                    "run_id": row.get("run_id"),
+                    "block_id": block_id,
+                    "task_id": row.get("task_id"),
+                    "observed_at": row.get("attempt_observed_at"),
+                    "policy": row.get("policy"),
+                    "selected_provider": selected or None,
+                    "providers": providers,
+                    "costs": costs,
+                    "selected_index": providers.index(selected) if covered_policy else None,
                 }
             )
 
@@ -306,6 +330,26 @@ def analyze(
         if not run_panel.empty
         else pd.Series(dtype=float)
     )
+    prospective_start = pd.Timestamp(NONPRICE_PROSPECTIVE_START_UTC)
+    scoring_rows = []
+    if not covered.empty:
+        scoring_times = pd.to_datetime(covered["observed_at"], utc=True, errors="coerce")
+        scoring_rows = covered[scoring_times >= prospective_start].to_dict("records")
+    nonprice_summary, nonprice_provider, manipulation_panel = estimate_nonprice_scoring(
+        scoring_rows,
+        eta=ETA_FROZEN,
+        benchmark_provider=BENCHMARK_KEY,
+    )
+    prospective_rule_rows = []
+    if rule_choice_rows:
+        prospective_rule_rows = [
+            row
+            for row in rule_choice_rows
+            if pd.notna(pd.to_datetime(row.get("observed_at"), utc=True, errors="coerce"))
+            and pd.to_datetime(row.get("observed_at"), utc=True, errors="coerce")
+            >= prospective_start
+        ]
+    rule_summary, rule_panel = price_sort_rule_contrast(prospective_rule_rows)
     summary = {
         "study_id": STUDY_ID,
         "analysis_at": datetime.now(UTC).isoformat(),
@@ -347,10 +391,14 @@ def analyze(
             if len(gap_values)
             else None
         ),
+        "nonprice_prospective_start_utc": NONPRICE_PROSPECTIVE_START_UTC,
+        "nonprice_scoring": nonprice_summary,
+        "price_sort_rule_contrast": rule_summary,
         "claim_boundary": (
             "The primary share and calibration estimates cover fresh owned GLM-5.2 "
             "requests and frozen public menus. They do not identify market-wide flow, "
-            "provider revenue or profit, intent, front-running, or collusion."
+            "provider revenue or profit, intent, front-running, or collusion. The inferred "
+            "non-price score is a reduced-form residual, not a direct quality measure."
         ),
     }
     return (
@@ -358,6 +406,9 @@ def analyze(
         choices.drop(columns=["providers", "costs"], errors="ignore"),
         policy_panel,
         provider_panel,
+        nonprice_provider,
+        manipulation_panel,
+        rule_panel,
         summary,
     )
 
@@ -404,6 +455,64 @@ def _plot(run_panel: pd.DataFrame, output: Path) -> None:
     plt.close(fig)
 
 
+def _plot_nonprice(
+    provider_scores: pd.DataFrame,
+    manipulation: pd.DataFrame,
+    output: Path,
+) -> None:
+    if provider_scores.empty:
+        return
+    plt.style.use("seaborn-v0_8-whitegrid")
+    fig, axes = plt.subplots(1, 2, figsize=(13, 6))
+    shown = provider_scores.copy()
+    stable = shown[shown["stable_provider_support"]]
+    if not stable.empty:
+        shown = stable
+    shown = shown.sort_values("relative_log_score").tail(14)
+    positions = np.arange(len(shown))
+    values = shown["price_equivalent_discount_vs_reference"].to_numpy(dtype=float)
+    low = pd.to_numeric(
+        shown["price_equivalent_discount_ci_low"], errors="coerce"
+    ).to_numpy(dtype=float)
+    high = pd.to_numeric(
+        shown["price_equivalent_discount_ci_high"], errors="coerce"
+    ).to_numpy(dtype=float)
+    if np.all(np.isfinite(low)) and np.all(np.isfinite(high)):
+        errors = np.vstack([values - low, high - values])
+        axes[0].errorbar(values, positions, xerr=errors, fmt="o", color="#2b6f92", capsize=3)
+    else:
+        axes[0].scatter(values, positions, color="#2b6f92")
+    axes[0].axvline(0, color="black", linewidth=1)
+    axes[0].set_yticks(positions, shown["provider"])
+    axes[0].set_xlabel("Price-equivalent score discount vs Z.AI")
+    axes[0].set_title("Latent non-price routing score")
+    axes[0].xaxis.set_major_formatter(lambda value, _: f"{value:.0%}")
+
+    if manipulation.empty:
+        axes[1].text(0.5, 0.5, "No below-benchmark provider observations", ha="center")
+        axes[1].set_axis_off()
+    else:
+        ordered = manipulation.sort_values("mean_price_only_unilateral_share_gain")
+        positions = np.arange(len(ordered))
+        before = ordered["mean_price_only_unilateral_share_gain"].to_numpy(dtype=float)
+        after = ordered["mean_score_adjusted_unilateral_share_gain"].to_numpy(dtype=float)
+        for y, start, end in zip(positions, before, after, strict=True):
+            axes[1].plot([start, end], [y, y], color="#9aa1a6", linewidth=1.5)
+        axes[1].scatter(before, positions, label="Price only", color="#d16d3a", marker="o")
+        axes[1].scatter(after, positions, label="With inferred score", color="#2b6f92", marker="D")
+        axes[1].set_yticks(positions, ordered["provider"])
+        axes[1].set_xlabel("Unilateral share gain from undercutting benchmark")
+        axes[1].set_title("Does scoring attenuate share manipulation?")
+        axes[1].xaxis.set_major_formatter(lambda value, _: f"{value:.0%}")
+        axes[1].legend(frameon=False)
+    fig.suptitle("GLM-5.2: observable price manipulation and latent router scoring", y=1.01)
+    fig.tight_layout()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output, dpi=180, bbox_inches="tight")
+    fig.savefig(output.with_suffix(".pdf"), bbox_inches="tight")
+    plt.close(fig)
+
+
 def _table(frame: pd.DataFrame, empty: str) -> str:
     if frame.empty:
         return f"<p>{html.escape(empty)}</p>"
@@ -416,13 +525,25 @@ def _table(frame: pd.DataFrame, empty: str) -> str:
 def run(data_root: Path, output_dir: Path, *, source_revision: str | None = None) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     candidates, joined, _ = _frames(data_root)
-    run_panel, choices, policy, provider, summary = analyze(candidates, joined)
+    (
+        run_panel,
+        choices,
+        policy,
+        provider,
+        nonprice_provider,
+        manipulation,
+        rule_panel,
+        summary,
+    ) = analyze(candidates, joined)
     summary["source_revision"] = source_revision
     for name, frame in (
         ("glm52_run_panel.parquet", run_panel),
         ("glm52_default_choices.parquet", choices),
         ("glm52_policy_metrics.parquet", policy),
         ("glm52_provider_selections.parquet", provider),
+        ("glm52_nonprice_provider_scores.parquet", nonprice_provider),
+        ("glm52_score_adjusted_undercutting.parquet", manipulation),
+        ("glm52_price_sort_rule_contrast.parquet", rule_panel),
     ):
         frame.to_parquet(output_dir / name, index=False)
     (output_dir / "summary.json").write_text(
@@ -430,10 +551,32 @@ def run(data_root: Path, output_dir: Path, *, source_revision: str | None = None
     )
     plot_path = output_dir / "glm52_routing_monitor.png"
     _plot(run_panel, plot_path)
+    nonprice_plot_path = output_dir / "glm52_nonprice_scoring.png"
+    _plot_nonprice(nonprice_provider, manipulation, nonprice_plot_path)
     image_html = ""
     if plot_path.exists():
         encoded = base64.b64encode(plot_path.read_bytes()).decode("ascii")
         image_html = f'<img alt="GLM-5.2 routing monitor" src="data:image/png;base64,{encoded}">'
+    nonprice_image_html = ""
+    if nonprice_plot_path.exists():
+        encoded = base64.b64encode(nonprice_plot_path.read_bytes()).decode("ascii")
+        nonprice_image_html = (
+            f'<img alt="GLM-5.2 non-price scoring" src="data:image/png;base64,{encoded}">'
+        )
+    scoring_summary = summary["nonprice_scoring"]
+    rule_summary = summary["price_sort_rule_contrast"]
+    reallocated = scoring_summary.get("mean_probability_mass_reallocated_by_scoring")
+    cv_bits = (scoring_summary.get("cross_validated") or {}).get(
+        "nonprice_information_bits_per_choice"
+    )
+    rule_effect = rule_summary.get("price_sorted_minus_default_cheapest_rate")
+
+    def percentage(value: Any) -> str:
+        return f"{float(value):.1%}" if value is not None and pd.notna(value) else "not estimated"
+
+    def number(value: Any) -> str:
+        return f"{float(value):.3f}" if value is not None and pd.notna(value) else "not estimated"
+
     dashboard = f"""<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>GLM-5.2 routing</title>
 <style>
@@ -448,6 +591,16 @@ th{{background:#eef2f5}}img{{width:100%;height:auto}}
 <p>Support: <b>{html.escape(summary["support_status"])}</b>; covered default choices:
 {summary["covered_default_choices"]}; blocks: {summary["covered_blocks"]}; duration:
 {summary["duration_days"]:.2f} days.</p>{image_html}
+<h2>Price manipulation × latent scoring</h2>
+<p>Prospective scoring support: <b>{html.escape(scoring_summary["status"])}</b>, beginning
+{html.escape(NONPRICE_PROSPECTIVE_START_UTC)}. Mean within-menu probability mass moved by
+the fitted score: <b>{percentage(reallocated)}</b>. Cross-validated incremental information:
+<b>{number(cv_bits)} bits/choice</b>. Explicit price-sort effect on cheapest-provider selection:
+<b>{percentage(rule_effect)}</b>.</p>{nonprice_image_html}
+<h3>Relative provider score wedges</h3>
+{_table(nonprice_provider, "Score estimation is accruing toward its prospective support gate.")}
+<h3>Score-adjusted unilateral undercutting gains</h3>
+{_table(manipulation, "Undercutting interaction estimates are not yet support-ready.")}
 <h2>Provider selections</h2>{_table(provider, "No covered default selections yet.")}
 <h2>Policy and pinned QoS</h2>{_table(policy, "No paid outcomes yet.")}
 <p class="boundary">{html.escape(summary["claim_boundary"])}</p></body></html>"""
