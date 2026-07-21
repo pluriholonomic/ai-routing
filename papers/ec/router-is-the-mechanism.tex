@@ -102,10 +102,8 @@ less rival reaction after active cuts than in a shifted timing placebo.  The
 public inverse-square heuristic is rejected as realized allocation by an
 independent elasticity audit.  Premium quotes do not have a detectable quality-
 of-service advantage in the current holdout.  Owned routing remains too narrow
-to infer market share.  An HMP-style signal-coupling screen has the predicted
-sign but fails its randomization test, concentration gate, and downstream power
-gates.  These results do not say strategic interaction is absent; they say its
-current identified set is large.  Separately, the public price surface reveals
+to infer market share.  These results do not say strategic interaction is
+absent; they say its current identified set is large.  Separately, the public price surface reveals
 economically large conditional share transfers: in seven model panels, active
 discounts mechanically displace passive providers before hidden scoring is
 applied.  A prospective paid panel now asks whether latent scoring disciplines
@@ -390,7 +388,7 @@ before sending a minimal request and retrieve the selected provider and outcome
 for our account.  Private prompts and request rows never enter public releases.
 
 Every result freezes a dataset revision and declares a calibration/holdout split.
-The provider-regime and HMP analyses use revision
+The provider-regime and response analyses use revision
 \texttt{e4174d08a6c0e18ac0adf9a9f26b6a917f7f1ed8}.  The adaptive replay is
 trained before 16 July and evaluated afterward.  These windows are short; they
 support falsification and mechanism screening, not a mature structural estimate.
@@ -561,58 +559,24 @@ energy price, reserved capacity, subsidy/rebate exposure, and realized
 utilization.  These are fields for a data partnership, not coefficients to
 impute from names.
 
-\section{Signal Coupling and Collusion Screens}
-\label{sec:hmp}
+\subsection{Dynamic score memory is outside the identified mechanism}
 
-Hansen--Misra--Pai show how independent pricing algorithms can reach high prices
-when correlated experiments bias own-price learning
-\cite{hansenmisrapai2021}.  Their mechanism does not require communication.  It
-does require a chain of observable properties before it can explain this market:
+The estimand in this paper is contemporaneous: conditional on the current menu,
+how much does displayed price move the declared allocation rule, and how much
+does the current reduced-form score attenuate or amplify that movement?  Neither
+the public panel nor the owned-choice design identifies a law of motion for the
+score.  In particular, persistence of a provider's quote is not evidence that a
+router remembers the quote, and a lagged provider response is not evidence that
+the router carries a hidden penalty state.
 
-\begin{enumerate}[leftmargin=*,nosep]
-\item excess residual quote coupling after preserving common clocks;
-\item a preperiod routing signal-to-noise gradient;
-\item a wedge between independent and coupled elasticity specifications; and
-\item a forward transition toward higher buyer prices or high-price states.
-\end{enumerate}
-
-WF18 freezes this chain and a Holm family.  The current monitor contains 766
-completion-price events.  Its seven-day mechanism window covers 37 models, 344
-price experiments, and 19 provider-pair/model clusters.  Residual covariance is
-0.02023; its excess over 2,000 clock-preserving circular shifts is 0.02560,
-with one-sided $p=0.04998$ and null 95\% interval
-$[-0.03558,0.02336]$.  This nominal threshold crossing does not pass the
-registered claim gate: one provider pair supplies 87.3\% of eligible events,
-leave-one-unit estimates range from 0.00443 to 0.06132, the provider-identity
-shuffle has $p=0.992$, and the signal-to-noise and elasticity-wedge legs are
-power-gated.  The Holm family is therefore incomplete.
-
-The correct conclusion is nominal but highly concentrated quote synchronization
-and no promoted HMP claim.  We do not identify collusion, communication,
-provider algorithm, or intent.  The property chain specifies exactly what
-future observations must add: more independent provider pairs, default choices,
-mechanism days, and non-price signal support.
-
-\subsection{A causal simulator result with a failed transport screen}
-
-The simulator pairs provider learners while preserving every marginal reward
-sequence and shuffling only common signal order.  This makes the intervention
-causal \emph{inside the simulator}.  In a focal two-UCB-agent prisoner's-dilemma
-environment, coupled signals increase innovation correlation, all-high play,
-and mean buyer price.  Across two seeds and 720 paired cells, the focal UCB--UCB
-screen gives an exploration-coupling effect of $+0.2136$, an all-high-play
-effect of $+0.3389$, and a mean buyer-price effect of $+0.11825$, positive in
-69.4\% of focal cells.  Across heterogeneous learner mixtures, however, the
-buyer-price effect is $-0.00047$ and is positive in 49.1\% of cells.  The
-executable verdict is \texttt{mechanism\_validated=false}.
-
-This negative transport result is substantively useful.  Signal coupling is not
-a generic consequence of dynamic pricing; it depends on how agents map common
-noise into exploration.  Any theory claiming universal collusion from public
-signals is too coarse for this market.  The simulation instead motivates a
-critical-memory question: which learner memory and signal-to-noise combinations
-make correlated exploration statistically discoverable in finite time?  That is
-a separate learning-theory problem, not asserted here.
+We therefore remove critical-memory and signal-coupling simulations from this
+paper's evidentiary chain.  They remain separate learning benchmarks.  A dynamic
+score model can enter this mechanism paper only after lagged price and quality
+histories improve held-out prediction of owned routing choices beyond the
+current menu, provider--model effects, enforcement state, and contemporaneous
+quality, and after a randomized router or partner-log design distinguishes
+score memory from unobserved eligibility.  Until then, $\alpha_{it}$ is a
+current composite residual, not a state variable with an estimated transition.
 
 \section{An Auditable Router Design}
 \label{sec:design}
@@ -867,10 +831,9 @@ randomized treatment.  The inverse-square restriction is rejected as realized
 market-wide allocation.  H81 identifies a bounded, narrow fallback decomposition,
 not a general router policy or market share.  Residual QoS tests and zero valid
 utilization cells do not identify technology rent, dumping, or marginal cost.
-The concentrated WF18 screen with nominal $p=0.050$ does not identify collusion,
-communication, or a provider algorithm.  The adaptive replay does not identify
-welfare or equilibrium, and the simulator intervention does not establish live-
-market causality.
+The adaptive replay does not identify welfare or equilibrium.  No result in
+this paper identifies router score memory, provider learning memory, collusion,
+communication, or a provider algorithm.
 
 The displayed-price transfer surface uses 22,330 snapshots and seven models at
 one request shape.  It identifies exact benchmark-reset effects under the stated
@@ -891,14 +854,13 @@ eight uncollected objects.
 \section{Reproducibility}
 
 The empirical figure is generated by the checked-in figure-build script from a
-hosted-evidence snapshot and the adaptive aggregate JSON.  WF16, WF18, the
-adaptive replay, and the signal-coupling
-simulator are available through the repository's analysis and market-environment
-entry points.  Remote workflows freeze one Hugging Face
+hosted-evidence snapshot and the adaptive aggregate JSON.  WF16, the
+price--score analysis, and the adaptive replay are available through the
+repository's analysis and market-environment entry points.  Remote workflows freeze one Hugging Face
 revision, hydrate it once, run assignment-only preflights, remove owned request
 rows, and publish aggregate artifacts.  Unit tests cover residualization,
-circular-shift inference, multiplicity, claim flags, signal shuffling, and
-heterogeneous learner screens.  The source revision and protocol hash are stored
+claim flags, deterministic shadow-share conservation, and prospective score
+gates.  The source revision and protocol hash are stored
 inside every summary.
 
 \bibliographystyle{ACM-Reference-Format}
