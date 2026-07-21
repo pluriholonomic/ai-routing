@@ -21,6 +21,7 @@ import pandas as pd
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
+from .market_scope import paid_model_sql
 from .vintage import canonical_date, clip_date_range, date_support
 
 log = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def changes(
                provider_name, endpoint_fingerprint,
                try_cast(old_value as double) o, try_cast(new_value as double) n
         from read_parquet('{data.table_glob("pricing_changes", layer="derived")}')
-        where field = 'price_completion' and model_id not like '%:%'
+        where field = 'price_completion' and {paid_model_sql("model_id")}
           and try_cast(old_value as double) > 0 and try_cast(new_value as double) > 0
         """
     ).df()
@@ -66,7 +67,7 @@ def endpoint_days(
         select count(*) as n from (
           select distinct cast(dt as varchar), model_id, provider_name
           from read_parquet('{data.table_glob("endpoints_snapshots")}', union_by_name=true)
-          where price_completion > 0 and model_id not like '%:%'
+          where price_completion > 0 and {paid_model_sql("model_id")}
             {date_filter}
         )
         """

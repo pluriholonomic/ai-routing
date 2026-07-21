@@ -25,6 +25,7 @@ from sklearn.linear_model import LogisticRegression
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
+from .market_scope import paid_model_sql
 from .wf16_provider_type_validation import load_daily_quotes, load_price_changes
 
 log = logging.getLogger(__name__)
@@ -410,7 +411,7 @@ def load_enforcement_windows() -> pd.DataFrame:
         f"""
         select canonical_slug, min(id) as model_id
         from read_parquet('{data.table_glob("models_snapshots")}', union_by_name=true)
-        where canonical_slug is not null and id not like '%:%'
+        where canonical_slug is not null and {paid_model_sql("id")}
         group by 1
         """
     )

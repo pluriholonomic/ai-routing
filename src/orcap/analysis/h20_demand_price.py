@@ -24,6 +24,7 @@ import statsmodels.formula.api as smf
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
+from .market_scope import paid_activity_sql, paid_model_sql
 
 log = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ def demand_panel() -> pd.DataFrame:
                sum(total_prompt_tokens + total_completion_tokens) as toks,
                sum(request_count) as reqs
         from read_parquet('{data.table_glob("model_activity_daily")}')
+        where {paid_activity_sql("model_permaslug", "variant")}
         group by 1, 2
         """
     ).df()
@@ -57,12 +59,12 @@ def event_days() -> pd.DataFrame:
         select distinct substr(run_ts, 1, 4) || '-' || substr(run_ts, 5, 2) || '-'
                || substr(run_ts, 7, 2) as day, model_id
         from panel where prev is not null and prev != price_completion
-          and model_id not like '%:%'
+          and {paid_model_sql("model_id")}
         """
     ).df()
     slug = data.q(
         f"""select distinct canonical_slug, id from {data.models_snapshots()}
-        where id not like '%:%'"""
+        where {paid_model_sql("id")}"""
     ).df()
     return ev.merge(slug, left_on="model_id", right_on="id")[["day", "canonical_slug"]].rename(
         columns={"canonical_slug": "model_permaslug"}
@@ -104,7 +106,7 @@ def latest_features() -> pd.DataFrame:
     slug = data.q(
         f"""select distinct canonical_slug, id, created from {data.models_snapshots()}
         where run_ts = (select max(run_ts) from {data.models_snapshots()})
-          and id not like '%:%'"""
+          and {paid_model_sql("id")}"""
     ).df()
     m = a.merge(slug, left_on="model_permaslug", right_on="canonical_slug")
     m = m.merge(px, left_on="id", right_on="model_id", how="left")

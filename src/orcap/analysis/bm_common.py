@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from . import data
+from .market_scope import paid_model_sql
 from .vintage import clip_date_range
 
 GATE_FILE = Path("config/welfare_conjecture_gates.toml")
@@ -32,7 +33,7 @@ def completion_events(
                try_cast(old_value as double) as old_price,
                try_cast(new_value as double) as new_price
         from read_parquet('{glob}', union_by_name=true)
-        where field = 'price_completion' and model_id not like '%:%'
+        where field = 'price_completion' and {paid_model_sql("model_id")}
           and try_cast(old_value as double) > 0
           and try_cast(new_value as double) > 0
           and try_cast(old_value as double) != try_cast(new_value as double)

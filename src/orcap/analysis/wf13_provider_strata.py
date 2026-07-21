@@ -27,6 +27,7 @@ import pandas as pd
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
+from .market_scope import paid_model_sql
 from .pm9_author_anchor import is_author_provider
 
 log = logging.getLogger(__name__)
@@ -54,12 +55,13 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         select cast(dt as varchar) as dt, model_id, provider_name,
                median(price_completion) as p
         from read_parquet('{data.table_glob("endpoints_snapshots")}', union_by_name=true)
-        where price_completion > 0 and model_id not like '%:%'
+        where price_completion > 0 and {paid_model_sql("model_id")}
         group by 1, 2, 3
         """
     ).df()
     q["is_author"] = [
-        is_author_provider(m, p) for m, p in zip(q["model_id"], q["provider_name"])
+        is_author_provider(m, p)
+        for m, p in zip(q["model_id"], q["provider_name"], strict=True)
     ]
     anchor = (
         q[q["is_author"]]
@@ -106,7 +108,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
         f"""
         select model_id, provider_name, count(*) as n_changes
         from read_parquet('{data.table_glob("pricing_changes", layer="derived")}')
-        where field = 'price_completion' group by 1, 2
+        where field = 'price_completion' and {paid_model_sql("model_id")} group by 1, 2
         """
     ).df()
     df = df.merge(ch, on=["model_id", "provider_name"], how="left")

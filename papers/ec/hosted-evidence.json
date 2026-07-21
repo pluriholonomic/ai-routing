@@ -4,6 +4,18 @@
     "artifact": "hmp-signal-coupling-monitor-29834114219",
     "huggingface_revision": "e4174d08a6c0e18ac0adf9a9f26b6a917f7f1ed8"
   },
+  "sample_scope": {
+    "primary_population": "paid_only",
+    "catalog_models": 338,
+    "catalog_free_models": 14,
+    "latest_positive_paid_endpoint_rows": 992,
+    "latest_free_endpoint_rows": 0,
+    "paid_completion_price_events": 766,
+    "free_completion_price_events": 0,
+    "latest_complete_activity_day": "2026-07-20",
+    "latest_complete_free_token_share": 0.1089694351537338,
+    "definition": "Exclude IDs ending :free and openrouter/free; exclude activity rows labelled variant=free; require positive completion prices for completion-price tests."
+  },
   "wf16": {
     "date_range": ["2026-07-07", "2026-07-21"],
     "n_training_pairs": 366,

@@ -29,6 +29,7 @@ import pandas as pd
 from . import data
 from .common import DEFAULT_OUT, save_json
 from .h19_provider_types import provider_family, serves_own
+from .market_scope import paid_model_sql
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def all_changes() -> pd.DataFrame:
         select changed_at_run_ts, model_id, provider_name,
                try_cast(old_value as double) o, try_cast(new_value as double) n
         from read_parquet('{data.table_glob("pricing_changes", layer="derived")}')
-        where field = 'price_completion' and model_id not like '%:%'
+        where field = 'price_completion' and {paid_model_sql("model_id")}
           and try_cast(old_value as double) > 0 and try_cast(new_value as double) > 0
         """
     ).df()

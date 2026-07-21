@@ -27,7 +27,6 @@ Baye-Morgan clearinghouse logic allows either sign.
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 
@@ -36,6 +35,7 @@ import pandas as pd
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
+from .market_scope import paid_model_sql
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def daily_quotes() -> pd.DataFrame:
         select cast(dt as varchar) as dt, model_id, provider_name,
                median(price_completion) as price
         from read_parquet('{data.table_glob("endpoints_snapshots")}', union_by_name=true)
-        where price_completion > 0 and model_id not like '%:%'
+        where price_completion > 0 and {paid_model_sql("model_id")}
         group by 1, 2, 3
         """
     ).df()
@@ -100,7 +100,7 @@ def completion_cuts() -> pd.DataFrame:
         f"""
         select cast(dt as varchar) as dt, model_id, provider_name, old_value, new_value
         from read_parquet('{data.table_glob("pricing_changes", layer="derived")}')
-        where field = 'price_completion' and model_id not like '%:%'
+        where field = 'price_completion' and {paid_model_sql("model_id")}
         """
     ).df()
     old = pd.to_numeric(changes["old_value"], errors="coerce")

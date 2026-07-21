@@ -20,6 +20,7 @@ from scipy.stats import binomtest, mannwhitneyu
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
+from .market_scope import paid_model_sql
 from .pm9_author_anchor import is_author_provider
 from .wf13_provider_strata import tier_of, tiers
 from .wf15_spread_explanations import CHINA, WEB3
@@ -61,7 +62,7 @@ def load_daily_quotes() -> pd.DataFrame:
         select cast(dt as varchar) as dt, model_id, provider_name,
                median(try_cast(price_completion as double)) as price_completion
         from read_parquet('{data.table_glob("endpoints_snapshots")}', union_by_name=true)
-        where try_cast(price_completion as double) > 0 and model_id not like '%:%'
+        where try_cast(price_completion as double) > 0 and {paid_model_sql("model_id")}
         group by 1, 2, 3
         """
     ).df()
@@ -78,7 +79,7 @@ def load_price_changes() -> pd.DataFrame:
         from read_parquet(
           '{data.table_glob("pricing_changes", layer="derived")}', union_by_name=true
         )
-        where field = 'price_completion' and model_id not like '%:%'
+        where field = 'price_completion' and {paid_model_sql("model_id")}
           and try_cast(old_value as double) > 0 and try_cast(new_value as double) > 0
         """
     ).df()
@@ -92,7 +93,7 @@ def load_slug_map() -> pd.DataFrame:
         f"""
         select canonical_slug, min(id) as model_id
         from read_parquet('{data.table_glob("models_snapshots")}', union_by_name=true)
-        where canonical_slug is not null and id not like '%:%'
+        where canonical_slug is not null and {paid_model_sql("id")}
         group by 1
         """
     ).df()

@@ -336,6 +336,18 @@ The provider-regime and HMP analyses use revision
 trained before 16 July and evaluated afterward.  These windows are short; they
 support falsification and mechanism screening, not a mature structural estimate.
 
+The primary price and competition population is paid-only.  We exclude model
+IDs ending in \texttt{:free}, the \texttt{openrouter/free} meta-route, and
+non-positive completion quotes; paid suffixes such as speed- or price-priority
+routes are not excluded merely because their IDs contain a colon.  Free-tier
+flow remains a separate subsidy/demand-creation estimand.  In this frozen
+revision, 14 of 338 catalog entries are free-labelled and free routes account
+for 10.9\% of tokens on the latest complete activity day, but zero of the 766
+positive completion-price events.  Thus the paid filter changes demand totals,
+not the focal pricing-event results.  Source-defined ``Other'' aggregates and
+app-wide rankings lack variant identity and are not claimed to be cleanly
+filterable.
+
 \subsection{Regimes are persistent, except active undercutting}
 
 Provider-model pairs are frozen in a training window into four descriptive

@@ -28,6 +28,7 @@ import pandas as pd
 from . import data
 from .common import DEFAULT_OUT, save, save_json
 from .h68_competition import daily_quotes
+from .market_scope import paid_model_sql
 from .vintage import clip_date_range, date_support
 
 log = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ def build_panel(
                    then 1 else 0 end) as any_raise,
                count(*) as n_changes
         from read_parquet('{data.table_glob("pricing_changes", layer="derived")}')
-        where field = 'price_completion' and model_id not like '%:%'
+        where field = 'price_completion' and {paid_model_sql("model_id")}
           and try_cast(old_value as double) > 0
         group by 1, 2, 3
         """

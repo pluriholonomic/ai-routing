@@ -31,6 +31,7 @@ from scipy.stats import binomtest
 from . import data
 from .common import DEFAULT_OUT, save, save_json
 from .h19_provider_types import provider_family, serves_own
+from .market_scope import paid_model_sql
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ def quote_ticks() -> pd.DataFrame:
         select run_ts, model_id, provider_name,
                min(price_completion) as price
         from read_parquet('{data.table_glob("endpoints_snapshots")}', union_by_name=true)
-        where price_completion > 0 and model_id not like '%:%'
+        where price_completion > 0 and {paid_model_sql("model_id")}
         group by 1, 2, 3
         """
     ).df()

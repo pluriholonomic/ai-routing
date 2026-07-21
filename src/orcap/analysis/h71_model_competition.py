@@ -31,6 +31,7 @@ from sklearn.model_selection import GroupKFold
 
 from . import data
 from .common import DEFAULT_OUT, save, save_json
+from .market_scope import paid_model_sql
 
 log = logging.getLogger(__name__)
 
@@ -223,7 +224,7 @@ def supply_panel(day: str) -> pd.DataFrame:
         f"""
         select distinct id, canonical_slug
         from {data.models_snapshots()}
-        where dt = '{day}' and id not like '%:%'
+        where dt = '{day}' and {paid_model_sql("id")}
         """
     ).df()
     if endpoints.empty or mapping.empty:
