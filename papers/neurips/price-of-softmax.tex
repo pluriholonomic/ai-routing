@@ -460,9 +460,13 @@ Summation is invariant to permutation. \hfill$\square$
 
 \section{Reproducibility and Evidence Ledger}
 
-The RL wrapper is \texttt{src/orcap/market\_env/rl\_env.py}; its tests verify
+The RL wrapper is \path{src/orcap/market_env/rl_env.py}; its tests verify
 private-information boundaries, reward reconciliation, horizons, invalid calls,
-and exact reset replay.  Kernel tests additionally cover capacity, failure,
+and exact reset replay.  A documented four-epoch example at
+\path{examples/strategic_routing_demo.py} is itself tested for
+byte-equivalent seeded output and settlement reconciliation; the adjacent
+environment guide specifies the observation contract and custom-router path.
+Kernel tests additionally cover capacity, failure,
 fallback, transfers, and stable random substreams.  Signal tests verify exact
 column multisets and paired interventions.  Adversarial tests cover quote
 monotonicity, share caps, commitment state, identity grouping, unilateral grids,
