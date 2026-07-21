@@ -1,621 +1,712 @@
-% ACM EC submission — "The Router Is the Mechanism"
-% Compile: pdflatex (acmart from TeX Live 2025). For submission use
-% \documentclass[sigconf,anonymous,review]{acmart}.
+% ACM EC submission.  The empirical claim ledger is generated from immutable
+% aggregate artifacts; see the reproducibility appendix.
 \documentclass[sigconf,nonacm]{acmart}
+
+\usepackage{mathtools}
 \usepackage{booktabs}
 \usepackage{graphicx}
-
-\newtheorem{assumption}{Assumption}
-\usepackage{mathtools}
-\newcommand{\eqdef}{\coloneqq}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{url}
 
 \settopmatter{printacmref=false}
 \setcopyright{none}
+\setlength{\emergencystretch}{2em}
+\setlength{\headheight}{17pt}
+\AtBeginEnvironment{thebibliography}{\footnotesize\setlength{\itemsep}{0pt}}
+
+\newtheorem{assumption}{Assumption}
+\newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+\newcommand{\E}{\mathbb E}
+\newcommand{\1}{\mathbf 1}
+\newcommand{\KL}{\mathrm{KL}}
+\newcommand{\pp}{\text{pp}}
+\newcommand{\OR}{\textsc{OpenRouter}}
 
 \begin{document}
 
-\title{The Router Is the Mechanism: Markup Floors, Steering, and the Design of AI Inference Marketplaces}
+\title{Displayed Prices, Hidden Clearing:\\
+Property Tests and Mechanism Design for AI Inference Routing}
 
 \author{Tarun Chitra}
-\affiliation{\institution{Gauntlet / independent}\city{New York}\country{USA}}
+\affiliation{\institution{Gauntlet}\city{New York}\country{USA}}
 \email{tarun@gauntlet.xyz}
 
 \begin{abstract}
-AI inference marketplaces now route trillions of tokens per month
-across ${\sim}90$ providers serving identical open-weight models, and the
-largest of them, OpenRouter, documents its allocation rule in one
-sentence: select a provider with probability proportional to
-$1/\text{price}^2$. A natural question to ask is: what market does this
-rule \emph{buy}? We take the rule seriously as a mechanism and answer in
-three parts.
-(i)~\emph{The routing exponent is an inverse temperature, and the
-market sits near a phase transition.} Weights $p^{-a}$ induce logit
-(Gibbs) demand; symmetric equilibrium is $p^* = c\,a(n-1)/(a(n-1)-n)$,
-which diverges along $a(n-1)=n$. The deployed exponent $a=2$ places every
-two-provider market---the modal market in our five-minute panel of the
-largest live marketplace---in the condensed phase: equilibrium at the
-menu ceiling, and with the \emph{measured} end-user elasticity
-($-0.05$), a finite duopoly price of $41\times$ marginal cost. An
-entry-proof markup floor $1/a$ survives any number of entrants: at
-$a=2$, free entry stops at a 100\% markup, forever.
-(ii)~\emph{The platform's own steering is a collusion device.} Our
-randomized probe panel measures the router penalizing a cheapest quote
-with a recent price cut (selection 3.9\% vs.\ 23.3\%, weight multiplier
-$\theta \approx 0.17$ for ${\sim}7$ days). We prove this penalty deters
-undercutting for every agent with effective patience below
-$\delta^\dagger = 0.9895$---the measured $\theta$ sits five-fold inside
-the deterrence threshold---and taxes a perpetual micro-adjuster's flow
-by ${\sim}5\times$. In our calibrated, pre-registered-and-validated
-simulation, switching the measured penalty on flips a learning
-undercutter to the price ceiling in 4/4 markets and raises the
-flow-dominant bottom-of-book quote by up to 81\%.
-(iii)~\emph{The mechanism is repairable, and the objectives disagree.}
-In a two-type world calibrated to observed capital structure (owned
-data-center vs.\ GPU-spot-dependent providers), welfare rises in the
-exponent while, counterintuitively, platform ad-valorem revenue
-\emph{falls}---the router operator is paid to keep the market soft. We propose and evaluate, theoretically and
-with learning agents, three implementable repairs: a thickness-adaptive
-exponent $a^*(n) = n/(\ell^*(n-1))$ that pins the Lerner index at a
-target across market sizes; verified-quality weighting
-$w = q^b p^{-a}$ with $q$ measured by our deployed evaluation probes,
-which undoes the quality-shading adverse selection that price-only
-weights create (closed-form threshold $b^* \approx 0.6$--$2$); and fee
-decoupling (per-request rather than ad valorem), which removes the
-platform's incentive to prefer high prices. All findings are for one
-marketplace (the largest), one buyer tier, and a registered
-re-estimation window; scope is stated throughout. Our results suggest
-that the observed pathologies of open inference markets---administered
-menus, focal-price atoms, futile undercutting---are equilibrium
-responses to routing-rule design choices, and that modest,
-implementable changes to the rule would repair them. The lever is the
-mechanism, not the conduct.
+Open-weight models create a real-time market for partly substitutable execution.
+Harnesses originate token demand, routers choose where to buy execution, and
+providers sell perishable compute under a common model label.  We ask what can
+be learned about this market when prices are public but clearing, capacity, and
+quality are only partly observed.  Five-minute menus, router enforcement state,
+and owned requests reject a simple public-order-book description: a documented
+inverse-price heuristic is not the realized allocation law, active undercutting
+is transient, and a registered response screen finds no excess rival reaction.
+We then derive mechanism results that survive this limited identification.  A
+price-only Gibbs router has an exact welfare-regret identity for omitted service
+attributes; uniformly accurate scores are near-optimal; but no quote-only rule
+can be robustly efficient when reserved capacity is hidden.  These results imply
+an auditable design using execution-contingent prices, capacity commitments,
+quality scores, exploration, and fees separated from selected spend.  A
+held-out replay reduces a quote-coupling proxy by 49.3\% at a 2.08\% displayed-
+price premium, but does not identify welfare.  The contribution is a set of
+property tests and implementable mechanism bounds, not a conduct claim.
 \end{abstract}
 
 \maketitle
 
 \section{Introduction}
 
-\paragraph{Routing marketplaces.}
-When an intermediary both \emph{quotes} the market and \emph{clears} it,
-the intermediary's algorithm is the demand curve. This is an old story
-in market microstructure---payment for order flow, last look in FX, the
-curvature of an automated market maker---and it is now the story of AI
-inference. On OpenRouter, the largest open inference marketplace, a
-buyer sends a request naming a model; a router selects which of $n$
-competing providers serves it. The default selection rule is documented
-in one sentence \cite{openrouter2026}: filter recently failing
-providers, then choose with probability $\propto 1/\text{price}^2$. Nothing else a provider does
-moves demand except through that rule (and one measured exception we
-return to at length). So the game providers play is not Bertrand, not
-search, not bargaining: it is pricing against a
-softmax.\footnote{The analogy to AMM curvature is exact in spirit: an
-AMM designer choosing invariant curvature trades price sensitivity
-against inventory risk \cite{angeris2020curvature}; a router choosing
-$a$ trades price discipline against allocation concentration. Both are
-one-parameter families of demand curves imposed by an intermediary; both
-parameters are typically chosen by vibes.}
+Open weights separate a model from the firm that executes it.  Two providers
+can serve the same model on the same prompt, making execution partly
+commodity-like.  Yet tool calls, quantization, sampling, context limits,
+latency, privacy, and hidden capacity keep the products from being perfectly
+fungible.  This produces a new vertical market: a user delegates to a harness;
+the harness chooses a model and possibly a router; the router aggregates token
+demand and dispatches an eligible provider; and inference providers sell
+perishable GPU-backed service.
 
-\paragraph{What the data forces us to ask.}
-We spent four months instrumenting this market at five-minute resolution
-(prices, congestion, realized flow, GPU spot books, randomized routing
-probes) and this paper asks the mechanism-design question the data
-forces: \emph{is the observed price structure---rigid administered
-menus, a 45\% atom of providers tied exactly at the model author's
-price, undercutters whose cuts appear futile, sustained
-1.3--10$\times$ same-model dispersion---what the deployed rule should
-produce in equilibrium?} The answer is yes, in an uncomfortably strong
-sense: the deployed parameters sit in the region where theory predicts
-\emph{exactly} the observed pathologies, and the platform's own
-quality-protective steering is, mathematically, the instrument that
-stabilizes them.
+The closest DeFi analogy is useful but incomplete.  A harness resembles a
+wallet or intent originator, a router resembles a DEX aggregator, a model is a
+common execution standard, and a provider resembles a liquidity provider.
+Unlike an atomic swap, however, an inference request is normally assigned to a
+single provider, may be retried serially, has stochastic quality, and cannot be
+verified from price alone.  The router is therefore not merely an aggregator.
+It is a delegated buyer, a multi-attribute scoring mechanism, and a reliability
+intermediary.
 
-\paragraph{Temperature, not taste.}
-The physics framing is not decoration. Weights $p^{-a}$ are a Gibbs
-measure over providers with energy $a \log p$; the exponent is an
-inverse temperature. High temperature (small $a$) melts price
-competition---allocation ignores prices, so why cut them? Low
-temperature (large $a$) freezes allocation onto the cheapest
-provider---Bertrand, with its fragility. In between, there is a
-\emph{critical line} $a(n-1)=n$ on which the symmetric equilibrium price
-diverges. The deployed $a=2$ puts $n=2$ markets exactly on the line. One
-does not operate a power plant at criticality by accident and call it a
-pricing strategy; but one might do it by choosing a
-``reasonable-looking'' load-balancing rule without solving the game it
-induces. That, we will argue, is what happened---and because the rule is
-\emph{documented}, every parameter in our theory is measured or
-published, not estimated from a structural model.\footnote{Structural IO
-estimates a logit differentiation parameter from data and argues
-identification. Here the platform \emph{publishes} it. This is the rare
-setting where the mechanism-design counterfactual requires no demand
-estimation at all: the demand curve is in the documentation.}
+This distinction matters empirically.  A public price is an invitation to route,
+not a firm capacity commitment.  A documented score is not necessarily the
+allocation law after private eligibility, quality, and fallback.  Provider cost
+depends on whether capacity is owned, reserved, or bought in a spot market; the
+same discount can reflect low marginal cost, subsidy, entry investment, or
+predatory intent.  Consequently, price panels alone neither reveal flow nor
+identify dumping, collusion, or welfare.
 
-\paragraph{Prior work.}
-Calvano et al.\ \cite{calvano2020} showed Q-learners sustain
-supra-competitive prices in a logit market they invented; we work in a
-logit market the platform \emph{published}.
-Johnson--Rhodes--Wildenbeest \cite{jrw2023} designed steering that breaks
-seller collusion but did not measure a deployed rule; Demirer et al.\
-\cite{demirer2025} measured this marketplace's dispersion and elasticity
-but did not model the router. None of these connects a documented
-allocation rule, a measured steering parameter, and calibrated
-counterfactuals; that connection is the paper.
+We build the paper around this identification problem.  Our evidence joins a
+five-minute public menu panel, router-published enforcement aggregates, model-
+author anchor prices, public quality fields, and randomized or assignment-first
+owned requests.  The sources occupy different rungs of an identification
+ladder.  Public menus reveal offers; public enforcement reveals router-side
+state; mechanical shadow routing reveals the implications of an explicit rule;
+owned requests reveal realized policy for one account and workload; and only
+router or provider logs could reveal market-wide flow or private capacity.
 
-\paragraph{Contributions.}
-(1) A complete equilibrium analysis of inverse-power routing with
-captive and near-captive demand: interior formula, phase structure, an
-entry-proof Lerner floor, and the measured-elasticity duopoly price of
-$41c$ (\S\ref{sec:theory}). The static skeleton is
-Anderson--de~Palma--Thisse logit pricing \cite{anderson1992}; the
-content is the mapping---the ``differentiation parameter'' is a
-published platform constant, and its placement is on the critical line.
-(2) A theory of the measured steering penalty as a platform-imposed
-asymmetric menu cost: closed-form deviation target, deterrence
-threshold, patience boundary, perpetual-cutter tax
-(\S\ref{sec:steering}). To our knowledge the first
-steering-\emph{supports}-collusion result with an empirically measured
-steering parameter (Johnson--Rhodes--Wildenbeest \cite{jrw2023} study
-the inverse design).
-(3) A behaviorally calibrated, pre-registered, validated multi-agent
-environment in which every counterfactual in this paper is run
-(\S\ref{sec:env}); its validation gate includes an untargeted
-moment---the simulated flow elasticity emerges from the router alone and
-matches the panel.
-(4) A design section with teeth (\S\ref{sec:frontier}--\ref{sec:repairs}):
-two-type (data-center vs.\ spot) welfare/revenue/viability frontier over
-the exponent; a quality game showing price-only weights make shading
-dominant and verified-quality weights repair it at a small, computable
-$b^*$; a thickness-adaptive exponent; fee decoupling. Each proposal is
-evaluated with learning agents, not just first-order conditions.
+The empirical results are primarily property tests.  They tell us which simple
+market descriptions are incompatible with the observations, and thereby narrow
+the set of mechanisms worth designing.  Four posted-price regimes are highly
+persistent except for active undercutting.  A registered response screen finds
+less rival reaction after active cuts than in a shifted timing placebo.  The
+public inverse-square heuristic is rejected as realized allocation by an
+independent elasticity audit.  Premium quotes do not have a detectable quality-
+of-service advantage in the current holdout.  Owned routing remains too narrow
+to infer market share.  An HMP-style signal-coupling screen has the predicted
+sign but fails its randomization test, concentration gate, and downstream power
+gates.  These results do not say strategic interaction is absent; they say its
+current identified set is large.
 
-\section{The market and the data}\label{sec:data}
+We make three mechanism-design contributions.
 
-OpenRouter routes buyer requests to ${\sim}90$ providers serving shared
-open-weight models. Our capture (public repository \texttt{orcap})
-records, at 5-minute grain: per-provider-per-model price menus;
-congestion telemetry (utilization, rate limits, latency, deranking);
-realized daily token flow per provider-model (demand shares); the
-vast.ai GPU spot order book (the input market for providers without
-owned capacity); provider capital structure (a confidence-flagged
-registry: hyperscaler DC / funded neocloud / own-silicon / small
-startup); and two active instruments: (a)~a \textbf{randomized routing
-probe panel}---hourly one-token requests under default and pinned
-policies with randomized arm order, identifying the router's realized
-selection behavior for our buyer tier; (b)~a \textbf{daily evaluation
-probe battery}---graded public benchmark items and deterministic
-prompts, per pinned provider, yielding verified per-provider quality
-signals (used in \S\ref{sec:repairs}).
+\begin{enumerate}[leftmargin=*,nosep]
+\item We formulate separate user, router, provider, and planner objectives for
+inference routing.  The formulation makes explicit why price-only, router-
+revenue, and welfare objectives need not agree.
+\item For entropy-regularized routing, we prove an exact regret identity: using
+a price-only score instead of the full generalized execution cost loses exactly
+a scaled KL divergence.  A uniform score-error bound then gives a robust
+approximation guarantee.
+\item We prove a hidden-capacity impossibility result.  Two economies with the
+same public menu can require opposite efficient allocations.  Every quote-only
+router incurs at least half the cost gap in one of them.  Execution-contingent
+capacity certificates are therefore an informational requirement, not merely a
+feature request.
+\end{enumerate}
 
-Stylized facts (established in the empirical companion under
-pre-registration discipline; all replicated in the repository): four
-split-sample-validated pricing species---\emph{anchor adopters} (quote
-exactly the model author's price on ${\geq}80\%$ of days; 25\% of pairs;
-83--89\% out-of-sample persistence), \emph{static undercutters} (median
-$-0.41$ log, near-zero repricing), \emph{active undercutters}
-(${>}1$ change/day micro-adjusters, ${\sim}$sub-1\% flow), \emph{premium}
-($+0.34$ log, rigid); a tie atom at the author price $3.4\times$ its
-grid-mechanical null, with author \emph{identity} not special under a
-multiset-preserving null (focality without salience); routing-level flow
-elasticity $-0.78$ against end-user elasticity $-0.05$ (a $20\times$
-wedge); and the steering fact central to \S\ref{sec:steering}: among
-position-zero default-policy selections, a cheapest provider with a
-price cut in the trailing week is chosen 3.9\% of the time versus
-23.3\% without ($\theta \approx 0.17$, memory ${\approx}7$ days).\footnote{The
-probe protocol is deliberately minimal: hourly one-output-token requests
-(\texttt{max\_tokens: 1}, temperature $0$) under randomized arm order,
-with the served provider read from the marketplace's generation-metadata
-endpoint. The entire panel costs a few dollars a month; the
-identification comes from the randomization, not the spend.}
+Finally, we evaluate an implementable adaptive score in held-out historical
+menus and a strategic multi-agent simulator.  The replay exposes a real trade-
+off between a coupling proxy and displayed price but holds provider behavior
+fixed.  A marginal-preserving signal-order intervention raises buyer prices in
+a focal two-UCB environment but vanishes across heterogeneous learning rules.
+These are useful design screens, not live-market welfare estimates.
 
-\section{Equilibrium: temperature, criticality, and the markup floor}\label{sec:theory}
+The paper contributes to multidimensional procurement \cite{che1993},
+two-sided platforms \cite{rochettirole2003}, pricing technology
+\cite{brownmackay2023}, platform steering
+\cite{johnsonrhodeswildenbeest2023}, and algorithmic interaction
+\cite{hansenmisrapai2021}.  Its methodological position is deliberately
+conservative: when market-wide flow and cost are hidden, theory should state
+conditional guarantees and experiments should test mechanism properties before
+assigning conduct.
 
-$n$ providers post prices $p_i \in (0, \bar p]$ ($\bar p$ the menu
-ceiling); marginal costs $c_i$; a unit mass of requests arrives per
-epoch; the router selects $i$ first with probability
-$s_i = p_i^{-a}/\sum_j p_j^{-a}$. Profits $\pi_i = s_i (p_i - c_i)$.
-With logits $-a \log p_i$ this is softmax: \emph{the router is a logit demand system with inverse temperature
-$a$}, and OpenRouter documents $a=2$ \cite{openrouter2026}.
+\section{Market, Timing, and Objectives}
+\label{sec:model}
 
-\begin{lemma}\label{lem:elasticity}
-$\partial s_i/\partial p_i = -(a/p_i)\, s_i(1-s_i)$: the own-price share
-elasticity is $-a(1-s_i)$---bounded by $a$ no matter how many rivals.
-\end{lemma}
+\subsection{Participants and transaction}
 
-\begin{lemma}[Single crossing]\label{lem:sc}
-$\pi_i$ is strictly quasiconcave on $(c_i, \bar p]$; the best response
-is the unique root of $h(p) \eqdef a(1-s_i(p))\frac{p-c_i}{p} = 1$, or
-the ceiling if $h(\bar p) \le 1$.
-\end{lemma}
+A request has observable context $x$ and user value $v(x,q)$ for delivered
+quality $q$.  A harness transforms the task and chooses a model-router pair.  The
+router observes a private eligibility set $A(x)$, public or private endpoint
+features, and possibly an ordered fallback list.  Provider $i$ posts input and
+output token prices, summarized by an expected request price $p_i(x)$, and
+delivers stochastic latency $L_i$, quality $q_i$, and success $y_i\in\{0,1\}$.
 
-\begin{theorem}[Phase structure and floor]\label{thm:phase}
-With symmetric costs $c$:
-(i)~if $a(n-1) > n$ (and $\bar p > p^*$), the unique symmetric
-equilibrium is
-\begin{equation}
-p^* \;=\; c\,\frac{a(n-1)}{a(n-1)-n};
-\end{equation}
-(ii)~if $a(n-1) \le n$, it is the menu ceiling $\bar p$---at $a=2$,
-precisely $n \le 2$;
-(iii)~for $a>1$, ANY interior equilibrium---asymmetric costs, any $n$,
-any outside option---satisfies $(p_i - c_i)/p_i > 1/a$, i.e.,
-$p_i > c_i\, a/(a-1)$, and the floor is tight as $n \to \infty$.
-\end{theorem}
+Providers differ in capacity technology.  An owned-capacity provider chooses
+$K_i$ before demand, pays fixed cost $F_i(K_i)$, and may have low short-run
+marginal cost.  A spot-dependent provider buys state-contingent capacity at
+$c_i(x,z)$ and has less fixed exposure.  A model author can post a focal anchor
+price.  A provider matching that anchor is ``non-strategic'' only with respect
+to its displayed-price process; it can still optimize admission, quality, or
+capacity.
 
-\begin{proof}
-Appendix~\ref{app:proofs}; every closed form here and below is enforced
-in continuous-integration tests against continuum numerics (13 tests).
-\end{proof}
+Let $s_i$ be the probability that $i$ is attempted, including any position in a
+declared fallback policy, and let $d_i=s_i\E[y_i\mid i,x]$ be delivered share.
+Transfers cancel in static social surplus but affect entry and investment.  The
+four objectives are
+\begin{align}
+U_i &= \E[(p_i-c_i(x,K_i,q_i))d_i-F_i(K_i)-\phi_i], \\
+R &= \E[f(p_i,d_i)-C_{\rm retry}-C_{\rm SLA}], \\
+V &= \E[v(x,q_i)y_i-p_i y_i-\lambda_L L_i-\lambda_F(1-y_i)], \\
+W &= V+R+\sum_i U_i-\text{pure transfers},
+\label{eq:objectives}
+\end{align}
+where $\phi_i$ includes penalties or collateral losses.  A router may maximize
+revenue $R$, a user-facing generalized cost, or a constrained combination.  We
+never infer which objective is deployed from public prices.
 
-\begin{corollary}[Measured elasticity]\label{cor:eps}
-With aggregate demand $D \propto P^{\varepsilon}$ (inclusive-value index
-$P$, $\varepsilon$ the end-user elasticity), the symmetric FOC is
-$p/(p-c) = a(n-1)/n + |\varepsilon|/n$. At the measured
-$\varepsilon=-0.05$ and deployed $a=2$: duopoly $p^* = 41c$. Captivity
-is the $\varepsilon \to 0$ limit, not an assumption we need.
-\end{corollary}
+\subsection{Information ladder}
 
-In other words, the router's smoothing is itself the market power: no
-conduct is required for a 100\% markup to persist. Three readings.
-\emph{The floor is entry-proof:}
-Lemma~\ref{lem:elasticity} bounds share elasticity by $a$, so no amount
-of entry raises the elasticity a provider faces above $a$; at $a=2$,
-markups never fall below 100\%. Softmax smoothing---adopted for uptime
-insurance and exploration---\emph{is} product differentiation,
-manufactured by the platform. \emph{The critical line is populated:} the
-modal market in our panel has 1--3 providers; $a=2$ puts $n=2$ on the
-line, and the observed menus-at-ceiling behavior (premium species,
-adopters at the author's list price) is the condensed
-phase.\footnote{The analogy is quantitative, not decorative: the fitted
-species heterogeneity plays the role of quenched disorder---frozen
-provider types over which the annealed price dynamics run---and the
-critical line is where the quenched free energy stops being
-self-averaging across markets.} \emph{The
-wedge is structural:} Corollary~\ref{cor:eps} turns our measured
-$20\times$ elasticity wedge into the theorem's parameter---near-captive
-end-user demand is exactly why realistic menus bind before equilibrium
-does.
-
-\section{Steering: the measured penalty is a deterrence device}\label{sec:steering}
-
-Model the measured behavior as: a provider whose price is below its
-price at any of the last $M$ epochs has weight $\theta\, w(p)$. (At
-symmetric profiles, ``any recent cutter'' and the measured ``cheapest
-with a recent cut'' coincide---any strict cut makes you cheapest; our
-calibrated experiments run both variants.)
-
-\begin{theorem}[Deterrence]\label{thm:steering}
-At a symmetric profile $q$ with rival weight $W = (n-1)q^{-2}$:
-(i)~the flagged deviant's optimal cut is
-$p_{\mathrm{dev}} = c + \sqrt{c^2 + \theta/W}$;
-(ii)~undercutting is unprofitable for a one-epoch optimizer iff
-$\theta \le \theta^*$, the unique root of $v(\theta^*) = (q-c)/n$;
-across calibrated configurations $\theta^* \in [0.81, 1.0]$---the
-measured $\theta = 0.17$ sits deep inside;
-(iii)~a one-time cut held forever is deterred iff
-$\delta \le \delta^\dagger = 0.9895$ (calibrated parameters;
-$\delta^M \le 0.93$);
-(iv)~an agent cutting at least once per $M$ epochs is permanently
-flagged and pays share tax $\theta/(\theta+n-1)$ vs.\ $1/n$---
-$4.9\times$ at measured values.
-\end{theorem}
-
-This bound demonstrates that the measured penalty is roughly five
-times stronger than the weakest penalty that would already deter
-undercutting. The economic reading: the penalty---presumably deployed
-as
-bait-and-switch protection---is an \emph{asymmetric menu cost on price
-cuts only, imposed by the platform}. It converts the routing game into
-one where holding high prices is robustly optimal for any realistically
-patient agent, and it specifically taxes the high-frequency undercutting
-technology we observe dying in the data (the registered cut-frequency
-decay watch). Johnson--Rhodes--Wildenbeest \cite{jrw2023} designed
-steering to \emph{break} seller collusion; the deployed steering is
-their inverse, with a measured parameter.\footnote{A last-look analogy
-is exact: in FX, dealers who get cut off after adverse quote updates
-learn to quote wide and stable. Here the router plays the liquidity
-consumer who punishes aggressive quoting.}
-
-\section{The calibrated environment and its validation gate}\label{sec:env}
-
-Counterfactuals about mechanisms require agents, and assuming Bertrand
-agents would beg every question. Our environment fits the observed
-species (margins, hazards, rationing slopes from the panel's train
-window; costs as identified bands from the capital-tier registry and the
-GPU book with its walk-the-book impact curve) and \emph{must pass a
-pre-registered validation gate before any counterfactual runs}: ten
-moments computed by identical code on simulated and observed panels,
-distance $\le 0.04$, with the moments explicitly split into calibration
-echoes and genuinely emergent tests. The confirmatory run (20 seeds,
-deterministic replication) passes at distance $0.019$; the two emergent
-moments carry the weight---\emph{flow elasticity $-0.65 \pm 0.35$ vs.\
-$-0.78$ observed with no fitted allocation parameter} (the documented
-rule alone generates the measured demand response), and adopter-atom
-out-of-sample persistence $0.83$ vs.\ $0.834$. Learning counterfactuals
-then show (all pre-specified, gated, seeded): the exponent is a price
-dial (Figure~\ref{fig:dial}; uniform $1.53 \to a{=}2$: $0.94 \to$ floor
-at $a \ge 8$, with learning friction regularizing the critical
-singularity); learners never rediscover micro-adjustment and form
-anchor ties endogenously; and the steering counterfactual of
-\S\ref{sec:steering}---penalty on flips the learning undercutter to the
-ceiling in 4/4 calibrated markets (broad rule) and raises the
-flow-dominant bottom-of-book quote $+81\%$ where the strict measured
-conditional binds.
-
-\begin{figure}
-\centering
-\includegraphics[width=\linewidth]{../figs/exponent_dial.png}
-\caption{The routing exponent is a price dial ($n=3$). Theory Nash curve
-(capped at the menu ceiling; shaded region: no interior equilibrium,
-$a(n-1) \le n$) with converged Q-learning prices overlaid. The deployed
-$a=2$ sits at the edge of the collapse; learning friction smooths the
-critical singularity.}
-\label{fig:dial}
-\end{figure}
-
-\section{Heterogeneous capital and the objective frontier}\label{sec:frontier}
-
-Providers are not symmetric. The registry splits them into
-owned-capacity types (hyperscaler DCs, own silicon; low marginal cost,
-high fixed cost---the ``reserved instance'' world) and spot-dependent
-types (rent H100s on a thin order book; marginal cost includes walking
-the book, $+18$--$52\%$ at realistic fill sizes). Take $c_L = 0.10$,
-$c_S = 0.50$ (the calibrated band endpoints), $n_L = 2$, $n_S = 3$, and
-solve the asymmetric FOC system $p_i/(p_i - c_i) = a(1-s_i)$ across $a$
-(Table~\ref{tab:frontier}).
+Table~\ref{tab:ladder} states what each source can identify.  The distinction
+between simulated share and realized share is essential.  If an analyst applies
+$p_i^{-2}/\sum_jp_j^{-2}$ to a public menu, the output is a property of that
+formula and menu.  It is not routed share unless eligibility, quality filters,
+and fallback are either observed or experimentally shown irrelevant.
 
 \begin{table}
-\caption{Two-type frontier across the routing exponent. Flow-price
-$\propto$ ad-valorem platform revenue; welfare $= v - \sum_i s_i c_i$.}
-\label{tab:frontier}
-\begin{tabular}{lccccc}
+\caption{Identification ladder.  Higher rows do not inherit the claims of lower
+rows without an explicit bridge.}
+\label{tab:ladder}
+\small
+\begin{tabular}{p{0.25\columnwidth}p{0.67\columnwidth}}
 \toprule
-$a$ & $p_L$ & $p_S$ & flow-price & welfare & spot profit \\
+Source & Identified object \\
 \midrule
-1.5 & 0.99 & 1.60 & 1.25 & 1.731 & 0.155 \\
-2   & 0.51 & 1.10 & 0.65 & 1.802 & 0.049 \\
-3   & 0.27 & 0.76 & 0.30 & 1.875 & 0.005 \\
-4   & 0.20 & 0.67 & 0.20 & 1.895 & 0.001 \\
-6   & 0.15 & 0.60 & 0.15 & 1.900 & ${\sim}0$ \\
+Public menu & Quotes, endpoint labels, displayed availability \\
+Router aggregates & Published congestion, derank, and rate-limit state \\
+Shadow rule & Allocation implied by a declared formula, conditional on menu \\
+Owned requests & Selected provider, cost, and outcomes for our account/workload \\
+Private logs & Potentially arrivals, eligibility, attempts, and market-wide flow \\
+Cost/value data & Needed with outcomes for welfare and dumping claims \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\emph{The objectives disagree, and the platform is conflicted.}
-Welfare (allocative: flow sorted to low-cost capacity) is increasing in
-$a$; ad-valorem platform revenue is \emph{decreasing} in $a$---a
-platform charging a percentage fee is paid to keep the market soft. And
-spot-dependent viability collapses in $a$: the sharp-routing world is a
-world where only data-center owners survive, which prices resilience at
-zero until the first correlated outage.\footnote{Practitioner reading:
-this is the routing-market version of the PFOF debate. The
-intermediary's fee base is the price level; sharpening execution quality
-cuts its own revenue. The fix (\S\ref{sec:repairs}) is the same as in
-brokerage: decouple the fee from the price.}
+\section{Conditional Mechanism Results}
+\label{sec:theory}
 
-\emph{Robustness (cost bands).} The welfare-increasing-in-$a$ ordering
-holds at all four corners of the identified cost bands
-($c_L \in \{0.05, 0.25\}$, $c_S \in \{0.3, 0.7\}$): monotone in every
-case. \emph{Resilience-adjusted welfare.} With probability $\rho$ per
-epoch all owned capacity fails simultaneously; if the spot fleet has
-exited (profit below fixed cost $F_S = 0.01$), those requests are lost
-at value $v$. At $\rho = 2\%$: adjusted welfare is $1.802$ ($a{=}2$,
-spot viable) vs.\ $1.855$--$1.860$ ($a \ge 4$, spot exited)---sharp
-routing still wins, but the gap narrows fourfold; the ranking flips at
-$\rho \gtrsim 5\%$. The honest design statement: softness is
-welfare-justified as outage insurance only for correlated-outage
-intensities above ${\sim}5\%$ per epoch; below that, the right
-architecture is sharp routing \emph{plus} priced capacity commitments
-(\S\ref{sec:repairs}), not a soft exponent that pays every provider an
-insurance premium whether or not insurance is delivered.
+\subsection{Inverse-power routing is a benchmark, not a measurement}
 
-\paragraph{E-MECH1 (the frontier with learners).} Replacing the FOC with
-Q-learning agents (5 seeds/arm) confirms the ordering---learned welfare
-$1.66$ (uniform) $\to 1.797$ ($a{=}2$) $\to 1.856$ (adaptive
-$a^*(n){=}6.25$) $\to 1.898$ (WTA); learned flow-weighted price
-$1.58 \to 0.68 \to 0.43 \to 0.40$; spot-type profit
-$0.64 \to 0.157 \to 0.011 \to -0.000$ (winner-take-all drives spot types
-below cost)---with one addition theory alone would not have exhibited so
-starkly: the deployed pair ($a=2$ + the measured cut-penalty) is
-\emph{simultaneously the worst arm on welfare} ($1.66$, tied with
-uniform routing) \emph{and the best for ad-valorem platform revenue}
-(flow price $1.60$---the menu ceiling; all learners at the cap). The steering does
-not merely blunt the exponent's discipline; it deletes it. The
-platform's deployed configuration is the revenue-maximizing corner of
-the frontier we traced.
-
-\section{Mechanism repairs}\label{sec:repairs}
-
-\paragraph{Thickness-adaptive temperature.} Theorem~\ref{thm:phase}
-inverts: to hold the Lerner index at target $\ell^*$ in an $n$-provider
-market, set $a^*(n) = n/(\ell^*(n-1))$. At $\ell^* = 0.2$: $a^* = 10$
-($n{=}2$), $7.5$ ($n{=}3$), $6.25$ ($n{=}5$), $\to 5.56$. One line of
-router code; kills the critical line (no market sits in the condensed
-phase); keeps softmax's exploration/insurance properties (unlike
-winner-take-all). Cost: \S\ref{sec:frontier}'s viability column---sharp
-temperatures starve spot-dependent capacity, so $\ell^*$ should embed
-the resilience value, or be paired with capacity commitments below.
-
-\paragraph{Verified-quality weighting.} Price-only weights create
-adverse selection in \emph{quality}: serving a quantized/degraded
-variant saves cost $\Delta$ at buyer-invisible quality damage $d$, and
-under $w = p^{-a}$ shading is strictly dominant (share unchanged, cost
-falls). Weight $w = q^b p^{-a}$ instead, with $q$ verified: shading
-multiplies weight by $(1-d)^b$, and the symmetric all-high profile is an
-equilibrium iff $b \ge b^*$ solving
+Suppose, only for this subsection, that all $n$ providers are eligible and the
+router really allocates
 \begin{equation}
-\tfrac{1}{n}(p - c) \;=\; \frac{(1-d)^b}{(1-d)^b + n - 1}\,(p - c + \Delta).
+s_i(p)=\frac{p_i^{-a}}{\sum_jp_j^{-a}},\qquad a>0.
+\label{eq:inversepower}
 \end{equation}
-At calibrated values ($n{=}3$, $d{=}0.2$, $\Delta{=}0.08$):
-$b^* = 0.63$---a \emph{modest} quality exponent suffices, and $b^*$
-falls with $n$. The required $q$ is not hypothetical: our deployed
-evaluation probes already produce per-provider graded-accuracy and
-output-consistency scores daily. E-MECH2 (5 seeds, 600k epochs):
-learned high-quality share rises $0.27$ ($b{=}0$, the deployed
-quality-blind rule) $\to 0.40$ ($b{=}0.5$) $\to 0.67$ ($b{=}1$)
-$\to 0.53$ ($b{=}2$). The direction matches the theory---quality
-weighting shifts learned play toward quality provision, with the
-largest jump crossing $b^*$---but the bifurcation is noisy rather than
-sharp: the quality margin ($\Delta = 0.08$) is small relative to
-price-learning noise in the doubled action space, and at $b=2$
-quality-weight and price competition interact. We report this as
-directional confirmation of the closed-form threshold, not a sharp
-learnability boundary.
+With constant marginal cost $c_i$ and fixed demand, provider profit is
+$\pi_i=(p_i-c_i)s_i$.  This is a useful mechanism benchmark even though our data
+reject it as the full realized allocation law.
 
-\paragraph{Fee decoupling.} Ad-valorem fees make the platform's
-objective $\propto$ flow-weighted price (\S\ref{sec:frontier}). A
-per-request (or per-token-served) flat fee makes platform revenue
-proportional to \emph{volume}, aligning the platform with allocative
-efficiency and removing its stake in the price level. This is the
-one-line governance repair that makes the adaptive exponent
-incentive-compatible \emph{for the platform}.
+\begin{proposition}[Conditional share elasticity and markup]
+Under \eqref{eq:inversepower},
+\begin{equation}
+\frac{\partial\log s_i}{\partial\log p_i}=-a(1-s_i).
+\end{equation}
+Every interior best response satisfies the Lerner index
+$L_i=(p_i-c_i)/p_i=1/[a(1-s_i)]>1/a$.  If costs are symmetric, an interior
+symmetric equilibrium exists when $a(n-1)>n$ and has
+\begin{equation}
+p^*=c\frac{a(n-1)}{a(n-1)-n}.
+\end{equation}
+\end{proposition}
 
-\paragraph{Steering redesign and commitment contracts.} Replace the
-asymmetric cut-penalty with (i)~symmetric change-penalties (a true menu
-cost---removes the directional deterrence of Theorem~\ref{thm:steering}
-while keeping stability protection), or (ii)~quality/uptime-conditioned
-steering only (penalize serving failures, not price cuts---the stated
-goal without the collusive side effect). For spot-dependent viability
-under sharp temperatures: capacity-commitment contracts (the
-reserved-instance analog): providers pre-commit admitted capacity at
-posted prices and are penalized for reneging---converting resilience
-from an implicit subsidy paid via soft routing into an explicit priced
-product.
+The result explains why the routing exponent controls price incentives
+\emph{when the mechanism is actually used}.  It does not license substituting
+$a=2$ into a structural market model.  Private eligibility and quality change
+both $s_i$ and the derivative providers face.
 
-\section{Related work}
+\subsection{The cost of omitting quality}
 
-Anderson--de~Palma--Thisse \cite{anderson1992} (logit oligopoly);
-Calvano et al.\ \cite{calvano2020}, Klein \cite{klein2021}, Asker et
-al.\ \cite{asker2022}, Abada--Lambin \cite{abada2023},
-Hansen--Misra--Pai \cite{hansen2021} (algorithmic pricing/collusion---
-our demand system nests Calvano's, so their apparatus transfers);
-Johnson--Rhodes--Wildenbeest \cite{jrw2023} (platform steering against
-collusion; we document and analyze its deployed inverse); Demirer et
-al.\ \cite{demirer2025} (OpenRouter empirics: dispersion, elasticity);
-PriLLM \cite{guo2025prillm} (Stackelberg routing theory, no calibration
-or steering); Fish et al.\ \cite{fish2024} (LLM pricing agents; an
-LLM-agent tier exists in our codebase; running it at confirmatory scale
-is future work and not claimed here); Angeris--Chitra
-\cite{angeris2020curvature} (curvature as an intermediary's
-demand-shape choice); token-pricing screening
-\cite{bergemann2025}; metering and covert quantization audits (the
-practices \S\ref{sec:repairs} prices). None combine a documented
-allocation rule, measured steering, calibrated behavioral
-heterogeneity, and mechanism repairs evaluated with learning agents.
+Let the generalized execution cost of provider $i$ be
+\begin{equation}
+g_i=a\log p_i+\lambda_L\widehat L_i+lambda_F\widehat r_i
+-\lambda_Q\widehat q_i-\lambda_K\log \widehat K_i,
+\label{eq:score}
+\end{equation}
+where $\widehat r_i$ is failure risk and $\widehat K_i$ is committed, not merely
+advertised, capacity.  For $x$ in the probability simplex $\Delta_n$, define the
+entropy-regularized objective
+\begin{equation}
+F_g(x)=\langle x,g\rangle+\eta^{-1}\sum_i x_i\log x_i,
+\qquad \eta>0.
+\label{eq:gibbsobjective}
+\end{equation}
+Its minimizer is $x_i^g\propto e^{-\eta g_i}$.  A price-only router instead uses
+$\tilde g_i=a\log p_i$ and $x^{\tilde g}$.
 
-\section{Limitations}
+\begin{theorem}[Exact omitted-attribute regret]
+\label{thm:kl}
+For any finite score vector $g$ and any allocation $x\in\Delta_n$,
+\begin{equation}
+F_g(x)-F_g(x^g)=\eta^{-1}\KL(x\,\|\,x^g).
+\label{eq:klidentity}
+\end{equation}
+In particular, the loss from price-only routing is exactly
+$\eta^{-1}\KL(x^{\tilde g}\|x^g)$ and is zero if and only if the two allocations
+coincide.  Omitted attributes that are constant across eligible providers do no
+harm; attributes that reorder providers generally do.
+\end{theorem}
 
-Theory: symmetric-equilibrium characterization (the floor is the
-asymmetric statement); captive baseline with measured-$\varepsilon$
-corollary; capacity non-binding (rationing lives in the empirical
-companion). Measurement: $\theta$ from one conditional slice of one
-buyer tier; panel short (30-day re-estimation registered,
-auto-reopening); costs are identified sets (all quantitative claims
-reported across bands). Simulation: tabular Q at Calvano
-hyperparameters; expected-allocation training (exact under non-binding
-capacity); LLM-agent tier built, not confirmatory. The quality game's
-$d$ and $\Delta$ are calibrated to our eval-probe detection scale, not
-to a demand-side damage estimate.
+The identity is sharper than saying quality ``may matter.''  It turns the
+distance between a price-only and full score into an exact objective gap for a
+declared regularized objective.  It also gives a measurable target: a router can
+publish both score components and report the implied KL gap without disclosing
+prompt contents.
 
-\section{Practitioner takeaways}
+\begin{theorem}[Robust approximate scoring]
+\label{thm:robust}
+Suppose $\|\widehat g-g\|_\infty\le\epsilon$ and let $x^{\widehat g}$ minimize
+$F_{\widehat g}$.  Then
+\begin{equation}
+0\le F_g(x^{\widehat g})-F_g(x^g)\le 2\epsilon.
+\end{equation}
+\end{theorem}
 
-For router operators: (1)~publish $n$-adaptive temperatures, not one
-exponent---$a^*(n) = n/(\ell^*(n-1))$ is one line; (2)~never penalize
-price cuts asymmetrically---you are operating a cartel enforcement
-device; penalize failures, not prices; (3)~weight by verified quality
-with even a small $b$---your own eval probes suffice; (4)~charge flat
-fees if you want to be believed about (1)--(3). For providers: under the
-deployed rule, undercutting is (measurably) taxed and micro-adjustment
-is dominated---the observed adopter/premium behavior is the rational
-response, which is precisely the problem. For regulators: conduct-based
-tools will find nothing here; every elevated price in this paper is a
-static Nash equilibrium of a published rule.
+Thus an auditable score can be approximately efficient without perfectly
+estimating every attribute.  The guarantee is pointwise and does not assume a
+provider behavioral model.  It does require that the score target $g$ encode the
+planner or user objective rather than an ad hoc proxy.
 
-\section{Conclusion}
+\subsection{Why public prices cannot recover hidden capacity}
 
-The router is the demand curve, and at the deployed parameters it is a
-demand curve that cannot discipline anyone: duopolies sit at the menu
-ceiling ($41c$ at the measured outside elasticity), entry stops at a
-100\% markup, and the platform's own anti-cut steering pays providers to
-hold prices high. Every one of these statements follows from a published
-constant and a measured parameter, which is precisely why they are
-fixable: an $n$-adaptive temperature, verified-quality weights, and flat
-fees are each one line of code or one line of a fee schedule. The honest
-caveat is scale---one marketplace, one buyer tier, a registered
-re-estimation window that can reopen every calibrated claim---but the
-mechanism analysis needs none of the usual structural leaps, at least at
-first glance: the demand curve is in the documentation.
+\begin{theorem}[Quote-only hidden-capacity impossibility]
+\label{thm:impossibility}
+Consider two eligible providers with identical observable quotes, public quality,
+and public reliability.  There exist two economies consistent with those
+observables: in economy $A$, provider 1 has committed capacity and social cost
+$c$ while provider 2 has scarcity cost $c+\Delta$; in economy $B$ the costs are
+reversed.  Any quote-only randomized router incurs expected cost regret at least
+$\Delta/2$ in one economy.  A deterministic quote-only router incurs regret
+$\Delta$ in one economy.
+\end{theorem}
+
+The theorem formalizes the reserved-capacity problem.  Fundraising, data-center
+ownership, or a provider name is not the missing statistic: those are noisy
+proxies for deliverable capacity.  The mechanism needs a commitment whose breach
+has a consequence.  A capacity certificate can be a finite-slot report backed
+by collateral, an execution-contingent price, or an SLA with measurable credits.
+
+\subsection{Fee conflict}
+
+Suppose the router receives an ad-valorem fee $\tau$ on selected spend.  Holding
+volume and allocation fixed, its revenue is $\tau\sum_i x_ip_i$, while the user's
+payment is $\sum_ix_ip_i$.  A common price increase therefore benefits the
+router and harms the user one-for-one up to $\tau$.  A flat fee per successful
+request is locally neutral to the selected price but can still distort admission
+or volume.  Fee separation does not solve mechanism design, but it removes the
+most direct price-level conflict.
+
+\section{Data and Property Tests}
+\label{sec:data}
+
+\subsection{Capture system and estimands}
+
+The main public panel begins on 7 July 2026 and captures endpoint and model state
+at five-minute cadence in a remote GitHub Actions--Hugging Face pipeline.  We
+construct completion-price events only when a same endpoint-model quote changes
+between valid snapshots.  We separately collect router-published rate-limit,
+derank, and capacity fields.  Assignment-first paid probes record treatment
+before sending a minimal request and retrieve the selected provider and outcome
+for our account.  Private prompts and request rows never enter public releases.
+
+Every result freezes a dataset revision and declares a calibration/holdout split.
+The provider-regime analysis uses revision
+\texttt{cc045919595d2f8b0c211c128ac3e535f9b8c008}.  The first HMP monitor uses
+\texttt{aeb7f165669888514548170606fd3a29b1d0fb5f}.  The adaptive replay is
+trained before 16 July and evaluated afterward.  These windows are short; they
+support falsification and mechanism screening, not a mature structural estimate.
+
+\subsection{Regimes are persistent, except active undercutting}
+
+Provider-model pairs are frozen in a training window into four descriptive
+pricing regimes relative to the model-author benchmark: premium, anchor adopter,
+static discounter, and active undercutter.  The names describe a price path, not
+a provider's cost or intent.  Of 365 training pairs, 360 are holdout-evaluable.
+Overall persistence is 0.892 (95\% Wilson interval $[0.855,0.920]$).  Premium and
+static-discount regimes persist at 0.991 and 0.962; anchor adoption at 0.830; but
+active undercutting persists in only 4 of 20 pairs, or 0.200
+($[0.081,0.416]$).  Fourteen of the 20 active pairs become static discounters.
+
+This pattern fits a Brown--MacKay-style world in which repricing technologies
+differ \cite{brownmackay2023}, but it does not identify such technology.  Active
+undercutting could also reflect promotion windows, capacity shocks, or menu
+corrections.  The testable implication is duration: future data should estimate
+transition hazards as a function of benchmark gap, capacity state, and update
+frequency, with provider-model fixed effects.
+
+\begin{figure*}
+\centering
+\includegraphics[width=\textwidth]{empirical-audit.pdf}
+\Description{Three panels show holdout persistence by posted-price regime,
+active-undercutter response versus a timing placebo, and the displayed-price,
+coupling, and reliability trade-off from a held-out mechanical router replay.}
+\caption{Three empirical boundaries.  Panel A: frozen training regimes and
+holdout persistence (Wilson 95\% intervals).  Panel B: active-undercutter rival
+response in the registered window versus a shifted timing placebo.  Panel C:
+held-out adaptive-score replay; the reliability change is in percentage points.
+Panel C holds menus and provider behavior fixed, so it is not a welfare estimate.}
+\label{fig:audit}
+\end{figure*}
+
+\subsection{No excess rival response in the active regime}
+
+For 1,006 active-undercutter events in 11 target provider-model clusters, the
+registered rival-action rate is 0.376 ($[0.346,0.406]$), compared with 0.456
+($[0.426,0.487]$) in a shifted timing placebo.  The paired difference is
+$-0.081$; a target-cluster bootstrap interval is $[-0.132,0]$, and the exact
+one-sided test for \emph{more} registered-window response has $p=1.00$.  The
+placebo is not randomized treatment, but the direction rejects a simple
+``undercut then immediate rival response'' account in the current window.
+
+\subsection{Displayed score is not realized clearing}
+
+An independent welfare audit compares the elasticity implied by the public
+inverse-square score with the observed aggregate share elasticity.  The
+inverse-square restriction is rejected with $z=10.06$.  An earlier aggregate
+estimate is $-1.19$ (standard error 0.17), but it is neither request-level
+selection nor a price experiment.  We therefore use inverse-power routing only
+as the conditional benchmark in Section~\ref{sec:theory}.
+
+Owned routing reinforces the distinction.  In the provider-regime release, 151
+delegated selections match frozen regimes: 70 anchor, 73 premium, four active,
+and four static.  These counts depend on our model and prompt mix and are not
+market shares.  A separate frozen first-position experiment, H81, decomposes
+fallback from delegated selection.  In its 133 preterminal assignments, the
+missing-outcome identified set places the fallback and total-delegation contrast
+at 4.4--6.7 percentage points and hidden selection at zero.  Missingness
+suppresses the complete-data primary randomization family, and two repeated
+models prevent broad transport.  The fixed-horizon H95 replication remains
+blinded until its preregistered horizon and is not pooled with H81.
+
+\subsection{Quality, capacity, and ``dumping'' remain unidentified}
+
+Premium providers do not show a significant holdout throughput advantage
+($p=0.392$) or latency advantage ($p=0.738$) in provider-model residual
+aggregates.  This does not prove premiums lack value: task fidelity, privacy,
+support, and selection into quality measurement remain missing.  More sharply,
+zero provider-model cells have a valid utilization measure linking load to a
+capacity ceiling.  Static discounters more often fall below one scenario GPU-
+cost bound, but marginal cost, reserved-capacity amortization, rebates, and
+subsidies are unobserved.  The registered verdict is therefore
+\texttt{dumping\_supported=false}.
+
+The same caution applies to geography.  A name-based ``China-linked'' tag is
+more common among active and static discount regimes, but a name tag is neither
+cost nor strategy.  A causal explanation requires at least location, hardware,
+energy price, reserved capacity, subsidy/rebate exposure, and realized
+utilization.  These are fields for a data partnership, not coefficients to
+impute from names.
+
+\section{Signal Coupling and Collusion Screens}
+\label{sec:hmp}
+
+Hansen--Misra--Pai show how independent pricing algorithms can reach high prices
+when correlated experiments bias own-price learning
+\cite{hansenmisrapai2021}.  Their mechanism does not require communication.  It
+does require a chain of observable properties before it can explain this market:
+
+\begin{enumerate}[leftmargin=*,nosep]
+\item excess residual quote coupling after preserving common clocks;
+\item a preperiod routing signal-to-noise gradient;
+\item a wedge between independent and coupled elasticity specifications; and
+\item a forward transition toward higher buyer prices or high-price states.
+\end{enumerate}
+
+WF18 freezes this chain and a Holm family.  In its first monitor, 686 price events
+span 44 models and ten providers.  The mechanism window has 253 events and 19
+provider-pair/model clusters.  The 24-hour residual covariance is 0.01659; its
+excess over 2,000 clock-preserving circular shifts is 0.01874, with a one-sided
+$p=0.10995$ and null 95\% interval $[-0.03056,0.02444]$.  One provider pair
+supplies 76.7\% of paired events, and leave-one-unit estimates range from
+$-0.00051$ to 0.06132.  The signal-to-noise and elasticity-wedge legs are
+power-gated, leaving the Holm family incomplete.
+
+The correct conclusion is weak, concentrated quote synchronization and no
+promoted HMP claim.  We do not identify collusion, communication, provider
+algorithm, or intent.  This is stronger science than treating every correlation
+as evidence: the property chain specifies exactly what future observations must
+add.
+
+\subsection{A causal simulator result with a failed transport screen}
+
+The simulator pairs provider learners while preserving every marginal reward
+sequence and shuffling only common signal order.  This makes the intervention
+causal \emph{inside the simulator}.  In a focal two-UCB-agent prisoner's-dilemma
+environment, coupled signals increase innovation correlation, all-high play,
+and mean buyer price.  The one-seed screen gives a mean buyer-price effect of
+$+0.12975$, positive in 72.2\% of focal cells.  Across epsilon-greedy and static
+mixtures, however, the effect is $+0.00343$ and positive in 52.8\% of cells.  The
+executable verdict is \texttt{mechanism\_validated=false}.
+
+This negative transport result is substantively useful.  Signal coupling is not
+a generic consequence of dynamic pricing; it depends on how agents map common
+noise into exploration.  Any theory claiming universal collusion from public
+signals is too coarse for this market.  The simulation instead motivates a
+critical-memory question: which learner memory and signal-to-noise combinations
+make correlated exploration statistically discoverable in finite time?  That is
+a separate learning-theory problem, not asserted here.
+
+\section{An Auditable Router Design}
+\label{sec:design}
+
+\subsection{Score, commitments, and exploration}
+
+Theorems~\ref{thm:kl}--\ref{thm:impossibility} suggest a concrete design.
+
+\begin{enumerate}[leftmargin=*,nosep]
+\item Compute a generalized score like \eqref{eq:score}, with task-conditional
+latency, failure, and quality predictions estimated out of sample.
+\item Replace advertised capacity with an execution-contingent commitment:
+finite slots, collateral, or SLA credits.  Publish how retries enter score and
+payment.
+\item Use bounded exploration so new or small providers can generate evidence;
+cap concentration and common-mode exposure.
+\item Charge the router through a fee separated from selected spend, while
+reporting both user generalized cost and router revenue.
+\end{enumerate}
+
+The score need not collapse every objective into one undocumented number.  The
+router can publish a Pareto frontier over user generalized cost, router revenue,
+provider viability, concentration, and completion.  Different user classes can
+choose points on that frontier, provided the accounting is explicit.
+
+\subsection{Robust policy optimization}
+
+Let $\theta$ parameterize score coefficients, exploration, caps, and fee design.
+Let $\Omega$ be a declared set of cost, quality-value, capacity, and provider-
+learning models consistent with the evidence.  One implementable objective is
+\begin{align}
+\min_{\theta}\ \sup_{\omega\in\Omega}\;&
+\mathcal R_U(\theta;\omega)
++\lambda_P\max_i\mathcal E_i(\theta;\omega)
++\lambda_C\max_{S:|S|\le k}\mathcal E_S(\theta;\omega) \nonumber\\
+&+\lambda_V\mathcal V(\theta;\omega),
+\label{eq:robustdesign}
+\end{align}
+subject to completion, concentration, budget, and capacity constraints.
+$\mathcal R_U$ is user regret relative to the best feasible full-information
+policy; $\mathcal E_i$ and $\mathcal E_S$ are unilateral and coalition
+exploitability; and $\mathcal V$ collects constraint violations.  This is not a
+claim that the router knows welfare.  It is a way to report which uncertainties
+drive a design recommendation.
+
+\subsection{Historical replay}
+
+On 14 observed days containing 18,947 hourly menus, 71 models, and 48 providers,
+a training-only selection chooses price exponent 1.25 and exploration 0.10.  In
+the post-16-July holdout, the rule reduces the quote-coupling proxy by 49.3\%,
+increases displayed price by 2.08\%, and changes public reliability by
+$+0.0059$ percentage points.  The replay holds menus and provider behavior fixed.
+It therefore measures a mechanical frontier, not equilibrium, revenue, or
+welfare.  It is a candidate arm for a randomized policy experiment.
+
+\subsection{The policy-frontier experiment}
+
+The replay suggests a prospective experiment whose estimands are narrower than
+``welfare'' but decision-relevant.  Randomize request triplets within
+model--prompt--time blocks among (i) the production delegated policy, (ii) a
+price-ordered policy with fallback, and (iii) the adaptive generalized score.
+Freeze the adaptive score before opening outcomes.  The primary vector is
+attempted-request spend, completion, total latency including retries, and a
+blinded task-fidelity score.  Provider choice, fallback position, and public
+enforcement state are mechanism variables rather than outcomes to condition on.
+
+Because routing treatments can change congestion, inference should randomize
+time clusters or use switchbacks after a low-load pilot, report assignment-first
+intention-to-treat effects, and preserve bounded-outcome randomization intervals.
+No scalar index should be primary unless the user-value weights are frozen in
+advance.  Instead, report the joint Pareto set and the range of value weights for
+which each policy is preferred.  A second, provider-facing phase randomizes
+execution-contingent capacity commitments among willing endpoints and measures
+admission, delivery, and post-experiment retention.  This separates the short-run
+routing effect from the longer-run entry and investment response that a menu
+replay cannot recover.
+
+The experiment has three promotion gates.  First, the adaptive arm must preserve
+randomization integrity and overlap across models, hours, and provider sets.
+Second, its completion and fidelity lower bounds must exceed declared safety
+floors.  Third, any welfare statement must remain valid over a preregistered box
+of user values and provider cost bounds.  Failure of the third gate still permits
+a useful multi-outcome mechanism comparison; it only blocks scalar welfare.
+
+\subsection{Practical provider types}
+
+The mechanism must work across three economic technologies even though public
+price regimes do not identify them.
+
+\begin{itemize}[leftmargin=*,nosep]
+\item \emph{Owned or reserved capacity}: high fixed cost, low short-run marginal
+cost, and a strong incentive to maintain utilization.  Capacity commitments are
+credible when backed by sunk infrastructure but still require outage penalties.
+\item \emph{Spot-dependent providers}: flexible entry and state-dependent cost.
+They provide resilience but may disappear exactly during common scarcity.
+State-contingent commitment prices are more appropriate than a fixed share.
+\item \emph{Model authors and anchor adopters}: an author quote can coordinate
+expectations, while identical third-party quotes may reflect default menus rather
+than common costs.  The router should not treat an anchor as a cost certificate.
+\end{itemize}
+
+Free entry is not automatically efficient.  An entrant adds a redundant delivery
+path but diverts requests and may increase retry or monitoring costs, echoing the
+classic business-stealing result \cite{mankiw1986freeentry}.  Capacity-certified
+entry is preferable to counting endpoint labels: it rewards incremental delivered
+capacity rather than duplicated menus.
+
+\section{Related Work}
+
+Multi-model routers such as FrugalGPT, RouteLLM, and RouterBench optimize across
+models \cite{chen2023frugalgpt,ong2024routellm,hu2024routerbench}.  We hold the
+model label fixed and study provider procurement; the two routing layers compose.
+Multidimensional procurement shows why price and quality must be scored jointly
+\cite{che1993}; two-sided platform theory clarifies fee and participation
+externalities \cite{rochettirole2003}.
+
+Brown and MacKay study heterogeneous pricing technology and repricing frequency
+\cite{brownmackay2023}.  Their framework motivates our duration and regime
+transition tests, not a provider-type label.  Hansen, Misra, and Pai show that
+independent, misspecified pricing learners can produce supra-competitive prices
+through correlated experiments \cite{hansenmisrapai2021}; our ordered property
+chain and signal-order intervention isolate that mechanism and currently fail to
+transport it.  Johnson, Rhodes, and Wildenbeest show how platform prominence can
+change algorithmic competition \cite{johnsonrhodeswildenbeest2023}.  Inference
+routing adds hidden eligibility, fallback, and stochastic delivered quality.
+
+The closest empirical benchmark uses OpenRouter and Azure data to study the
+emerging market for intelligence \cite{demireretal2025}.  We focus on provider-
+level microstructure and the gap between displayed and delivered liquidity.
+Switchback and marketplace experiments face interference
+\cite{bojinov2023,holtz2025}; our assignment-first probes and first-position
+estimands are designed around that problem.  Price focal points and the reflection
+problem motivate hard nulls for anchor following rather than causal stories from
+ties alone \cite{knittelstango2003,manski1993}.
+
+\section{Limitations and Conclusion}
+
+The public panel is measured in weeks, not quarters.  Owned probes cover one
+account, region, workload, and budget.  Capacity, provider cost, user task value,
+private rebates, and market-wide flow are not observed.  Public enforcement
+fields are router-published aggregates rather than request logs.  The current
+quality panel is selected and incomplete.  Historical replays hold menus fixed;
+simulator interventions are causal only inside the simulator.  We therefore do
+not estimate dumping, literal front-running, communication, collusion, or a scalar
+welfare loss.
+
+Within those limits, the market description changes sharply.  Open-weight
+execution is not a transparent commodity exchange.  It is a two-layer
+procurement market in which public prices sit above hidden admission, scoring,
+and fallback.  The empirical evidence rejects several tempting simplifications:
+inverse-square simulated share is not realized flow; active undercutting is not a
+stable provider type; current response timing does not support a simple reactive
+collusion story; and premium prices are not yet explained by observed QoS.
+
+The design response is not to declare a better exponent.  It is to expose the
+missing contracting dimensions.  Generalized scoring has an exact regret
+interpretation, approximate scores have a robust guarantee, and hidden capacity
+creates a formal impossibility for quote-only routing.  Execution-contingent
+prices, capacity commitments, verified quality, bounded exploration, and fee
+separation turn those results into a testable mechanism.  The next empirical
+step is a randomized policy frontier with delivered outcomes and declared value
+bands; the next data step is provider- or router-side capacity and attempt logs.
+Until then, the honest output is a set of feasible mechanisms, not one estimated
+welfare optimum.
 
 \appendix
 
-\section{Proofs}\label{app:proofs}
+\section{Proofs}
 
-\emph{Lemma~\ref{lem:elasticity}.} $s_i = w_i/(w_i + W_{-i})$,
-$w_i = p_i^{-a}$; $dw_i/dp_i = -(a/p_i)w_i$, so
-$ds_i/dp_i = -(a/p_i)s_i(1-s_i)$. \qed
+\paragraph{Conditional share elasticity and markup.}
+Write $W_{-i}=\sum_{j\ne i}p_j^{-a}$.  Direct differentiation gives
+\[
+\frac{\partial s_i}{\partial p_i}
+=-\frac{a}{p_i}s_i(1-s_i).
+\]
+The first-order condition for $(p_i-c_i)s_i$ is
+$1-a(p_i-c_i)(1-s_i)/p_i=0$, yielding the Lerner expression.  At a
+symmetric profile $s_i=1/n$; solving for $p$ gives the formula.  A finite positive
+solution requires $a(n-1)>n$. \hfill$\square$
 
-\emph{Lemma~\ref{lem:sc}.}
-$d\pi_i/dp_i = s_i\,[1 - h(p_i)]$ with $h$ a product of positive
-strictly increasing functions and $h(c_i)=0$; single crossing gives
-strict quasiconcavity and best-response uniqueness. \qed
+\paragraph{Proof of Theorem~\ref{thm:kl}.}
+The Gibbs minimizer satisfies $x_i^g=e^{-\eta g_i}/Z_g$, so
+$g_i=-\eta^{-1}\log x_i^g-\eta^{-1}\log Z_g$.  Substitution into
+\eqref{eq:gibbsobjective} gives
+\[
+F_g(x)=\eta^{-1}\sum_i x_i\log\frac{x_i}{x_i^g}
+-\eta^{-1}\log Z_g.
+\]
+The second term equals $F_g(x^g)$, proving \eqref{eq:klidentity}.
+\hfill$\square$
 
-\emph{Theorem~\ref{thm:phase}.} (i)~Impose $s = 1/n$ in $h(p)=1$;
-uniqueness from monotonicity of $h$ at the symmetric profile; the
-corner $\bar p$ fails when $h(\bar p)>1$ (profitable downward
-deviation). (ii)~$h(q) < a(n-1)/n \le 1$ at any symmetric $q$, so
-raising is strictly profitable below the ceiling; quasiconcavity rules
-out global downward deviations at $\bar p$. (iii)~$1-s_i<1$ in the FOC
-$\Rightarrow$ Lerner $> 1/a$; tightness as $s_i \to 0$. \qed
+\paragraph{Proof of Theorem~\ref{thm:robust}.}
+For every $x\in\Delta_n$,
+$|F_g(x)-F_{\widehat g}(x)|=|\langle x,g-\widehat g\rangle|\le\epsilon$.
+Optimality of $x^{\widehat g}$ for $F_{\widehat g}$ therefore implies
+\[
+F_g(x^{\widehat g})\le F_{\widehat g}(x^{\widehat g})+\epsilon
+\le F_{\widehat g}(x^g)+\epsilon\le F_g(x^g)+2\epsilon.
+\]
+The lower bound follows from optimality of $x^g$. \hfill$\square$
 
-\emph{Corollary~\ref{cor:eps}.} With $D = D_0 P^{\varepsilon}$ and
-$\partial \log P/\partial \log p_i = s_i$:
-$d\log \pi_i/d\log p_i = \varepsilon s_i - a(1-s_i) + p_i/(p_i - c)$;
-set to zero at $s = 1/n$. Same single-crossing argument. (The
-inclusive-value aggregator is a modeling choice; any aggregator with
-$\partial \log P/\partial \log p_i = s_i + o(s_i)$ gives the same FOC to
-first order.) \qed
+\paragraph{Proof of Theorem~\ref{thm:impossibility}.}
+A quote-only router must use the same allocation in both observationally
+equivalent economies.  Let $x$ be the probability assigned to provider 1.  Its
+regret is $\Delta(1-x)$ in economy $A$ and $\Delta x$ in economy $B$; the larger
+is at least $\Delta/2$.  If $x\in\{0,1\}$, the larger is $\Delta$.
+\hfill$\square$
 
-\emph{Theorem~\ref{thm:steering}.} (i)~The FOC of
-$\theta p^{-2}(p-c)/(\theta p^{-2} + W)$ reduces to
-$W p^2 - 2Wcp - \theta = 0$. (ii)~$v(\theta)$ is continuous, strictly
-increasing (envelope), $v(0)=0$; intermediate value.
-(iii)~direct present-value computation; the root $\delta^\dagger$ is
-numerically certified. (iv)~substitute equal prices with one weight
-scaled by $\theta$. \qed
+\section{Evidence and Claim Ledger}
 
-All closed forms are enforced by 13 continuous-integration tests
-against continuum numerics.
+The claim ledger is as follows.  Pricing regimes use 365 frozen training pairs
+and 360 holdout pairs but do not identify provider cost or intent.  The active-
+response screen uses 1,006 paired timing events and a cluster interval but is not
+randomized treatment.  The inverse-square restriction is rejected as realized
+market-wide allocation.  H81 identifies a bounded, narrow fallback decomposition,
+not a general router policy or market share.  Residual QoS tests and zero valid
+utilization cells do not identify technology rent, dumping, or marginal cost.
+The concentrated WF18 screen with $p=0.110$ does not identify collusion,
+communication, or a provider algorithm.  The adaptive replay does not identify
+welfare or equilibrium, and the simulator intervention does not establish live-
+market causality.
 
-\begin{thebibliography}{9}
-\bibitem{openrouter2026} OpenRouter. Provider routing:
-price-based load balancing (default strategy). Product documentation,
-\url{https://openrouter.ai/docs/features/provider-routing}; accessed
-2026-07-18; archived at
-\url{https://web.archive.org/web/20251121200046/https://openrouter.ai/docs/features/provider-routing}.
+The welfare audit evaluates ten necessary decentralization conditions: five are
+not identified, three are approximately consistent, one is inconsistent because
+retry externalities are not internalized, and one is power-gated.  This means the
+full welfare conjecture is not licensed; it is not an estimate that welfare is
+low.  The readiness ledger has one ready object, three power-gated objects, and
+eight uncollected objects.
 
-\bibitem{anderson1992} S.~Anderson, A.~de~Palma, J.-F.~Thisse.
-\emph{Discrete Choice Theory of Product Differentiation}. MIT Press, 1992.
-\bibitem{calvano2020} E.~Calvano, G.~Calzolari, V.~Denicol\`o,
-S.~Pastorello. Artificial intelligence, algorithmic pricing, and
-collusion. \emph{American Economic Review}, 2020.
-\bibitem{klein2021} T.~Klein. Autonomous algorithmic collusion.
-\emph{RAND Journal of Economics}, 2021.
-\bibitem{asker2022} J.~Asker, C.~Fershtman, A.~Pakes. Artificial
-intelligence, algorithm design and pricing. \emph{AEA P\&P}, 2022.
-\bibitem{abada2023} I.~Abada, X.~Lambin. Artificial intelligence: Can
-seemingly collusive outcomes be avoided? \emph{Management Science}, 2023.
-\bibitem{hansen2021} K.~Hansen, K.~Misra, M.~Pai. Frontiers:
-Algorithmic collusion. \emph{Marketing Science}, 2021.
-\bibitem{jrw2023} J.~Johnson, A.~Rhodes, M.~Wildenbeest. Platform
-design when sellers use pricing algorithms. \emph{Econometrica}, 2023.
-\bibitem{demirer2025} M.~Demirer, A.~Fradkin, S.~Peng, S.~Tadelis.
-The market for AI inference. NBER WP 34608, 2025.
-\bibitem{guo2025prillm} X.~Guo, Y.~Bai, H.~Jin. PriLLM: Pricing in
-LLM routing markets. arXiv:2511.09062, 2025.
-\bibitem{fish2024} S.~Fish, Y.~Gonczarowski, R.~Shorrer. Algorithmic
-collusion by large language models. arXiv:2404.00806, 2024.
-\bibitem{angeris2020curvature} G.~Angeris, T.~Chitra. When does the
-tail wag the dog? Curvature and market making. arXiv:2012.08040, 2020.
-\bibitem{bergemann2025} D.~Bergemann, A.~Bonatti, A.~Smolin. The
-economics of large language models. arXiv:2502.07736, 2025.
-\end{thebibliography}
+\section{Reproducibility}
+
+The empirical figure is generated by the checked-in figure-build script from two
+aggregate JSON files.  WF16, WF18, the adaptive replay, and the signal-coupling
+simulator are available through the repository's analysis and market-environment
+entry points.  Remote workflows freeze one Hugging Face
+revision, hydrate it once, run assignment-only preflights, remove owned request
+rows, and publish aggregate artifacts.  Unit tests cover residualization,
+circular-shift inference, multiplicity, claim flags, signal shuffling, and
+heterogeneous learner screens.  The source revision and protocol hash are stored
+inside every summary.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{../../paper/references}
 
 \end{document}

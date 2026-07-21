@@ -77,12 +77,12 @@ tex_label = "prop:revenue-share-identity"
 title = "Quantity-share and revenue-share equivalence"
 disposition = "companion"
 identification = "accounting identity under explicit assumptions"
-status = "proved but empirically weak and outside the revised focal question"
+status = "proved algebraically but the retired standalone H92 analyzer is not a registered empirical validation; outside the revised focal question"
 source_tables = ["model_activity", "endpoint_snapshots"]
-analyzers = ["src/orcap/analysis/h92_revenue_share_identity.py", "src/orcap/analysis/theory_validation_suite.py"]
+analyzers = ["src/orcap/analysis/theory_validation_suite.py"]
 collectors = ["src/orcap/capture_api.py"]
-tests = ["tests/test_h92_revenue_share_identity.py", "tests/test_theory_validation_suite.py"]
-validation_methods = ["proof audit", "synthetic accounting recovery", "assumption-violation simulation"]
+tests = ["tests/test_theory_validation_suite.py"]
+validation_methods = ["proof audit", "symbolic accounting identity", "assumption-boundary audit"]
 claim_boundary = "An identity under homogeneous unit prices; it is not evidence that observed routing maximizes revenue or welfare."
 
 [[claim]]
