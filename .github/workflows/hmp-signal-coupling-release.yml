@@ -1,0 +1,147 @@
+name: hmp-signal-coupling-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_release:
+        description: "Type RELEASE to permit the one-time support-gated WF18 release"
+        type: string
+        required: true
+
+concurrency:
+  group: hmp-signal-coupling-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: ${{ inputs.confirm_release == 'RELEASE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: freeze immutable source revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from pathlib import Path
+          from huggingface_hub import HfApi
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: run sample-only preflight before marker
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+        run: >-
+          uv run python -m orcap.analysis.wf18_signal_coupling
+          --preflight
+          --out data/analysis/hmp-signal-coupling-v1
+      - name: construct frozen WF16 state inputs for the release candidate
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+        run: >-
+          uv run orcap analyze --hypothesis wf16
+          --out data/analysis/hmp-signal-coupling-v1
+      - name: run WF18 release-candidate analysis on the frozen revision
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+        run: >-
+          uv run orcap analyze --hypothesis wf18
+          --out data/analysis/hmp-signal-coupling-v1
+      - name: run full frozen simulation grid
+        run: >-
+          uv run python -m orcap.market_env.experiments_signal_coupling
+          --out data/analysis/hmp-signal-coupling-v1/simulation
+      - name: enforce full release gate and immutable claim boundary
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("data/analysis/hmp-signal-coupling-v1")
+          summary = json.loads((root / "wf18_summary.json").read_text())
+          if not summary["support_gate"]["release_ready"]:
+              raise SystemExit(f"full WF18 gate failed: {summary['support_gate']}")
+          for key in (
+              "collusion_identified",
+              "provider_algorithm_identified",
+              "communication_identified",
+          ):
+              if summary[key] is not False:
+                  raise SystemExit(f"claim boundary changed: {key}")
+          PY
+      - name: create the one-time immutable promotion marker before release publication
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          SOURCE_REVISION: ${{ steps.source.outputs.revision }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import hashlib
+          import os
+          from pathlib import Path
+          from huggingface_hub import HfApi
+
+          root = Path("data/analysis/hmp-signal-coupling-v1")
+          preflight = json.loads((root / "wf18_assignment_only_preflight.json").read_text())
+          summary_path = root / "wf18_summary.json"
+          if preflight.get("outcomes_accessed") is not False:
+              raise SystemExit("preflight accessed outcomes")
+          if not preflight.get("sample_gate_candidate"):
+              raise SystemExit(f"WF18 sample gate not ready: {preflight['sample_checks']}")
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo = "t4run/openrouter-market-history"
+          prefix = "analysis/hmp-signal-coupling-v1/releases/"
+          existing = [
+              path for path in api.list_repo_files(repo, repo_type="dataset")
+              if path.startswith(prefix) and path.endswith("MARKER.json")
+          ]
+          if existing:
+              raise SystemExit(f"WF18 was already marked: {existing}")
+          marker = {
+              "study_id": "hmp-signal-coupling-v1",
+              "source_revision": os.environ["SOURCE_REVISION"],
+              "protocol_sha256": preflight["protocol_sha256"],
+              "summary_sha256": hashlib.sha256(summary_path.read_bytes()).hexdigest(),
+              "marker_before_release_publication": True,
+          }
+          marker_path = root / "MARKER.json"
+          marker_path.write_text(json.dumps(marker, indent=2, sort_keys=True) + "\n")
+          api.upload_file(
+              path_or_fileobj=marker_path,
+              path_in_repo=f"{prefix}{os.environ['SOURCE_REVISION']}/MARKER.json",
+              repo_id=repo,
+              repo_type="dataset",
+              commit_message="freeze one-time WF18 release marker",
+          )
+          PY
+      - name: remove private owned-choice rows before release publication
+        run: rm data/analysis/hmp-signal-coupling-v1/wf18_owned_choice_risk_set.parquet
+      - name: publish immutable aggregate release
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "one-time WF18 signal-coupling release"
+      - name: preserve release artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hmp-signal-coupling-release-${{ github.run_id }}
+          path: data/analysis/hmp-signal-coupling-v1/
+          if-no-files-found: error
+          retention-days: 90

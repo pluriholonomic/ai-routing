@@ -13,6 +13,7 @@ directory remaining online.
 | `bittensor.yml` | every six hours | block-pinned Chutes subnet 64 neurons and complete validator-to-miner weight matrix | public scoring/reward allocation, not requests or delivered inference |
 | `market.yml` | hourly | DeFi/open-compute sources plus recent Akash leases, retained bids, and bounded indexed bid-create events | public procurement contracts/events, not workload delivery |
 | `remote-health.yml` | every six hours | latest-run status for every critical workflow plus age of the HF data sink | operational liveness, not source-level economic validity |
+| `hmp-signal-coupling-monitor.yml` | weekly and after successful compaction | aggregate WF-18 monitoring panel, robustness checks, and reduced-seed causal simulation | fixed-rule monitoring; public covariance and owned probes do not identify communication, intent, or provider algorithms |
 
 The remote watchdog fails if the newest terminal run failed, if the newest run
 is outside its source-specific schedule SLO, or if the Hugging Face dataset has

@@ -1,0 +1,149 @@
+name: hmp-signal-coupling-monitor
+
+on:
+  schedule:
+    - cron: "47 9 * * 1"
+  workflow_run:
+    workflows: ["compact"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: hmp-signal-coupling-monitor
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: freeze immutable dataset revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from pathlib import Path
+          from huggingface_hub import HfApi
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: run assignment-only support preflight
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+        run: >-
+          uv run python -m orcap.analysis.wf18_signal_coupling
+          --preflight
+          --out data/analysis/hmp-signal-coupling-v1
+      - name: refresh immutable WF16 state inputs
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+        run: >-
+          uv run orcap analyze
+          --hypothesis wf16
+          --out data/analysis/hmp-signal-coupling-v1
+      - name: run WF18 exploratory monitoring panel
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+        run: >-
+          uv run orcap analyze
+          --hypothesis wf18
+          --out data/analysis/hmp-signal-coupling-v1
+      - name: run reduced-seed simulation monitor
+        run: >-
+          uv run python -m orcap.market_env.experiments_signal_coupling
+          --seeds 2
+          --out data/analysis/hmp-signal-coupling-v1/simulation
+      - name: validate claim and privacy boundaries
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+
+          root = Path("data/analysis/hmp-signal-coupling-v1")
+          summary = json.loads((root / "wf18_summary.json").read_text())
+          for key in (
+              "collusion_identified",
+              "provider_algorithm_identified",
+              "communication_identified",
+          ):
+              if summary[key] is not False:
+                  raise SystemExit(f"WF18 claim boundary changed: {key}")
+          required = [
+              "wf18_quote_innovations.parquet",
+              "wf18_pair_coupling.parquet",
+              "wf18_circular_null.parquet",
+              "wf18_robustness_checks.parquet",
+              "wf18_preperiod_snr.parquet",
+              "wf18_elasticity_wedges.parquet",
+              "wf18_forward_transitions.parquet",
+              "wf18_summary.json",
+              "wf18_signal_coupling.png",
+              "wf18_signal_coupling.pdf",
+              "wf18_signal_coupling.html",
+              "source-revision.txt",
+          ]
+          missing = [name for name in required if not (root / name).is_file()]
+          if missing:
+              raise SystemExit(f"missing WF18 outputs: {missing}")
+          forbidden = {
+              "prompt", "messages", "response_text", "input_text", "output_text",
+              "request_ref", "task_id", "session_id_sha256",
+          }
+          for path in root.glob("wf18_*.parquet"):
+              if path.name == "wf18_owned_choice_risk_set.parquet":
+                  continue
+              overlap = forbidden.intersection(pd.read_parquet(path).columns)
+              if overlap:
+                  raise SystemExit(f"private columns in {path}: {sorted(overlap)}")
+          PY
+      - name: remove private owned-choice rows before publication
+        run: rm data/analysis/hmp-signal-coupling-v1/wf18_owned_choice_risk_set.parquet
+      - name: publish aggregate WF18 monitoring outputs
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "WF18 signal-coupling monitor ${{ github.run_id }}"
+      - name: publish dashboard to private HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj=(
+                  "data/analysis/hmp-signal-coupling-v1/wf18_signal_coupling.html"
+              ),
+              path_in_repo="hmp-signal-coupling.html",
+              repo_id="t4run/openrouter-memo",
+              repo_type="space",
+              commit_message="WF18 signal-coupling dashboard refresh",
+          )
+          PY
+      - name: preserve immutable monitoring artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hmp-signal-coupling-monitor-${{ github.run_id }}
+          path: data/analysis/hmp-signal-coupling-v1/
+          if-no-files-found: error
+          retention-days: 90

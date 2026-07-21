@@ -1,0 +1,55 @@
+[study]
+id = "hmp-signal-coupling-v1"
+analysis_id = "wf18"
+
+[split]
+calibration_fraction = 0.25
+mechanism_fraction = 0.50
+minimum_calibration_days = 14
+minimum_mechanism_days = 28
+minimum_outcome_days = 14
+
+[residualization]
+ridge = 0.000001
+primary_window_hours = 24.0
+secondary_window_hours = [1.0, 6.0, 168.0]
+
+[inference]
+permutations = 2000
+bootstrap_draws = 5000
+diagnostic_permutations = 250
+seed = 20260721
+alpha = 0.05
+
+[support]
+minimum_models = 20
+minimum_price_experiments = 30
+minimum_pair_model_clusters = 20
+minimum_default_choices = 1000
+minimum_price_changing_pairs = 20
+minimum_choices_per_elasticity_cohort = 200
+maximum_pair_share = 0.20
+
+[owned_routing]
+minimum_choices_per_provider_model = 20
+maximum_quote_age_hours = 72.0
+delegated_policies = [
+  "default_budgeted_iid",
+  "default_broad",
+  "openrouter_default",
+]
+
+[claims]
+collusion_identified = false
+provider_algorithm_identified = false
+communication_identified = false
+
+[simulation]
+horizon = 3000
+burn_in = 750
+seeds = 10
+signal_to_noise = [0.5, 1.0, 2.0, 4.0, 8.0]
+common_correlations = [0.0, 0.5, 0.9]
+reward_memory = [0.0, 0.8, 0.98]
+router_etas = [2.0, 5.0]
+algorithm_mixes = ["ucb_ucb", "ucb_epsilon", "epsilon_epsilon", "ucb_static"]

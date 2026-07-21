@@ -42,6 +42,7 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 | `route-simulation-monitor` | hourly | evaluates the latest 26 hours of 15-minute public-quote routing simulations; publishes only after its coverage gate |
 | `hf-router` | hourly, 4 samples at 15-min spacing | public Hugging Face Inference Providers model/provider price and performance surface; no inference requests |
 | `livepeer-gateway` | hourly, 11 samples at 5-min spacing | aggregate public decentralized-Gateway swap/reuse messages by region; no stream, session, client, or orchestrator identifiers |
+| `hmp-signal-coupling-monitor` | weekly and after compaction | fixed-rule WF-18 public quote-coupling, owned-routing SNR, elasticity-wedge, forward-state, and adversarial-simulation diagnostics; never identifies communication, intent, or a provider algorithm |
 
 ## Data layout (HF dataset repo)
 

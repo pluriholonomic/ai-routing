@@ -25,6 +25,7 @@ WORKFLOWS = {
     "adaptive-router.yml": 540,
     "adaptive-router-monitor.yml": 1800,
     "adaptive-router-counterfactual.yml": 1800,
+    "hmp-signal-coupling-monitor.yml": 1800,
     "gpu.yml": 180,
     "hf-router.yml": 180,
     "hf-policy-probes.yml": 180,

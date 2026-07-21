@@ -22,6 +22,7 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["adaptive-router.yml"] == 540
     assert WORKFLOWS["adaptive-router-monitor.yml"] == 1800
     assert WORKFLOWS["adaptive-router-counterfactual.yml"] == 1800
+    assert WORKFLOWS["hmp-signal-coupling-monitor.yml"] == 1800
     assert "curated/price_response_assignments" in HF_PRICE_TABLES
     assert "analysis/router_exponent_estimates" in HF_PRICE_TABLES
 
@@ -123,6 +124,31 @@ def test_price_workflows_are_assembled_analyzed_and_preregistered():
         root / "experiments/openrouter-price-response-v1/preregistration.md"
     ).is_file()
     assert (root / "experiments/openrouter-price-event-v1/preregistration.md").is_file()
+
+
+def test_hmp_signal_coupling_workflows_are_support_gated_and_private():
+    root = Path(__file__).parents[1]
+    workflows = root / ".github" / "workflows"
+    monitor = (workflows / "hmp-signal-coupling-monitor.yml").read_text()
+    release = (workflows / "hmp-signal-coupling-release.yml").read_text()
+    assert 'workflows: ["compact"]' in monitor
+    assert "ORCAP_HF_REVISION" in monitor
+    assert "--preflight" in monitor
+    assert "--hypothesis wf18" in monitor
+    assert "wf18_owned_choice_risk_set.parquet" in monitor
+    assert monitor.index("validate claim and privacy boundaries") < monitor.index(
+        "remove private owned-choice rows before publication"
+    )
+    assert "OPENROUTER_PRICE_EXPERIMENT_KEY" not in monitor
+    assert "Type RELEASE" in release
+    assert "sample-only preflight before marker" in release
+    assert "one-time immutable promotion marker before release publication" in release
+    assert release.index(
+        "run WF18 release-candidate analysis on the frozen revision"
+    ) < release.index("one-time immutable promotion marker before release publication")
+    assert "outcomes_accessed" in release
+    assert "release_ready" in release
+    assert (root / "experiments/hmp-signal-coupling-v1/preregistration.md").is_file()
 
 
 def test_h96_remote_campaign_is_finite_budgeted_and_manual_preflight_only():
