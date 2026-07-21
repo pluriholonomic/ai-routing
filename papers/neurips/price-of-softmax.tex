@@ -24,7 +24,8 @@
 \setlist{nosep,leftmargin=*}
 \setlength{\emergencystretch}{2em}
 
-\title{Routing Markets as Property-Tested Multi-Agent Environments}
+\title{Price and Score in Strategic Routing Markets:\\
+A Property-Tested Multi-Agent Environment}
 \author{Tarun Chitra\\Gauntlet\\\texttt{tarun@gauntlet.xyz}}
 \date{}
 
@@ -32,24 +33,22 @@
 \maketitle
 
 \begin{abstract}
-AI inference routers allocate token demand among strategic providers, but their
-clearing state, capacity, and quality are partly hidden.  This makes a simulator
-easy to build and difficult to validate.  We introduce a request-level
-multi-agent environment whose providers jointly choose quotes, admission, and
-availability against pluggable routing mechanisms.  The environment enforces
-exact settlement, capacity, fallback, seeded common random numbers, and
-provider-private feedback through a parallel RL API.  We pair it with a property
-ladder: mechanism invariants, held-out market moments, exact simulator
-interventions, adversarial deviations, and live transport gates.  Two studies
-show why the ladder matters.  Preserving reward marginals while shuffling only
-signal order raises buyer price by 0.118 in a focal UCB/UCB game, but by
-$-0.00047$ across heterogeneous learners.  A hardened adaptive router sharply
-reduces one-shot quote and sybil manipulation, yet leaves 9.68 times more
-normalized post-UCB exploitability in its first learning screen.  Public quote
-data show nominal residual coupling, but concentration and incomplete downstream
-tests block transport to provider conduct.  The result is an executable standard
-for falsifying routing mechanisms, not a claim that simulated agents reproduce
-live providers.
+Inference routers allocate token demand among strategic providers using public
+prices and hidden service scores.  We introduce a request-level multi-agent
+environment in which providers choose quotes, admission, and availability
+against pluggable routers, with exact settlement, capacity, fallback, common
+random numbers, and provider-private feedback.  A property ladder separates
+software invariants, held-out moments, simulator causality, strategic robustness,
+and live transport.  The first calibration task decomposes price and score:
+22,330 public-menu snapshots imply 1.40--10.98 percentage points of mechanical
+share from benchmark undercutting, while a prospective owned-choice panel for
+the latent score remains support-gated.  Two simulator studies show why this
+boundary matters.  Marginal-preserving signal coupling raises buyer price by
+0.118 in a focal UCB/UCB game but by $-0.00047$ across heterogeneous learners.
+A hardened score reduces one-shot quote and identity manipulation, yet leaves
+9.68 times more normalized post-UCB exploitability in its first learning screen.
+The result is an executable standard for testing price--score mechanisms, not a
+claim that simulated agents reproduce live providers.
 \end{abstract}
 
 \section{Introduction}
@@ -94,9 +93,14 @@ an optional LLM adapter.  Global finite-grid best responses, two-provider
 coalitions, identity splitting, fading quotes, and sequential response oracles
 audit strategic robustness.
 
-Our evaluation has three main findings.
+Our evaluation has four main findings.
 
 \begin{enumerate}
+\item Public menus identify a price-manipulation surface but not realized flow.
+Across seven models, resetting active quotes to model-author benchmarks removes
+1.40--10.98 percentage points of conditional shadow share.  A prospective paid
+panel estimates the non-price score and its interaction with undercutting; it is
+still accruing, so no score result is imputed.
 \item An exact signal-order intervention validates a narrow
 Hansen--Misra--Pai-style mechanism \citep{hansenmisrapai2021}.  In a focal
 two-UCB prisoner's-dilemma game, preserving common signal order increases
@@ -203,6 +207,20 @@ advances exactly once per epoch.
 The baseline inverse-price router uses
 $x_i\propto p_i^{-\eta}$.  This is a counterfactual mechanism, not an empirical
 claim about \OR.  Adaptive routers may additionally use reliability or quality.
+The common interface writes
+\begin{equation}
+x_i(p,\alpha)=
+\frac{p_i^{-\eta}e^{\alpha_i}}{\sum_jp_j^{-\eta}e^{\alpha_j}},
+\qquad
+p_i^{\rm eff}=p_i e^{-\alpha_i/\eta}.
+\label{eq:price-score}
+\end{equation}
+Thus every non-price score is a price-equivalent subsidy or penalty.  The
+environment can reveal $\alpha_i$ to the provider, reveal only its realized
+attempts, or delay score feedback; the information policy is part of the router
+plugin and scenario hash.  If $\alpha_i=h_i(\log p_i)$, negative own-price
+elasticity is $(1-x_i)(\eta-h_i')$, making score attenuation or amplification
+of undercutting directly testable.
 The hardened rule includes five defenses: lagged smoothed inputs, provider-
 specific leave-one-out parameters, multi-epoch commitments, operator-neutral
 exploration and share caps, and a one-sided log-share trust region.  Allocation
@@ -257,6 +275,46 @@ formula is realized allocation ($z=10.06$).  Consequently, the environment does
 not use public shadow shares as a live calibration target.  It uses them only to
 define explicit counterfactual router plugins.
 
+The price--score decomposition makes that distinction constructive.  At a
+fixed 1,000-input/256-output-token shape and point exponent $1.6483$, 22,330
+snapshots across seven models produce benchmark-reset active-share effects from
+1.40 to 10.98 percentage points.  GLM-5.2's 27.3\% median equivalent discount
+produces 10.98 excess shadow-share points and 5.40 points of anchor loss.  The
+full menu, not the cut alone, determines the effect.
+
+The level-5 companion is an assignment-first GLM-5.2 campaign.  Conditional
+multinomial choice estimates the relative $\alpha_i$ in
+\cref{eq:price-score}, its price-equivalent discount, mean probability mass
+reallocated beyond price, and whole-block out-of-sample information.  It also
+compares explicit price sorting with default routing.  The prospective cutoff
+is 21 July 22:00 UTC; four earlier observed choices are excluded.  Diagnostic
+support requires 40 choices, 20 blocks, and three selected providers;
+publication requires 800 choices, 100 blocks, seven days, and 90\% menu
+coverage.  At this freeze it has zero eligible choices.  A simulator may use the
+public surface now, but may not claim live score calibration until that gate.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.96\textwidth]{../../data/analysis/undercutting-incidence-v1/wf19_cross_model_elasticity.pdf}
+\caption{Level-3 price calibration.  Benchmark resets identify deterministic
+share transfers under a declared inverse-power router, not realized flow.  The
+prospective owned-choice panel is the separate level-5 bridge for the latent
+score and remains support-gated.}
+\label{fig:price-score}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.96\textwidth]{../../data/analysis/undercutting-incidence-v1/wf19_model_comparison_timeseries.pdf}
+\caption{Level-3 temporal calibration.  Shared axes compare hourly benchmark
+discounts, deterministic excess undercutter shadow share, and price-rule arc
+elasticity across seven models.  The environment can replay these public menu
+regimes, but level-5 scoring and realized-flow claims remain separately gated.
+Free endpoints are excluded because inverse-power shares are undefined at a
+zero price.}
+\label{fig:price-score-time}
+\end{figure*}
+
 \subsection{Intervention fidelity}
 
 The signal experiment starts from an $T\times n$ signal matrix $Z$.  Its treatment
@@ -292,6 +350,25 @@ simulator or menu-replay quantities, not live provider profit.}
 
 \section{Experiments}
 \label{sec:experiments}
+
+\subsection{E0: price manipulation times latent scoring}
+
+For every provider below a model-author benchmark, E0 replaces only its quote
+with that benchmark.  Let $\Delta_i(0)$ be the resulting price-only share gain
+and $\Delta_i(\alpha)$ the gain under \cref{eq:price-score}.  The interaction
+\begin{equation}
+\Gamma_i=\Delta_i(\alpha)-\Delta_i(0)
+\end{equation}
+is negative when scoring attenuates undercutting and positive when it amplifies
+it.  The public panel identifies $\Delta_i(0)$ mechanically.  The prospective
+owned-choice panel estimates $\alpha$; until its gate, $\Gamma_i$ is missing,
+not zero.  Simulator transport requires matching the sign and magnitude of
+$\Gamma_i$, not merely reproducing the public quote distribution.
+
+This task also supplies adversarial policies: unilateral benchmark undercutting,
+fading a cheap quote after allocation, identity splitting, quality shading, and
+capacity withdrawal.  A router passes only if it lowers these gains without
+violating held-out completion, fidelity, entry, and learning-regret gates.
 
 \subsection{E1: common signals and heterogeneous learners}
 
@@ -387,6 +464,24 @@ $R_U$ is user regret; $E_1$ and $E_2$ are unilateral and two-provider
 exploitability; $V$ is constraint violation.  Results should be reported as a
 Pareto frontier, with cost/value sensitivity, rather than a single welfare point.
 
+We instantiate four score families rather than treating ``better routing'' as a
+scalar label.  The user-cost score minimizes payment plus latency and failure;
+the welfare score replaces payment by bounded resource cost and adds delivered
+value; the router-revenue score maximizes fees net of retries and SLA credits;
+and the quality score maximizes blinded task fidelity subject to spend and
+completion constraints.  Each arm reports user utility, provider profit, router
+revenue, welfare bounds, quality, concentration, and exploitability.  An arm can
+dominate on one vector and fail on another.
+
+The outer game also varies provider technology.  Owned or reserved-capacity
+providers pay fixed capital cost and have low short-run marginal cost;
+spot-dependent providers have flexible entry and scarcity-sensitive cost;
+anchor adopters may keep displayed price fixed; and technology-rent providers
+may invest in kernels or hardware.  Entry, capacity, and quality investment are
+chosen before the repeated pricing game.  A mechanism improvement must survive
+best responses and two-provider coalitions for each technology mixture, not just
+reallocate a frozen menu.
+
 The current replay candidate uses price exponent 1.25 and exploration 0.10.  On
 18,947 held-out hourly menus it lowers a quote-coupling proxy by 49.3\%, raises
 displayed price by 2.08\%, and changes public reliability by 0.0059 percentage
@@ -434,7 +529,10 @@ send adversarial load, infer prompt contents, or identify provider employees.
 Provider labels are descriptive regimes, not allegations.  We do not claim
 collusion, communication, dumping, or literal front-running.
 
-The central finding is that routing-market simulation needs a refusal mechanism.
+The central finding is that routing-market simulation needs a refusal mechanism
+and an explicit price--score boundary.  Public menus calibrate strategic
+price-induced transfers; owned choices are required for hidden scoring; neither
+licenses cost, welfare, or conduct claims by itself.
 The focal UCB result is real inside its game and fails across heterogeneous agents.
 The hardened router resists one-step manipulation and fails its first learning
 gate.  The public quote signal is nominal and fails concentration and family
@@ -481,6 +579,10 @@ adjacent build script.  The hosted WF18 job hydrates one immutable snapshot,
 runs WF16 and WF18, executes the two-seed simulator, validates privacy boundaries,
 removes owned request rows, publishes aggregates to Hugging Face, refreshes a
 private dashboard, and preserves an immutable artifact.
+The cross-model price surface and prospective scoring protocol are frozen in
+\texttt{papers/price-score-evidence-2026-07-21.json}.  The score cell is
+explicitly accruing and contributes no fitted live parameter to the simulations
+in this paper.
 
 \section{Environment Card}
 
