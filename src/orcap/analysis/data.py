@@ -32,10 +32,11 @@ def pinned_analysis_source() -> Iterator[dict[str, str | None]]:
     """
     source = os.environ.get("ORCAP_ANALYSIS_SOURCE", "hf")
     if source == "local":
+        revision = os.environ.get("ORCAP_HF_REVISION", "").strip() or None
         yield {
-            "source": "local",
-            "repo_id": None,
-            "revision": None,
+            "source": "huggingface_local_snapshot" if revision else "local",
+            "repo_id": HF_DATASET_REPO if revision else None,
+            "revision": revision,
             "path": str(Path(DATA_DIR).resolve()),
             "resolution": "caller_managed_local_snapshot",
         }

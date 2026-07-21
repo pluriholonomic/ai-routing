@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from orcap.analysis import data
 from orcap.analysis import wf18_signal_coupling as wf18
 
 
@@ -172,6 +173,17 @@ def test_holm_family_refuses_partial_chain():
     assert family["family_complete"] is False
     assert family["promotion_allowed"] is False
     assert not any(family["rejected_at_alpha"].values())
+
+
+def test_local_hf_snapshot_preserves_immutable_revision_metadata(monkeypatch):
+    revision = "b" * 40
+    monkeypatch.setenv("ORCAP_ANALYSIS_SOURCE", "local")
+    monkeypatch.setenv("ORCAP_HF_REVISION", revision)
+    with data.pinned_analysis_source() as source:
+        assert source["source"] == "huggingface_local_snapshot"
+        assert source["repo_id"] == data.HF_DATASET_REPO
+        assert source["revision"] == revision
+        assert source["resolution"] == "caller_managed_local_snapshot"
 
 
 def test_robustness_suite_emits_registered_negative_controls():

@@ -133,6 +133,9 @@ def test_hmp_signal_coupling_workflows_are_support_gated_and_private():
     release = (workflows / "hmp-signal-coupling-release.yml").read_text()
     assert 'workflows: ["compact"]' in monitor
     assert "ORCAP_HF_REVISION" in monitor
+    assert "snapshot_download_retry" in monitor
+    assert "ORCAP_ANALYSIS_SOURCE: local" in monitor
+    assert "ORCAP_DATA_DIR: input-data" in monitor
     assert "--preflight" in monitor
     assert "--hypothesis wf18" in monitor
     assert "wf18_owned_choice_risk_set.parquet" in monitor
@@ -141,6 +144,8 @@ def test_hmp_signal_coupling_workflows_are_support_gated_and_private():
     )
     assert "OPENROUTER_PRICE_EXPERIMENT_KEY" not in monitor
     assert "Type RELEASE" in release
+    assert "snapshot_download_retry" in release
+    assert "ORCAP_ANALYSIS_SOURCE: local" in release
     assert "sample-only preflight before marker" in release
     assert "one-time immutable promotion marker before release publication" in release
     assert release.index(

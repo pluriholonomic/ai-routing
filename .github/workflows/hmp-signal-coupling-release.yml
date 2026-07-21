@@ -26,18 +26,39 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --no-dev
-      - name: freeze immutable source revision
+      - name: freeze and hydrate one immutable source revision
         id: source
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           uv run python - <<'PY'
           import os
+          import shutil
           from pathlib import Path
           from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
 
           repo = "t4run/openrouter-market-history"
           revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          snapshot = snapshot_download_retry(
+              repo,
+              repo_type="dataset",
+              revision=revision,
+              allow_patterns=[
+                  "derived/pricing_changes/*/*.parquet",
+                  "curated/endpoints_snapshots/*/*.parquet",
+                  "curated/models_snapshots/*/*.parquet",
+                  "curated/congestion_intraday/*/*.parquet",
+                  "curated/router_calibration_candidates/*/*.parquet",
+                  "curated/router_calibration_assignments/*/*.parquet",
+                  "curated/market_measurement_candidates/*/*.parquet",
+                  "curated/market_measurement_assignments/*/*.parquet",
+                  "curated/router_route_attempts/*/*.parquet",
+              ],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
           Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
           with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
               handle.write(f"revision={revision}\n")
@@ -46,6 +67,8 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+          ORCAP_ANALYSIS_SOURCE: local
+          ORCAP_DATA_DIR: input-data
         run: >-
           uv run python -m orcap.analysis.wf18_signal_coupling
           --preflight
@@ -54,6 +77,8 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+          ORCAP_ANALYSIS_SOURCE: local
+          ORCAP_DATA_DIR: input-data
         run: >-
           uv run orcap analyze --hypothesis wf16
           --out data/analysis/hmp-signal-coupling-v1
@@ -61,6 +86,8 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+          ORCAP_ANALYSIS_SOURCE: local
+          ORCAP_DATA_DIR: input-data
         run: >-
           uv run orcap analyze --hypothesis wf18
           --out data/analysis/hmp-signal-coupling-v1
