@@ -35,3 +35,8 @@ minimum_baseline_requests_per_side = 4
 labels_must_precede_primary_window = true
 shadow_share_is_not_realized_flow = true
 profit_requires_marginal_cost = true
+
+[jit_accounting_extension]
+status = "posthoc_descriptive_extension_2026-07-21"
+counterfactual = "mover_pre_event_quote_with_candidate_set_and_rival_quotes_fixed"
+aggregate_weighting = "equal_weight_per_public_quote_shock"

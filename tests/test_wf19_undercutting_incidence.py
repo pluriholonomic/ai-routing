@@ -17,9 +17,7 @@ def test_frozen_artifact_ignores_stale_local_copy(tmp_path, monkeypatch):
     monkeypatch.setenv("ORCAP_ANALYSIS_SOURCE", "hf")
     monkeypatch.setattr(wf19, "hf_hub_download", lambda *args, **kwargs: str(pinned))
 
-    observed = wf19._artifact_path(
-        tmp_path, name, revision="immutable", expected_sha256=expected
-    )
+    observed = wf19._artifact_path(tmp_path, name, revision="immutable", expected_sha256=expected)
 
     assert observed == pinned
 
@@ -85,9 +83,7 @@ def test_unilateral_cut_has_equal_relative_nonmover_loss_and_distinct_incidence(
     )
     assert counters["qualifying_direction"] == 1
     nonmovers = provider[~provider.is_mover]
-    assert nonmovers.relative_share_loss.max() == pytest.approx(
-        nonmovers.relative_share_loss.min()
-    )
+    assert nonmovers.relative_share_loss.max() == pytest.approx(nonmovers.relative_share_loss.min())
     assert nonmovers.share_loss_burden.sum() == pytest.approx(1.0)
     assert nonmovers.quote_revenue_loss_burden.sum() == pytest.approx(1.0)
 
@@ -97,6 +93,28 @@ def test_unilateral_cut_has_equal_relative_nonmover_loss_and_distinct_incidence(
     static = shocks[shocks.provider_type == "static_discounter"].iloc[0]
     assert anchor.share_loss_burden < static.share_loss_burden
     assert anchor.quote_revenue_loss_burden > anchor.share_loss_burden
+
+    jit = wf19.build_jit_capture_panel(provider)
+    assert len(jit) == 1
+    row = jit.iloc[0]
+    assert row.dynamic_capture_share == pytest.approx(
+        row.post_cut_shadow_share - row.frozen_quote_counterfactual_share
+    )
+    assert row.passive_share_displaced == pytest.approx(row.dynamic_capture_share)
+    assert row.share_conservation_error == pytest.approx(0.0, abs=1e-12)
+    assert row.net_quote_revenue_change == pytest.approx(
+        row.volume_gain_at_old_quote - row.price_concession_cost_at_post_share
+    )
+    summary = wf19.summarize_jit_capture(jit)
+    assert summary["n_shocks"] == 1
+    assert summary["net_quote_revenue_increase_rate"] == float(row.net_quote_revenue_change > 0)
+    assert "not realized market share" in summary["boundary"]
+    elasticity = wf19.summarize_shadow_curve_numerical_check(provider)
+    assert elasticity["scenario_events"] == 1
+    assert elasticity["exact_finite_curve_maximum_absolute_share_error"] == pytest.approx(
+        0.0, abs=1e-12
+    )
+    assert elasticity["mean_absolute_arc_minus_local_deviation"] > 0
 
 
 def test_simultaneous_moves_and_pre_holdout_events_are_excluded():
@@ -170,9 +188,7 @@ def test_paid_validation_treats_negative_rank_crossing_as_a_cut(monkeypatch):
                 "selected_provider": "Active",
                 "outcome": "succeeded",
                 "observed_at": "20260103T001000Z",
-                "metadata_json": (
-                    '{"event_id":"cut-event","wave_id":"w1","block_id":"block-1"}'
-                ),
+                "metadata_json": ('{"event_id":"cut-event","wave_id":"w1","block_id":"block-1"}'),
             }
         ]
     )
@@ -248,9 +264,7 @@ def test_continuous_default_panel_builds_same_model_pre_post_window():
         ]
     )
     protocol, _ = wf19.load_protocol()
-    panel = wf19.build_continuous_paid_event_panel(
-        event, attempts, _labels(), protocol
-    )
+    panel = wf19.build_continuous_paid_event_panel(event, attempts, _labels(), protocol)
     active = panel[panel.selected_provider_type == "active_undercutter"].iloc[0]
     assert active.support_eligible
     assert active.pre_selection_share == 0

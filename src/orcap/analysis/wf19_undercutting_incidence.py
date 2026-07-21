@@ -42,9 +42,7 @@ def load_protocol(path: Path = DEFAULT_CONFIG) -> tuple[dict[str, Any], str]:
     return tomllib.loads(payload.decode("utf-8")), hashlib.sha256(payload).hexdigest()
 
 
-def _artifact_path(
-    out_dir: Path, name: str, *, revision: str, expected_sha256: str
-) -> Path:
+def _artifact_path(out_dir: Path, name: str, *, revision: str, expected_sha256: str) -> Path:
     """Resolve an exact local copy or the revision-pinned WF-16 artifact."""
     local_candidates = (
         out_dir / name,
@@ -94,9 +92,7 @@ def load_frozen_labels(
     for path, expected in expected_hashes.items():
         observed = hashlib.sha256(path.read_bytes()).hexdigest()
         if observed != expected:
-            raise RuntimeError(
-                f"frozen WF16 artifact hash mismatch for {path.name}: {observed}"
-            )
+            raise RuntimeError(f"frozen WF16 artifact hash mismatch for {path.name}: {observed}")
     labels = pd.read_parquet(labels_path)
     summary = json.loads(summary_path.read_text())
     observed_source = str(summary.get("source", {}).get("revision") or "")
@@ -315,15 +311,12 @@ def aggregate_incidence(
         "mover_provider",
         "provider_type",
     ]
-    grouped = (
-        nonmovers.groupby(group_keys, as_index=False)
-        .agg(
-            providers=("provider_name", "nunique"),
-            share_before=("share_before", "sum"),
-            share_loss=("share_loss", "sum"),
-            quote_revenue_before=("quote_revenue_before", "sum"),
-            quote_revenue_loss=("quote_revenue_loss", "sum"),
-        )
+    grouped = nonmovers.groupby(group_keys, as_index=False).agg(
+        providers=("provider_name", "nunique"),
+        share_before=("share_before", "sum"),
+        share_loss=("share_loss", "sum"),
+        quote_revenue_before=("quote_revenue_before", "sum"),
+        quote_revenue_loss=("quote_revenue_loss", "sum"),
     )
     scenario_keys = group_keys[:-1]
     full_index = pd.MultiIndex.from_product(
@@ -333,14 +326,11 @@ def aggregate_incidence(
         ],
         names=["scenario_event_id", "provider_type"],
     )
-    event_meta = (
-        provider_panel.drop_duplicates("scenario_event_id")
-        .set_index("scenario_event_id")[scenario_keys[0:1] + scenario_keys[2:]]
-    )
+    event_meta = provider_panel.drop_duplicates("scenario_event_id").set_index("scenario_event_id")[
+        scenario_keys[0:1] + scenario_keys[2:]
+    ]
     filled = (
-        grouped.set_index(["scenario_event_id", "provider_type"])
-        .reindex(full_index)
-        .reset_index()
+        grouped.set_index(["scenario_event_id", "provider_type"]).reindex(full_index).reset_index()
     )
     filled = filled.join(event_meta, on="scenario_event_id", rsuffix="_meta")
     for column in (
@@ -413,6 +403,300 @@ def aggregate_incidence(
     return filled, shock_types
 
 
+def build_jit_capture_panel(provider_panel: pd.DataFrame) -> pd.DataFrame:
+    """Decompose each mover's post-cut share under a frozen-quote counterfactual.
+
+    This is an exact accounting decomposition for the public inverse-square
+    surface. It is not an estimate of realized market-wide routing.
+    """
+    columns = [
+        "shock_id",
+        "model_id",
+        "previous_run_ts",
+        "run_ts",
+        "mover_provider",
+        "scenario_count",
+        "price_before",
+        "price_after",
+        "price_cut_fraction",
+        "frozen_quote_counterfactual_share",
+        "post_cut_shadow_share",
+        "dynamic_capture_share",
+        "dynamic_capture_share_percentage_points",
+        "dynamic_fraction_of_post_share",
+        "dynamic_relative_share_lift",
+        "passive_share_displaced",
+        "share_conservation_error",
+        "mover_quote_revenue_before",
+        "mover_quote_revenue_after",
+        "volume_gain_at_old_quote",
+        "price_concession_cost_at_post_share",
+        "net_quote_revenue_change",
+        "volume_gain_to_concession_cost_ratio",
+        "passive_quote_revenue_loss",
+        "arc_price_elasticity_of_share",
+        "local_inverse_square_elasticity_before",
+    ]
+    if provider_panel.empty:
+        return pd.DataFrame(columns=columns)
+    keys = [
+        "shock_id",
+        "model_id",
+        "previous_run_ts",
+        "run_ts",
+        "mover_provider",
+    ]
+    movers = (
+        provider_panel[provider_panel["is_mover"]]
+        .groupby(keys, as_index=False)
+        .agg(
+            scenario_count=("scenario", "nunique"),
+            price_before=("price_before", "mean"),
+            price_after=("price_after", "mean"),
+            frozen_quote_counterfactual_share=("share_before", "mean"),
+            post_cut_shadow_share=("share_after", "mean"),
+            mover_quote_revenue_before=("quote_revenue_before", "mean"),
+            mover_quote_revenue_after=("quote_revenue_after", "mean"),
+        )
+    )
+    # Provider-level passive losses must first be summed within each request
+    # scenario and then averaged across the frozen request shapes.
+    passive = (
+        provider_panel[~provider_panel["is_mover"]]
+        .groupby(["shock_id", "scenario_event_id"], as_index=False)
+        .agg(
+            passive_share_displaced=("share_loss", "sum"),
+            passive_quote_revenue_loss=("quote_revenue_loss", "sum"),
+        )
+        .groupby("shock_id", as_index=False)
+        .agg(
+            passive_share_displaced=("passive_share_displaced", "mean"),
+            passive_quote_revenue_loss=("passive_quote_revenue_loss", "mean"),
+        )
+    )
+    frame = movers.merge(passive, on="shock_id", how="left", validate="one_to_one")
+    frame["price_cut_fraction"] = 1.0 - frame["price_after"] / frame["price_before"]
+    frame["dynamic_capture_share"] = (
+        frame["post_cut_shadow_share"] - frame["frozen_quote_counterfactual_share"]
+    )
+    frame["dynamic_capture_share_percentage_points"] = 100.0 * frame["dynamic_capture_share"]
+    frame["dynamic_fraction_of_post_share"] = np.where(
+        frame["post_cut_shadow_share"] > 0,
+        frame["dynamic_capture_share"] / frame["post_cut_shadow_share"],
+        np.nan,
+    )
+    frame["dynamic_relative_share_lift"] = np.where(
+        frame["frozen_quote_counterfactual_share"] > 0,
+        frame["dynamic_capture_share"] / frame["frozen_quote_counterfactual_share"],
+        np.nan,
+    )
+    frame["share_conservation_error"] = (
+        frame["dynamic_capture_share"] - frame["passive_share_displaced"]
+    )
+    frame["volume_gain_at_old_quote"] = frame["price_before"] * frame["dynamic_capture_share"]
+    frame["price_concession_cost_at_post_share"] = (
+        frame["price_before"] - frame["price_after"]
+    ) * frame["post_cut_shadow_share"]
+    frame["net_quote_revenue_change"] = (
+        frame["mover_quote_revenue_after"] - frame["mover_quote_revenue_before"]
+    )
+    frame["volume_gain_to_concession_cost_ratio"] = np.where(
+        frame["price_concession_cost_at_post_share"] > 0,
+        frame["volume_gain_at_old_quote"] / frame["price_concession_cost_at_post_share"],
+        np.nan,
+    )
+    frame["arc_price_elasticity_of_share"] = np.log(
+        frame["post_cut_shadow_share"] / frame["frozen_quote_counterfactual_share"]
+    ) / np.log(frame["price_after"] / frame["price_before"])
+    frame["local_inverse_square_elasticity_before"] = -2.0 * (
+        1.0 - frame["frozen_quote_counterfactual_share"]
+    )
+    return frame[columns]
+
+
+def summarize_jit_capture(panel: pd.DataFrame) -> dict[str, Any]:
+    """Summarize the post-hoc deterministic JIT-like curve decomposition."""
+    boundary = (
+        "The frozen-quote counterfactual is exact for the public inverse-square shadow "
+        "surface conditional on the observed provider set and public health screen. It is "
+        "not realized market share, a causal response to exogenous price variation, or profit."
+    )
+    if panel.empty:
+        return {
+            "evidence_status": "posthoc_deterministic_curve_decomposition_no_events",
+            "n_shocks": 0,
+            "boundary": boundary,
+        }
+
+    def quantiles(column: str) -> dict[str, float]:
+        values = panel[column].dropna().quantile([0.1, 0.25, 0.5, 0.75, 0.9, 0.95])
+        return {
+            label: float(values.loc[q])
+            for label, q in (
+                ("p10", 0.1),
+                ("p25", 0.25),
+                ("p50", 0.5),
+                ("p75", 0.75),
+                ("p90", 0.9),
+                ("p95", 0.95),
+            )
+        }
+
+    without_largest = panel.drop(panel["dynamic_capture_share"].idxmax())
+    excluding_largest = {
+        "n_shocks": int(len(without_largest)),
+        "mean_dynamic_capture_share_percentage_points": (
+            float(without_largest["dynamic_capture_share_percentage_points"].mean())
+            if not without_largest.empty
+            else None
+        ),
+        "aggregate_dynamic_fraction_of_post_share": (
+            float(
+                without_largest["dynamic_capture_share"].sum()
+                / without_largest["post_cut_shadow_share"].sum()
+            )
+            if not without_largest.empty
+            else None
+        ),
+    }
+
+
+    provider = (
+        panel.groupby("mover_provider", as_index=False)
+        .agg(
+            shocks=("shock_id", "nunique"),
+            mean_price_cut_fraction=("price_cut_fraction", "mean"),
+            mean_dynamic_capture_share_percentage_points=(
+                "dynamic_capture_share_percentage_points",
+                "mean",
+            ),
+            mean_dynamic_fraction_of_post_share=(
+                "dynamic_fraction_of_post_share",
+                "mean",
+            ),
+            mean_net_quote_revenue_change=("net_quote_revenue_change", "mean"),
+        )
+        .to_dict("records")
+    )
+    return {
+        "evidence_status": "posthoc_deterministic_curve_decomposition",
+        "n_shocks": int(panel["shock_id"].nunique()),
+        "models": int(panel["model_id"].nunique()),
+        "movers": int(panel["mover_provider"].nunique()),
+        "mean_price_cut_fraction": float(panel["price_cut_fraction"].mean()),
+        "median_price_cut_fraction": float(panel["price_cut_fraction"].median()),
+        "mean_dynamic_capture_share_percentage_points": float(
+            panel["dynamic_capture_share_percentage_points"].mean()
+        ),
+        "median_dynamic_capture_share_percentage_points": float(
+            panel["dynamic_capture_share_percentage_points"].median()
+        ),
+        "mean_dynamic_fraction_of_post_share": float(
+            panel["dynamic_fraction_of_post_share"].mean()
+        ),
+        "aggregate_dynamic_fraction_of_post_share": float(
+            panel["dynamic_capture_share"].sum() / panel["post_cut_shadow_share"].sum()
+        ),
+        "mean_dynamic_relative_share_lift": float(panel["dynamic_relative_share_lift"].mean()),
+        "mean_arc_price_elasticity_of_share": float(panel["arc_price_elasticity_of_share"].mean()),
+        "dynamic_capture_share_percentage_point_quantiles": quantiles(
+            "dynamic_capture_share_percentage_points"
+        ),
+        "dynamic_fraction_of_post_share_quantiles": quantiles("dynamic_fraction_of_post_share"),
+        "maximum_absolute_share_conservation_error": float(
+            panel["share_conservation_error"].abs().max()
+        ),
+        "aggregate_volume_gain_at_old_quote": float(panel["volume_gain_at_old_quote"].sum()),
+        "aggregate_price_concession_cost_at_post_share": float(
+            panel["price_concession_cost_at_post_share"].sum()
+        ),
+        "aggregate_volume_gain_to_concession_cost_ratio": float(
+            panel["volume_gain_at_old_quote"].sum()
+            / panel["price_concession_cost_at_post_share"].sum()
+        ),
+        "net_quote_revenue_increase_rate": float((panel["net_quote_revenue_change"] > 0).mean()),
+        "excluding_largest_capture_shock": excluding_largest,
+        "by_mover": provider,
+        "interpretation": (
+            "Dynamic capture is post-cut shadow share minus the same menu evaluated at "
+            "the mover's immediately preceding quote. Sitting passive providers fund the "
+            "same amount of displaced shadow share by construction."
+        ),
+        "boundary": boundary,
+    }
+
+
+def summarize_shadow_curve_numerical_check(
+    provider_panel: pd.DataFrame,
+) -> dict[str, Any]:
+    """Compare constructed shadow shares with their exact and local formulas."""
+    boundary = (
+        "This validates deterministic shadow-share accounting, not realized routing. "
+        "Deviation from the local derivative includes ordinary finite-cut curvature."
+    )
+    if provider_panel.empty:
+        return {
+            "evidence_status": "no_qualifying_shadow_curve_events",
+            "scenario_events": 0,
+            "boundary": boundary,
+        }
+    movers = provider_panel[provider_panel["is_mover"]].copy()
+    cut = 1.0 - movers["price_after"] / movers["price_before"]
+    before = movers["share_before"]
+    after = movers["share_after"]
+    exact_after = before / (before + (1.0 - before) * (1.0 - cut).pow(2))
+    arc = np.log(after / before) / np.log(1.0 - cut)
+    local = -2.0 * (1.0 - before)
+    finite_pp_per_one_percent = (after - before) / cut
+    local_pp_per_one_percent = 2.0 * before * (1.0 - before)
+    largest_shock = movers.groupby("shock_id")["share_change"].mean().idxmax()
+    keep = movers["shock_id"] != largest_shock
+    return {
+        "evidence_status": "deterministic_shadow_curve_numerical_check",
+        "shocks": int(movers["shock_id"].nunique()),
+        "scenario_events": int(len(movers)),
+        "exact_finite_curve_maximum_absolute_share_error": float(
+            (after - exact_after).abs().max()
+        ),
+        "exact_finite_curve_mean_absolute_share_error": float(
+            (after - exact_after).abs().mean()
+        ),
+        "mean_arc_price_elasticity": float(arc.mean()),
+        "mean_local_price_elasticity": float(local.mean()),
+        "mean_absolute_arc_minus_local_deviation": float((arc - local).abs().mean()),
+        "median_absolute_arc_minus_local_deviation": float(
+            (arc - local).abs().median()
+        ),
+        "mean_absolute_relative_arc_minus_local_deviation": float(
+            ((arc - local).abs() / local.abs()).mean()
+        ),
+        "excluding_largest_shock_mean_absolute_arc_minus_local_deviation": float(
+            (arc[keep] - local[keep]).abs().mean()
+        ),
+        "excluding_largest_shock_mean_absolute_relative_deviation": float(
+            ((arc[keep] - local[keep]).abs() / local[keep].abs()).mean()
+        ),
+        "mean_share_percentage_points_per_one_percent_cut": float(
+            finite_pp_per_one_percent.mean()
+        ),
+        "median_share_percentage_points_per_one_percent_cut": float(
+            finite_pp_per_one_percent.median()
+        ),
+        "mean_local_share_percentage_points_per_one_percent_cut": float(
+            local_pp_per_one_percent.mean()
+        ),
+        "mean_absolute_finite_minus_local_share_response": float(
+            (finite_pp_per_one_percent - local_pp_per_one_percent).abs().mean()
+        ),
+        "interpretation": (
+            "A one-percent price cut raises relative shadow share by about the negative "
+            "of the reported elasticity percent. The absolute percentage-point response "
+            "depends on starting share and is locally 2*s*(1-s)."
+        ),
+        "boundary": boundary,
+    }
+
+
 def _bootstrap_type_means(
     shock_types: pd.DataFrame,
     *,
@@ -423,9 +707,7 @@ def _bootstrap_type_means(
     if shock_types.empty:
         return {kind: None for kind in REPORT_TYPES}
     frame = shock_types.copy()
-    frame["cluster_id"] = frame["model_id"].astype(str) + "|" + frame[
-        "mover_provider"
-    ].astype(str)
+    frame["cluster_id"] = frame["model_id"].astype(str) + "|" + frame["mover_provider"].astype(str)
     clusters = sorted(frame["cluster_id"].unique())
     if len(clusters) < 2:
         return {kind: None for kind in REPORT_TYPES}
@@ -524,32 +806,30 @@ def summarize_shadow(
             "mean_share_loss_burden": float(group["share_loss_burden"].mean()),
             "share_loss_burden_cluster_bootstrap_95ci": share_ci[kind],
             "mean_quote_revenue_loss": float(group["quote_revenue_loss"].mean()),
-            "mean_quote_revenue_loss_burden": float(
-                group["quote_revenue_loss_burden"].mean()
-            ),
+            "mean_quote_revenue_loss_burden": float(group["quote_revenue_loss_burden"].mean()),
             "quote_revenue_loss_burden_cluster_bootstrap_95ci": revenue_ci[kind],
         }
-    largest_share = (
-        shock_types.loc[
-            shock_types.groupby("shock_id")["share_loss_burden"].idxmax(),
-            ["shock_id", "provider_type"],
-        ]["provider_type"].value_counts()
-    )
-    largest_revenue = (
-        shock_types.loc[
-            shock_types.groupby("shock_id")["quote_revenue_loss_burden"].idxmax(),
-            ["shock_id", "provider_type"],
-        ]["provider_type"].value_counts()
-    )
+    largest_share = shock_types.loc[
+        shock_types.groupby("shock_id")["share_loss_burden"].idxmax(),
+        ["shock_id", "provider_type"],
+    ]["provider_type"].value_counts()
+    largest_revenue = shock_types.loc[
+        shock_types.groupby("shock_id")["quote_revenue_loss_burden"].idxmax(),
+        ["shock_id", "provider_type"],
+    ]["provider_type"].value_counts()
     nonmovers = provider_panel[~provider_panel["is_mover"] & (provider_panel["share_before"] > 0)]
     spread = nonmovers.groupby("scenario_event_id")["relative_share_loss"].agg(
         lambda values: float(values.max() - values.min())
     )
-    movers = provider_panel[provider_panel["is_mover"]].groupby("shock_id").agg(
-        price_cut=("price_change_fraction", "mean"),
-        share_before=("share_before", "mean"),
-        share_change=("share_change", "mean"),
-        revenue_change=("quote_revenue_change", "mean"),
+    movers = (
+        provider_panel[provider_panel["is_mover"]]
+        .groupby("shock_id")
+        .agg(
+            price_cut=("price_change_fraction", "mean"),
+            share_before=("share_before", "mean"),
+            share_change=("share_change", "mean"),
+            revenue_change=("quote_revenue_change", "mean"),
+        )
     )
     return {
         "evidence_status": (
@@ -615,11 +895,16 @@ def paid_event_validation(
     attempts = _load_optional_table("router_route_attempts")
     candidates = _load_optional_table("price_event_candidates")
     if events.empty or attempts.empty:
-        return pd.DataFrame(), pd.DataFrame(), {
-            "evidence_status": "power_gated_missing_paid_event_tables",
-            "default_attempts": 0,
-            "events": 0,
-        }
+        return (
+            pd.DataFrame(),
+            pd.DataFrame(),
+            {
+                "evidence_status": "power_gated_missing_paid_event_tables",
+                "default_attempts": 0,
+                "events": 0,
+            },
+        )
+
     def parse_metadata(value: Any) -> dict[str, Any]:
         try:
             parsed = json.loads(value or "{}")
@@ -631,9 +916,7 @@ def paid_event_validation(
         parse_metadata
     )
     attempts = attempts.copy()
-    deduplication_keys = [
-        column for column in ("source", "event_id") if column in attempts.columns
-    ]
+    deduplication_keys = [column for column in ("source", "event_id") if column in attempts.columns]
     if deduplication_keys:
         attempts = attempts.drop_duplicates(deduplication_keys)
     attempts["registered_event_id"] = metadata.map(lambda value: value.get("event_id"))
@@ -646,11 +929,15 @@ def paid_event_validation(
         & attempts["registered_event_id"].notna()
     ].copy()
     if owned.empty:
-        return pd.DataFrame(), pd.DataFrame(), {
-            "evidence_status": "power_gated_no_default_event_attempts",
-            "default_attempts": 0,
-            "events": 0,
-        }
+        return (
+            pd.DataFrame(),
+            pd.DataFrame(),
+            {
+                "evidence_status": "power_gated_no_default_event_attempts",
+                "default_attempts": 0,
+                "events": 0,
+            },
+        )
     registry = events.drop_duplicates("event_id").rename(
         columns={"event_id": "registered_event_id", "provider_name": "moving_provider"}
     )
@@ -677,9 +964,9 @@ def paid_event_validation(
         label_map.get((model, provider), UNCLASSIFIED)
         for model, provider in zip(owned["model_id"], owned["selected_provider"], strict=True)
     ]
-    owned["selected_mover"] = owned["selected_provider"].str.casefold() == owned[
-        "moving_provider"
-    ].str.casefold()
+    owned["selected_mover"] = (
+        owned["selected_provider"].str.casefold() == owned["moving_provider"].str.casefold()
+    )
     active = owned[
         (owned["moving_provider_type"] == "active_undercutter")
         # A sub-threshold cut that crosses ranks is registered as a
@@ -689,9 +976,10 @@ def paid_event_validation(
     ].copy()
     active_events = registry[
         registry.apply(
-            lambda row: label_map.get((row["model_id"], row["moving_provider"]))
-            == "active_undercutter"
-            and float(row["relative_change"]) < 0,
+            lambda row: (
+                label_map.get((row["model_id"], row["moving_provider"])) == "active_undercutter"
+                and float(row["relative_change"]) < 0
+            ),
             axis=1,
         )
     ].copy()
@@ -726,9 +1014,7 @@ def paid_event_validation(
         menu = candidates.merge(active_blocks, on=["block_id", "model_id"], how="inner")
         if "compatible" in menu:
             menu = menu[menu["compatible"].fillna(False)]
-        menu["expected_quote_usd"] = pd.to_numeric(
-            menu["expected_quote_usd"], errors="coerce"
-        )
+        menu["expected_quote_usd"] = pd.to_numeric(menu["expected_quote_usd"], errors="coerce")
         menu = menu[menu["expected_quote_usd"] > 0]
         menu = (
             menu.sort_values("expected_quote_usd")
@@ -740,9 +1026,9 @@ def paid_event_validation(
             for model, provider in zip(menu["model_id"], menu["provider_name"], strict=True)
         ]
         menu["inverse_square_weight"] = menu["expected_quote_usd"].pow(-2)
-        menu["predicted_shadow_share"] = menu["inverse_square_weight"] / menu.groupby(
-            "block_id"
-        )["inverse_square_weight"].transform("sum")
+        menu["predicted_shadow_share"] = menu["inverse_square_weight"] / menu.groupby("block_id")[
+            "inverse_square_weight"
+        ].transform("sum")
         predicted = menu.groupby(
             [
                 "registered_event_id",
@@ -768,18 +1054,16 @@ def paid_event_validation(
         for column in ("selections", "realized_selection_share"):
             event_panel[column] = event_panel[column].fillna(0.0)
         if not predicted.empty:
-            event_panel["predicted_shadow_share"] = event_panel[
-                "predicted_shadow_share"
-            ].fillna(0.0)
+            event_panel["predicted_shadow_share"] = event_panel["predicted_shadow_share"].fillna(
+                0.0
+            )
         request_map = active.groupby("block_id").size()
         event_panel["requests"] = event_panel["block_id"].map(request_map).fillna(0).astype(int)
         event_panel["calibration_residual"] = (
-            event_panel["realized_selection_share"]
-            - event_panel["predicted_shadow_share"]
+            event_panel["realized_selection_share"] - event_panel["predicted_shadow_share"]
         )
     by_wave_type = (
-        event_panel.groupby(["wave_id", "selected_provider_type"], as_index=False)
-        .agg(
+        event_panel.groupby(["wave_id", "selected_provider_type"], as_index=False).agg(
             selections=("selections", "sum"),
             event_waves=("block_id", "nunique"),
             mean_realized_selection_share=("realized_selection_share", "mean"),
@@ -811,49 +1095,52 @@ def paid_event_validation(
         if not baseline_eligible.empty
         else pd.DataFrame()
     )
-    return event_panel, baseline_panel, {
-        "evidence_status": (
-            "owned_default_event_validation_descriptive"
-            if passed
-            else "power_gated_owned_default_event_validation"
-        ),
-        "default_attempts": attempt_count,
-        "events": event_count,
-        "models": int(active["model_id"].nunique()) if not active.empty else 0,
-        "movers": int(active["moving_provider"].nunique()) if not active.empty else 0,
-        "moving_provider_selection_rate": (
-            float(active["selected_mover"].mean()) if not active.empty else None
-        ),
-        "event_waves_with_contemporaneous_menu": int(predicted["block_id"].nunique())
-        if not predicted.empty
-        else 0,
-        "mean_absolute_type_calibration_error": (
-            float(event_panel["calibration_residual"].abs().mean())
-            if not event_panel.empty and not predicted.empty
-            else None
-        ),
-        "selection_by_wave_and_type": by_wave_type.to_dict("records"),
-        "continuous_default_pre_post": {
-            "study_id": settings["baseline_study_id"],
-            "policy": settings["baseline_policy"],
-            "window_minutes_each_side": int(settings["baseline_window_minutes"]),
-            "minimum_requests_per_side": int(
-                settings["minimum_baseline_requests_per_side"]
+    return (
+        event_panel,
+        baseline_panel,
+        {
+            "evidence_status": (
+                "owned_default_event_validation_descriptive"
+                if passed
+                else "power_gated_owned_default_event_validation"
             ),
-            "eligible_events": baseline_events,
-            "by_selected_provider_type": baseline_by_type.to_dict("records"),
+            "default_attempts": attempt_count,
+            "events": event_count,
+            "models": int(active["model_id"].nunique()) if not active.empty else 0,
+            "movers": int(active["moving_provider"].nunique()) if not active.empty else 0,
+            "moving_provider_selection_rate": (
+                float(active["selected_mover"].mean()) if not active.empty else None
+            ),
+            "event_waves_with_contemporaneous_menu": int(predicted["block_id"].nunique())
+            if not predicted.empty
+            else 0,
+            "mean_absolute_type_calibration_error": (
+                float(event_panel["calibration_residual"].abs().mean())
+                if not event_panel.empty and not predicted.empty
+                else None
+            ),
+            "selection_by_wave_and_type": by_wave_type.to_dict("records"),
+            "continuous_default_pre_post": {
+                "study_id": settings["baseline_study_id"],
+                "policy": settings["baseline_policy"],
+                "window_minutes_each_side": int(settings["baseline_window_minutes"]),
+                "minimum_requests_per_side": int(settings["minimum_baseline_requests_per_side"]),
+                "eligible_events": baseline_events,
+                "by_selected_provider_type": baseline_by_type.to_dict("records"),
+                "boundary": (
+                    "Same-model owned default requests before and after the public cut are a "
+                    "descriptive event window. Time-varying eligibility and common demand shocks "
+                    "are not randomized away."
+                ),
+            },
+            "support_gate_passed": passed,
             "boundary": (
-                "Same-model owned default requests before and after the public cut are a "
-                "descriptive event window. Time-varying eligibility and common demand shocks "
-                "are not randomized away."
+                "Owned default-route selections validate realized routing only for sampled "
+                "requests. "
+                "They do not identify market-wide provider flow or profit."
             ),
         },
-        "support_gate_passed": passed,
-        "boundary": (
-            "Owned default-route selections validate realized routing only for sampled requests. "
-            "They do not identify market-wide provider flow or profit."
-        ),
-    }
+    )
 
 
 def build_continuous_paid_event_panel(
@@ -895,9 +1182,7 @@ def build_continuous_paid_event_panel(
     label_map = labels.set_index(["model_id", "provider_name"])["provider_type"].to_dict()
     baseline["selected_provider_type"] = [
         label_map.get((model, provider), UNCLASSIFIED)
-        for model, provider in zip(
-            baseline["model_id"], baseline["selected_provider"], strict=True
-        )
+        for model, provider in zip(baseline["model_id"], baseline["selected_provider"], strict=True)
     ]
     window = pd.Timedelta(int(settings["baseline_window_minutes"]), unit="min")
     minimum = int(settings["minimum_baseline_requests_per_side"])
@@ -956,9 +1241,7 @@ def _render_figure(out_dir: Path, shock_types: pd.DataFrame, summary: dict[str, 
     labels = [kind for kind in REPORT_TYPES if kind in by_type]
     display = [kind.replace("_", "\n") for kind in labels]
     share_values = [100 * by_type[kind]["mean_share_loss_burden"] for kind in labels]
-    revenue_values = [
-        100 * by_type[kind]["mean_quote_revenue_loss_burden"] for kind in labels
-    ]
+    revenue_values = [100 * by_type[kind]["mean_quote_revenue_loss_burden"] for kind in labels]
     axes[0, 0].bar(display, share_values, color=[colors[kind] for kind in labels])
     axes[0, 0].set_title("A. Who absorbs displaced shadow share?")
     axes[0, 0].set_ylabel("Mean burden per cut (%)")
@@ -972,9 +1255,7 @@ def _render_figure(out_dir: Path, shock_types: pd.DataFrame, summary: dict[str, 
     events = shock_types.pivot(
         index="shock_id", columns="provider_type", values="share_loss_burden"
     ).fillna(0.0)
-    event_order = (
-        shock_types.drop_duplicates("shock_id").sort_values("run_ts")["shock_id"].tolist()
-    )
+    event_order = shock_types.drop_duplicates("shock_id").sort_values("run_ts")["shock_id"].tolist()
     events = events.reindex(event_order)
     bottom = np.zeros(len(events))
     x = np.arange(len(events))
@@ -1044,6 +1325,60 @@ def _render_power_gated_figure(out_dir: Path) -> None:
     plt.close(fig)
 
 
+def _render_jit_capture_figure(out_dir: Path, panel: pd.DataFrame) -> None:
+    """Render the dynamic-share and price-concession accounting diagnostics."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(1, 3, figsize=(14.0, 4.2), constrained_layout=True)
+    cut = 100.0 * panel["price_cut_fraction"]
+    capture = panel["dynamic_capture_share_percentage_points"]
+    axes[0].scatter(cut, capture, color="#D55E00", alpha=0.65, s=24, edgecolor="none")
+    axes[0].set_xscale("log")
+    axes[0].set_yscale("log")
+    axes[0].set_xlabel("Price cut (%)")
+    axes[0].set_ylabel("Incremental shadow share (pp)")
+    axes[0].set_title("A. Frozen-quote counterfactual (log scales)")
+
+    fraction = 100.0 * panel["dynamic_fraction_of_post_share"].sort_values()
+    axes[1].plot(
+        np.linspace(0, 1, len(fraction), endpoint=True),
+        fraction,
+        color="#0072B2",
+        linewidth=2,
+    )
+    axes[1].axhline(float(fraction.median()), color="#555555", linestyle="--", linewidth=1)
+    axes[1].set_xlabel("Empirical quantile of cut events")
+    axes[1].set_ylabel("Post-cut share due to latest cut (%)")
+    axes[1].set_title("B. Dynamic fraction of routed share")
+
+    gain = panel["volume_gain_at_old_quote"]
+    cost = panel["price_concession_cost_at_post_share"]
+    lower = float(min(gain.min(), cost.min())) * 0.8
+    upper = float(max(gain.max(), cost.max())) * 1.2
+    axes[2].scatter(cost, gain, color="#009E73", alpha=0.65, s=24, edgecolor="none")
+    axes[2].plot(
+        [lower, upper],
+        [lower, upper],
+        color="#555555",
+        linestyle="--",
+        linewidth=1,
+    )
+    axes[2].set_xscale("log")
+    axes[2].set_yscale("log")
+    axes[2].set_xlabel("Price-concession cost index")
+    axes[2].set_ylabel("Volume-gain index at old quote")
+    axes[2].set_title("C. Quote-revenue identity (log scales)")
+    for axis in axes:
+        axis.grid(alpha=0.2)
+    fig.suptitle(
+        "JIT-like capture by active undercutters\n"
+        "Deterministic inverse-square accounting; not realized flow or profit",
+        fontsize=14,
+    )
+    for extension in ("png", "pdf"):
+        fig.savefig(out_dir / f"wf19_jit_capture.{extension}", dpi=200)
+    plt.close(fig)
+
+
 def run(
     out_dir: Path = DEFAULT_OUT,
     config_path: Path = DEFAULT_CONFIG,
@@ -1062,21 +1397,24 @@ def run(
             price_rtol=float(settings["price_relative_tolerance"]),
             moving_type=str(settings["moving_type"]),
             direction=str(settings["direction"]),
-            exclude_public_health_transitions=bool(
-                settings["exclude_public_health_transitions"]
-            ),
+            exclude_public_health_transitions=bool(settings["exclude_public_health_transitions"]),
         )
         scenario_types, shock_types = aggregate_incidence(provider_panel)
         shadow = summarize_shadow(provider_panel, shock_types, counters, protocol)
+        jit_panel = build_jit_capture_panel(provider_panel)
+        jit_capture = summarize_jit_capture(jit_panel)
+        shadow_curve_check = summarize_shadow_curve_numerical_check(provider_panel)
         paid_rows, paid_baseline, paid = paid_event_validation(labels, protocol)
 
     save(provider_panel, out_dir, "wf19_provider_incidence")
     save(scenario_types, out_dir, "wf19_scenario_type_incidence")
     save(shock_types, out_dir, "wf19_shock_type_incidence")
+    save(jit_panel, out_dir, "wf19_jit_capture")
     save(paid_rows, out_dir, "wf19_owned_default_event_panel")
     save(paid_baseline, out_dir, "wf19_continuous_default_event_panel")
     if not shock_types.empty:
         _render_figure(out_dir, shock_types, shadow)
+        _render_jit_capture_figure(out_dir, jit_panel)
     else:
         _render_power_gated_figure(out_dir)
     result = {
@@ -1086,6 +1424,8 @@ def run(
         "frozen_label_source_revision": wf16_summary.get("source", {}).get("revision"),
         "frozen_label_holdout_start": str(wf16_summary["holdout_start"]),
         "shadow": shadow,
+        "jit_like_curve_capture": jit_capture,
+        "shadow_curve_numerical_check": shadow_curve_check,
         "paid_validation": paid,
         "claim_boundary": (
             "WF19 measures inverse-square shadow-share and fixed-demand quote-revenue "

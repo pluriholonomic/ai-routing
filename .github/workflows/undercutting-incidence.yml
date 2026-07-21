@@ -63,11 +63,14 @@ jobs:
               "wf19_provider_incidence.parquet",
               "wf19_scenario_type_incidence.parquet",
               "wf19_shock_type_incidence.parquet",
+              "wf19_jit_capture.parquet",
               "wf19_owned_default_event_panel.parquet",
               "wf19_continuous_default_event_panel.parquet",
               "wf19_summary.json",
               "wf19_undercutting_incidence.png",
               "wf19_undercutting_incidence.pdf",
+              "wf19_jit_capture.png",
+              "wf19_jit_capture.pdf",
           ]
           missing = [name for name in required if not (root / name).is_file()]
           if missing:
