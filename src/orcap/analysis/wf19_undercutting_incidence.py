@@ -29,6 +29,12 @@ from ..config import DATA_DIR, HF_DATASET_REPO
 from . import data
 from .common import DEFAULT_OUT, save, save_json
 from .wf16_provider_type_validation import TYPE_ORDER
+from .wf19_relative_elasticity import (
+    build_relative_elasticity_panel,
+    load_short_chat_quotes,
+    render_cross_model_figures,
+    summarize_relative_elasticity,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = ROOT / "config" / "undercutting_incidence_v1.toml"
@@ -1405,6 +1411,9 @@ def run(
         jit_capture = summarize_jit_capture(jit_panel)
         shadow_curve_check = summarize_shadow_curve_numerical_check(provider_panel)
         paid_rows, paid_baseline, paid = paid_event_validation(labels, protocol)
+        relative_quotes = load_short_chat_quotes(labels)
+        relative_elasticity = build_relative_elasticity_panel(relative_quotes, labels)
+        relative_elasticity_summary = summarize_relative_elasticity(relative_elasticity)
 
     save(provider_panel, out_dir, "wf19_provider_incidence")
     save(scenario_types, out_dir, "wf19_scenario_type_incidence")
@@ -1412,11 +1421,13 @@ def run(
     save(jit_panel, out_dir, "wf19_jit_capture")
     save(paid_rows, out_dir, "wf19_owned_default_event_panel")
     save(paid_baseline, out_dir, "wf19_continuous_default_event_panel")
+    save(relative_elasticity, out_dir, "wf19_relative_elasticity")
     if not shock_types.empty:
         _render_figure(out_dir, shock_types, shadow)
         _render_jit_capture_figure(out_dir, jit_panel)
     else:
         _render_power_gated_figure(out_dir)
+    render_cross_model_figures(out_dir, relative_elasticity)
     result = {
         "study_id": protocol["study"]["id"],
         "protocol_sha256": protocol_sha,
@@ -1426,6 +1437,7 @@ def run(
         "shadow": shadow,
         "jit_like_curve_capture": jit_capture,
         "shadow_curve_numerical_check": shadow_curve_check,
+        "cross_model_relative_elasticity": relative_elasticity_summary,
         "paid_validation": paid,
         "claim_boundary": (
             "WF19 measures inverse-square shadow-share and fixed-demand quote-revenue "

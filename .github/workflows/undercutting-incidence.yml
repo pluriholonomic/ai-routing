@@ -66,11 +66,16 @@ jobs:
               "wf19_jit_capture.parquet",
               "wf19_owned_default_event_panel.parquet",
               "wf19_continuous_default_event_panel.parquet",
+              "wf19_relative_elasticity.parquet",
               "wf19_summary.json",
               "wf19_undercutting_incidence.png",
               "wf19_undercutting_incidence.pdf",
               "wf19_jit_capture.png",
               "wf19_jit_capture.pdf",
+              "wf19_cross_model_timeseries.png",
+              "wf19_cross_model_timeseries.pdf",
+              "wf19_cross_model_elasticity.png",
+              "wf19_cross_model_elasticity.pdf",
           ]
           missing = [name for name in required if not (root / name).is_file()]
           if missing:
