@@ -16,6 +16,8 @@
   "failed_initial_policies": 19,
   "failed_with_any_depth_5_visit_after_100k": 0,
   "failed_with_any_all_low_transition_after_100k": 0,
+  "seeds_with_full_state_action_coverage": 20,
+  "batch_model_correct_initial_action": 20,
   "rows": [
     {
       "seed": 0,
@@ -46,6 +48,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 27,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -77,6 +85,12 @@
       "deepest_depth_after_100k": 4,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 21,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -108,6 +122,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 29,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -139,6 +159,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 28,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -170,6 +196,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 21,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -201,6 +233,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 33,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -232,6 +270,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 24,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -263,6 +307,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 29,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -294,6 +344,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 16,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -325,6 +381,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 30,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -356,6 +418,12 @@
       "deepest_depth_after_100k": 7,
       "final_initial_action": 0,
       "final_initial_action_label": "low",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 36,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -387,6 +455,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 19,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -418,6 +492,12 @@
       "deepest_depth_after_100k": 4,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 22,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -449,6 +529,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 25,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -480,6 +566,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 28,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -511,6 +603,12 @@
       "deepest_depth_after_100k": 4,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 18,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -542,6 +640,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 31,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -573,6 +677,12 @@
       "deepest_depth_after_100k": 4,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 31,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -604,6 +714,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 9,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     },
     {
@@ -635,6 +751,12 @@
       "deepest_depth_after_100k": 3,
       "final_initial_action": 1,
       "final_initial_action_label": "high",
+      "visited_state_actions": 256,
+      "total_state_actions": 256,
+      "minimum_state_action_visits": 27,
+      "batch_model_initial_action": 0,
+      "batch_model_initial_action_label": "low",
+      "batch_model_max_value_error": 0.0,
       "max_frozen_q_table_error": 0.0
     }
   ],

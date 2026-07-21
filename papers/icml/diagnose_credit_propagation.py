@@ -18,6 +18,7 @@ from orcap.market_env.state_aliasing import (
     LOW,
     BinaryCutPenaltyMDP,
     BinaryQAgent,
+    solve_exact,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -69,6 +70,9 @@ def _trace_seed(args: tuple[int, list[list[float]]]) -> dict:
     )
     visits = {checkpoint: np.zeros(mdp.memory + 1, dtype=np.int64) for checkpoint in CHECKPOINTS}
     all_low_hits: list[int] = []
+    state_action_counts = np.zeros((mdp.n_states, 2), dtype=np.int64)
+    empirical_rewards = np.full((mdp.n_states, 2), np.nan, dtype=float)
+    empirical_successors = np.full((mdp.n_states, 2), -1, dtype=np.int16)
     state = mdp.initial_state
     for step in range(300_000):
         depth = _trailing_low_depth(state, mdp.memory)
@@ -76,8 +80,12 @@ def _trace_seed(args: tuple[int, list[list[float]]]) -> dict:
             if step >= checkpoint:
                 visits[checkpoint][depth] += 1
         action = agent.act(state)
+        state_action_counts[state, action] += 1
         next_state = int(successors[state, action])
-        agent.update(state, action, float(rewards[state, action]), next_state)
+        reward = float(rewards[state, action])
+        empirical_rewards[state, action] = reward
+        empirical_successors[state, action] = next_state
+        agent.update(state, action, reward, next_state)
         state = next_state
         if state == 0:
             all_low_hits.append(step + 1)
@@ -87,6 +95,20 @@ def _trace_seed(args: tuple[int, list[list[float]]]) -> dict:
     if max_q_error > 1e-12:
         raise RuntimeError(f"seed {seed} did not reproduce frozen Q-table: {max_q_error}")
     policy = agent.q.argmax(axis=1)
+    if np.any(state_action_counts == 0):
+        raise RuntimeError(f"seed {seed} lacks complete empirical transition coverage")
+    fitted_values = np.zeros(mdp.n_states, dtype=float)
+    for _ in range(10_000):
+        fitted_q = empirical_rewards + mdp.gamma * fitted_values[empirical_successors]
+        fitted_values_next = fitted_q.max(axis=1)
+        if float(np.max(np.abs(fitted_values_next - fitted_values))) <= 1e-13:
+            fitted_values = fitted_values_next
+            break
+        fitted_values = fitted_values_next
+    fitted_policy = (
+        empirical_rewards + mdp.gamma * fitted_values[empirical_successors]
+    ).argmax(axis=1)
+    exact = solve_exact(mdp)
     return {
         "seed": seed,
         "first_all_low_transition": min(all_low_hits),
@@ -98,6 +120,16 @@ def _trace_seed(args: tuple[int, list[list[float]]]) -> dict:
         "deepest_depth_after_100k": int(np.flatnonzero(visits[100_000])[-1]),
         "final_initial_action": int(policy[mdp.initial_state]),
         "final_initial_action_label": "low" if policy[mdp.initial_state] == LOW else "high",
+        "visited_state_actions": int(np.count_nonzero(state_action_counts)),
+        "total_state_actions": int(state_action_counts.size),
+        "minimum_state_action_visits": int(state_action_counts.min()),
+        "batch_model_initial_action": int(fitted_policy[mdp.initial_state]),
+        "batch_model_initial_action_label": (
+            "low" if fitted_policy[mdp.initial_state] == LOW else "high"
+        ),
+        "batch_model_max_value_error": float(
+            np.max(np.abs(fitted_values - exact.values))
+        ),
         "max_frozen_q_table_error": max_q_error,
     }
 
@@ -131,6 +163,12 @@ def main() -> None:
         ),
         "failed_with_any_all_low_transition_after_100k": sum(
             row["all_low_transitions_after_100k"] > 0 for row in failed
+        ),
+        "seeds_with_full_state_action_coverage": sum(
+            row["visited_state_actions"] == row["total_state_actions"] for row in rows
+        ),
+        "batch_model_correct_initial_action": sum(
+            row["batch_model_initial_action_label"] == "low" for row in rows
         ),
         "rows": rows,
         "claim_boundary": (

@@ -37,3 +37,12 @@ def test_credit_diagnostic_separates_early_discovery_from_late_support():
     assert diagnostic["failed_with_any_depth_5_visit_after_100k"] == 0
     assert diagnostic["failed_with_any_all_low_transition_after_100k"] == 0
     assert all(int(row["deepest_depth_after_100k"]) < 5 for row in failed)
+
+
+def test_complete_early_model_supports_ordered_offline_backups():
+    diagnostic = json.loads(DIAGNOSTIC.read_text(encoding="utf-8"))
+    rows = diagnostic["rows"]
+    assert diagnostic["seeds_with_full_state_action_coverage"] == 20
+    assert diagnostic["batch_model_correct_initial_action"] == 20
+    assert all(int(row["minimum_state_action_visits"]) > 0 for row in rows)
+    assert max(float(row["batch_model_max_value_error"]) for row in rows) <= 1e-10

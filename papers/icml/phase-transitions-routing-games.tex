@@ -46,9 +46,10 @@ In a frozen calibrated routing game, primitive Q-learning selects the rational
 action in 1/20 seeds at $M=7$, versus 19/20 with the option; the paired regret
 change is $-0.0643$ (seed-bootstrap 95\% interval
 $[-0.0755,-0.0493]$).  A trace replay shows that all 20 primitive learners
-reached the all-low state within 901 early steps, but none of the 19 failures
-reached even depth five after step 100,000.  The intervention reverses beyond
-the rational boundary,
+cover every state--action pair and reach the all-low state within 901 steps,
+yet none of the 19 failures reaches depth five after step 100,000.  Ordered
+batch Bellman sweeps on the same observed transitions recover the rational cut
+in 20/20 seeds.  The intervention reverses beyond the rational boundary,
 where primitive learning is correct and commitment overcuts.  Full state and
 an eight-step TD target do not close the gap.  The result isolates a temporal
 credit mechanism; it is not evidence of live-provider collusion.
@@ -289,9 +290,11 @@ price books.  E-SIM8 varies learning rate and exploration decay in a $3\times3$
 
 After freezing E-SIM6, we added a descriptive trace audit rather than modifying
 its confirmatory gate.  It replays the exact 20 primitive seeds, asserts every
-terminal Q-table against the frozen artifact to tolerance $10^{-12}$, and
-records trailing-low-state visits after steps 100,000 and 200,000.  These
-checkpoints are diagnostics, not preregistered readiness estimates.
+terminal Q-table against the frozen artifact to tolerance $10^{-12}$, records
+trailing-low-state visits after steps 100,000 and 200,000, and reconstructs the
+deterministic empirical transition table from visited pairs.  Batch Bellman
+sweeps then test whether coverage is sufficient when update order is repaired.
+The checkpoints are diagnostics, not preregistered readiness estimates.
 
 The live empirical bridge is deliberately weaker.  In the latest hosted
 panel, the primary same-regime covariance statistic exceeds its randomization
@@ -319,14 +322,18 @@ passes in seven.
 \paragraph{Early discovery is not the explanation.}
 The trace audit reproduces all 20 frozen Q-tables exactly.  Every primitive
 learner reaches the all-low state early: first-hit times range from step 7 to
-901.  Nevertheless, 19 finish with the wrong high initial action.  Among those
-19 failures, none visits a state with five or more trailing low actions after
-step 100,000, and none returns to the all-low state.  Thus the naive
-first-discovery interpretation is falsified.  The observed mechanism is
-consistent with \emph{late credit starvation}: informative states are sampled
-while exploration is broad, but are not revisited deeply enough after value
-estimates separate.  This diagnostic motivates the stopping-time formulation
-of \cref{thm:critical}; it does not estimate a unique readiness time.
+901.  Every seed also observes every one of the 256 state--action pairs at
+least nine times.  Nevertheless, 19 finish with the wrong high initial action.
+Among those failures, none visits a state with five or more trailing low
+actions after step 100,000, and none returns to the all-low state.  Thus neither
+first discovery nor aggregate support is the explanation.  Ordered batch
+Bellman sweeps on each seed's same observed deterministic transitions recover
+the exact initial cut in 20/20 seeds.  The observed mechanism is therefore
+\emph{late credit starvation}: the data needed to solve the model were
+collected while exploration was broad, but online one-step updates did not
+revisit deep states after downstream values separated.  This diagnostic
+motivates the stopping-time formulation of \cref{thm:critical}; it does not
+estimate a unique readiness time.
 
 \paragraph{The intervention is nonmonotone.}
 At $M=12$, exact optimization stays high.  Primitive Q is correct in 20/20
@@ -410,9 +417,11 @@ whether persistent cutting is valuable; the finite-time threshold says whether
 a bounded ordered-credit learner can obtain fresh support after its downstream
 values become usable.  Between them, high learned prices can persist despite a
 profitable low-price path, with late path time exponential in memory and only
-logarithmic improvement from longer training.
-A path-equivalent option collapses that gap but overcorrects when cutting is no
-longer rational.  Learning-aware marketplace design must therefore optimize
+logarithmic improvement from longer training.  Complete state--action coverage
+is insufficient for the online learner, while ordered batch backups on those
+same transitions recover the optimum.  A path-equivalent option also collapses
+that gap but overcorrects when cutting is no longer rational.  Learning-aware
+marketplace design must therefore optimize
 both incentives and representations, then audit deviations on either side of
 the boundary.
 
