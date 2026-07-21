@@ -1,0 +1,99 @@
+name: undercutting-incidence
+
+on:
+  schedule:
+    - cron: "17 3,9,15,21 * * *"
+  workflow_run:
+    workflows: ["compact"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: undercutting-incidence-v1
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: freeze current outcome-data revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from pathlib import Path
+          from huggingface_hub import HfApi
+
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(
+              "t4run/openrouter-market-history"
+          ).sha)
+          Path("hf-revision.txt").write_text(revision + "\n", encoding="utf-8")
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: run frozen-label prospective incidence experiment
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_HF_REVISION: ${{ steps.source.outputs.revision }}
+        run: >-
+          uv run orcap analyze
+          --hypothesis wf19
+          --out data/analysis/undercutting-incidence-v1
+      - name: validate output and claim boundaries
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+
+          root = Path("data/analysis/undercutting-incidence-v1")
+          required = [
+              "wf19_provider_incidence.parquet",
+              "wf19_scenario_type_incidence.parquet",
+              "wf19_shock_type_incidence.parquet",
+              "wf19_owned_default_event_panel.parquet",
+              "wf19_continuous_default_event_panel.parquet",
+              "wf19_summary.json",
+              "wf19_undercutting_incidence.png",
+              "wf19_undercutting_incidence.pdf",
+          ]
+          missing = [name for name in required if not (root / name).is_file()]
+          if missing:
+              raise SystemExit(f"missing WF19 outputs: {missing}")
+          summary = json.loads((root / "wf19_summary.json").read_text())
+          if "not realized flow" not in summary["claim_boundary"]:
+              raise SystemExit("WF19 shadow-routing claim boundary changed")
+          if summary["analysis_source"]["revision"] != Path(
+              "hf-revision.txt"
+          ).read_text().strip():
+              raise SystemExit("WF19 analysis revision is not frozen run revision")
+          forbidden = {"prompt", "messages", "response_text", "input_text", "output_text"}
+          for path in root.glob("*.parquet"):
+              overlap = forbidden.intersection(pd.read_parquet(path).columns)
+              if overlap:
+                  raise SystemExit(f"payload-adjacent columns in {path}: {sorted(overlap)}")
+          PY
+      - name: publish aggregate WF19 outputs
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "WF19 undercutting incidence ${{ github.run_id }}"
+      - name: preserve immutable WF19 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: undercutting-incidence-v1-${{ github.run_id }}
+          path: data/analysis/undercutting-incidence-v1/
+          if-no-files-found: error
+          retention-days: 90

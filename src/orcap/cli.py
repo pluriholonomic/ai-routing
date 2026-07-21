@@ -617,6 +617,7 @@ def main() -> None:
             "wf16": "wf16_provider_type_validation",
             "wf17": "wf17_within_type_collusion",
             "wf18": "wf18_signal_coupling",
+            "wf19": "wf19_undercutting_incidence",
             "paid_scope": "paid_market_scope",
             "bm1": "bm1_pricing_technology",
             "bm2": "bm2_fast_slow_reactions",

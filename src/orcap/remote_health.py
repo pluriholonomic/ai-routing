@@ -21,6 +21,7 @@ WORKFLOWS = {
     "paid-price-response.yml": 360,
     "price-event-probes.yml": 180,
     "price-tests-online.yml": 540,
+    "undercutting-incidence.yml": 540,
     "live-router-exponent.yml": 540,
     "adaptive-router.yml": 540,
     "adaptive-router-monitor.yml": 1800,
@@ -47,6 +48,7 @@ HF_PRICE_TABLES = {
     "curated/price_response_assignments": 1800,
     "curated/price_event_wave_plans": 1800,
     "analysis/router_exponent_estimates": 720,
+    "analysis/undercutting-incidence-v1": 720,
 }
 
 

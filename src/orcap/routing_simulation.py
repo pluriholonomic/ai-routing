@@ -21,7 +21,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
-PANEL_ID = "routing-simulation-v1-20260709"
+PANEL_ID = "routing-simulation-v2-20260721"
 SELECTION_POLICY = "inverse_square_quote_cost_among_publicly_unruled_providers"
 ELIGIBILITY_BASIS = (
     "positive public text quote; request capability/context not ruled out by endpoint metadata; "
@@ -29,9 +29,10 @@ ELIGIBILITY_BASIS = (
 )
 
 # A fixed, high-volume, multi-provider text-model panel selected from the
-# 2026-07-09 weekly OpenRouter rankings.  The stable API model ids (not their
-# versioned ranking slugs) keep the 24-hour experiment comparable.  An operator
-# can replace it with ORCAP_ROUTE_PANEL_MODELS=a/model,b/model without code.
+# 2026-07-09 weekly OpenRouter rankings, extended on 2026-07-21 to cover every
+# model with a frozen WF-16 active-undercutter pair.  The new panel id prevents
+# transitions from being drawn across that prospective coverage expansion.
+# An operator can replace it with ORCAP_ROUTE_PANEL_MODELS=a/model,b/model.
 DEFAULT_PANEL_MODELS = (
     "z-ai/glm-5.2",
     "minimax/minimax-m3",
@@ -53,6 +54,16 @@ DEFAULT_PANEL_MODELS = (
     "google/gemini-2.5-flash-lite",
     "google/gemini-2.5-flash",
     "openai/gpt-4o-mini",
+    # Prospective WF-19 identification extension.  z-ai/glm-5.2 and
+    # deepseek/deepseek-v4-flash already appear above.
+    "minimax/minimax-m2.5",
+    "minimax/minimax-m2.7",
+    "moonshotai/kimi-k2.6",
+    "moonshotai/kimi-k2.7-code",
+    "qwen/qwen3-235b-a22b-2507",
+    "qwen/qwen3.6-27b",
+    "z-ai/glm-4.6",
+    "z-ai/glm-5",
 )
 
 

@@ -18,6 +18,7 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["paid-price-response.yml"] == 360
     assert WORKFLOWS["price-event-probes.yml"] == 180
     assert WORKFLOWS["price-tests-online.yml"] == 540
+    assert WORKFLOWS["undercutting-incidence.yml"] == 540
     assert WORKFLOWS["live-router-exponent.yml"] == 540
     assert WORKFLOWS["adaptive-router.yml"] == 540
     assert WORKFLOWS["adaptive-router-monitor.yml"] == 1800
@@ -25,6 +26,7 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["hmp-signal-coupling-monitor.yml"] == 1800
     assert "curated/price_response_assignments" in HF_PRICE_TABLES
     assert "analysis/router_exponent_estimates" in HF_PRICE_TABLES
+    assert "analysis/undercutting-incidence-v1" in HF_PRICE_TABLES
 
 
 def test_confirmatory_probe_workflows_share_concurrency_lock():
@@ -124,6 +126,31 @@ def test_price_workflows_are_assembled_analyzed_and_preregistered():
         root / "experiments/openrouter-price-response-v1/preregistration.md"
     ).is_file()
     assert (root / "experiments/openrouter-price-event-v1/preregistration.md").is_file()
+    assert (root / "experiments/undercutting-incidence-v1/preregistration.md").is_file()
+
+
+def test_undercutting_incidence_is_recurring_and_uses_frozen_types():
+    root = Path(__file__).parents[1]
+    workflow = (root / ".github/workflows/undercutting-incidence.yml").read_text()
+    online = (root / "src/orcap/analysis/price_tests_online.py").read_text()
+    simulation = (root / "src/orcap/routing_simulation.py").read_text()
+    protocol = (root / "config/undercutting_incidence_v1.toml").read_text()
+    assert 'workflows: ["compact"]' in workflow
+    assert "--hypothesis wf19" in workflow
+    assert "frozen_label_artifact_revision" in protocol
+    assert "frozen_labels_sha256" in protocol
+    assert "wf19_undercutting_incidence" in online
+    for model in (
+        "minimax/minimax-m2.5",
+        "minimax/minimax-m2.7",
+        "moonshotai/kimi-k2.6",
+        "moonshotai/kimi-k2.7-code",
+        "qwen/qwen3-235b-a22b-2507",
+        "qwen/qwen3.6-27b",
+        "z-ai/glm-4.6",
+        "z-ai/glm-5",
+    ):
+        assert model in simulation
 
 
 def test_hmp_signal_coupling_workflows_are_support_gated_and_private():

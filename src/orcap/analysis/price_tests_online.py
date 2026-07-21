@@ -21,6 +21,7 @@ from . import (
     h46_rolling_routing_elasticity,
     h93_cross_router_price_policy,
     h94_cross_router_pass_through,
+    wf19_undercutting_incidence,
 )
 
 STUDY_ID = "openrouter-online-price-tests-v1"
@@ -113,6 +114,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "h93": h93_cross_router_price_policy.run,
         "h94": h94_cross_router_pass_through.run,
         "sync": _synchronization_monitor,
+        "wf19": wf19_undercutting_incidence.run,
     }
     with data.pinned_analysis_source() as source:
         results = {
@@ -129,6 +131,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         ("P7", "cadence-premium segmentation", "bm1"),
         ("P8", "same-direction quote synchronization", "sync"),
         ("P9", "cross-router posted-price pass-through", "h94"),
+        ("P10", "active-undercutter share and revenue incidence", "wf19"),
     ]
     rows = [
         {

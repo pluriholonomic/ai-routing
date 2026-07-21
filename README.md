@@ -72,6 +72,7 @@ source record, so OpenRouter schema drift never loses data):
 | `pricing_changes` | change event | SCD-2: field, old/new value, when; `__endpoint_added__`/`__endpoint_removed__` markers |
 | `routing_simulation` | run × fixed model × workload shape × provider | **simulated** first-route share from public endpoint quotes and documented inverse-square price weighting; never actual fills |
 | `routing_simulation_runs` | run | simulation coverage plus free/zero-cost/single-provider exclusion ledger |
+| `analysis/undercutting-incidence-v1/wf19_*` | frozen type × unilateral cut | prospective inverse-square share and quote-revenue incidence; owned default-event validation remains separately power-gated |
 | `hf_router_endpoint_snapshots` | run × HF model × provider | public cross-router price, context, performance, and capability metadata; not routed volume |
 | `hf_router_policy_simulation` | run × HF model × workload shape × provider × policy | simulated cheapest and reported-fastest selection surfaces; never actual route fills |
 | `router_policy_snapshots` | owned config × model × provider | redacted Cloudflare AI Gateway, Portkey, or LiteLLM routing configuration; not a traffic log |

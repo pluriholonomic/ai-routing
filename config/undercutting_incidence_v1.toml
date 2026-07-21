@@ -1,0 +1,37 @@
+[study]
+id = "undercutting-incidence-v1"
+frozen_label_artifact_revision = "d4a13616c9a7646cf2c13b67b21eef632f93306a"
+frozen_label_source_revision = "cc045919595d2f8b0c211c128ac3e535f9b8c008"
+frozen_labels_sha256 = "047b9eafa3d2741ab25aa807ee8f1ad8dc8a55fdd3687df5f27e1087427529bc"
+frozen_summary_sha256 = "9edba31133191ac2b4ece4413c3e9195539aea92623e4624ec1a28f035977c6d"
+
+[transitions]
+max_gap_minutes = 30
+price_relative_tolerance = 0.0000000001
+require_unchanged_provider_set = true
+exclude_public_health_transitions = true
+moving_type = "active_undercutter"
+direction = "cut"
+
+[inference]
+bootstrap_draws = 1999
+seed = 190071
+minimum_models = 10
+minimum_movers = 10
+minimum_model_mover_clusters = 30
+maximum_cluster_share = 0.20
+
+[paid_validation]
+study_id = "openrouter-price-event-v1"
+default_policy = "default_fresh"
+minimum_default_attempts = 100
+minimum_events = 20
+baseline_study_id = "openrouter-routing-crossover-v2"
+baseline_policy = "openrouter_default"
+baseline_window_minutes = 60
+minimum_baseline_requests_per_side = 4
+
+[identification]
+labels_must_precede_primary_window = true
+shadow_share_is_not_realized_flow = true
+profit_requires_marginal_cost = true
