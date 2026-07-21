@@ -43,7 +43,7 @@ be learned about this market when prices are public but clearing, capacity, and
 quality are only partly observed.  Five-minute menus, router enforcement state,
 and owned requests reject a simple public-order-book description: a documented
 inverse-price heuristic is not the realized allocation law, active undercutting
-is transient, and a registered response screen finds no excess rival reaction.
+is transient, and a registered response screen detects no excess rival reaction.
 We then derive mechanism results that survive this limited identification.  A
 price-only Gibbs router has an exact welfare-regret identity for omitted service
 attributes; uniformly accurate scores are near-optimal; but no quote-only rule
@@ -321,7 +321,8 @@ most direct price-level conflict.
 
 \subsection{Capture system and estimands}
 
-The main public panel begins on 7 July 2026 and captures endpoint and model state
+The main public panel begins on 7 July 2026 and, in the frozen release used
+here, runs through 21 July.  It captures endpoint and model state
 at five-minute cadence in a remote GitHub Actions--Hugging Face pipeline.  We
 construct completion-price events only when a same endpoint-model quote changes
 between valid snapshots.  We separately collect router-published rate-limit,
@@ -330,9 +331,8 @@ before sending a minimal request and retrieve the selected provider and outcome
 for our account.  Private prompts and request rows never enter public releases.
 
 Every result freezes a dataset revision and declares a calibration/holdout split.
-The provider-regime analysis uses revision
-\texttt{cc045919595d2f8b0c211c128ac3e535f9b8c008}.  The first HMP monitor uses
-\texttt{aeb7f165669888514548170606fd3a29b1d0fb5f}.  The adaptive replay is
+The provider-regime and HMP analyses use revision
+\texttt{e4174d08a6c0e18ac0adf9a9f26b6a917f7f1ed8}.  The adaptive replay is
 trained before 16 July and evaluated afterward.  These windows are short; they
 support falsification and mechanism screening, not a mature structural estimate.
 
@@ -341,11 +341,11 @@ support falsification and mechanism screening, not a mature structural estimate.
 Provider-model pairs are frozen in a training window into four descriptive
 pricing regimes relative to the model-author benchmark: premium, anchor adopter,
 static discounter, and active undercutter.  The names describe a price path, not
-a provider's cost or intent.  Of 365 training pairs, 360 are holdout-evaluable.
-Overall persistence is 0.892 (95\% Wilson interval $[0.855,0.920]$).  Premium and
-static-discount regimes persist at 0.991 and 0.962; anchor adoption at 0.830; but
-active undercutting persists in only 4 of 20 pairs, or 0.200
-($[0.081,0.416]$).  Fourteen of the 20 active pairs become static discounters.
+a provider's cost or intent.  Of 366 training pairs, 358 are holdout-evaluable.
+Overall persistence is 0.944 (95\% Wilson interval $[0.915,0.964]$).  Premium,
+static-discount, and anchor regimes persist at 0.992, 0.976, and 1.000,
+respectively; active undercutting persists in only 5 of 21 pairs, or 0.238
+($[0.106,0.451]$).  Fourteen of the 21 active pairs become static discounters.
 
 This pattern fits a Brown--MacKay-style world in which repricing technologies
 differ \cite{brownmackay2023}, but it does not identify such technology.  Active
@@ -368,15 +368,16 @@ Panel C holds menus and provider behavior fixed, so it is not a welfare estimate
 \label{fig:audit}
 \end{figure*}
 
-\subsection{No excess rival response in the active regime}
+\subsection{No detectable excess rival response in the active regime}
 
-For 1,006 active-undercutter events in 11 target provider-model clusters, the
-registered rival-action rate is 0.376 ($[0.346,0.406]$), compared with 0.456
-($[0.426,0.487]$) in a shifted timing placebo.  The paired difference is
-$-0.081$; a target-cluster bootstrap interval is $[-0.132,0]$, and the exact
-one-sided test for \emph{more} registered-window response has $p=1.00$.  The
-placebo is not randomized treatment, but the direction rejects a simple
-``undercut then immediate rival response'' account in the current window.
+For 1,052 active-undercutter events in 11 target provider-model clusters, the
+registered rival-action rate is 0.455 ($[0.425,0.486]$), compared with 0.453
+($[0.424,0.484]$) in a shifted timing placebo.  The paired difference is
+$0.0019$; a target-cluster bootstrap interval is $[-0.0438,0.0410]$, and the
+exact one-sided test for \emph{more} registered-window response has $p=0.468$.
+The placebo is not randomized treatment.  The result places the immediate
+response mechanism near zero at this cadence but does not exclude slower,
+state-dependent, or provider-specific response.
 
 \subsection{Displayed score is not realized clearing}
 
@@ -387,10 +388,11 @@ estimate is $-1.19$ (standard error 0.17), but it is neither request-level
 selection nor a price experiment.  We therefore use inverse-power routing only
 as the conditional benchmark in Section~\ref{sec:theory}.
 
-Owned routing reinforces the distinction.  In the provider-regime release, 151
-delegated selections match frozen regimes: 70 anchor, 73 premium, four active,
-and four static.  These counts depend on our model and prompt mix and are not
-market shares.  A separate frozen first-position experiment, H81, decomposes
+Owned routing reinforces the distinction.  In the provider-regime release, 173
+delegated selections match frozen regimes: 81 anchor and 92 premium, with no
+current delegated support for the active or static regimes.  These counts
+depend on our model and prompt mix and are not market shares.  A separate frozen
+first-position experiment, H81, decomposes
 fallback from delegated selection.  In its 133 preterminal assignments, the
 missing-outcome identified set places the fallback and total-delegation contrast
 at 4.4--6.7 percentage points and hidden selection at zero.  Missingness
@@ -401,7 +403,7 @@ blinded until its preregistered horizon and is not pooled with H81.
 \subsection{Quality, capacity, and ``dumping'' remain unidentified}
 
 Premium providers do not show a significant holdout throughput advantage
-($p=0.392$) or latency advantage ($p=0.738$) in provider-model residual
+($p=0.507$) or latency advantage ($p=0.796$) in provider-model residual
 aggregates.  This does not prove premiums lack value: task fidelity, privacy,
 support, and selection into quality measurement remain missing.  More sharply,
 zero provider-model cells have a valid utilization measure linking load to a
@@ -432,20 +434,22 @@ does require a chain of observable properties before it can explain this market:
 \item a forward transition toward higher buyer prices or high-price states.
 \end{enumerate}
 
-WF18 freezes this chain and a Holm family.  In its first monitor, 686 price events
-span 44 models and ten providers.  The mechanism window has 253 events and 19
-provider-pair/model clusters.  The 24-hour residual covariance is 0.01659; its
-excess over 2,000 clock-preserving circular shifts is 0.01874, with a one-sided
-$p=0.10995$ and null 95\% interval $[-0.03056,0.02444]$.  One provider pair
-supplies 76.7\% of paired events, and leave-one-unit estimates range from
-$-0.00051$ to 0.06132.  The signal-to-noise and elasticity-wedge legs are
-power-gated, leaving the Holm family incomplete.
+WF18 freezes this chain and a Holm family.  The current monitor contains 766
+completion-price events.  Its seven-day mechanism window covers 37 models, 344
+price experiments, and 19 provider-pair/model clusters.  Residual covariance is
+0.02023; its excess over 2,000 clock-preserving circular shifts is 0.02560,
+with one-sided $p=0.04998$ and null 95\% interval
+$[-0.03558,0.02336]$.  This nominal threshold crossing does not pass the
+registered claim gate: one provider pair supplies 87.3\% of eligible events,
+leave-one-unit estimates range from 0.00443 to 0.06132, the provider-identity
+shuffle has $p=0.992$, and the signal-to-noise and elasticity-wedge legs are
+power-gated.  The Holm family is therefore incomplete.
 
-The correct conclusion is weak, concentrated quote synchronization and no
-promoted HMP claim.  We do not identify collusion, communication, provider
-algorithm, or intent.  This is stronger science than treating every correlation
-as evidence: the property chain specifies exactly what future observations must
-add.
+The correct conclusion is nominal but highly concentrated quote synchronization
+and no promoted HMP claim.  We do not identify collusion, communication,
+provider algorithm, or intent.  The property chain specifies exactly what
+future observations must add: more independent provider pairs, default choices,
+mechanism days, and non-price signal support.
 
 \subsection{A causal simulator result with a failed transport screen}
 
@@ -453,9 +457,11 @@ The simulator pairs provider learners while preserving every marginal reward
 sequence and shuffling only common signal order.  This makes the intervention
 causal \emph{inside the simulator}.  In a focal two-UCB-agent prisoner's-dilemma
 environment, coupled signals increase innovation correlation, all-high play,
-and mean buyer price.  The one-seed screen gives a mean buyer-price effect of
-$+0.12975$, positive in 72.2\% of focal cells.  Across epsilon-greedy and static
-mixtures, however, the effect is $+0.00343$ and positive in 52.8\% of cells.  The
+and mean buyer price.  Across two seeds and 720 paired cells, the focal UCB--UCB
+screen gives an exploration-coupling effect of $+0.2136$, an all-high-play
+effect of $+0.3389$, and a mean buyer-price effect of $+0.11825$, positive in
+69.4\% of focal cells.  Across heterogeneous learner mixtures, however, the
+buyer-price effect is $-0.00047$ and is positive in 49.1\% of cells.  The
 executable verdict is \texttt{mechanism\_validated=false}.
 
 This negative transport result is substantively useful.  Signal coupling is not
@@ -675,14 +681,14 @@ is at least $\Delta/2$.  If $x\in\{0,1\}$, the larger is $\Delta$.
 
 \section{Evidence and Claim Ledger}
 
-The claim ledger is as follows.  Pricing regimes use 365 frozen training pairs
-and 360 holdout pairs but do not identify provider cost or intent.  The active-
-response screen uses 1,006 paired timing events and a cluster interval but is not
+The claim ledger is as follows.  Pricing regimes use 366 frozen training pairs
+and 358 holdout pairs but do not identify provider cost or intent.  The active-
+response screen uses 1,052 paired timing events and a cluster interval but is not
 randomized treatment.  The inverse-square restriction is rejected as realized
 market-wide allocation.  H81 identifies a bounded, narrow fallback decomposition,
 not a general router policy or market share.  Residual QoS tests and zero valid
 utilization cells do not identify technology rent, dumping, or marginal cost.
-The concentrated WF18 screen with $p=0.110$ does not identify collusion,
+The concentrated WF18 screen with nominal $p=0.050$ does not identify collusion,
 communication, or a provider algorithm.  The adaptive replay does not identify
 welfare or equilibrium, and the simulator intervention does not establish live-
 market causality.
@@ -696,8 +702,9 @@ eight uncollected objects.
 
 \section{Reproducibility}
 
-The empirical figure is generated by the checked-in figure-build script from two
-aggregate JSON files.  WF16, WF18, the adaptive replay, and the signal-coupling
+The empirical figure is generated by the checked-in figure-build script from a
+hosted-evidence snapshot and the adaptive aggregate JSON.  WF16, WF18, the
+adaptive replay, and the signal-coupling
 simulator are available through the repository's analysis and market-environment
 entry points.  Remote workflows freeze one Hugging Face
 revision, hydrate it once, run assignment-only preflights, remove owned request

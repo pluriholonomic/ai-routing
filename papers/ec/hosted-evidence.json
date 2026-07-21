@@ -1,0 +1,81 @@
+{
+  "provenance": {
+    "github_actions_run": 29834114219,
+    "artifact": "hmp-signal-coupling-monitor-29834114219",
+    "huggingface_revision": "e4174d08a6c0e18ac0adf9a9f26b6a917f7f1ed8"
+  },
+  "wf16": {
+    "date_range": ["2026-07-07", "2026-07-21"],
+    "n_training_pairs": 366,
+    "holdout_evaluable_pairs": 358,
+    "overall_type_persistence": 0.9441,
+    "overall_type_persistence_95ci": [0.9153, 0.9635],
+    "persistence_by_type": {
+      "active_undercutter": {"pairs": 21, "persisted": 5, "rate": 0.2381, "rate_95ci": [0.1063, 0.4509]},
+      "anchor_adopter": {"pairs": 83, "persisted": 83, "rate": 1.0, "rate_95ci": [0.9558, 1.0]},
+      "premium_differentiated": {"pairs": 127, "persisted": 126, "rate": 0.9921, "rate_95ci": [0.9567, 0.9986]},
+      "static_discounter": {"pairs": 127, "persisted": 124, "rate": 0.9764, "rate_95ci": [0.9328, 0.9919]}
+    },
+    "active_response_vs_shifted_placebo": {
+      "observed": {"events": 1052, "response_rate": 0.4553, "response_rate_95ci": [0.4254, 0.4855]},
+      "shifted_placebo": {"events": 1052, "response_rate": 0.4534, "response_rate_95ci": [0.4236, 0.4836]}
+    },
+    "active_response_paired_inference": {
+      "target_provider_model_clusters": 11,
+      "observed_minus_placebo": 0.0019,
+      "target_cluster_bootstrap_95ci": [-0.0438, 0.041],
+      "one_sided_exact_p_observed_greater": 0.467695
+    },
+    "paid_delegated_selections_matched": 173,
+    "delegated_selection_by_type": {
+      "anchor_adopter": {"selections": 81, "raw_selection_share": 0.4682},
+      "premium_differentiated": {"selections": 92, "raw_selection_share": 0.5318}
+    },
+    "premium_qos_test": {
+      "throughput_advantage": {"one_sided_pvalue": 0.507232},
+      "latency_penalty": {"one_sided_pvalue": 0.795775}
+    },
+    "capacity_utilization_support": {"provider_model_pairs_with_measure": 0},
+    "strict_dumping_candidates": 0,
+    "dumping_supported": false
+  },
+  "wf18": {
+    "date_range": ["2026-07-07", "2026-07-20"],
+    "completion_price_events": 766,
+    "mechanism_days": 7,
+    "models": 37,
+    "price_experiments": 344,
+    "pair_model_clusters": 19,
+    "default_choices": 70,
+    "observed_mean_pair_covariance": 0.02023046816598624,
+    "null_mean": -0.005371155562149994,
+    "null_95_interval": [-0.035577570582646864, 0.023360998218523613],
+    "observed_minus_null_mean": 0.025601623728136236,
+    "one_sided_p_excess_coupling": 0.04997501249375312,
+    "provider_identity_shuffle_p": 0.9920318725099602,
+    "leave_one_unit_range": [0.004432146408450242, 0.06131710659664296],
+    "maximum_pair_event_share": 0.8728306403351287,
+    "family_complete": false,
+    "promotion_allowed": false,
+    "collusion_identified": false,
+    "provider_algorithm_identified": false,
+    "communication_identified": false
+  },
+  "simulation": {
+    "rows": 1440,
+    "paired_cells": 720,
+    "focal_ucb_ucb": {
+      "exploration_coupling_effect": 0.21362,
+      "all_high_effect": 0.33885,
+      "buyer_price_effect": 0.118249,
+      "positive_buyer_price_share": 0.6944
+    },
+    "heterogeneous": {
+      "exploration_coupling_effect": -0.003014,
+      "all_high_effect": -0.001504,
+      "buyer_price_effect": -0.00047,
+      "positive_buyer_price_share": 0.4907
+    },
+    "mechanism_validated": false
+  }
+}

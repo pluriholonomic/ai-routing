@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
-WF16 = ROOT / "data/analysis/provider-type-validation-v1/wf16_summary.json"
+HOSTED = Path(__file__).with_name("hosted-evidence.json")
 ADAPTIVE = (
     ROOT
     / "data/analysis/adaptive-router-counterfactual/adaptive-router-summary.json"
@@ -27,7 +27,7 @@ def read_json(path: Path) -> dict:
 
 
 def main() -> None:
-    wf16 = read_json(WF16)
+    wf16 = read_json(HOSTED)["wf16"]
     adaptive = read_json(ADAPTIVE)
 
     order = [
@@ -93,11 +93,11 @@ def main() -> None:
     axes[1].set_xticks(x2, ["Registered\nwindow", "Shifted\nplacebo"])
     axes[1].set_ylim(0, 0.56)
     axes[1].set_ylabel("Rival response rate")
-    axes[1].set_title("B. No excess active response")
+    axes[1].set_title("B. No detectable active response")
     axes[1].text(
         0.5,
         0.525,
-        r"diff. $=-0.081$, one-sided $p=1.00$",
+        r"diff. $=0.0019$, one-sided $p=0.468$",
         ha="center",
         va="top",
         fontsize=7,
