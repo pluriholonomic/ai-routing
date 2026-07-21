@@ -1,262 +1,433 @@
-% ICML submission — compile with pdflatex.
-% Swap in the official icml2026.sty style file for submission; this preamble
-% approximates the venue format with the article class.
-\documentclass[10pt]{article}
-\usepackage[margin=1in]{geometry}
+% Standalone ICML-style draft. Replace the preamble with the official style
+% file at submission time; the body and bibliography are venue-ready LaTeX.
+\documentclass[10pt,twocolumn]{article}
+\usepackage[margin=0.72in,columnsep=0.24in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype}
 \usepackage{amsmath,amssymb,amsthm,mathtools}
-\usepackage{booktabs,graphicx,microtype}
-\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue]{hyperref}
-\usepackage{times}
+\usepackage{booktabs,graphicx,enumitem,xcolor}
+\usepackage[round,authoryear]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
+
+\setlength{\emergencystretch}{2em}
+\setlist{nosep,leftmargin=*}
 \newtheorem{theorem}{Theorem}
-\newtheorem{lemma}{Lemma}
-\newtheorem{corollary}{Corollary}
-\linespread{1.02}
-\title{Phase Transitions in Price-Weighted Routing Games: Learning Dynamics at the Knife Edge}
-\author{Tarun Chitra\\Gauntlet \texttt{tarun@gauntlet.xyz}}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prb}{\mathbb{P}}
+\newcommand{\SNR}{\operatorname{SNR}}
+
+\title{Critical Memory in Pricing Learners:\\
+Exponential Discovery Gaps in Routing Markets}
+\author{Anonymous Authors}
 \date{}
+
 \begin{document}
 \maketitle
 
-CI-enforced theory tests in the public `orcap` repository.*
-
 \begin{abstract}
-AI inference marketplaces route trillions of tokens per month through
-a softmax over provider prices with a \emph{published} exponent
-(selection probability $\propto p^{-a}$; deployed $a=2$) \cite{openrouter2026}. We study
-independent Q-learning across this one-parameter family of pricing
-games. The family has an exact phase structure:
-symmetric equilibrium price $p^*=c\,a(n-1)/(a(n-1)-n)$ diverges on the
-critical line $a(n-1)=n$, an entry-proof markup floor 1/a holds
-everywhere, and the deployed parameter places two-provider markets
-exactly at criticality. Our object of study is the *interaction of
-learning dynamics with this phase structure*. Empirically (all runs
-seeded, manifested, and gated behind a pre-registered validation of the
-environment against a live market panel --- including an untargeted moment,
-demand elasticity --0.65 $\pm$ 0.35 simulated vs --0.78 measured): (1) learned
-prices are a smooth, strictly decreasing function of a that tracks the
-equilibrium correspondence away from criticality but \textbf{regularizes the
-singularity} --- near the critical line the profit gradient toward higher
-prices vanishes at rate governed by h(p) $\to$ 1 and $\varepsilon$-greedy Q cannot climb
-it, so learners undershoot divergent equilibria and overshoot interior
-Nash ($\Delta$ = 0.31 at a = 2.5); (2) a measured history-dependent steering
-penalty (weight $\times$0.17 on recent price cutters, ~7-epoch memory)
-restructures the learning problem --- we prove it deters cutting for any
-discount below $\delta^\dagger$ = 0.9895 and observe it flip learners from
-bottom-of-book pricing to the menu ceiling in 4/4 calibrated markets
-(+81\% on the flow-dominant quote where the measured conditional binds);
-(3) learners systematically fail to discover the high-frequency
-micro-adjustment strategy present in the real market (a 4.9$\times$ share tax
-under the deployed steering makes it dominated), and converge to exact
-price ties at the market's focal anchor without any salience assumption ---
-the real market's two most distinctive regularities are attractors of the
-learning dynamics. We further evaluate candidate mechanisms with learning
-agents: a thickness-adaptive exponent removing criticality, and a
-verified-quality weighting whose closed-form threshold $b^*=0.63$
-separates learned quality-shading from learned quality provision. Our results suggest that deployed routing rules are a natural
-laboratory where learning theory, mechanism design, and live-market
-validation meet---and that near singular mechanism parameters, learned
-play is predictable precisely where equilibrium analysis is not.
-
+A marketplace can make a profitable price cut hard to learn without making it
+unprofitable.  We study an inference router that discounts a provider after a
+cut until its trailing price history is cleared.  The resulting pricing MDP
+has an exact rational memory boundary.  Below it, cutting is optimal; above it,
+staying high is optimal.  We prove a separate finite-time boundary: if a
+learner chooses the exploratory cut with conditional probability at most
+$q$, discovering a length-$M$ cut path by time $T$ has probability at most
+$Tq^M$.  Thus the memory required to defeat a fixed learning horizon grows
+only logarithmically in $T$, even when post-discovery rewards have high signal.
+A path-equivalent commitment option reduces exponential discovery time to
+linear while preserving every primitive price path and the optimal value.
+In a frozen calibrated routing game, primitive Q-learning selects the rational
+action in 1/20 seeds at $M=7$, versus 19/20 with the option; the paired regret
+change is $-0.0643$ (seed-bootstrap 95\% interval
+$[-0.0755,-0.0493]$).  The intervention reverses beyond the rational boundary,
+where primitive learning is correct and commitment overcuts.  Full state and
+an eight-step TD target do not close the gap.  The result isolates a temporal
+credit mechanism; it is not evidence of live-provider collusion.
 \end{abstract}
 
 \section{Introduction}
 
-Learning in games meets its cleanest applied test where a mechanism is
-(i) deployed at scale, (ii) documented exactly, and (iii) instrumented.
-AI inference routing is such a mechanism: a softmax over provider prices
-with a published exponent decides, request by request, who serves each
-call to a shared open-weight model. The exponent is an inverse
-temperature; the induced game is logit Bertrand --- the very testbed of the
-algorithmic-collusion literature (Calvano et al., 2020) --- except that
-here the demand system is not a modeling choice: it is the product
-documentation.
+Independent pricing algorithms can coordinate through market feedback even
+without communication.  Existing results emphasize reward signal quality,
+parallel experimentation, and the scoring rule faced by each learner
+\citep{hansen2021,calvano2020}.  A different friction appears when the market
+itself remembers actions.  A price cut can pay poorly today, yet become
+profitable only after enough consecutive cuts erase a router penalty.  No
+single experiment reveals the long-run return.
 
-This paper treats the routing exponent as the control parameter of a
-game family and asks how independent learners behave across it,
-especially at its singular points. The family has a critical line
-$a(n-1)=n$ where the symmetric equilibrium correspondence diverges to
-the menu ceiling; the deployed parameter sits on it for duopolies. Away
-from statistical mechanics analogies, this is a concrete learning
-question: what does $\varepsilon$-greedy tabular Q do when the stage game's best-
-response dynamics point toward an equilibrium at infinity along a
-vanishing gradient?
+AI inference routing provides a concrete instance.  Providers sell execution
+of a common open-weight model, and a router maps posted prices and eligibility
+signals into request allocation.  For a documented price-weighted rule,
+selection weight is proportional to inverse squared price
+\citep{openrouter2026}.  Public endpoint aggregates also associate recent
+price cutting with lower selection in one buyer tier.  We do not interpret
+that association causally.  We ask what learning problem such a
+history-dependent allocation rule would create if imposed.
 
-\textbf{Contributions.} (1) A complete characterization of the game family's
-phase structure with CI-verified closed forms, including an entry-proof
-elasticity bound (share elasticity $\le$ a) and a measured-elasticity finite
-version of the critical divergence (duopoly $p^*=41c$ at the marketplace's
-measured outside elasticity). (2) A calibrated environment with a
-pre-registered validation gate; behavioral species fitted from a live
-panel; counterfactuals code-locked behind the gate. (3) The learning
-phenomenology of the phase structure: smooth regularization of the
-singularity; overshoot (supra-Nash, $\Delta$ up to 0.47) in the disciplined
-phase; undershoot at criticality; mechanistic explanation via the
-vanishing gradient of h. (4) Steering as reward shaping: a measured
-penalty parameter, a deterrence theorem with a patience boundary, and
-its empirical effect on learned play in calibrated markets. (5)
-Mechanism evaluation with learners: adaptive temperature; quality
-weighting with a closed-form learnability threshold.
+This distinction matters for both algorithmic-collusion and mechanism-design
+claims.  A high learned price can arise because high pricing is an equilibrium,
+because experiments are statistically coupled, or because a learner never
+discovers a profitable delayed path.  These mechanisms demand different
+interventions.  More exploration addresses the last mechanism only at an
+exponential cost; changing the action interface can solve it but may induce
+overcommitment.
 
- The router's softmax makes "inverse temperature" literal, not
-metaphorical: allocation is a Gibbs measure with energy $a\log p$. The
-phase-transition language below is the exact behavior of the equilibrium
-correspondence, not an analogy.
+Our contributions are fourfold.
+\begin{enumerate}
+  \item We derive an exact \emph{rational} boundary $M^*$ for persistent
+  cutting under a finite-memory penalty.  It separates environments where the
+  long-run low price is optimal from those where the high price is optimal.
+  \item We derive a distinct \emph{learning} boundary.  Under any adaptive
+  policy whose pre-discovery cut probability is at most $q$,
+  $\Prb(\tau_M\le T)\le Tq^M$.  Combining this bound with ordinary reward
+  estimation separates temporal discovery from reward SNR.
+  \item We show that a length-$(M+1)$ commitment option preserves the optimal
+  value and feasible primitive paths while replacing exponential discovery
+  time by a linear term.  This is an interface result, not a change in provider
+  payoffs.
+  \item We test the mechanism in a frozen, calibrated finite MDP.  The option
+  closes the local gap at intermediate memory and becomes harmful beyond the
+  rational boundary.  State observability, cross-market severity, and a
+  conventional multi-step return each fail prespecified tests.
+\end{enumerate}
 
-\section{The game family}
+\section{Routing game and economic boundary}
 
-n providers; prices $p_i\in(0,\bar p]$; router selects i with probability
-$s_i=p_i^{-a}/\sum_j p_j^{-a}$; profit $\pi_i=s_i(p_i-c_i)$. Lemma 1:
-own-price share elasticity $-a(1-s_i)\in(-a,0)$. Lemma 2 (single
-crossing): best responses are unique --- root of $h(p)=a(1-s)(p-c)/p=1$
-or the ceiling. Theorem 1: interior symmetric equilibrium
-$p^*=c\,a(n-1)/(a(n-1)-n)$ iff $a(n-1)>n$, ceiling otherwise; Lerner floor
-1/a in any interior equilibrium (any n, any outside option); with
-measured outside elasticity $\varepsilon$: $p/(p-c)=a(n-1)/n+|\varepsilon|/n$ (duopoly at
-deployed parameters: 41c). Theorem 2 (steering): penalty $\times\theta$ for $M$ epochs
-after a cut $\Rightarrow$ optimal deviation $c+\sqrt{c^2+\theta/W}$; deterrence iff $\theta\le\theta^*$
-($\in$ [0.81, 1] at calibrated configurations, measured $\theta$ = 0.17); patience
-boundary $\delta^\dagger$ = 0.9895; perpetual-cutter share tax $\theta/(\theta+n-1)$ vs $1/n$.
-Proofs in Appendix A; 13 closed forms CI-tested.
+One market is a model--workload pair.  Provider $i$ posts price $p_i$, has
+marginal cost $c_i$, and receives first-route share
+\begin{equation}
+  s_i(p)=\frac{p_i^{-a}}{\sum_jp_j^{-a}},\qquad a>0.
+  \label{eq:share}
+\end{equation}
+With fixed demand, profit is $s_i(p)(p_i-c_i)$.  The rule gives
+$\partial\log s_i/\partial\log p_i=-a(1-s_i)$; hence the router exponent
+sets the own-price elasticity directly.  At a symmetric interior equilibrium,
+\begin{equation}
+ p^*=c\frac{a(n-1)}{a(n-1)-n},
+ \label{eq:static}
+\end{equation}
+which exists only if $a(n-1)>n$.  The deployed value $a=2$ is the duopoly
+knife edge.  This static fact motivates the environment but is not our main
+learning result.
 
-\section{Environment and validation}
+Now fix rivals and restrict one provider to a high quote $H$ and low quote
+$L$.  A low quote is penalized until the previous $M$ quotes are also low.
+Write $u_H$ for profit at $H$, $u_{\theta L}$ for penalized profit at $L$,
+and $u_L$ for unpenalized profit at $L$.  The economically interesting
+ordering is
+\begin{equation}
+  u_L>u_H>u_{\theta L}.
+  \label{eq:ordering}
+\end{equation}
+Thus cutting loses while the flag is active but wins after it clears.
 
-(As in the companion papers; summarized.) Provider agents are behavioral
-species fitted on the live panel's train window (adopters / static
-undercutters / active undercutters / premium; split-sample validated);
-demand replays the panel's AR(1)-diurnal process; costs are identified
-bands from a capital-structure registry and the GPU spot book. The
-pre-registered gate requires ten moments to match (distance $\le$ 0.04,
-achieved 0.019, 20 seeds, deterministic replication), with the evidential
-weight on two emergent moments: untargeted flow elasticity (--0.65 $\pm$ 0.35
-vs --0.78) and out-of-sample adopter-atom persistence (0.83 vs 0.834).
-Learning experiments use expected-allocation rewards (exact under
-non-binding capacity; the request-level kernel supplies sampling noise in
-the validation runs) and Calvano hyperparameters ($\alpha$ = 0.15, $\gamma$ = 0.95,
-exponentially decaying $\varepsilon$), with convergence defined by greedy-policy
-stability.
+\begin{theorem}[Rational memory boundary]
+From an all-high history, an infinite-horizon optimal policy either stays high
+forever or cuts immediately and stays low.  For discount $\gamma\in(0,1)$,
+cutting is strictly optimal iff
+\begin{equation}
+ \gamma^M>
+ \frac{u_H-u_{\theta L}}{u_L-u_{\theta L}}.
+ \label{eq:rational-boundary}
+\end{equation}
+The continuous boundary is
+$M^*=\log[(u_H-u_{\theta L})/(u_L-u_{\theta L})]/\log\gamma$.
+\label{thm:rational}
+\end{theorem}
 
-\section{Learning across the phase diagram}
+In the frozen calibrated profile,
+$(u_H,u_{\theta L},u_L)=(0.1067535,0.0351280,0.1501829)$ and
+$\gamma=0.95$, giving $M^*=9.2402$.  Exact dynamic programming cuts for
+integer $M\le9$ and stays high for $M\ge10$.  This boundary is derived before
+examining learning outcomes.
 
-\paragraph{4.1 The dial.} Converged mean prices (n = 3, 8 seeds/point):
-uniform 1.53; a = 1: 1.30; a = 2: 0.94; a = 4: 0.60; a $\ge$ 8: grid floor.
-Learned price is smooth and strictly decreasing in a --- the mechanism's
-comparative statics survive bounded rationality everywhere.
+\section{Critical memory for finite-time learning}
 
-\paragraph{4.2 At criticality.} For n = 3 the critical point is a = 1.5. There,
-theory says the symmetric equilibrium is the ceiling (1.6); learners
-reach 1.098 $\pm$ small. Mechanism: near criticality $d\pi/dp\propto 1-h(p)$ with
-h $\to$ 1, so the drift toward the ceiling is arbitrarily weak relative to
-exploration noise; tabular Q with decaying $\varepsilon$ performs a random walk on a
-nearly flat profit landscape and settles far below the divergent
-equilibrium. Conversely at a = 2.5 (interior Nash 0.5) learners hold
-0.877 --- supra-Nash by $\Delta$ = 0.31: in the disciplined phase the landscape
-has curvature and the classic Calvano reward-punishment channel operates.
-\textbf{Learning friction regularizes the equilibrium correspondence:
-undershoot where it diverges, overshoot where it is interior.} We view
-this as the paper's most transferable observation: mechanism analysis
-that stops at the equilibrium correspondence mispredicts learned play in
-\emph{both directions}, in a sign pattern that a vanishing-gradient argument
-predicts.
+Let $A_t\in\{H,L\}$ and let
+$\tau_M=\inf\{t:A_{t-M+1}=\cdots=A_t=L\}$ be the first time the learner
+reaches the unpenalized low state.  Before $\tau_M$, rewards from $L$ are below
+the high reward, so a myopic or optimistic learner can assign it only bounded
+exploration probability.  We allow full history dependence and require only
+\begin{equation}
+ \Prb(A_t=L\mid\mathcal F_{t-1},\tau_M\ge t)\le q.
+ \label{eq:qcap}
+\end{equation}
 
-\paragraph{4.3 What is not learned.} Substituting a learner into each behavioral
-slot (8/8 seeds unanimous): micro-adjustment (>1 reprice/day) never
-emerges --- under the deployed steering it carries a 4.9$\times$ share tax and is
-dominated (Theorem 2(iv)); the learner instead parks at a rigid
-below-anchor price. With no static undercutter present, the learner
-converges to the anchor price \emph{exactly}: endogenous tie formation. The
-real market's tie atom (45\% of same-model pairs, 3.4$\times$ its mechanical
-null) and its bifurcation into rigid-vs-micro-adjusting technologies are
-thus both attractors of learning under the deployed mechanism --- an
-out-of-sample style of validation we find more convincing than moment
-matching: the environment reproduces *qualitative regularities it was
-never told about.*
+\begin{theorem}[Exponential discovery barrier]
+Under \cref{eq:qcap}, for every horizon $T$,
+\begin{equation}
+ \Prb(\tau_M\le T)\le (T-M+1)_+q^M\le Tq^M.
+ \label{eq:discovery-bound}
+\end{equation}
+Consequently, attaining discovery probability at least $1-\delta$ requires
+\begin{equation}
+ T\ge (1-\delta)q^{-M}.
+ \label{eq:horizon-lower}
+\end{equation}
+If pre-discovery actions are iid Bernoulli$(q)$, the exact expected time is
+\begin{equation}
+ \E\tau_M=\frac{1-q^M}{(1-q)q^M}.
+ \label{eq:exact-wait}
+\end{equation}
+\label{thm:critical}
+\end{theorem}
 
-\paragraph{4.4 Steering as reward shaping.} The measured penalty is a
-history-dependent, asymmetric transformation of the reward: cuts move the
-agent into a taxed state for M epochs. Effect on learned play: stylized
-world --- learner jumps 0.72 $\to$ ceiling (8/8 seeds), market +18\%.
-Calibrated markets --- ceiling 4/4 under the broad rule; under the
-strictly-measured cheapest-only conditional, the effect concentrates at
-the book's bottom: +81\% on the flow-dominant quote where the learner is
-cheapest, escape otherwise (both variants reported; they bracket the
-unobserved rule). The penalty converts "undercut" from the greedy action
-into a trap state; a $\gamma$ = 0.95 learner ($\delta^M$ $\approx$ 0.70 $\ll$ $\delta^\dagger$ = 0.9895) can
-never profit from entering it.
+Define the finite-horizon critical memory
+\begin{equation}
+ M_c(T,q,\delta)=
+ \left\lfloor\frac{\log[T/(1-\delta)]}{\log(1/q)}\right\rfloor.
+ \label{eq:critical-memory}
+\end{equation}
+For $M\ge M_c+1$, the target success probability is ruled out regardless of
+how accurately the learner estimates rewards after discovery.  Thus memory is
+a computational control parameter: increasing $T$ by a factor of ten buys
+only $1/\log_{10}(1/q)$ additional memory periods.
 
-\section{Mechanism evaluation with learning agents}
+This clarifies the relationship to signal-to-noise results.  Suppose
+post-discovery reward differences are sub-Gaussian with gap $\Delta$ and proxy
+variance $\sigma^2$.  After discovery, $O(\SNR^{-1}\log(1/\delta))$ samples,
+where $\SNR=\Delta^2/\sigma^2$, suffice to identify the better stationary
+action.  Before discovery, \cref{eq:horizon-lower} still applies.
 
-\paragraph{5.1 Objective frontier under cost heterogeneity.} Two calibrated cost
-types (owned-capacity 0.10 $\times$2; spot-dependent 0.50 $\times$3). Theory FOCs and
-learner runs [E-MECH1] agree on the ordering: welfare $\uparrow$ in a (better
-cost-sorting), ad-valorem platform revenue $\downarrow$ in a, spot-type viability
-$\downarrow$ 0 (the resilience cost of sharp routing). The deployed (a = 2,
-ad-valorem fee) pair is revenue-serving, not welfare-serving; a
-thickness-adaptive a\emph{(n) = n/($\ell$}(n--1)) pins markups and removes the
-critical line. \textbf{5.2 Quality learnability threshold.} Binary quality
-action; shading saves $\Delta$ = 0.08 at hidden damage d = 0.2. Weight
-$w=q^b p^{-a}$: all-high-quality is an equilibrium iff $b\ge b^*=0.63$ (closed
-form). E-MECH2 (5 seeds, 600k epochs): learned hi-quality share rises 0.27 (b = 0, the deployed quality-blind rule) $\to$ 0.40 (b = 0.5) $\to$ 0.67 (b = 1) $\to$ 0.53 (b = 2). The direction matches the theory --- quality weighting shifts learned play toward quality provision, with the largest jump crossing $b^*$ --- but the bifurcation is noisy rather than sharp: the quality margin ($\Delta$ = 0.08) is small relative to price-learning noise in the doubled action space, and at b = 2 quality-weight and price competition interact. We report this as directional confirmation of the closed-form threshold, not a sharp learnability boundary. The q signal exists operationally (our
-deployed daily evaluation probes: graded benchmarks and greedy-output
-hashes per provider).
+\begin{corollary}[Temporal--statistical crossover]
+For a fixed-confidence learner, total difficulty contains a temporal term
+$q^{-M}$ and a statistical term
+$\SNR^{-1}\log(1/\delta)$.  Temporal discovery dominates once
+\begin{equation}
+ q^{-M}\gg \SNR^{-1}\log(1/\delta).
+\end{equation}
+Higher reward SNR cannot remove this gap; it only improves learning after the
+rare state has been reached.
+\label{cor:snr}
+\end{corollary}
+
+The result complements Hansen--Misra--Pai: independent experiments may couple
+through the final pricing score even with no explicit memory
+\citep{hansen2021}.  Our theorem does not contradict asymptotic learnability.
+It supplies a finite-time rate: once market memory requires a run rather than
+an isolated experiment, the time needed to expose the relevant score can be
+exponential in $M$.
+
+\section{A path-equivalent intervention}
+
+Augment the primitive MDP with a \texttt{commit-low} option that executes
+$M+1$ existing low actions.  Both primitive actions remain available.
+
+\begin{theorem}[Value preservation and linear discovery]
+The augmented semi-Markov MDP has exactly the same optimal value as the
+primitive MDP at every state.  It creates no new primitive price path.  If the
+option is selected independently with probability $q_o$ at each decision
+epoch while non-option decisions consume one transition, its completion time
+has expectation
+\begin{equation}
+  M+q_o^{-1}.
+  \label{eq:option-wait}
+\end{equation}
+\label{thm:option}
+\end{theorem}
+
+The option changes representation, not incentives.  Any augmented policy can
+be unrolled into the same sequence of primitive actions and discounted
+rewards.  But the probability of proposing the full low path is now $q_o$
+rather than $q^M$.  This is the exponential temporal-abstraction gap shown in
+\cref{fig:critical}A.
+
+\begin{figure*}[t]
+ \centering
+ \includegraphics[width=0.98\textwidth]{critical-memory.pdf}
+ \caption{Theory and frozen experiment.  A: iid primitive exploration takes
+ exponential time to discover $M$ consecutive cuts; a commitment option is
+ linear in $M$.  B: exact first-action agreement over 20 seeds.  C: mean
+ normalized regret.  The dashed rational boundary $M^*=9.2402$ is computed
+ from payoffs, not fitted to learner outcomes.}
+ \label{fig:critical}
+\end{figure*}
+
+\section{Experimental design}
+
+The experiment is a controlled finite-MDP mechanism test, not a reduced-form
+test on provider prices.  Its high and low quotes and router penalty are frozen
+from an audited market profile.  Exact value iteration supplies the target
+action.  Tabular Q-learning uses 300,000 primitive transitions, discount
+$0.95$, and 20 prespecified seeds.  The option learner receives the same
+primitive transition budget; an option consumes its full duration.  A
+10,000-transition frozen-policy evaluation reports first-action agreement and
+normalized regret.  Paired seed bootstrap intervals describe simulation
+variation only.
+
+We use a falsification ladder rather than interpreting one favorable run.
+E-SIM5 gives the primitive learner the complete Markov history.  E-SIM6 adds
+only the path-equivalent option and sweeps
+$M\in\{1,3,5,7,9,12\}$.  E-SIM7 transports the intervention to four frozen
+price books.  E-SIM8 varies learning rate and exploration decay in a $3\times3$
+grid.  E-SIM9 replaces one-step Q with an eight-step TD target while retaining
+the primitive action set.  All gates, seeds, and result hashes were frozen
+before interpretation.
+
+The live empirical bridge is deliberately weaker.  In the latest hosted
+panel, the primary same-regime covariance statistic exceeds its randomization
+null by $0.0256$ with one-sided $p=0.0500$, but one provider-pair accounts for
+$87.3\%$ of eligible events, the identity-shuffle diagnostic has $p=0.992$,
+and downstream family gates are underpowered.  This supports studying
+signal-coupling mechanisms; it does not validate them as provider conduct.
+
+\section{Results}
+
+\paragraph{Critical memory is visible in learning.}
+At $M\in\{1,3,5\}$, primitive and option learners agree with exact control in
+20/20 seeds.  At $M=7$, where exact optimization still cuts, primitive Q agrees
+in 1/20 seeds while option Q agrees in 19/20; 18/20 option seeds also satisfy
+the joint low-regret gate.  At $M=9$, the comparison is 0/20 versus 18/20.
+The transition is therefore near, but below, the independently derived
+rational boundary.
+
+At $M=7$, mean normalized regret is $0.07175$ for primitive Q and $0.00750$
+for option Q.  The paired difference is $-0.06425$ with 95\% seed-bootstrap
+interval $[-0.07553,-0.04930]$.  The sign remains negative in every one of
+nine learning-rate/exploration-decay cells; the strict composite severity gate
+passes in seven.
+
+\paragraph{The intervention is nonmonotone.}
+At $M=12$, exact optimization stays high.  Primitive Q is correct in 20/20
+seeds, whereas option Q is correct in only 2/20 and adds $0.0942$ normalized
+regret.  An interface that solves delayed discovery can therefore reduce
+welfare when it creates commitment salience on the wrong side of the economic
+boundary.  Mechanism evaluation must combine \cref{thm:rational} with
+\cref{thm:critical}; the learning boundary alone is not a design objective.
+
+\paragraph{The falsifications narrow the mechanism.}
+Complete state observability does not repair primitive learning: it remains
+high in 19/20 seeds at $M=7$.  The severe-trap transport gate fails in two of
+four external price books, although all four option-effect signs align with
+their rational boundary.  Finally, an ordinary eight-step TD target succeeds
+in 0/20 seeds and has regret difference $+0.0038$ relative to one-step Q,
+interval $[0,0.0113]$.  The supported result is option-specific temporal
+abstraction in the controlled MDP, not a claim that any longer return solves
+delayed credit.
+
+\section{Implications for pricing mechanisms}
+
+The two boundaries separate three regimes.
+\begin{enumerate}
+ \item If $M>M^*$, a persistent cut destroys provider value.  High pricing is
+ rational; exploration policy is secondary.
+ \item If $M\le M^*$ but $M>M_c(T,q,\delta)$, cutting is rational but is
+ unlikely to be discovered within the learning horizon.  A platform can
+ sustain high learned prices without communication or supra-rational reward
+ coupling.
+ \item If $M\le\min\{M^*,M_c\}$, ordinary exploration can expose the low path;
+ reward SNR and cross-agent signal coupling again become first-order.
+\end{enumerate}
+
+This yields a design warning.  Router memory can look anti-gaming because it
+disciplines short-lived cuts, yet the same rule can suppress efficient
+persistent cuts by altering learnability.  Conversely, exposing a commitment
+action can restore price competition below $M^*$ but cause excessive cutting
+above it.  A safer router would expose the state and a cancellable multi-period
+quote schedule only when a deviation audit predicts that persistent cutting
+raises provider value and buyer surplus.  The theorem supplies a testable
+screen, not a universally optimal policy.
 
 \section{Related work}
 
-Algorithmic pricing and collusion: Calvano et al.; Klein (sequential
-moves); Asker et al. (learning protocols); Abada--Lambin (exploration-
-driven pseudo-collusion); Hansen--Misra--Pai (misspecified bandits); Deng--
-Schiffer--Bichler (deep RL nearer Nash). Our departure: the demand system
-is deployed and documented, the environment is validation-gated against a
-live market, and the phase-structure/learning interaction is the object.
-Steering: Johnson--Rhodes--Wildenbeest (anti-collusive steering design) ---
-we analyze the measured inverse. Mechanism/learning interfaces: reward
-shaping, potential-based equivalences; the cut-penalty is a naturally
-occurring non-potential shaping with measured parameters. Marketplace
-empirics: Demirer et al. (OpenRouter). Softmax/temperature in games:
-logit QRE (McKelvey--Palfrey) --- our learners' smooth dial echoes QRE
-comparative statics, but the regularization sign pattern at criticality
-is, to our knowledge, undocumented.
+Algorithmic-pricing research establishes that independent learners may
+support high prices and that results depend sharply on algorithms and timing
+\citep{calvano2020,asker2022,brownmackay2023}.  Hansen--Misra--Pai show how
+independent bandit experiments become strategically coupled through the
+aggregate price used to score arms \citep{hansen2021}.  Johnson--Rhodes--
+Wildenbeest study platform steering when sellers use pricing algorithms
+\citep{johnson2023}.  Our contribution is orthogonal: a router's own-history
+rule creates a finite-time run-discovery barrier even when reward differences
+are otherwise easy to estimate.
 
-\section{Limitations}
+Options and semi-Markov value preservation are classical
+\citep{sutton1999}; delayed reward and sequence compression have recently been
+studied directly \citep{han2022,ramesh2024}.  We add an economic source of the
+delay, an explicit critical-memory rate, a rational boundary with the opposite
+comparative-static force, and controlled evidence that the representation
+intervention helps only between those boundaries.
 
-Tabular Q with one hyperparameter suite (Calvano's), chosen for
-comparability; a systematic hyperparameter/algorithm sweep (optimism,
-UCB, PPO) is the natural next step and prior evidence suggests deep RL
-lands nearer Nash --- which would sharpen, not reverse, \S4.2's contrast.
-Expected-allocation rewards; symmetric-equilibrium theory; steering $\theta$
-measured for one buyer tier; short calibration panel with a registered
-30-day re-estimation that automatically reopens claims on sign flips.
+\section{Limitations and claim boundary}
 
-\section{Reproducibility statement}
+The finite-time theorem assumes a pre-discovery cut-probability cap; it does
+not characterize algorithms that plan over a known model or deliberately
+schedule low runs.  The calibrated experiment fixes rivals, uses two prices,
+and studies tabular Q.  Twenty seeds identify Monte Carlo variability, not
+uncertainty in live-market parameters.  Cross-market severe-trap transport
+fails, and no paid probe randomizes router memory.  The empirical covariance
+screen is concentrated and family-incomplete.  We therefore claim a theorem,
+a controlled mechanism, and a reproducible local counterfactual---not provider
+intent, tacit collusion, communication, or live-router causality.
 
-Public repository with: frozen calibration bundles (train/holdout
-recorded), pre-registration documents with dated addenda, per-run
-manifests (commit, bundle hash, seed tree, source fingerprints),
-46 tests including 13 enforcing every closed form in \S2 against continuum
-numerics, and the live-capture workflows that generated the panel.
+\section{Conclusion}
 
-\section{Appendix A: proofs.  Appendix B: run tables (E-SIM1--4b, E-MECH1--2).}
+Market memory creates two distinct thresholds.  The rational threshold says
+whether persistent cutting is valuable; the finite-time threshold says
+whether a bounded learner can discover it.  Between them, high learned prices
+can persist despite a profitable low-price path, with discovery time
+exponential in memory and only logarithmic improvement from longer training.
+A path-equivalent option collapses that gap but overcorrects when cutting is no
+longer rational.  Learning-aware marketplace design must therefore optimize
+both incentives and representations, then audit deviations on either side of
+the boundary.
 
-\begin{thebibliography}{9}
-\bibitem{openrouter2026} OpenRouter. Provider routing:
-price-based load balancing (default strategy). Product documentation,
-\url{https://openrouter.ai/docs/features/provider-routing}; accessed
-2026-07-18; archived at
-\url{https://web.archive.org/web/20251121200046/https://openrouter.ai/docs/features/provider-routing}.
-\bibitem{anderson1992} S.~Anderson, A.~de~Palma, J.-F.~Thisse.
-\emph{Discrete Choice Theory of Product Differentiation}. MIT Press, 1992.
-\bibitem{calvano2020} E.~Calvano, G.~Calzolari, V.~Denicol\`o,
-S.~Pastorello. Artificial intelligence, algorithmic pricing, and
-collusion. \emph{American Economic Review}, 2020.
-\bibitem{jrw2023} J.~Johnson, A.~Rhodes, M.~Wildenbeest. Platform design
-when sellers use pricing algorithms. \emph{Econometrica}, 2023.
-\bibitem{demirer2025} M.~Demirer, A.~Fradkin, S.~Peng, S.~Tadelis. The
-market for AI inference. NBER Working Paper 34608, 2025.
-\bibitem{angeris2020curvature} G.~Angeris, T.~Chitra. When does the tail
-wag the dog? Curvature and market making. arXiv:2012.08040, 2020.
-\bibitem{fish2024} S.~Fish, Y.~Gonczarowski, R.~Shorrer. Algorithmic
-collusion by large language models. arXiv:2404.00806, 2024.
-\bibitem{mckelvey1995} R.~McKelvey, T.~Palfrey. Quantal response
-equilibria for normal form games. \emph{Games and Economic Behavior}, 1995.
-\end{thebibliography}
+\appendix
+\section{Proofs}
+
+\begin{proof}[Proof of \cref{thm:rational}]
+Once the history is all-low, $L$ strictly dominates $H$ by
+\cref{eq:ordering}; choosing $H$ also restarts the penalty.  Before that state,
+any policy that eventually cuts is weakly improved to $k$ high actions followed
+by low forever.  Its value is
+\begin{align*}
+ V_k&=\frac{u_H(1-\gamma^k)}{1-\gamma}+\gamma^kV_{\rm cut},\\
+ V_{\rm cut}&=\frac{(1-\gamma^M)u_{\theta L}+\gamma^Mu_L}{1-\gamma}.
+\end{align*}
+Because
+$V_k-u_H/(1-\gamma)=\gamma^k[V_{\rm cut}-u_H/(1-\gamma)]$, either $k=0$
+or never cutting is optimal.  Comparing these alternatives yields
+\cref{eq:rational-boundary}.
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:critical}]
+For each candidate ending time $t$, iterated conditioning and
+\cref{eq:qcap} bound the probability of the required all-low length-$M$
+window by $q^M$.  A union bound over $(T-M+1)_+$ windows proves
+\cref{eq:discovery-bound}; inversion of its looser $Tq^M$ form gives
+\cref{eq:horizon-lower}.  Under iid Bernoulli exploration, let $E_k$ be the
+expected remaining time after a current run of $k$ lows.  The recursions
+$E_M=0$ and $E_k=1+qE_{k+1}+(1-q)E_0$ solve to
+$E_0=(1-q^M)/[(1-q)q^M]$.
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:option}]
+The augmented action set contains every primitive action, so its optimal value
+is weakly larger.  Replace each option in any augmented policy by its defining
+$M+1$ primitive low actions.  The unrolled policy produces identical states,
+durations, and discounted rewards, so its value is identical and the augmented
+optimum cannot be larger.  Before the first option, the number of one-step
+decisions is geometric with mean $(1-q_o)/q_o$; adding the final $M+1$
+transitions gives $M+q_o^{-1}$.
+\end{proof}
+
+\section{Reproducibility}
+
+The theory functions and unit tests are in
+\texttt{src/orcap/market\_env/critical\_memory.py} and
+\texttt{tests/market\_env/test\_critical\_memory.py}.  The figure is generated
+directly from the frozen E-SIM6 parquet.  Clean bundles are E-SIM5
+\texttt{3e5a55405e}, E-SIM6 \texttt{93265b9b03}, E-SIM7
+\texttt{bd74ab2eb7}, E-SIM8 \texttt{4d84b9b3a2}, and E-SIM9
+\texttt{179eca0f9d}.  Manifests pin source commits, seeds, result hashes, and
+input-artifact hashes.  Exact Bellman residuals, path equivalence, paper
+numbers, and the new finite-time identities are enforced by tests.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
 
 \end{document}
