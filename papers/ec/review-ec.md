@@ -1,106 +1,101 @@
-# ACM EC referee report — "The Router Is the Mechanism"
-
-*Reviewer profile: senior PC member, market design + platform economics.
-Instructed additionally to assess whether the paper reads in the PI's
-(Tarun Chitra's) characteristic style.*
+# ACM EC adversarial review
 
 ## Summary
 
-The paper treats a deployed AI-inference routing rule (selection
-∝ 1/price², documented by the platform) as a mechanism and analyzes the
-market it induces: logit demand with the exponent as inverse temperature;
-a phase structure with a critical line a(n−1) = n populated by real
-duopolies; an entry-proof Lerner floor 1/a; a measured steering penalty on
-price cutters proven to sit deep inside its own deterrence region; a
-calibrated, validation-gated multi-agent environment; and a design section
-proposing thickness-adaptive exponents, verified-quality weighting, fee
-decoupling, and commitment contracts — each evaluated with learning
-agents.
+This paper asks what can be learned about an AI inference marketplace when
+posted prices are public but eligibility, capacity, fallback, provider cost, and
+delivered quality are partly hidden. It formalizes the router as a
+multi-attribute procurement intermediary, proves conditional results for
+inverse-power and entropy-regularized routing, gives an omitted-attribute regret
+identity and a hidden-capacity impossibility, and then builds a sequence of
+property tests from a remotely collected market panel and owned probes.
+
+The empirical section is unusually disciplined. Pricing regimes are stable
+except for active undercutting; immediate rival response is indistinguishable
+from a shifted timing placebo; public inverse-square shares fail as realized
+allocation; capacity utilization and dumping are not identified; and the
+current HMP-style covariance result is nominal but too concentrated and
+family-incomplete to promote. The design section consequently proposes
+execution-contingent capacity, generalized scoring, bounded exploration, fee
+separation, and a randomized policy-frontier experiment rather than claiming a
+welfare optimum from public menus.
 
 ## Strengths
 
-1. **The identification situation is exceptional and the paper knows it.**
-   The differentiation parameter of the demand system is *published by the
-   platform*. Every mechanism counterfactual that normally requires a
-   structural demand model here requires none. I cannot think of another
-   empirical mechanism-design paper with this property, and the paper
-   correctly locates its novelty there rather than claiming new oligopoly
-   theory (the Anderson–de Palma–Thisse attribution is explicit).
-2. **The steering result is the real contribution.** Measuring θ = 0.17
-   from randomized probes, proving θ* ∈ [0.81, 1], and exhibiting the
-   patience boundary δ† = 0.9895 is a complete arc — measurement, theory,
-   counterfactual — and the direction (platform steering *stabilizing*
-   supra-competitive pricing, the JRW inverse) is new. The E-MECH1
-   finding that the deployed pair (a=2 + penalty) is simultaneously the
-   worst-welfare and highest-ad-valorem-revenue arm is the sharpest
-   platform-incentive result I have seen in this literature.
-3. **Discipline.** Pre-registered validation gate with an untargeted
-   moment (simulated flow elasticity matching the panel with no fitted
-   allocation parameter); CI-enforced closed forms; identified cost bands
-   instead of point estimates; both steering-conditioning variants run.
-   This is above the empirical bar for EC.
-4. **The design section has teeth.** a*(n) = n/(ℓ*(n−1)) is one line and
-   kills the critical line; b* = 0.63 for quality weighting is closed-form
-   and the verification instrument (the authors' own deployed eval probes)
-   exists; fee decoupling correctly identifies the platform's ad-valorem
-   conflict. The practitioner-takeaways section is unusually concrete.
+1. The paper chooses the correct economic object. The router is not merely a
+DEX aggregator; it is a delegated buyer operating a two-layer procurement
+market with hidden admission, stochastic execution, fallback, and quality.
+This materially improves the analogy and makes the information ladder useful.
+
+2. The claim boundaries are first-class results. The paper states precisely
+which objects each source identifies and prevents shadow share, owned-account
+share, and realized market-wide flow from being conflated. The updated HMP
+screen is handled correctly: nominal p approximately 0.05 is not promoted when
+one pair contributes 87.3 percent of events and later family members are
+missing.
+
+3. The mechanism theory is compact and operational. The exact KL regret
+identity explains why omitted service attributes matter; the 2-epsilon score
+bound gives an auditable approximation target; and the hidden-capacity
+construction shows why quote-only randomization cannot be robustly efficient.
+These are simple results, but together they organize the empirical design.
+
+4. The policy recommendation follows the evidence. A held-out replay is called
+a mechanical frontier, not welfare. The proposed production experiment freezes
+the score, randomizes within blocks, measures completion, latency, spend, and
+blinded fidelity, and keeps scalar welfare contingent on declared value and
+cost boxes.
+
+5. Reproducibility is strong. The seven-page ACM build has no unresolved
+references or layout failures, the empirical figure is generated from a
+checked-in hosted-evidence snapshot, and the source revision and failed gates
+are visible.
 
 ## Weaknesses
 
-1. **One marketplace, one buyer tier, short panel.** The steering θ comes
-   from one conditional slice of the authors' own probe traffic; the
-   calibration panel is ~2 weeks with a registered 30-day re-estimation.
-   The paper is honest about this, and the auto-reopening commitment
-   helps, but external validity is a single-platform claim for now.
-2. **The welfare frontier is allocative-cost only.** Latency, quality
-   heterogeneity, and the resilience value of provider diversity enter
-   only as a verbal caveat ("interior optimum once outage insurance is
-   valued"). Since the paper's own §7.4 sells commitment contracts as the
-   resilience fix, a minimal quantitative resilience term (even a
-   correlated-outage probability × failure loss) should be in the E-MECH1
-   table. REQUIRED for camera-ready.
-3. **E-MECH2 (quality game with learners) is referenced but its results
-   are not yet in the text.** The closed-form b* is fine, but the paper
-   promises learner confirmation; either include the table or cut the
-   claim. REQUIRED.
-4. The two-type cost calibration (0.10/0.50) uses band endpoints;
-   sensitivity across the band should be shown (the ordering will
-   survive; show it).
-5. Minor: the "phase transition" language is earned (the equilibrium
-   correspondence genuinely diverges), but the power-plant-at-criticality
-   quip will read as editorializing to some committee members. Keep it;
-   flag it as taste.
+1. The strongest policy experiment is prospective. The paper does not yet
+observe realized welfare, provider marginal cost, or a randomized change in the
+routing score. This is not a correctness problem because the prose is careful,
+but it limits the empirical contribution relative to the best EC field papers.
 
-## Style assessment (requested)
+2. The principal theoretical identities are elegant applications of standard
+entropy regularization, robust scoring, and indistinguishability arguments.
+The novelty lies more in assembling them around the inference-market
+information problem than in theorem depth.
 
-The paper reads as the PI's voice: the Gibbs-measure/inverse-temperature
-framing is load-bearing rather than ornamental; the AMM-curvature footnote
-(Angeris–Chitra) and the PFOF/last-look analogies are exactly the
-microstructure-to-crypto-to-ML register of his prior work; opinionated
-footnotes ("chosen by vibes") and a practitioner-takeaways section are
-signature moves. Comparative statics are stated as design levers with
-recommended parameter values, which matches the Gauntlet-style
-actionability of his research. Fidelity: high.
+3. The panel is measured in weeks, not quarters, and one platform and one owned
+account dominate. A longer panel can improve precision but cannot by itself
+recover private capacity or costs; the data-partnership and randomized
+experiments remain necessary.
+
+4. The paper's provider categories are useful regimes but not structural types.
+The paper says this consistently. A future version could model regime
+transitions jointly with capital technology, but doing so with current data
+would require unsupported assumptions.
+
+## Required changes
+
+No correctness-critical changes. For a camera-ready version I would request:
+
+- place the prospective policy-frontier protocol and primary estimands in a
+short boxed design;
+- add a one-line table connecting each theorem to the field required to
+operationalize it;
+- report the next frozen snapshot without changing the current result's claim
+boundary.
+
+## Score
+
+- Soundness: 4/4
+- Significance: 3/4
+- Novelty: 3/4
+- Reproducibility: 4/4
+- Overall: 7/10, Accept
+- Confidence: 4/5
 
 ## Decision
 
-**ACCEPT (minor revisions).** Conditions: (i) E-MECH2 learner table in
-the text or the claim removed; (ii) a quantitative resilience term in the
-frontier table; (iii) cost-band sensitivity for §6; (iv) single-platform
-scope statement in the abstract. None of these threatens the core: the
-measured-mechanism identification, the steering theorem with its
-empirical parameter, and the platform-conflict result are each
-independently sufficient EC contributions, and together they make the
-strongest paper in this space I have reviewed.
-
-
-## Addendum (post-revision check)
-
-Conditions (i)–(iv) verified resolved: (i) the E-MECH2 table is now in
-the text with appropriately honest language — the learner evidence is
-directional (0.27 → 0.67 across b), not a sharp bifurcation, and the
-paper says so rather than overclaiming; this is the right call and does
-not weaken the design recommendation (the deployed b = 0 is the worst
-arm measured). (ii) resilience-adjusted frontier with the ~5% threshold
-stated; (iii) cost-band corners all monotone; (iv) scope sentence in the
-abstract. The ACCEPT stands.
+**Accept, but not strong accept.** The paper is a credible EC contribution
+because it turns hidden clearing into an explicit identification and mechanism
+design problem. A completed randomized mechanism experiment or a deeper
+implementation theorem would move it to strong accept.

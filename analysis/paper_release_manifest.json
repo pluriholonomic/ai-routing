@@ -4,9 +4,9 @@
   "evidence_freeze_utc": "2026-07-17T11:04:57Z",
   "files": [
     {
-      "bytes": 28686,
+      "bytes": 28654,
       "path": "config/paper_evidence_registry.toml",
-      "sha256": "12a1b1383a8e399455a3d7dfbac14f284169d273052be0f0db17595bda52a21b"
+      "sha256": "a27a6cb59be46120fc953b6a358e1e3809d4398bf1998c859c81aeab5cf95ab6"
     },
     {
       "bytes": 21591,
@@ -129,6 +129,11 @@
       "sha256": "919acca98dce2cb57c59b3c0c34b312316c20d0683cca8fe8b9a05653f4555e4"
     },
     {
+      "bytes": 28145,
+      "path": "paper/inference-market-microstructure/figures/h81_release_recovery.pdf",
+      "sha256": "1b8a134e04c4f1c8df03b06fd9086e72fc73ec775d1c574be549049f420e2897"
+    },
+    {
       "bytes": 31769,
       "path": "paper/inference-market-microstructure/figures/h81_theorem_validation.pdf",
       "sha256": "f09aa95d0be7b4f3ec6521a760f37ad34e3ffefa5041096653451cb05802656d"
@@ -159,14 +164,14 @@
       "sha256": "199ea7b6288b525db3dcfdefe4f1a7398b928397ac8adc3bcb11fd4b9b216643"
     },
     {
-      "bytes": 137049,
+      "bytes": 138885,
       "path": "paper/inference-market-microstructure/main.tex",
-      "sha256": "56f70d0a5a0ca4d41b9eb7985929288049efb23279caa0be6fee81a8088106f4"
+      "sha256": "a75db6c4caed45a703fce615eae3b9d4d97b5b0ec04666391138fe562d5b5608"
     },
     {
-      "bytes": 8867,
+      "bytes": 10990,
       "path": "paper/references.bib",
-      "sha256": "25a65d2fe43cc413bf4a0a0b05a26f7df7abed5f20245fa1f6d1f94ff4b63cab"
+      "sha256": "812f1112761f4e67a0265edb6fac290511930014969061cbcc94883cc9325a69"
     },
     {
       "bytes": 15892,
@@ -204,11 +209,6 @@
       "sha256": "cf78c67e8f71e3bef931830d14608c6c4c3e315565c2823efa4498490a0d529a"
     },
     {
-      "bytes": 14467,
-      "path": "src/orcap/analysis/h92_revenue_share_identity.py",
-      "sha256": "636d8627c2cd6b1c5c3ab541c9423b80f48d99ea5aec4b9297e22d956b9c0337"
-    },
-    {
       "bytes": 31003,
       "path": "src/orcap/analysis/h93_cross_router_price_policy.py",
       "sha256": "0ed758268055ae7c21708b3df9d60de9ad31d3d6cc8fe3b56a6a9556e8e5a530"
@@ -234,9 +234,9 @@
       "sha256": "94e8a558e0a4e7a9bb1e74978971b3bd3037c3a72168b6de5c8f0690b97af09b"
     },
     {
-      "bytes": 19805,
+      "bytes": 17326,
       "path": "src/orcap/capture_api.py",
-      "sha256": "dda7a5959affe47ffe3c31c10ccc7be519145e95e0a9e3016de779fd17c2ac3a"
+      "sha256": "f4ba92f5ed0c2258c2f1c5a934bf9ee9e1a81a79ab8914053aab96b63e75ac28"
     },
     {
       "bytes": 19299,
@@ -264,9 +264,9 @@
       "sha256": "bf6a85e38d2396990c2bd5d30d4a20800a3bc2ccfe3764459750c41b600ba82e"
     },
     {
-      "bytes": 3157,
+      "bytes": 3320,
       "path": "tests/test_blinded_study_isolation.py",
-      "sha256": "f910ce5ef9018a1ddcfca03c0656350d07e518d3b0b86ef6b2f1176ed2255d76"
+      "sha256": "c380c0a689a2d87962d67ab6c07f1eae6a2b08055d675572efae488abd116865"
     },
     {
       "bytes": 6624,
@@ -309,11 +309,6 @@
       "sha256": "53a9fad3499462f23d2374908d8651cc302e89675124c814e51964e755219e63"
     },
     {
-      "bytes": 2566,
-      "path": "tests/test_h92_revenue_share_identity.py",
-      "sha256": "a1ff14f47318d063d02d86ac1c904488b023f9a834638da60f484adce6388484"
-    },
-    {
       "bytes": 5147,
       "path": "tests/test_h93_cross_router_price_policy.py",
       "sha256": "7a9511104937bcbef5248d1c30ec229233c60e76e74f00c2cb40f16b88964d4d"
@@ -334,14 +329,14 @@
       "sha256": "64b78a302d3a592d8031876d03f0345cdc9bc2f772ed1d7b181739ad8093c7a7"
     },
     {
-      "bytes": 38762,
+      "bytes": 34728,
       "path": "tests/test_mechanism.py",
-      "sha256": "15be7e5736852b2afbb1e35dc94e5b29a35ea75affd9dcaf3d424d558f5c823d"
+      "sha256": "a3603ebb2d071c02a9317d40b5adb13b4ca642b985d71a6b2080c917e0df1890"
     },
     {
-      "bytes": 3481,
+      "bytes": 10795,
       "path": "tests/test_remote_pipeline_health.py",
-      "sha256": "650d9a08929678a6cc673ce8a3ed97d623fb7d3bbbcdf18f8570dbd4b49240b7"
+      "sha256": "d802518403e0b681e0093841f414b9c3051207ee6c3d31f79d8bf8c8dec6984d"
     },
     {
       "bytes": 1220,
@@ -350,7 +345,7 @@
     }
   ],
   "gate_event_count": 21,
-  "generated_at_utc": "2026-07-17T11:06:58.127960+00:00",
+  "generated_at_utc": "2026-07-21T14:30:33.562734+00:00",
   "paper_theorem_count": 9,
   "paper_track": "ACM EC / TEAC",
   "registered_claim_count": 16,

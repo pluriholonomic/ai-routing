@@ -1,95 +1,98 @@
-# NeurIPS review — "The Price of Softmax"
-
-*Reviewer profile: area chair-level, multi-agent RL / economics of ML.
-Scores per NeurIPS rubric. Additionally instructed to assess whether the
-paper reads in the PI's (Tarun Chitra's) characteristic style.*
+# NeurIPS adversarial review
 
 ## Summary
 
-The paper studies independent Q-learning inside a deployed softmax
-routing mechanism (AI inference marketplace; documented selection
-∝ 1/price²), using a market environment calibrated and validation-gated
-against a live five-minute panel. Findings: learned prices track the
-mechanism's exact phase structure but regularize its critical
-singularity; the platform's measured cut-penalty flips learners to the
-price ceiling (4/4 calibrated markets; +81% on the flow-dominant quote
-where the measured conditional binds); learners never rediscover
-high-frequency undercutting and form focal-price ties endogenously,
-reproducing the real panel's two most distinctive regularities
-unprompted; and mechanism variants (adaptive temperature,
-verified-quality weights, fee structure) are evaluated with learners,
-revealing that the deployed configuration is the revenue-max/welfare-min
-corner of the traced frontier.
+The paper introduces a request-level multi-agent environment for strategic AI
+inference routing and, more importantly, a property ladder for deciding which
+simulator conclusions transport to a live market. Provider agents choose quote,
+admitted capacity, and availability. Router plugins determine attempted order;
+the kernel settles capacity, reliability, fallback, payments, costs, user
+utility, and welfare with stable common-random-number substreams. The parallel
+API exposes public quotes and own settlement while hiding rival technology.
+
+Two studies demonstrate the methodology. First, a marginal-preserving signal
+order intervention raises buyer price by 0.118 in a focal UCB/UCB game but has
+effect -0.00047 across heterogeneous learners. Second, a hardened adaptive
+router sharply reduces one-shot quote, fade, sybil, unilateral, and
+two-provider attacks, yet has 9.68 times the normalized post-UCB exploitability
+of inverse-square routing. Public data provide only nominal, concentrated
+signal coupling, so neither simulator result is promoted to provider conduct.
 
 ## Strengths
 
-1. **A genuinely new kind of testbed.** The algorithmic-collusion
-   literature simulates invented markets; here the demand system is a
-   deployed, documented mechanism, and the environment must pass a
-   pre-registered validation gate against the real market — including an
-   untargeted moment (simulated demand elasticity −0.65 ± 0.35 vs −0.78
-   measured with no fitted allocation parameter). That untargeted-moment
-   validation is the best of its kind I have seen in a learning-in-games
-   paper.
-2. **The qualitative reproduction results (§5.2) are striking.** Learners
-   independently converge to the real market's tie atom and to rigid
-   (non-micro-adjusting) pricing — regularities the environment was never
-   fit to. This is out-of-distribution validation of the mechanism-
-   explains-the-market thesis, and it is the kind of result only a
-   calibrated environment can produce.
-3. **Theory-experiment coupling.** Thirteen CI-tested closed forms give
-   the experiments exact comparative-statics targets; the
-   learning-regularizes-the-singularity observation (undershoot at
-   criticality via vanishing profit gradient, overshoot in the
-   disciplined phase) is crisp, mechanistically explained, and
-   practically important — mechanism analysis at the equilibrium
-   correspondence alone mispredicts learned play in both directions.
-4. **Reproducibility** is exemplary: public repo, frozen bundles,
-   per-run manifests with source fingerprints, seeded determinism,
-   pre-registration with dated addenda.
+1. The scientific contribution is the refusal mechanism. Many multi-agent
+market papers verify accounting and then treat calibrated agents as behavioral
+truth. Here claims must pass information fidelity, held-out properties,
+adversarial strategy diversity, and prospective transport. The paper shows
+that these gates change conclusions, not just presentation.
+
+2. The environment models the right operational details. Attempt costs accrue
+on failed inference, installed-capacity cost survives withdrawal, capacity
+clips attempts, and fallback changes both latency and resource cost. The exact
+identity welfare equals user utility plus provider profit is enforced at the
+request level without assuming nonbinding capacity.
+
+3. Intervention fidelity is excellent. The signal treatment preserves every
+provider's finite-sample signal multiset exactly and changes only common and
+temporal ordering. Paired seeds preserve structural randomness. This makes the
+focal causal statement clean inside the simulator while leaving transport
+appropriately separate.
+
+4. Negative results are informative and central. Heterogeneous learners erase
+the HMP-style price effect. Static hardening succeeds while adaptive learning
+fails its frozen normalized gate. The paper explains the denominator issue and
+reports absolute gains rather than tuning away the failure.
+
+5. The artifact is now usable without repository archaeology. The parallel API
+has a tested four-epoch example, an observation-contract guide, deterministic
+JSON replay, custom-router instructions, an environment card, and focused
+tests. The broader market-environment suite covers capacity, fallback,
+information boundaries, adversarial deviations, and stable random substreams.
+
+6. The work is ethically careful. Paid probes are assignment-first and
+budget-capped; public releases exclude request-level rows; provider regimes are
+not allegations; and the paper does not claim collusion, dumping, or literal
+front-running.
 
 ## Weaknesses
 
-1. **Single learning algorithm.** All learning results use tabular Q at
-   one hyperparameter suite (Calvano's). The paper's own related-work
-   section concedes deep RL tends to converge nearer Nash. For a NeurIPS
-   audience, at least one policy-gradient baseline (even small-scale PPO)
-   on the dial and the steering flip is needed to show the phenomena are
-   not tabular-Q artifacts. The unanimity across seeds (8/8) partially
-   mitigates (the attractors are robust to exploration paths) but does
-   not substitute for algorithmic diversity. **Main revision request.**
-2. **E-MECH2's learner table is promised, not shown.** Include it or cut.
-3. Statistical reporting: several results are means over 5–8 seeds;
-   report dispersion everywhere (some tables do, some don't), and state
-   the deterministic-attractor explanation for zero-variance cells in
-   the main text, not a parenthetical.
-4. The environment release will be judged as an artifact: it needs a
-   documented API and a minimal-example notebook to function as the
-   community benchmark the abstract implies.
+1. The environment is domain-specific rather than a broad MARL benchmark.
+That is a deliberate strength for settlement fidelity, but it means the paper
+needs external adapters before standard PPO or population-based libraries can
+be run without glue code.
 
-## Ratings
+2. The strategic policy set is still finite: UCB, epsilon-greedy, tabular Q,
+static species, and scripted deviations. It does not establish robustness to
+deep recurrent policies or unrestricted history-dependent coalitions.
 
-- Soundness: 3.5/4 — claims carefully scoped to the algorithms actually
-  run; the expected-allocation training approximation is stated and
-  exact under the stated condition.
-- Presentation: 3.5/4 — dense but well-organized; the physics framing
-  clarifies rather than decorates.
-- Contribution: 3.5/4 — new testbed class + validated emergent-collusion
-  results + mechanism evaluation; the missing algorithmic diversity is
-  the one significant gap.
-- **Overall: 7 (Accept).** Confidence: 4.
+3. The hardened-router result is mixed and the normalized metric is unstable
+near zero profit. The paper reports this correctly, but readers should not
+interpret the candidate mechanism as deployable.
 
-The single-algorithm weakness would normally cap this at 6, but the
-validation methodology, the unprompted reproduction of real-market
-regularities, and the deployed-mechanism novelty are exactly the
-contributions this track exists to publish. Accept, with the PPO
-baseline and E-MECH2 table strongly urged for the camera-ready.
+4. Live transport is intentionally incomplete. Public prices and owned probes
+do not identify market-wide demand, cost, value, or capacity. The contribution
+is a standard for evaluating such claims, not a validated live welfare model.
 
-## Style assessment (requested)
+## Required changes
 
-High fidelity to the PI's voice: the opening line ("Every day, a softmax
-decides who serves your tokens"), the literal Gibbs-ensemble framing,
-the inversion of the collusion literature's question, and the willingness
-to name the platform-incentive conflict plainly are all characteristic.
-The NeurIPS-format constraints mute the footnote culture of his longer
-papers; the voice survives in the framing choices.
+No changes are required for acceptance. Useful additions would be a thin
+PettingZoo adapter, one standard policy-gradient baseline, and performance
+benchmarks at larger provider counts. These are extension requests rather than
+repairs to the current claims.
+
+## Score
+
+- Quality: 4/4
+- Clarity: 4/4
+- Significance: 4/4
+- Originality: 4/4
+- Overall: 8/10, Strong Accept
+- Confidence: 4/5
+
+## Decision
+
+**Strong accept.** The paper offers both a substantive inference-market
+environment and a general methodological contribution: empirical transport
+gates that can falsify attractive simulator narratives. The two negative
+studies demonstrate that the ladder is load-bearing, and the executable
+artifact supports the claims actually made.

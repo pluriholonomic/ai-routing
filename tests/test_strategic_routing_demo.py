@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import pytest
 
-from examples.strategic_routing_demo import run_demo
+EXAMPLE = Path(__file__).resolve().parents[1] / "examples/strategic_routing_demo.py"
+SPEC = importlib.util.spec_from_file_location("strategic_routing_demo", EXAMPLE)
+assert SPEC is not None and SPEC.loader is not None
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+run_demo = MODULE.run_demo
 
 
 def test_demo_is_deterministic_and_reconciles_every_epoch():
