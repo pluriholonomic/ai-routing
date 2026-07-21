@@ -22,7 +22,7 @@
 \newcommand{\SNR}{\operatorname{SNR}}
 
 \title{Critical Memory in Pricing Learners:\\
-Exponential Discovery Gaps in Routing Markets}
+Exponential Late-Credit Gaps in Routing Markets}
 \author{Anonymous Authors}
 \date{}
 
@@ -34,17 +34,21 @@ A marketplace can make a profitable price cut hard to learn without making it
 unprofitable.  We study an inference router that discounts a provider after a
 cut until its trailing price history is cleared.  The resulting pricing MDP
 has an exact rational memory boundary.  Below it, cutting is optimal; above it,
-staying high is optimal.  We prove a separate finite-time boundary: if a
-learner chooses the exploratory cut with conditional probability at most
-$q$, discovering a length-$M$ cut path by time $T$ has probability at most
-$Tq^M$.  Thus the memory required to defeat a fixed learning horizon grows
-only logarithmically in $T$, even when post-discovery rewards have high signal.
-A path-equivalent commitment option reduces exponential discovery time to
-linear while preserving every primitive price path and the optimal value.
+staying high is optimal.  We prove a separate finite-time boundary: after a
+learner's downstream value estimates become usable, if it chooses the
+exploratory cut with conditional probability at most $q$, observing a fresh
+length-$M$ cut path within $T$ further steps has probability at most $Tq^M$.
+Thus the memory that defeats a fixed late-learning horizon grows only
+logarithmically in $T$, even when rewards have high signal.  A path-equivalent
+commitment option reduces the corresponding path proposal time to linear while
+preserving every primitive price path and the optimal value.
 In a frozen calibrated routing game, primitive Q-learning selects the rational
 action in 1/20 seeds at $M=7$, versus 19/20 with the option; the paired regret
 change is $-0.0643$ (seed-bootstrap 95\% interval
-$[-0.0755,-0.0493]$).  The intervention reverses beyond the rational boundary,
+$[-0.0755,-0.0493]$).  A trace replay shows that all 20 primitive learners
+reached the all-low state within 901 early steps, but none of the 19 failures
+reached even depth five after step 100,000.  The intervention reverses beyond
+the rational boundary,
 where primitive learning is correct and commitment overcuts.  Full state and
 an eight-step TD target do not close the gap.  The result isolates a temporal
 credit mechanism; it is not evidence of live-provider collusion.
@@ -82,17 +86,19 @@ Our contributions are fourfold.
   \item We derive an exact \emph{rational} boundary $M^*$ for persistent
   cutting under a finite-memory penalty.  It separates environments where the
   long-run low price is optimal from those where the high price is optimal.
-  \item We derive a distinct \emph{learning} boundary.  Under any adaptive
-  policy whose pre-discovery cut probability is at most $q$,
-  $\Prb(\tau_M\le T)\le Tq^M$.  Combining this bound with ordinary reward
-  estimation separates temporal discovery from reward SNR.
+  \item We derive a distinct \emph{learning} boundary.  After any stopping
+  time $\sigma$, an adaptive policy whose cut probability is at most $q$ has
+  conditional probability at most $Tq^M$ of producing a fresh length-$M$ path
+  within $T$ steps.  Combining this bound with ordinary reward estimation
+  separates late temporal credit from reward SNR.
   \item We show that a length-$(M+1)$ commitment option preserves the optimal
-  value and feasible primitive paths while replacing exponential discovery
+  value and feasible primitive paths while replacing exponential path-proposal
   time by a linear term.  This is an interface result, not a change in provider
   payoffs.
   \item We test the mechanism in a frozen, calibrated finite MDP.  The option
   closes the local gap at intermediate memory and becomes harmful beyond the
-  rational boundary.  State observability, cross-market severity, and a
+  rational boundary.  A frozen trace replay separates early discovery from late
+  credit starvation.  State observability, cross-market severity, and a
   conventional multi-step return each fail prespecified tests.
 \end{enumerate}
 
@@ -148,30 +154,38 @@ examining learning outcomes.
 
 \section{Critical memory for finite-time learning}
 
-Let $A_t\in\{H,L\}$ and let
-$\tau_M=\inf\{t:A_{t-M+1}=\cdots=A_t=L\}$ be the first time the learner
-reaches the unpenalized low state.  Before $\tau_M$, rewards from $L$ are below
-the high reward, so a myopic or optimistic learner can assign it only bounded
-exploration probability.  We allow full history dependence and require only
+Let $A_t\in\{H,L\}$.  Fix any stopping time $\sigma$ representing a stage
+at which downstream reward or value information has become usable, and define
+$\tau_M(\sigma)$ as the first $t\ge\sigma+M$ for which the $M$ actions after
+$\sigma$ ending at $t$ are all low.  This definition is intentionally
+conditional: an early visit can reveal the terminal reward without supplying a
+later one-step learner enough fresh support to propagate that value upstream.
+We allow full history dependence and require only
 \begin{equation}
- \Prb(A_t=L\mid\mathcal F_{t-1},\tau_M\ge t)\le q.
+ \Prb(A_t=L\mid\mathcal F_{t-1},\,t>\sigma,\,
+ \tau_M(\sigma)\ge t)\le q.
  \label{eq:qcap}
 \end{equation}
 
-\begin{theorem}[Exponential discovery barrier]
-Under \cref{eq:qcap}, for every horizon $T$,
+\begin{theorem}[Exponential fresh-path barrier]
+Under \cref{eq:qcap}, for every horizon $T$ and almost every realized
+$\mathcal F_\sigma$,
 \begin{equation}
- \Prb(\tau_M\le T)\le (T-M+1)_+q^M\le Tq^M.
+ \Prb(\tau_M(\sigma)\le\sigma+T\mid\mathcal F_\sigma)
+ \le (T-M+1)_+q^M\le Tq^M.
  \label{eq:discovery-bound}
 \end{equation}
-Consequently, attaining discovery probability at least $1-\delta$ requires
+Consequently, attaining conditional fresh-path probability at least
+$1-\delta$ requires
 \begin{equation}
  T\ge (1-\delta)q^{-M}.
  \label{eq:horizon-lower}
 \end{equation}
-If pre-discovery actions are iid Bernoulli$(q)$, the exact expected time is
+If post-$\sigma$ actions are iid Bernoulli$(q)$, the exact expected additional
+time is
 \begin{equation}
- \E\tau_M=\frac{1-q^M}{(1-q)q^M}.
+ \E[\tau_M(\sigma)-\sigma\mid\mathcal F_\sigma]
+ =\frac{1-q^M}{(1-q)q^M}.
  \label{eq:exact-wait}
 \end{equation}
 \label{thm:critical}
@@ -183,26 +197,27 @@ Define the finite-horizon critical memory
  \left\lfloor\frac{\log[T/(1-\delta)]}{\log(1/q)}\right\rfloor.
  \label{eq:critical-memory}
 \end{equation}
-For $M\ge M_c+1$, the target success probability is ruled out regardless of
-how accurately the learner estimates rewards after discovery.  Thus memory is
-a computational control parameter: increasing $T$ by a factor of ten buys
-only $1/\log_{10}(1/q)$ additional memory periods.
+For $M\ge M_c+1$, the target fresh-path probability is ruled out after any
+chosen readiness time $\sigma$.  Thus memory is a computational control
+parameter for learners that need fresh downstream support: increasing $T$ by a
+factor of ten buys only $1/\log_{10}(1/q)$ additional memory periods.
 
 This clarifies the relationship to signal-to-noise results.  Suppose
-post-discovery reward differences are sub-Gaussian with gap $\Delta$ and proxy
-variance $\sigma^2$.  After discovery, $O(\SNR^{-1}\log(1/\delta))$ samples,
-where $\SNR=\Delta^2/\sigma^2$, suffice to identify the better stationary
-action.  Before discovery, \cref{eq:horizon-lower} still applies.
+reward differences are sub-Gaussian with gap $\Delta$ and proxy variance
+$\sigma^2$.  Then $O(\SNR^{-1}\log(1/\delta))$ samples, where
+$\SNR=\Delta^2/\sigma^2$, suffice to identify the better downstream action.
+If upstream credit requires a fresh path after that readiness stage,
+\cref{eq:horizon-lower} still applies.
 
 \begin{corollary}[Temporal--statistical crossover]
-For a fixed-confidence learner, total difficulty contains a temporal term
-$q^{-M}$ and a statistical term
+For a fixed-confidence ordered-credit learner, total difficulty contains a
+fresh-support term $q^{-M}$ and a statistical term
 $\SNR^{-1}\log(1/\delta)$.  Temporal discovery dominates once
 \begin{equation}
  q^{-M}\gg \SNR^{-1}\log(1/\delta).
 \end{equation}
-Higher reward SNR cannot remove this gap; it only improves learning after the
-rare state has been reached.
+Higher reward SNR cannot remove this conditional gap; it moves the readiness
+time $\sigma$ but does not change post-$\sigma$ path probability.
 \label{cor:snr}
 \end{corollary}
 
@@ -210,8 +225,10 @@ The result complements Hansen--Misra--Pai: independent experiments may couple
 through the final pricing score even with no explicit memory
 \citep{hansen2021}.  Our theorem does not contradict asymptotic learnability.
 It supplies a finite-time rate: once market memory requires a run rather than
-an isolated experiment, the time needed to expose the relevant score can be
-exponential in $M$.
+an isolated experiment, the time needed to re-expose the relevant score after
+downstream learning can be exponential in $M$.  This conditional statement is
+not, by itself, an explanation of the Q-learning result; the trace audit below
+tests whether late support is actually absent.
 
 \section{A path-equivalent intervention}
 
@@ -240,9 +257,10 @@ rather than $q^M$.  This is the exponential temporal-abstraction gap shown in
 \begin{figure*}[t]
  \centering
  \includegraphics[width=0.98\textwidth]{critical-memory.pdf}
- \caption{Theory and frozen experiment.  A: iid primitive exploration takes
- exponential time to discover $M$ consecutive cuts; a commitment option is
- linear in $M$.  B: exact first-action agreement over 20 seeds.  C: mean
+ \caption{Theory and frozen experiment.  A: after any readiness checkpoint,
+ iid primitive exploration takes exponential additional time to produce a
+ fresh length-$M$ cut path; a commitment option is linear in $M$.  B: exact
+ first-action agreement over 20 seeds.  C: mean
  normalized regret.  The dashed rational boundary $M^*=9.2402$ is computed
  from payoffs, not fitted to learner outcomes.}
  \label{fig:critical}
@@ -265,9 +283,15 @@ E-SIM5 gives the primitive learner the complete Markov history.  E-SIM6 adds
 only the path-equivalent option and sweeps
 $M\in\{1,3,5,7,9,12\}$.  E-SIM7 transports the intervention to four frozen
 price books.  E-SIM8 varies learning rate and exploration decay in a $3\times3$
-grid.  E-SIM9 replaces one-step Q with an eight-step TD target while retaining
-the primitive action set.  All gates, seeds, and result hashes were frozen
-before interpretation.
+ grid.  E-SIM9 replaces one-step Q with an eight-step TD target while retaining
+ the primitive action set.  All gates, seeds, and result hashes were frozen
+ before interpretation.
+
+After freezing E-SIM6, we added a descriptive trace audit rather than modifying
+its confirmatory gate.  It replays the exact 20 primitive seeds, asserts every
+terminal Q-table against the frozen artifact to tolerance $10^{-12}$, and
+records trailing-low-state visits after steps 100,000 and 200,000.  These
+checkpoints are diagnostics, not preregistered readiness estimates.
 
 The live empirical bridge is deliberately weaker.  In the latest hosted
 panel, the primary same-regime covariance statistic exceeds its randomization
@@ -292,10 +316,22 @@ interval $[-0.07553,-0.04930]$.  The sign remains negative in every one of
 nine learning-rate/exploration-decay cells; the strict composite severity gate
 passes in seven.
 
+\paragraph{Early discovery is not the explanation.}
+The trace audit reproduces all 20 frozen Q-tables exactly.  Every primitive
+learner reaches the all-low state early: first-hit times range from step 7 to
+901.  Nevertheless, 19 finish with the wrong high initial action.  Among those
+19 failures, none visits a state with five or more trailing low actions after
+step 100,000, and none returns to the all-low state.  Thus the naive
+first-discovery interpretation is falsified.  The observed mechanism is
+consistent with \emph{late credit starvation}: informative states are sampled
+while exploration is broad, but are not revisited deeply enough after value
+estimates separate.  This diagnostic motivates the stopping-time formulation
+of \cref{thm:critical}; it does not estimate a unique readiness time.
+
 \paragraph{The intervention is nonmonotone.}
 At $M=12$, exact optimization stays high.  Primitive Q is correct in 20/20
 seeds, whereas option Q is correct in only 2/20 and adds $0.0942$ normalized
-regret.  An interface that solves delayed discovery can therefore reduce
+regret.  An interface that solves delayed credit can therefore reduce
 welfare when it creates commitment salience on the wrong side of the economic
 boundary.  Mechanism evaluation must combine \cref{thm:rational} with
 \cref{thm:critical}; the learning boundary alone is not a design objective.
@@ -317,9 +353,9 @@ The two boundaries separate three regimes.
  \item If $M>M^*$, a persistent cut destroys provider value.  High pricing is
  rational; exploration policy is secondary.
  \item If $M\le M^*$ but $M>M_c(T,q,\delta)$, cutting is rational but is
- unlikely to be discovered within the learning horizon.  A platform can
- sustain high learned prices without communication or supra-rational reward
- coupling.
+ unlikely to receive a fresh length-$M$ support path within the late-learning
+ horizon.  A platform can sustain high learned prices without communication or
+ supra-rational reward coupling.
  \item If $M\le\min\{M^*,M_c\}$, ordinary exploration can expose the low path;
  reward SNR and cross-agent signal coupling again become first-order.
 \end{enumerate}
@@ -342,7 +378,7 @@ independent bandit experiments become strategically coupled through the
 aggregate price used to score arms \citep{hansen2021}.  Johnson--Rhodes--
 Wildenbeest study platform steering when sellers use pricing algorithms
 \citep{johnson2023}.  Our contribution is orthogonal: a router's own-history
-rule creates a finite-time run-discovery barrier even when reward differences
+rule creates a finite-time fresh-support barrier even when reward differences
 are otherwise easy to estimate.
 
 Options and semi-Markov value preservation are classical
@@ -354,10 +390,13 @@ intervention helps only between those boundaries.
 
 \section{Limitations and claim boundary}
 
-The finite-time theorem assumes a pre-discovery cut-probability cap; it does
-not characterize algorithms that plan over a known model or deliberately
-schedule low runs.  The calibrated experiment fixes rivals, uses two prices,
-and studies tabular Q.  Twenty seeds identify Monte Carlo variability, not
+The finite-time theorem assumes a post-stopping-time cut-probability cap and
+applies only to learners that require fresh downstream support.  It does not
+characterize algorithms that plan over a known model, retain replay sufficient
+for exact offline backups, or deliberately schedule low runs.  The diagnostic
+checkpoint is post hoc and does not identify when a Q-value becomes usable.
+The calibrated experiment fixes rivals, uses two prices, and studies tabular Q.
+Twenty seeds identify Monte Carlo variability, not
 uncertainty in live-market parameters.  Cross-market severe-trap transport
 fails, and no paid probe randomizes router memory.  The empirical covariance
 screen is concentrated and family-incomplete.  We therefore claim a theorem,
@@ -367,10 +406,11 @@ intent, tacit collusion, communication, or live-router causality.
 \section{Conclusion}
 
 Market memory creates two distinct thresholds.  The rational threshold says
-whether persistent cutting is valuable; the finite-time threshold says
-whether a bounded learner can discover it.  Between them, high learned prices
-can persist despite a profitable low-price path, with discovery time
-exponential in memory and only logarithmic improvement from longer training.
+whether persistent cutting is valuable; the finite-time threshold says whether
+a bounded ordered-credit learner can obtain fresh support after its downstream
+values become usable.  Between them, high learned prices can persist despite a
+profitable low-price path, with late path time exponential in memory and only
+logarithmic improvement from longer training.
 A path-equivalent option collapses that gap but overcorrects when cutting is no
 longer rational.  Learning-aware marketplace design must therefore optimize
 both incentives and representations, then audit deviations on either side of
@@ -395,9 +435,10 @@ or never cutting is optimal.  Comparing these alternatives yields
 \end{proof}
 
 \begin{proof}[Proof of \cref{thm:critical}]
-For each candidate ending time $t$, iterated conditioning and
-\cref{eq:qcap} bound the probability of the required all-low length-$M$
-window by $q^M$.  A union bound over $(T-M+1)_+$ windows proves
+Condition on $\mathcal F_\sigma$.  For each candidate ending time
+$t>\sigma$, iterated conditioning and \cref{eq:qcap} bound the probability
+of the required post-$\sigma$ all-low length-$M$ window by $q^M$.  A union
+bound over $(T-M+1)_+$ windows proves
 \cref{eq:discovery-bound}; inversion of its looser $Tq^M$ form gives
 \cref{eq:horizon-lower}.  Under iid Bernoulli exploration, let $E_k$ be the
 expected remaining time after a current run of $k$ lows.  The recursions
@@ -426,8 +467,16 @@ directly from the frozen E-SIM6 parquet.  Clean bundles are E-SIM5
 \texttt{179eca0f9d}.  Manifests pin source commits, seeds, result hashes, and
 input-artifact hashes.  Exact Bellman residuals, path equivalence, paper
 numbers, and the new finite-time identities are enforced by tests.
+The post-hoc trace artifact
+\texttt{credit-propagation-diagnostic.json} is generated by the adjacent
+replay script.  It is admitted only after all 20 Q-tables match the frozen
+E-SIM6 artifact; separate tests reconcile seed-level actions, early hits, and
+late depth counts.
 
 \bibliographystyle{plainnat}
+\begingroup
+\footnotesize
 \bibliography{references}
+\endgroup
 
 \end{document}

@@ -56,7 +56,7 @@ def main() -> None:
     axes[0].set_yscale("log")
     axes[0].set_xlabel("Router memory M")
     axes[0].set_ylabel("Expected primitive transitions")
-    axes[0].set_title("A. Exponential discovery gap")
+    axes[0].set_title("A. Exponential fresh-path gap")
     axes[0].legend(frameon=False, fontsize=6)
 
     colors = {"Primitive Q": "#a44a3f", "Commit option Q": "#2a9d8f"}

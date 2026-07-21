@@ -1,0 +1,642 @@
+{
+  "study": "esim6-late-credit-descriptive-audit",
+  "source_run": "93265b9b03",
+  "memory": 7,
+  "train_transitions": 300000,
+  "readiness_checkpoints": [
+    100000,
+    200000
+  ],
+  "seeds": 20,
+  "frozen_q_tables_reproduced": true,
+  "first_all_low_transition_range": [
+    7,
+    901
+  ],
+  "failed_initial_policies": 19,
+  "failed_with_any_depth_5_visit_after_100k": 0,
+  "failed_with_any_all_low_transition_after_100k": 0,
+  "rows": [
+    {
+      "seed": 0,
+      "first_all_low_transition": 901,
+      "all_low_transitions": 175,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196706,
+        3204,
+        89,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99592,
+        405,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 1,
+      "first_all_low_transition": 174,
+      "all_low_transitions": 143,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196831,
+        3064,
+        97,
+        7,
+        1,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99668,
+        329,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 4,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 2,
+      "first_all_low_transition": 46,
+      "all_low_transitions": 214,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196641,
+        3211,
+        139,
+        9,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99624,
+        372,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 3,
+      "first_all_low_transition": 7,
+      "all_low_transitions": 59,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196739,
+        3129,
+        130,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99622,
+        377,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 4,
+      "first_all_low_transition": 49,
+      "all_low_transitions": 47,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196739,
+        3158,
+        100,
+        3,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99598,
+        397,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 5,
+      "first_all_low_transition": 162,
+      "all_low_transitions": 86,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196703,
+        3165,
+        127,
+        5,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99575,
+        421,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 6,
+      "first_all_low_transition": 25,
+      "all_low_transitions": 192,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196705,
+        3181,
+        106,
+        8,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99621,
+        374,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 7,
+      "first_all_low_transition": 231,
+      "all_low_transitions": 72,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196747,
+        3156,
+        91,
+        6,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99594,
+        403,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 8,
+      "first_all_low_transition": 451,
+      "all_low_transitions": 53,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196700,
+        3209,
+        88,
+        3,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99582,
+        414,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 9,
+      "first_all_low_transition": 231,
+      "all_low_transitions": 220,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196691,
+        3194,
+        110,
+        5,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99608,
+        391,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 10,
+      "first_all_low_transition": 24,
+      "all_low_transitions": 199639,
+      "all_low_transitions_after_100k": 177998,
+      "all_low_transitions_after_200k": 97288,
+      "visits_by_trailing_low_depth_after_100k": [
+        4415,
+        3253,
+        3083,
+        2961,
+        2860,
+        2765,
+        2665,
+        177998
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        415,
+        389,
+        386,
+        383,
+        381,
+        379,
+        379,
+        97288
+      ],
+      "deepest_depth_after_100k": 7,
+      "final_initial_action": 0,
+      "final_initial_action_label": "low",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 11,
+      "first_all_low_transition": 219,
+      "all_low_transitions": 45,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196697,
+        3167,
+        128,
+        8,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99592,
+        404,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 12,
+      "first_all_low_transition": 300,
+      "all_low_transitions": 56,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196679,
+        3211,
+        100,
+        8,
+        2,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99603,
+        396,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 4,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 13,
+      "first_all_low_transition": 187,
+      "all_low_transitions": 166,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196704,
+        3184,
+        107,
+        5,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99580,
+        417,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 14,
+      "first_all_low_transition": 676,
+      "all_low_transitions": 91,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196632,
+        3246,
+        118,
+        4,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99615,
+        383,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 15,
+      "first_all_low_transition": 30,
+      "all_low_transitions": 52,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196599,
+        3284,
+        107,
+        9,
+        1,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99579,
+        418,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 4,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 16,
+      "first_all_low_transition": 112,
+      "all_low_transitions": 69,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196628,
+        3255,
+        114,
+        3,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99598,
+        401,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 17,
+      "first_all_low_transition": 58,
+      "all_low_transitions": 85,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196655,
+        3231,
+        107,
+        6,
+        1,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99584,
+        415,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 4,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 18,
+      "first_all_low_transition": 265,
+      "all_low_transitions": 28,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196722,
+        3161,
+        115,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99586,
+        413,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    },
+    {
+      "seed": 19,
+      "first_all_low_transition": 352,
+      "all_low_transitions": 77,
+      "all_low_transitions_after_100k": 0,
+      "all_low_transitions_after_200k": 0,
+      "visits_by_trailing_low_depth_after_100k": [
+        196692,
+        3203,
+        104,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "visits_by_trailing_low_depth_after_200k": [
+        99591,
+        406,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "deepest_depth_after_100k": 3,
+      "final_initial_action": 1,
+      "final_initial_action_label": "high",
+      "max_frozen_q_table_error": 0.0
+    }
+  ],
+  "claim_boundary": "Post-hoc visitation audit of a frozen controlled simulation. It distinguishes early state discovery from late Bellman-credit support but is not a preregistered effect test or live-market result."
+}
