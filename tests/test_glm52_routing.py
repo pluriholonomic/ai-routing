@@ -144,7 +144,9 @@ def test_execution_is_exact_once_redacted_budgeted_and_monitored(monkeypatch, tm
         bundle,
         curated_dir=tmp_path / "curated",
         data_root=tmp_path,
-        now=datetime(2026, 7, 22, tzinfo=UTC),
+        # Keep this fixture explicitly before the prospective scoring cutoff;
+        # wall-clock time must never decide whether legacy choices enter it.
+        now=datetime(2026, 7, 21, 21, 30, tzinfo=UTC),
         send=fake_send,
     )
     assert result["attempted_requests"] == 10
@@ -175,7 +177,7 @@ def test_execution_is_exact_once_redacted_budgeted_and_monitored(monkeypatch, tm
             bundle,
             curated_dir=tmp_path / "curated",
             data_root=tmp_path,
-            now=datetime(2026, 7, 22, tzinfo=UTC),
+            now=datetime(2026, 7, 21, 21, 30, tzinfo=UTC),
             send=fake_send,
         )
 

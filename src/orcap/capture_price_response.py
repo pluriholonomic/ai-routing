@@ -335,13 +335,14 @@ def _attempt(
     *,
     manifest_sha256: str,
     study_id: str,
+    observed_at: str | None = None,
 ) -> dict[str, Any]:
     gen = (generation or {}).get("data") or {}
     usage = (completion or {}).get("usage") or {}
     selected = gen.get("provider_name") or (completion or {}).get("provider")
     return {
         "event_id": str((completion or {}).get("id") or assignment["task_id"]),
-        "observed_at": run_timestamp(),
+        "observed_at": observed_at or run_timestamp(),
         "router": "openrouter",
         "source": "openrouter_generation",
         "study_id": study_id,

@@ -177,6 +177,7 @@ def execute_bundle(
     )
 
     attempts = []
+    observed_at = run_timestamp(now)
     with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as client:
         for assignment in assignments:
             completion, generation, error, status = send(client, assignment)
@@ -189,6 +190,7 @@ def execute_bundle(
                     status,
                     manifest_sha256=str(bundle["manifest"]["manifest_sha256"]),
                     study_id=STUDY_ID,
+                    observed_at=observed_at,
                 )
             )
     run_id = str(bundle["summary"]["run_id"])
