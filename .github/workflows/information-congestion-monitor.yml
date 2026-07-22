@@ -68,6 +68,7 @@ jobs:
         run: >-
           uv run python -m orcap.analysis.information_congestion_readiness
           --data-root input-data
+          --report-only
           --output data/analysis/information-congestion-v1/information-congestion-readiness.json
       - name: build outcome-blind support and rank monitor
         run: >-

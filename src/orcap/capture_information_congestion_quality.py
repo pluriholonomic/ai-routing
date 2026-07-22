@@ -14,8 +14,9 @@ import httpx
 import pandas as pd
 import pyarrow as pa
 
+from .analysis.information_congestion_readiness import capture_continuity
 from .capture_api import write_partition
-from .capture_information_congestion import _read
+from .capture_information_congestion import _read, _source_fresh
 from .capture_market_measurement import (
     _public_items,
     _quality_item_map,
@@ -119,8 +120,26 @@ def build_plan_bundle(
     run_id: str,
     seed: int,
     config_path: Path = DEFAULT_CONFIG,
+    now: datetime | None = None,
 ) -> dict[str, Any]:
+    now = (now or datetime.now(UTC)).astimezone(UTC)
     protocol, protocol_sha256 = load_protocol(config_path)
+    design = protocol["design"]
+    support = protocol["support"]
+    snapshots = _read(data_root, "endpoints_snapshots")
+    source_fresh = _source_fresh(
+        snapshots,
+        now=now,
+        maximum_age_minutes=int(design["maximum_public_snapshot_age_minutes"]),
+    )
+    continuity = capture_continuity(snapshots, now=now)
+    continuity["coverage_gate"] = continuity["coverage"] >= float(
+        support["minimum_capture_coverage"]
+    )
+    maximum_gap = continuity["maximum_gap_minutes"]
+    continuity["gap_gate"] = maximum_gap is not None and maximum_gap <= float(
+        support["maximum_gap_minutes"]
+    )
     models = [str(value) for value in protocol["study"]["models"]]
     candidates, source_failures = freeze_candidates(
         client,
@@ -166,13 +185,19 @@ def build_plan_bundle(
         rewritten["execution_batch"] = rewritten["task_id"]
         rewritten["session_group"] = f"fresh|{rewritten['task_id']}"
         assignments.append(rewritten)
-    source_healthy = bool(selected_model and len(assignments) == 8)
+    source_healthy = bool(
+        selected_model
+        and len(assignments) == 8
+        and source_fresh
+        and continuity["coverage_gate"]
+        and continuity["gap_gate"]
+    )
     summary = {
         "study_id": STUDY_ID,
         "plan_version": PLAN_VERSION,
         "run_id": run_id,
         "seed": str(seed),
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": now.isoformat(),
         "protocol_sha256": protocol_sha256,
         "selected_model": selected_model,
         "selected_provider_keys": selected_providers,
@@ -183,6 +208,8 @@ def build_plan_bundle(
         ),
         "source_failures": source_failures,
         "source_healthy": source_healthy,
+        "public_snapshot_fresh": source_fresh,
+        "capture_continuity": continuity,
         "preflight_only": True,
         "payload_retained": False,
         "claim_boundary": (
@@ -206,9 +233,7 @@ def validate_bundle(bundle: dict[str, Any], *, require_tasks: bool = False) -> N
     )
     if bundle["summary"].get("payload_retained") is not False:
         raise ValueError("quality plan must retain no payload")
-    if require_tasks and (
-        not bundle["summary"].get("source_healthy") or len(bundle["assignments"]) != 8
-    ):
+    if require_tasks and len(bundle["assignments"]) != 8:
         raise RuntimeError("quality plan does not contain the frozen eight tasks")
     task_ids = [str(row.get("task_id") or "") for row in bundle["assignments"]]
     if any(not value for value in task_ids) or len(task_ids) != len(set(task_ids)):
@@ -275,6 +300,8 @@ def execute_bundle(
         raise RuntimeError("information-congestion quality bank is disabled")
     if not os.environ.get("OPENROUTER_PRICE_EXPERIMENT_KEY"):
         raise RuntimeError("dedicated paid experiment key is unavailable")
+    if not bundle["summary"].get("source_healthy"):
+        raise RuntimeError("quality execution refused by capture-continuity gate")
     protocol, protocol_sha256 = load_protocol(config_path)
     if str(bundle["summary"].get("protocol_sha256")) != protocol_sha256:
         raise RuntimeError("quality protocol hash changed after planning")

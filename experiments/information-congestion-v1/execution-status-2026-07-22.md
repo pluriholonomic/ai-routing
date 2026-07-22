@@ -53,6 +53,27 @@ StreamLake, and GMICloud, and two public MMLU item IDs. It produced eight exact
 assignments with a total worst-case quote cap of $0.000402192. It was validated
 but not executed.
 
+## First remote deployment audit
+
+PR 71 merged the study into `main` at `9f036cd`. Remote run `29952031271`
+successfully froze and validated a 32-task assignment-only routing plan over all
+seven models: 121 provider-role rows, 170 feasible cells, and a worst-case quote
+cap of $0.00371626662304. Its execution job was skipped. Remote run
+`29952036272` likewise validated eight quality assignments with a worst-case cap
+of $0.000879648; its execution job was skipped. The study-specific routing and
+quality feature flags are explicitly `false` while the registered budgets and
+campaign window are installed as repository variables.
+
+The deployment smoke test found two pre-spend gate defects. First, plan
+freshness checked only the latest snapshot and not the preregistered 24-hour
+continuity thresholds. Second, the recurring monitor returned a failing process
+status whenever it correctly reported "not ready." Both are corrected in the
+follow-up: routing and quality plans now require at least 95% coverage and no
+boundary or internal gap above 15 minutes before `source_healthy=true`, while
+the recurring monitor can publish a negative report without weakening the
+release gate. The observed remote readiness was 250/288 clocks (86.81%) with a
+70.13-minute maximum gap, so paid collection remains closed.
+
 ## Public-shock support
 
 After simultaneous router telemetry was clustered and same-family events
