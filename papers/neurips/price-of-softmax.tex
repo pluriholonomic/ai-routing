@@ -53,6 +53,8 @@ zero unilateral grid regret.  An owned price-sort intervention changes
 cheapest-provider selection by 80 points but remains preregistration-gated.
 The result is an executable refusal standard for mechanism claims, not a claim
 that simulated agents reproduce live providers or welfare.
+An outer-stage task separately models costly capacity entry and bilateral
+contracts; it is not folded into the repeated-price action space.
 \end{abstract}
 
 \section{Introduction}
@@ -173,6 +175,34 @@ allowed to use, then returns an ordered list of eligible providers for each
 request.  Each admitted attempt consumes capacity and cost even if it fails.
 Payment goes to the first successful provider.  Capital cost is paid each epoch,
 including when capacity is withdrawn.
+
+\subsection{Outer-stage costly entry}
+
+The repeated game begins only after a costly participation stage.  From a
+candidate set of size $N$, provider $i$ chooses whether to pay integration and
+capacity cost $F_i$ and enter with a new immutable technology $\xi_i$.
+It may also receive net contribution $B_i$ from bilateral or committed demand.
+The core parallel API conditions on the resulting entrant set; an outer-stage
+task enumerates entry profiles and then invokes the same settlement kernel.
+
+As an auditable reference point, symmetric inverse-power routing with exponent
+$\eta>1$, public demand $D^R$, and marginal cost $c$ gives per-entrant public
+operating profit
+\begin{equation}
+ \pi^R(n)=\frac{D^R c}{\eta(n-1)-n}.
+ \label{eq:entryprofit}
+\end{equation}
+Free entry is the largest feasible $n$ satisfying
+$\pi^R(n)+B-F\ge0$.  The planner benchmark instead enumerates
+\begin{equation}
+ W(n)=D\left\{v[1-(1-q)^n]-\frac{c[1-(1-q)^n]}{q}\right\}-nF,
+ \label{eq:entrywelfare-neurips}
+\end{equation}
+where $q$ is independent delivered-capacity probability.  The two counts need
+not agree: bilateral profit and business stealing can create excess public
+listing, while unpriced reliability can create insufficient entry.  These
+closed forms are reference tests for outer-stage agents, not fitted market
+parameters.
 
 \subsection{Exact settlement}
 
@@ -569,9 +599,17 @@ chosen before the repeated pricing game.  A mechanism improvement must survive
 best responses and two-provider coalitions for each technology mixture, not just
 reallocate a frozen menu.
 
+The outer-stage reference task further distinguishes the free-entry provider
+count, the subset that pays to adapt prices, and routed exposure to correlated
+adaptive flow.  In the declared baseline, free entry is 21 providers while the
+welfare count is five; high bilateral contribution pushes entry to the
+40-candidate cap without changing the planner count.  This is a unit-testable
+scenario illustrating a wedge, not a live entry estimate.
+
 The simulator suggests a mechanism stack rather than a scalar score.  First,
 use execution-contingent capacity commitments instead of advertised capacity or
-provider identity.  Second, bound aggregate attempt probability assigned to
+provider identity, and attach any entry credit or levy to that certified
+capacity rather than to endpoint labels.  Second, bound aggregate attempt probability assigned to
 providers with correlated quote innovations while preserving an operator-neutral
 exploration floor.  Third, estimate quality and reliability out of sample and
 pay explicit SLA credits.  Fourth, separate router fees from selected spend so
@@ -618,6 +656,8 @@ small subset of strategic behavior.  Grid exploitability is not unrestricted
 dynamic exploitability.  The information-congestion loss is a declared
 scenario, not identified by effective rank; its bandit allocation transport is
 null.  SM4 technologies are stress cases rather than fitted provider types.  The
+outer-stage entry costs, bilateral contribution, and reliability independence
+are also declared scenarios rather than fitted quantities.  The
 hardened-rule and owned-routing screens are mixed or accruing.
 
 Paid probes are assignment-first, minimal-token, budget-capped, and remotely
@@ -697,6 +737,14 @@ public shadow share, latent score, provider technology, cost, or value is fitted
 into SM3 or SM4.  The full boundary is recorded in the dated
 information-congestion evidence audit adjacent to the venue folders.
 
+The outer entry benchmark is implemented in
+\path{src/orcap/market_env/contestable_entry.py} and its scenario panel in
+\path{src/orcap/analysis/contestable_entry_mechanism.py}.  Tests verify the
+symmetric operating-profit algebra, free-entry threshold, welfare enumeration,
+implementing levy, bilateral-profit comparative static, and zero-, minority-,
+and linear-adaptation regimes.  These are analytical reference scenarios; they
+do not add fitted entry parameters to the environment.
+
 \section{Environment Card}
 
 \paragraph{Agents and actions.}
@@ -705,7 +753,8 @@ an admitted-capacity fraction in $[0,1]$, and an availability state.  The core
 environment does not let a provider change its private marginal cost, physical
 capacity, reliability, or base latency during an episode.  Experiments that model
 investment do so in an outer stage and create a new immutable provider
-specification.
+specification.  The reference entry task enumerates participation profiles before
+reset; it does not let an episode-level policy costlessly create provider labels.
 
 \paragraph{Observations and rewards.}
 Every provider sees the epoch, realized demand, the public quote vector, and its
