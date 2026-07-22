@@ -20,8 +20,8 @@ for wf in capture.yml capacity-policy-probes.yml enforcement-policy-probes.yml d
     limit=400
   fi
   if [ "$wf" = "glm52-market-share-hmp.yml" ]; then
-    # A failed paid runner still contains the immutable assignment reservation.
-    # Preserve all HMP statuses so compaction cannot later make that task eligible again.
+    # A failed paid runner still contains its outcome-free immutable assignment.
+    # Request-level outcomes go directly to private HF, never a public artifact.
     run_ids=$(gh run list --workflow "$wf" --limit "$limit" \
       --json databaseId,createdAt \
       --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId")

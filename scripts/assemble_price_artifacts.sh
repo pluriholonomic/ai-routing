@@ -17,8 +17,9 @@ elif [ "$MODE" = "glm52" ]; then
   WORKFLOWS="glm52-routing.yml"
   LIMIT=220
 elif [ "$MODE" = "hmp" ]; then
-  # Public captures discover events; prior HMP artifacts are the uncompacted
-  # queue, assignment, attempt, and spend checkpoints.
+  # Public captures discover events; prior HMP plan artifacts are the
+  # uncompacted queue and assignment reservations. Request-level attempts and
+  # spend are checkpointed directly to the private HF dataset.
   WORKFLOWS="capture.yml glm52-market-share-hmp.yml"
   LIMIT=650
 elif [ "$MODE" = "score-memory-quality" ]; then
@@ -57,9 +58,9 @@ for wf in $WORKFLOWS; do
     fi
   done < <(
     if [ "$MODE" = "hmp" ] && [ "$wf" = "glm52-market-share-hmp.yml" ]; then
-      # Failed paid runners still contain the pre-request assignment artifact.
-      # Ingest it as an at-most-once reservation so a later run cannot repeat
-      # a possibly charged task whose outcome artifact was lost.
+      # All statuses retain the outcome-free pre-request assignment artifact.
+      # Ingest it as an at-most-once reservation; request-level execution
+      # artifacts are never published by this public repository.
       gh run list --workflow "$wf" --limit "$LIMIT" \
         --json databaseId,createdAt \
         --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId"

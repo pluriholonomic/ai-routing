@@ -80,6 +80,14 @@ The action-correlation result is causal for the simulated signal-order
 intervention only. It neither identifies deployed provider algorithms nor
 demonstrates collusion.
 
+The label “heterogeneous” in the first artifact is too broad. Those rows pool
+three separate homogeneous active-agent markets (all epsilon-greedy, all
+Thompson, or all Q-learning); they are cross-family robustness, not a market
+whose active providers use different algorithms simultaneously. The older
+WF18 environment has genuine mixed pairs, but it is a separate study and is
+not evidence for this GLM-5.2 market-share estimand. Manuscript prose must call
+the new rows the **non-UCB homogeneous-family pool**.
+
 The artifact audit found one presentation/data-shape defect: the deterministic
 controlled factorial emitted the identical `K=1` singleton path twice. That
 did not change any paired simulation estimate or the zero-wedge identity, but
@@ -186,11 +194,26 @@ writes the intervals into the JSON summary.
 - Agents have two price actions, a stylized demand process, scenario costs, and
   simplified quality/capacity. They are mechanism probes, not fitted replicas
   of named providers.
+- The v1 environment does not yet implement the full simulation wishlist in the
+  design document: no historical-arrival replay, within-market mixture of active
+  algorithms, provider-specific costs, binding capacities, stochastic quality,
+  unilateral exploitability, router revenue, or welfare frontier. Therefore it
+  is a narrow signal-order screen, not the complete Experiment C/D transport
+  package.
 - Ten seeds are enough to reveal that current intervals are wide; they are not a
   high-powered basis for small learner-family effects. Factorial rows sharing a
   seed are not independent replications, which is why intervals cluster on seed.
 - The elasticity learning time is an observer-side recovery statistic, not
   proof that a provider internally estimates that elasticity.
+- Learning time is the first entry into a 10% error band, not sustained coverage.
+  It uses only all-low and all-high joint states, so coupling can alter both the
+  behavior being measured and the rate at which the observer gets identifying
+  visits. The frozen right-censoring rule prevents conditioning on completion,
+  but it does not separate faster inference from better state coverage.
+- `reward_memory` is an exponential reward-retention coefficient inside stylized
+  learners, not an identified Markov order or the router's empirical memory. UCB
+  counts do not decay with its effective reward sample size. A live or general
+  “critical memory” theorem cannot use this parameter without a mapping result.
 - A held-out hinge improvement supports a sharp simulation nonlinearity only.
   A live critical-memory claim still requires MS2--MS5 and must disappear or
   move in the shuffled and singleton controls.
@@ -208,7 +231,7 @@ writes the intervals into the JSON summary.
 - Before the gate, outcome columns in aggregate Parquet and inline HTML are
   null.
 - Local audit: scoped ruff and shell syntax checks passed; after the remote-only
-  failure fixes, the repository suite passed 856 tests with one pre-existing
+  failure fixes, the repository suite passed 860 tests with one pre-existing
   skip.
 
 ## Remote provenance

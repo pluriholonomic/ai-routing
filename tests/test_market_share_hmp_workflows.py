@@ -28,6 +28,12 @@ def test_live_workflow_is_assignment_first_budgeted_private_and_separate():
     assert "congestion_intraday" in text
     assert "glm52_hmp_run_ledger" in text
     assert "assemble_price_artifacts.sh 48 input-data hmp" in text
+    assert "github.run_attempt == 1" in text
+    assert "checkpoint request-level telemetry to private Hugging Face" in text
+    assert "glm52-hmp-public-execution.json" in text
+    assert '"contains_request_level_outcomes": False' in text
+    assert "preserve redacted attempts and spend ledger" not in text
+    assert "path: plan-data/\n          if-no-files-found: warn" not in text
 
 
 def test_monitor_and_full_simulation_cannot_self_promote_claims():
@@ -54,5 +60,5 @@ def test_compaction_and_overlay_include_the_new_queue():
     assert "glm52-market-share-hmp.yml" in assembly
     assert 'if [ "$MODE" = "hmp" ]' in overlay
     assert 'WORKFLOWS="capture.yml glm52-market-share-hmp.yml"' in overlay
-    assert "Failed paid runners still contain" in overlay
-    assert "failed paid runner still contains" in assembly.lower()
+    assert "request-level execution" in overlay.lower()
+    assert "request-level outcomes" in assembly.lower()

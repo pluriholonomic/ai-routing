@@ -81,12 +81,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/assemble_price_artifacts.sh 48 input-data hmp
-      - name: stage the authoritative spend ledger into the execution bundle
-        run: |
-          mkdir -p plan-data/curated
-          if [ -d input-data/curated/paid_spend_ledger ]; then
-            cp -R input-data/curated/paid_spend_ledger plan-data/curated/
-          fi
       - name: finalize public events and freeze one due randomized block
         env:
           ORCAP_GLM52_HMP_RUN_ID: github-${{ github.run_id }}
@@ -119,6 +113,7 @@ jobs:
     needs: plan
     if: >-
       ${{ needs.plan.outputs.has_tasks == 'true' &&
+          github.run_attempt == 1 &&
           vars.ORCAP_GLM52_HMP_ENABLED == 'true' &&
           vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
           (github.event_name == 'schedule' ||
@@ -135,19 +130,25 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: glm52-hmp-plan-${{ github.run_id }}
-      - name: recover spend checkpoint from a retried execution job
+      - name: hydrate private spend checkpoint
         env:
-          GH_TOKEN: ${{ github.token }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          mkdir -p prior-execution plan-data/curated/paid_spend_ledger
-          gh run download "${{ github.run_id }}" \
-            --pattern "glm52-hmp-execution-${{ github.run_id }}-*" \
-            --dir prior-execution || true
-          find prior-execution -type d -name paid_spend_ledger -print0 | \
-            while IFS= read -r -d '' ledger; do
-              cp -R "$ledger"/. plan-data/curated/paid_spend_ledger/
-            done
+          uv run python - <<'PY'
+          import shutil
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=["curated/paid_spend_ledger/*/*.parquet"],
+              max_workers=4,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "plan-data", dirs_exist_ok=True)
+          PY
       - name: verify immutable plan and execute due tasks once
+        id: paid
         env:
           OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
           ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
@@ -160,12 +161,56 @@ jobs:
           uv run python -m orcap.capture_market_share_hmp execute
           --data-root plan-data
           --bundle glm52-hmp-plan.json
-      - name: preserve redacted attempts and spend ledger
+      - name: checkpoint request-level telemetry to private Hugging Face
+        id: private_checkpoint
+        if: always()
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          from orcap.hf_store import push
+
+          push(
+              Path("plan-data"),
+              message="private market-share HMP execution ${{ github.run_id }}",
+          )
+          PY
+      - name: build outcome-free public execution receipt
+        if: always()
+        env:
+          EXECUTION_STEP_OUTCOME: ${{ steps.paid.outcome }}
+          PRIVATE_CHECKPOINT_OUTCOME: ${{ steps.private_checkpoint.outcome }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          bundle = json.loads(Path("glm52-hmp-plan.json").read_text(encoding="utf-8"))
+          summary = bundle["summary"]
+          receipt = {
+              "format": "orcap-glm52-hmp-public-execution-v1",
+              "study_id": summary["study_id"],
+              "run_id": summary["run_id"],
+              "protocol_sha256": summary["protocol_sha256"],
+              "manifest_sha256": bundle["manifest"]["manifest_sha256"],
+              "planned_tasks": summary["planned_tasks"],
+              "selected_wave": summary["selected_wave"],
+              "execution_step_outcome": os.environ["EXECUTION_STEP_OUTCOME"],
+              "private_checkpoint_outcome": os.environ["PRIVATE_CHECKPOINT_OUTCOME"],
+              "contains_request_level_outcomes": False,
+          }
+          Path("glm52-hmp-public-execution.json").write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+      - name: preserve outcome-free public execution receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: glm52-hmp-execution-${{ github.run_id }}-${{ github.run_attempt }}
-          path: plan-data/
-          if-no-files-found: warn
-          retention-days: 30
+          path: glm52-hmp-public-execution.json
+          if-no-files-found: error
+          retention-days: 90
           compression-level: 0
