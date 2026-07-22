@@ -52,6 +52,8 @@ def test_monitor_and_full_simulation_cannot_self_promote_claims():
     assert "--data-root input-data" in simulation
     assert "curated/endpoints_snapshots" in simulation
     assert "market-share-hmp.html" in monitor
+    assert "group: glm52-market-share-hmp-monitor" in monitor
+    assert "cancel-in-progress: false" in monitor
 
 
 def test_compaction_and_overlay_include_the_new_queue():

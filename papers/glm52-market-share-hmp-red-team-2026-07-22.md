@@ -161,6 +161,10 @@ writes the intervals into the JSON summary.
     assignment is the reservation, GitHub run attempts above one cannot execute,
     and a crash can create missing outcomes but not an intentional retry. The
     manuscript and code comments must not call this exactly-once execution.
+16. **Persisted empty lists changed type.** A background wave reloaded from
+    Parquet supplied `co_cutters` as an empty NumPy/Arrow array; boolean coercion
+    made the live planner fail before assignment. List-valued persisted fields now
+    use explicit normalization, with a regression fixture for the empty-array case.
 
 ## Remaining threats that cannot be engineered away
 
@@ -256,8 +260,12 @@ writes the intervals into the JSON summary.
   publication, dashboard, and artifact steps passed.
 - Paid plan smoke test: run `29888457704` correctly failed closed with zero
   assignments and zero spend because its newest public GLM-5.2 snapshot was
-  older than the frozen 30-minute freshness gate. The next successful public
-  capture, not an outcome, is the condition for execution.
+  older than the frozen 30-minute freshness gate.
+- First live background block: run `29889339215` froze 12 assignments across
+  six arms under the same protocol hash and a worst-case aggregate quote cap of
+  `$0.0023591`. Paid execution and the private Hugging Face checkpoint passed.
+  Its only public execution artifact is an outcome-free receipt; provider,
+  request, latency, fallback, cost, and spend outcomes remain blinded.
 
 ## Manuscript boundary
 

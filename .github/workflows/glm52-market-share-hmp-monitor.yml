@@ -10,7 +10,9 @@ on:
 
 concurrency:
   group: glm52-market-share-hmp-monitor
-  cancel-in-progress: true
+  # A refresh can spend several minutes waiting out HF rate limits. Let the
+  # running privacy audit finish; one newer pending refresh is sufficient.
+  cancel-in-progress: false
 
 permissions:
   actions: read
