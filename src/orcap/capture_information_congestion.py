@@ -15,6 +15,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from .analysis.information_congestion_readiness import capture_continuity
 from .capture_api import write_partition
 from .capture_price_response import REQUEST_TIMEOUT_SECONDS, execute_bundle, freeze_candidates
 from .capture_route_calibration import SHAPES
@@ -150,6 +151,7 @@ def build_plan_bundle(
     protocol_claim_boundary(protocol)
     study = protocol["study"]
     design = protocol["design"]
+    support = protocol["support"]
     study_id = str(study["study_id"])
     plan_version = str(study["plan_version"])
     models = tuple(str(item) for item in study["models"])
@@ -159,6 +161,14 @@ def build_plan_bundle(
         snapshots,
         now=now,
         maximum_age_minutes=int(design["maximum_public_snapshot_age_minutes"]),
+    )
+    continuity = capture_continuity(snapshots, now=now)
+    continuity["coverage_gate"] = continuity["coverage"] >= float(
+        support["minimum_capture_coverage"]
+    )
+    maximum_gap = continuity["maximum_gap_minutes"]
+    continuity["gap_gate"] = maximum_gap is not None and maximum_gap <= float(
+        support["maximum_gap_minutes"]
     )
     candidates, source_failures = freeze_candidates(
         client,
@@ -230,7 +240,12 @@ def build_plan_bundle(
     # temporarily left the surface.  Preserve that failure in the ledger but
     # allow a fresh, supported cohort to accrue rather than silently dropping
     # the whole prospective run.
-    source_healthy = bool(source_fresh and healthy_models > 0)
+    source_healthy = bool(
+        source_fresh
+        and continuity["coverage_gate"]
+        and continuity["gap_gate"]
+        and healthy_models > 0
+    )
     summary = {
         "study_id": study_id,
         "plan_version": plan_version,
@@ -240,6 +255,7 @@ def build_plan_bundle(
         "protocol_sha256": protocol_sha256,
         "source_healthy": source_healthy,
         "public_snapshot_fresh": source_fresh,
+        "capture_continuity": continuity,
         "source_failures": source_failures,
         "models_requested": len(models),
         "models_healthy": healthy_models,

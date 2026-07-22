@@ -255,6 +255,10 @@ def test_capture_continuity_detects_complete_and_gapped_series():
         pd.DataFrame([rows[0], rows[-1]]), now=now, lookback_hours=1
     )
     assert gapped["maximum_gap_minutes"] == 55.0
+    boundary_gap = capture_continuity(
+        pd.DataFrame(rows[:-2]), now=now, lookback_hours=1
+    )
+    assert boundary_gap["maximum_gap_minutes"] == 15.0
 
 
 def test_reconciliation_fails_closed_on_duplicates_or_missing_spend():
@@ -500,12 +504,19 @@ def test_quality_plan_has_eight_hashed_tasks_and_execution_fails_closed(
         object(), data_root=tmp_path, run_id="quality-run", seed=11
     )
     quality_capture.validate_bundle(bundle, require_tasks=True)
+    assert bundle["summary"]["source_healthy"] is False
+    assert bundle["summary"]["capture_continuity"]["coverage_gate"] is False
     assert len(bundle["assignments"]) == 8
     assert len({row["task_id"] for row in bundle["assignments"]}) == 8
     assert all(row["experiment_axis"] == "quality" for row in bundle["assignments"])
     assert all(row["payload_retained"] is False for row in bundle["assignments"])
     monkeypatch.delenv("ORCAP_PAID_PRICE_STUDIES_ENABLED", raising=False)
     with pytest.raises(RuntimeError, match="disabled"):
+        quality_capture.execute_bundle(bundle, data_root=tmp_path)
+    monkeypatch.setenv("ORCAP_PAID_PRICE_STUDIES_ENABLED", "true")
+    monkeypatch.setenv("ORCAP_INFORMATION_CONGESTION_QUALITY_ENABLED", "true")
+    monkeypatch.setenv("OPENROUTER_PRICE_EXPERIMENT_KEY", "test-only")
+    with pytest.raises(RuntimeError, match="capture-continuity"):
         quality_capture.execute_bundle(bundle, data_root=tmp_path)
 
 
@@ -619,9 +630,9 @@ def test_outcome_surface_uses_only_observed_attempts():
 
 def test_plan_bundle_integration_is_hashed_written_and_source_gated(monkeypatch, tmp_path):
     model = "z-ai/glm-5.2"
-    start = datetime(2026, 7, 22, 13, 0, tzinfo=UTC)
+    start = datetime(2026, 7, 22, 1, 0, tzinfo=UTC)
     history = []
-    for index in range(145):
+    for index in range(289):
         ts = start + timedelta(minutes=5 * index)
         for provider_index in range(8):
             provider = f"P{provider_index}"
@@ -662,6 +673,8 @@ def test_plan_bundle_integration_is_hashed_written_and_source_gated(monkeypatch,
         now=datetime(2026, 7, 23, 1, 0, tzinfo=UTC),
     )
     assert bundle["summary"]["source_healthy"] is True
+    assert bundle["summary"]["capture_continuity"]["coverage_gate"] is True
+    assert bundle["summary"]["capture_continuity"]["gap_gate"] is True
     assert bundle["summary"]["source_failures"]
     assert bundle["assignments"]
     capture.validate_bundle(bundle)
@@ -676,3 +689,45 @@ def test_plan_bundle_integration_is_hashed_written_and_source_gated(monkeypatch,
     tampered["assignments"][0]["target_k"] += 1
     with pytest.raises(ValueError):
         capture.validate_bundle(tampered)
+
+
+def test_plan_bundle_refuses_fresh_but_incomplete_capture(monkeypatch, tmp_path):
+    model = "z-ai/glm-5.2"
+    now = datetime(2026, 7, 23, 1, 0, tzinfo=UTC)
+    snapshots = pd.DataFrame(
+        [
+            {
+                "run_ts": (now - timedelta(minutes=5 * index)).strftime("%Y%m%dT%H%M%SZ"),
+                "model_id": model,
+                "provider_name": f"P{provider}",
+                "price_prompt": 0.00001 * (provider + 1),
+                "price_completion": 0.00001 * (provider + 1),
+                "price_request": 0.0,
+            }
+            for index in range(12)
+            for provider in range(8)
+        ]
+    )
+    candidates = [
+        _candidate(model, f"P{index}", 0.00001 * (index + 1))
+        for index in range(8)
+    ]
+
+    monkeypatch.setattr(
+        capture,
+        "_read",
+        lambda _root, table: snapshots.copy()
+        if table == "endpoints_snapshots"
+        else pd.DataFrame(),
+    )
+    monkeypatch.setattr(
+        capture,
+        "freeze_candidates",
+        lambda *_args, **_kwargs: ([dict(row) for row in candidates], []),
+    )
+    bundle = capture.build_plan_bundle(
+        object(), data_root=tmp_path, run_id="sparse", seed=7, now=now
+    )
+    assert bundle["summary"]["public_snapshot_fresh"] is True
+    assert bundle["summary"]["capture_continuity"]["coverage_gate"] is False
+    assert bundle["summary"]["source_healthy"] is False

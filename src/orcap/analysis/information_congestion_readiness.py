@@ -74,7 +74,12 @@ def capture_continuity(
     intended = int(lookback_hours * 60 / intended_minutes)
     observed = len(times)
     coverage = min(1.0, observed / intended) if intended else 0.0
-    gaps = times.diff().dt.total_seconds().div(60).dropna()
+    # Include both lookback boundaries. Otherwise a fresh final observation can
+    # conceal a long gap at the beginning of the window (and vice versa).
+    boundaries = pd.Series(
+        [pd.Timestamp(cutoff), *times.tolist(), pd.Timestamp(now)]
+    ).sort_values(ignore_index=True)
+    gaps = boundaries.diff().dt.total_seconds().div(60).dropna()
     maximum_gap = float(gaps.max()) if not gaps.empty else None
     return {
         "healthy": observed > 0,
@@ -435,6 +440,11 @@ def main() -> None:
     )
     parser.add_argument("--require-paid", action="store_true")
     parser.add_argument("--require-confirmatory-support", action="store_true")
+    parser.add_argument(
+        "--report-only",
+        action="store_true",
+        help="write a negative readiness report without failing the recurring monitor",
+    )
     args = parser.parse_args()
     result = audit(
         args.data_root,
@@ -445,7 +455,7 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2, sort_keys=True))
-    if not result["healthy"]:
+    if not result["healthy"] and not args.report_only:
         raise SystemExit(1)
 
 

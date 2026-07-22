@@ -23,6 +23,8 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      source_healthy: ${{ steps.gate.outputs.source_healthy }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -35,12 +37,18 @@ jobs:
         run: |
           uv run python - <<'PY'
           import shutil
+          from datetime import UTC, datetime, timedelta
           from orcap.hf_snapshot_retry import snapshot_download_retry
 
+          today = datetime.now(UTC).date()
+          endpoint_patterns = [
+              f"curated/endpoints_snapshots/dt={(today - timedelta(days=offset)).isoformat()}/*.parquet"
+              for offset in range(2)
+          ]
           snapshot = snapshot_download_retry(
               "t4run/openrouter-market-history",
               repo_type="dataset",
-              allow_patterns=[
+              allow_patterns=endpoint_patterns + [
                   "curated/ic_quality/*/*.parquet",
                   "curated/paid_spend_ledger/*/*.parquet",
               ],
@@ -80,11 +88,17 @@ jobs:
           uv run python -m orcap.capture_information_congestion_quality validate-plan
           --bundle information-congestion-quality-plan.json
           --require-tasks
+      - name: publish outcome-free execution gate
+        id: gate
+        run: >-
+          echo "source_healthy=$(jq -r '.summary.source_healthy'
+          information-congestion-quality-plan.json)" >> "$GITHUB_OUTPUT"
 
   execute:
     needs: plan
     if: >-
       ${{ github.run_attempt == 1 &&
+          needs.plan.outputs.source_healthy == 'true' &&
           vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
           vars.ORCAP_INFORMATION_CONGESTION_QUALITY_ENABLED == 'true' &&
           (github.event_name == 'schedule' ||

@@ -16,6 +16,8 @@ def test_information_congestion_workflow_is_plan_first_private_and_budgeted():
     assert "checkpoint request-level outcomes only to private Hugging Face" in workflow
     assert '"contains_request_level_outcomes": False' in workflow
     assert "github.run_attempt == 1" in workflow
+    assert "needs.plan.outputs.source_healthy == 'true'" in workflow
+    assert "curated/endpoints_snapshots" in workflow
     assert "retention-days: 90" in workflow
 
 
@@ -30,6 +32,7 @@ def test_recurring_monitor_is_outcome_blind():
     assert "curated/congestion_intraday" in workflow
     assert "curated/ic_quality_assignments" in workflow
     assert "curated/ic_quality/*" not in workflow
+    assert "--report-only" in workflow
 
 
 def test_release_marks_before_accessing_outcomes_and_never_promotes_asymptotics():
@@ -40,6 +43,7 @@ def test_release_marks_before_accessing_outcomes_and_never_promotes_asymptotics(
     assert marker < outcomes < analysis
     assert "--require-paid" in workflow
     assert "--require-confirmatory-support" in workflow
+    assert "--report-only" not in workflow
     assert "curated/ic_common_shocks" in workflow
     assert "refuse any second outcome release" in workflow
     assert "release already exists" in workflow
@@ -81,6 +85,8 @@ def test_quality_workflow_is_balanced_plan_first_private_and_budgeted():
     assert "checkpoint redacted quality grades and spend only to private Hugging Face" in workflow
     assert '"contains_request_level_outcomes": False' in workflow
     assert "github.run_attempt == 1" in workflow
+    assert "needs.plan.outputs.source_healthy == 'true'" in workflow
+    assert "curated/endpoints_snapshots" in workflow
 
 
 def test_capture_backstop_is_independent_redundant_and_non_destructive():
