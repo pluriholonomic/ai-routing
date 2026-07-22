@@ -1,6 +1,6 @@
 #!/bin/bash
 # Overlay only the small inputs needed by paid price planning.
-# Usage: assemble_price_artifacts.sh [hours-back] [dest] [paid|event|glm52|hmp|score-memory-routing|score-memory-quality|score-memory]
+# Usage: assemble_price_artifacts.sh [hours-back] [dest] [paid|event|glm52|hmp|ic|score-memory-routing|score-memory-quality|score-memory]
 set -euo pipefail
 
 HOURS=${1:-26}
@@ -10,7 +10,7 @@ SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
 WORKFLOWS="paid-price-response.yml price-event-probes.yml market-measurement.yml adaptive-router.yml"
 LIMIT=40
 if [ "$MODE" = "event" ]; then
-  WORKFLOWS="$WORKFLOWS capture.yml"
+  WORKFLOWS="$WORKFLOWS capture.yml capture-backstop.yml"
 elif [ "$MODE" = "glm52" ]; then
   # This study runs every 15 minutes. Read enough immutable checkpoints to
   # reconstruct two rolling days of spend before nightly HF compaction.
@@ -20,7 +20,12 @@ elif [ "$MODE" = "hmp" ]; then
   # Public captures discover events; prior HMP plan artifacts are the
   # uncompacted queue and assignment reservations. Request-level attempts and
   # spend are checkpointed directly to the private HF dataset.
-  WORKFLOWS="capture.yml glm52-market-share-hmp.yml"
+  WORKFLOWS="capture.yml capture-backstop.yml glm52-market-share-hmp.yml"
+  LIMIT=650
+elif [ "$MODE" = "ic" ]; then
+  # Public captures define the ex-ante role panel. Prior information-congestion
+  # plans reserve task IDs; request outcomes are checkpointed only to private HF.
+  WORKFLOWS="capture.yml capture-backstop.yml information-congestion.yml information-congestion-quality.yml"
   LIMIT=650
 elif [ "$MODE" = "score-memory-quality" ]; then
   WORKFLOWS="score-memory-quality.yml"
@@ -34,7 +39,7 @@ elif [ "$MODE" = "score-memory" ]; then
   WORKFLOWS="glm52-routing.yml score-memory-routing.yml score-memory-quality.yml"
   LIMIT=220
 elif [ "$MODE" != "paid" ]; then
-  echo "mode must be paid, event, glm52, hmp, score-memory-routing, score-memory-quality, or score-memory" >&2
+  echo "mode must be paid, event, glm52, hmp, ic, score-memory-routing, score-memory-quality, or score-memory" >&2
   exit 2
 fi
 
@@ -57,7 +62,7 @@ for wf in $WORKFLOWS; do
       count=$((count + 1))
     fi
   done < <(
-    if [ "$MODE" = "hmp" ] && [ "$wf" = "glm52-market-share-hmp.yml" ]; then
+    if { [ "$MODE" = "hmp" ] && [ "$wf" = "glm52-market-share-hmp.yml" ]; } || { [ "$MODE" = "ic" ] && [ "$wf" = "information-congestion.yml" ]; }; then
       # All statuses retain the outcome-free pre-request assignment artifact.
       # Ingest it as an at-most-once reservation; request-level execution
       # artifacts are never published by this public repository.

@@ -16,6 +16,7 @@ WORKFLOWS = {
     "capacity-policy-probes.yml": 180,
     "enforcement-policy-probes.yml": 180,
     "capture.yml": 150,
+    "capture-backstop.yml": 300,
     "decomposition-probes.yml": 180,
     "decomposition-replication.yml": 180,
     "paid-price-response.yml": 360,
@@ -26,6 +27,11 @@ WORKFLOWS = {
     "adaptive-router.yml": 540,
     "glm52-routing.yml": 90,
     "glm52-routing-monitor.yml": 180,
+    "glm52-market-share-hmp.yml": 180,
+    "glm52-market-share-hmp-monitor.yml": 1800,
+    "information-congestion.yml": 180,
+    "information-congestion-quality.yml": 540,
+    "information-congestion-monitor.yml": 1800,
     "adaptive-router-monitor.yml": 1800,
     "adaptive-router-counterfactual.yml": 1800,
     "hmp-signal-coupling-monitor.yml": 1800,
@@ -47,11 +53,19 @@ WORKFLOWS = {
 }
 HF_MAX_AGE_MINUTES = 1800
 HF_PRICE_TABLES = {
+    "curated/endpoints_snapshots": 1800,
+    "curated/pricing_changes": 1800,
     "curated/price_response_assignments": 1800,
     "curated/price_event_wave_plans": 1800,
     "analysis/router_exponent_estimates": 720,
     "analysis/undercutting-incidence-v1": 720,
     "analysis/glm52-routing-v1": 180,
+    "curated/glm52_hmp_assignments": 1800,
+    "curated/ic_run_ledger": 1800,
+    "curated/ic_market_epochs": 1800,
+    "curated/ic_assignments": 1800,
+    "curated/ic_quality_assignments": 43200,
+    "analysis/information-congestion-v1": 1800,
 }
 
 

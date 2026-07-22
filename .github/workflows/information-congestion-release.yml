@@ -1,0 +1,192 @@
+name: information-congestion-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      hf_revision:
+        description: "Immutable pre-release HF revision at the fixed horizon"
+        required: true
+        type: string
+      release:
+        description: "Type RELEASE after the fixed horizon and assignment gates pass"
+        required: true
+        type: string
+
+concurrency:
+  group: information-congestion-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: ${{ inputs.release == 'RELEASE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: refuse any second outcome release
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = Path(snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=[
+                  "analysis/information-congestion-v1/RELEASE_COMPLETE.json",
+                  "release/information-congestion-v1/RELEASE_MARKER.json",
+              ],
+              max_workers=1,
+              stale_if_error=False,
+          ))
+          existing = list(snapshot.glob("release/**/RELEASE_*.json"))
+          if existing:
+              raise SystemExit(f"information-congestion release already exists: {existing}")
+          PY
+      - name: hydrate only assignments and public history for preflight
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          REVISION: ${{ inputs.hf_revision }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              revision=os.environ["REVISION"],
+              allow_patterns=[
+                  "curated/endpoints_snapshots/*/*.parquet",
+                  "curated/ic_run_ledger/*/*.parquet",
+                  "curated/ic_market_epochs/*/*.parquet",
+                  "curated/ic_provider_roles/*/*.parquet",
+                  "curated/ic_assignments/*/*.parquet",
+                  "curated/ic_quality_assignments/*/*.parquet",
+                  "curated/ic_common_shocks/*/*.parquet",
+              ],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "release-data", dirs_exist_ok=True)
+          PY
+      - name: assignment-only fixed-horizon preflight
+        run: >-
+          uv run python -m orcap.analysis.information_congestion_readiness
+          --data-root release-data
+          --output assignment-preflight.json
+          --require-confirmatory-support
+      - name: publish one-time outcome-access marker before downloading outcomes
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          REVISION: ${{ inputs.hf_revision }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from datetime import UTC, datetime
+          from pathlib import Path
+          from orcap.hf_store import push
+
+          marker = {
+              "format": "orcap-information-congestion-release-marker-v1",
+              "study_id": "openrouter-information-congestion-v1",
+              "frozen_revision": os.environ["REVISION"],
+              "marked_at": datetime.now(UTC).isoformat(),
+              "outcomes_accessed": False,
+          }
+          path = Path("marker/release/information-congestion-v1")
+          path.mkdir(parents=True, exist_ok=True)
+          (path / "RELEASE_MARKER.json").write_text(
+              json.dumps(marker, indent=2, sort_keys=True) + "\n"
+          )
+          push(Path("marker"), message="information-congestion outcome-access marker")
+          PY
+      - name: download private attempts and spend from the frozen revision
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          REVISION: ${{ inputs.hf_revision }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              revision=os.environ["REVISION"],
+              allow_patterns=[
+                  "curated/ic_attempts/*/*.parquet",
+                  "curated/ic_quality_attempts/*/*.parquet",
+                  "curated/ic_quality/*/*.parquet",
+                  "curated/paid_spend_ledger/*/*.parquet",
+              ],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "release-data", dirs_exist_ok=True)
+          PY
+      - name: require complete reconciliation after outcome access
+        run: >-
+          uv run python -m orcap.analysis.information_congestion_readiness
+          --data-root release-data
+          --output release-readiness.json
+          --require-paid
+      - name: run frozen confirmatory analysis once
+        run: >-
+          uv run python -m orcap.analysis.information_congestion_monitor
+          --data-root release-data
+          --output-dir release/analysis/information-congestion-v1
+      - name: freeze claim boundary regardless of sign
+        env:
+          REVISION: ${{ inputs.hf_revision }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          root = Path("release/analysis/information-congestion-v1")
+          summary = json.loads((root / "information-congestion-monitor.json").read_text())
+          completion = {
+              "format": "orcap-information-congestion-release-complete-v1",
+              "study_id": summary["study_id"],
+              "frozen_revision": os.environ["REVISION"],
+              "released_at": datetime.now(UTC).isoformat(),
+              "outcomes_accessed": True,
+              "direct_shrinking_share_gate": summary["gates"]["direct_shrinking_share"],
+              "asymptotic_limit_identified": False,
+          }
+          (root / "RELEASE_COMPLETE.json").write_text(
+              json.dumps(completion, indent=2, sort_keys=True) + "\n"
+          )
+          PY
+      - name: publish immutable aggregate release
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          from orcap.hf_store import push
+
+          push(Path("release"), message="information-congestion fixed-horizon release")
+          PY
+      - name: retain released bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: information-congestion-release-${{ github.run_id }}
+          path: release/analysis/information-congestion-v1/
+          if-no-files-found: error
+          retention-days: 90

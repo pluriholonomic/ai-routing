@@ -1,0 +1,249 @@
+{
+  "experiment_id": "sm3-fixed-n-informational-congestion-v1",
+  "evidence_status": "conditional_theorem_numeric_check_plus_synthetic_falsification",
+  "scaling_cells": 30,
+  "bandit_cells": 1296,
+  "kstar_scaling": [
+    {
+      "rank_exponent_beta": 0.0,
+      "predicted_kstar_exponent": 0.5,
+      "estimated_kstar_exponent": 0.4977976415071906
+    },
+    {
+      "rank_exponent_beta": 0.25,
+      "predicted_kstar_exponent": 0.625,
+      "estimated_kstar_exponent": 0.619844139589818
+    },
+    {
+      "rank_exponent_beta": 0.5,
+      "predicted_kstar_exponent": 0.75,
+      "estimated_kstar_exponent": 0.7452148317731316
+    },
+    {
+      "rank_exponent_beta": 0.75,
+      "predicted_kstar_exponent": 0.875,
+      "estimated_kstar_exponent": 0.875623317009009
+    },
+    {
+      "rank_exponent_beta": 1.0,
+      "predicted_kstar_exponent": 1.0,
+      "estimated_kstar_exponent": 1.005298474105031
+    }
+  ],
+  "maximum_predicted_vs_estimated_exponent_error": 0.005298474105031037,
+  "bandit_signal_order_screen": [
+    {
+      "rank_exponent_beta": 0.0,
+      "active_density": 0.0625,
+      "action_correlation_difference": 0.0,
+      "active_share_difference": 0.0002853990769090964,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.0,
+      "active_density": 0.125,
+      "action_correlation_difference": 0.03807823537301371,
+      "active_share_difference": -0.000549597444214343,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.0,
+      "active_density": 0.25,
+      "action_correlation_difference": 0.03416127813501343,
+      "active_share_difference": -0.002885469934945225,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.0,
+      "active_density": 0.5,
+      "action_correlation_difference": 0.015606762633286754,
+      "active_share_difference": -0.0013810086501356647,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.0,
+      "active_density": 0.875,
+      "action_correlation_difference": 0.04827685378502611,
+      "active_share_difference": -0.0005934772504799374,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.0,
+      "active_density": 0.9375,
+      "action_correlation_difference": 0.04538820396070475,
+      "active_share_difference": -0.0004900446016864202,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.5,
+      "active_density": 0.0625,
+      "action_correlation_difference": 0.0,
+      "active_share_difference": -0.0012943687546877218,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.5,
+      "active_density": 0.125,
+      "action_correlation_difference": 0.02983363180098027,
+      "active_share_difference": -0.0009157526543184209,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.5,
+      "active_density": 0.25,
+      "action_correlation_difference": 0.00523124983240264,
+      "active_share_difference": -0.002092781680274941,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.5,
+      "active_density": 0.5,
+      "action_correlation_difference": -0.002654316631352625,
+      "active_share_difference": -0.00013278239825083535,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.5,
+      "active_density": 0.875,
+      "action_correlation_difference": -0.004060772636801183,
+      "active_share_difference": 0.0003779904098108605,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 0.5,
+      "active_density": 0.9375,
+      "action_correlation_difference": 0.037031561693556064,
+      "active_share_difference": -0.0005073794556822488,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 1.0,
+      "active_density": 0.0625,
+      "action_correlation_difference": 0.0,
+      "active_share_difference": -0.0007739351438534884,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 1.0,
+      "active_density": 0.125,
+      "action_correlation_difference": 0.04554988916923322,
+      "active_share_difference": -0.0008244460326664772,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 1.0,
+      "active_density": 0.25,
+      "action_correlation_difference": 0.030694900613299884,
+      "active_share_difference": -0.0005636945323342323,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 1.0,
+      "active_density": 0.5,
+      "action_correlation_difference": -0.01925063656911501,
+      "active_share_difference": -6.58132040722038e-05,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 1.0,
+      "active_density": 0.875,
+      "action_correlation_difference": -0.018278504001301096,
+      "active_share_difference": -7.585306242162183e-05,
+      "seeds": 8
+    },
+    {
+      "rank_exponent_beta": 1.0,
+      "active_density": 0.9375,
+      "action_correlation_difference": -0.03753160944257113,
+      "active_share_difference": 0.0003360096944171054,
+      "seeds": 8
+    }
+  ],
+  "bandit_rank_seed_clustered_intervals": [
+    {
+      "rank_exponent_beta": 0.0,
+      "action_correlation_difference": {
+        "estimate": 0.029928623336484293,
+        "ci95": [
+          -0.02714837534589455,
+          0.08700562201886314
+        ],
+        "seed_clusters": 8
+      },
+      "active_share_difference": {
+        "estimate": -0.0011589194259830808,
+        "ci95": [
+          -0.002980123267599022,
+          0.0006622844156328601
+        ],
+        "seed_clusters": 8
+      },
+      "buyer_price_difference": {
+        "estimate": 0.001991126028578623,
+        "ci95": [
+          -0.0003396790890937691,
+          0.004321931146251016
+        ],
+        "seed_clusters": 8
+      }
+    },
+    {
+      "rank_exponent_beta": 0.5,
+      "action_correlation_difference": {
+        "estimate": 0.010865768784535046,
+        "ci95": [
+          -0.026459090216014336,
+          0.04819062778508443
+        ],
+        "seed_clusters": 8
+      },
+      "active_share_difference": {
+        "estimate": -0.0008562656962497228,
+        "ci95": [
+          -0.0020436348735058266,
+          0.000331103481006381
+        ],
+        "seed_clusters": 8
+      },
+      "buyer_price_difference": {
+        "estimate": 0.001092322649162438,
+        "ci95": [
+          -0.0005752578709678055,
+          0.0027599031692926816
+        ],
+        "seed_clusters": 8
+      }
+    },
+    {
+      "rank_exponent_beta": 1.0,
+      "action_correlation_difference": {
+        "estimate": 0.0064642436647737705,
+        "ci95": [
+          -0.03631914507458821,
+          0.04924763240413575
+        ],
+        "seed_clusters": 8
+      },
+      "active_share_difference": {
+        "estimate": -0.00038018733888931454,
+        "ci95": [
+          -0.0017994764878964693,
+          0.0010391018101178402
+        ],
+        "seed_clusters": 8
+      },
+      "buyer_price_difference": {
+        "estimate": -2.1795610831681992e-05,
+        "ci95": [
+          -0.0021555097838303794,
+          0.0021119185621670156
+        ],
+        "seed_clusters": 8
+      }
+    }
+  ],
+  "theorem_result": "For r_n proportional to n^beta, the structural objective has k-star proportional to n^((1+alpha beta)/(1+alpha)); it is a vanishing fraction when beta<1 and a constant fraction when beta=1.",
+  "mechanism_implication": "A router that exposes more flow to correlated adaptive providers can cross the minority optimum even while each provider's displayed-price elasticity remains locally attractive. Covariance-aware exposure caps target that externality; they are not justified when signal rank is linear.",
+  "bandit_result": "The declared bandit stress test can move action correlation, but in this frozen design its active-share effects are close to zero. The synthetic learner therefore does not validate an allocation-level congestion effect; it is a useful negative control on the theorem.",
+  "claim_boundary": "The scaling panel numerically evaluates an assumed congestion objective. The bandit panel uses declared synthetic learners and a marginal-preserving signal-order intervention. Neither estimates live provider algorithms, signal rank asymptotics, collusion, costs, realized welfare, or k-star."
+}

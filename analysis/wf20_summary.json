@@ -1,0 +1,100 @@
+{
+  "evidence_status": "finite_menu_property_test",
+  "models_supported": 2,
+  "model_horizon_cells": 6,
+  "models_in_active_count_census": 71,
+  "glm52": {
+    "model_id": "z-ai/glm-5.2",
+    "is_glm52": true,
+    "innovation_horizon_hours": 1,
+    "snapshots": 3274,
+    "train_end": "2026-07-16T13:52:23+00:00",
+    "median_menu_count": 25,
+    "stable_provider_count": 25,
+    "active_provider_count": 3,
+    "active_provider_density": 0.12,
+    "active_providers": [
+      "Novita",
+      "StreamLake",
+      "Inceptron"
+    ],
+    "rank_scaling_beta": 0.9673139618716541,
+    "rank_scaling_beta_block_bootstrap_low": 0.5160154269764234,
+    "rank_scaling_beta_block_bootstrap_high": 1.2188163575247515,
+    "bootstrap_successful_draws": 500,
+    "implied_kstar_exponent_alpha1": 0.9836569809358271,
+    "benchmark_source_author_share": 1.0
+  },
+  "glm52_horizon_sensitivity": [
+    {
+      "innovation_horizon_hours": 1,
+      "rank_scaling_beta": 0.9673139618716541,
+      "rank_scaling_beta_block_bootstrap_low": 0.5160154269764234,
+      "rank_scaling_beta_block_bootstrap_high": 1.2188163575247515,
+      "implied_kstar_exponent_alpha1": 0.9836569809358271
+    },
+    {
+      "innovation_horizon_hours": 6,
+      "rank_scaling_beta": 1.0979760388960884,
+      "rank_scaling_beta_block_bootstrap_low": 0.7137176082840971,
+      "rank_scaling_beta_block_bootstrap_high": 1.317096554759276,
+      "implied_kstar_exponent_alpha1": 1.048988019448044
+    },
+    {
+      "innovation_horizon_hours": 24,
+      "rank_scaling_beta": 1.1214873384407642,
+      "rank_scaling_beta_block_bootstrap_low": 0.8088141849007718,
+      "rank_scaling_beta_block_bootstrap_high": 1.3259143086610687,
+      "implied_kstar_exponent_alpha1": 1.0607436692203822
+    }
+  ],
+  "glm52_active_count_census": {
+    "model_id": "z-ai/glm-5.2",
+    "is_glm52": true,
+    "snapshots": 3274,
+    "train_end": "2026-07-16T13:52:23+00:00",
+    "median_menu_count": 25,
+    "stable_provider_count": 25,
+    "active_provider_count": 3,
+    "active_provider_density": 0.12,
+    "active_providers": [
+      "Novita",
+      "StreamLake",
+      "Inceptron"
+    ],
+    "benchmark_source_author_share": 1.0
+  },
+  "non_glm_comparator": {
+    "supported_models": 1,
+    "median_rank_scaling_beta": -0.008851315330686185,
+    "model_dispersion_10_90": [
+      -0.008851315330686185,
+      -0.008851315330686185
+    ],
+    "share_with_beta_at_least_0_8": 0.0
+  },
+  "non_glm_active_count_scaling": {
+    "status": "finite_cross_model_scaling_diagnostic",
+    "models": 70,
+    "log1p_count_scaling_gamma": 0.2188305914828432,
+    "model_bootstrap_95ci": [
+      0.06823094959746354,
+      0.3783171010532073
+    ],
+    "median_active_density": 0.0,
+    "share_zero_active": 0.9,
+    "boundary": "Cross-model log-count scaling is a finite heterogeneous-market diagnostic. It is not a within-market asymptotic estimate."
+  },
+  "rank_curve_rows": 12,
+  "shadow_share_rows": 7860,
+  "free_models_excluded": true,
+  "conditional_theory_mapping": "If r(k) scales as k^beta and overfit loss is linear in k/r, then k-star scales as n^((1+beta)/2). Beta below one is sublinear-compatible; beta equal to one is linear-compatible.",
+  "claim_boundary": "Finite-menu effective-rank slopes and inverse-price shadow shares are public-quote diagnostics. They do not prove asymptotic scaling, realized market share, provider learning, costs, intent, collusion, revenue, profit, or welfare. The mapping from rank beta to k-star exponent is conditional on the proposed linear overfit law.",
+  "analysis_source": {
+    "source": "huggingface_local_snapshot",
+    "repo_id": "t4run/openrouter-market-history",
+    "revision": "f4023bdad64b6ad468741a5a3b1f3afb7af40dd0",
+    "path": "/private/tmp/openrouter-history-f4023bda",
+    "resolution": "caller_managed_local_snapshot"
+  }
+}

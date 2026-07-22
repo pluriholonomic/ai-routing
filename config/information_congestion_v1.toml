@@ -1,0 +1,86 @@
+[study]
+study_id = "openrouter-information-congestion-v1"
+plan_version = "information-congestion-plan-v1"
+prospective_start_utc = "2026-07-23T00:00:00Z"
+campaign_end_utc = "2026-09-15T00:00:00Z"
+models = [
+  "z-ai/glm-5.2",
+  "openai/gpt-oss-120b",
+  "google/gemma-4-31b-it",
+  "minimax/minimax-m2.7",
+  "deepseek/deepseek-v4-flash",
+  "deepseek/deepseek-v4-pro",
+  "moonshotai/kimi-k2.7-code",
+]
+
+[design]
+menu_sizes = [4, 8, 12, 20]
+responsive_counts = [0, 1, 2, 3, 5]
+overlap_arms = ["high", "low"]
+router_rules = ["default", "price"]
+replicates_per_cell = 2
+maximum_tasks_per_run = 32
+minimum_compatible_providers = 4
+minimum_price_changes = 2
+minimum_history_snapshots = 96
+minimum_provider_coverage = 0.70
+innovation_horizon_hours = 1
+maximum_public_snapshot_age_minutes = 30
+
+[shocks]
+maximum_adjacency_minutes = 15
+isolation_window_minutes = 30
+rate_limit_spike_minimum = 1
+placebo_interval_hours = 6
+author_provider_aliases = ["z.ai", "z-ai", "zai"]
+
+[rank]
+subset_sizes = [2, 3, 4, 5, 8, 12, 20]
+primary_beta_margin = 0.10
+secondary_beta_margin = 0.0
+minimum_rank_points = 5
+minimum_market_size_bins = 4
+minimum_model_cohorts = 4
+maximum_cohort_weight = 0.25
+primary_tau_margin = 0.05
+bootstrap_draws = 2000
+bootstrap_block_hours = 6
+
+[outcomes]
+success_value = 1.0
+cost_usd_multiplier = 1.0
+latency_cost_per_second = 0.01
+fallback_cost = 0.05
+failure_cost = 1.0
+
+[support]
+pilot_days = 7
+confirmatory_days = 28
+minimum_clean_shocks_per_size_bin = 30
+minimum_randomized_blocks_per_cell = 100
+minimum_choices_per_multiplicity = 800
+minimum_provider_pair_clusters = 10
+minimum_exact_menu_coverage = 0.90
+minimum_assignment_integrity = 1.0
+minimum_capture_coverage = 0.95
+maximum_gap_minutes = 15
+minimum_holdout_days = 7
+
+[budget]
+canary_usd = 30.0
+pilot_usd = 70.0
+confirmatory_usd = 300.0
+quality_usd = 75.0
+reserve_usd = 25.0
+maximum_run_usd = 2.0
+maximum_day_usd = 20.0
+maximum_campaign_usd = 500.0
+
+[claims]
+asymptotic_limit_identified = false
+market_wide_adaptation_identified = false
+provider_cost_identified = false
+full_social_welfare_identified = false
+provider_algorithm_identified = false
+collusion_identified = false
+communication_identified = false

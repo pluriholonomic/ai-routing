@@ -1,0 +1,104 @@
+name: information-congestion-monitor
+
+on:
+  workflow_run:
+    workflows: ["information-congestion", "compact"]
+    types: [completed]
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: information-congestion-monitor
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  monitor:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate assignment-only tables and public quote history
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=[
+                  "curated/endpoints_snapshots/*/*.parquet",
+                  "curated/congestion_intraday/*/*.parquet",
+                  "curated/ic_run_ledger/*/*.parquet",
+                  "curated/ic_market_epochs/*/*.parquet",
+                  "curated/ic_provider_roles/*/*.parquet",
+                  "curated/ic_assignments/*/*.parquet",
+                  "curated/ic_quality_assignments/*/*.parquet",
+                  "curated/ic_common_shocks/*/*.parquet",
+              ],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          PY
+      - name: overlay uncompacted assignment-only artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_price_artifacts.sh 72 input-data ic
+      - name: rebuild outcome-blind public shock registry
+        run: |
+          uv run python -m orcap.analysis.information_congestion_shocks \
+            --data-root input-data \
+            --output-root input-data
+          mkdir -p data/curated
+          cp -R input-data/curated/ic_common_shocks data/curated/
+      - name: run capture continuity and assignment integrity audit
+        run: >-
+          uv run python -m orcap.analysis.information_congestion_readiness
+          --data-root input-data
+          --output data/analysis/information-congestion-v1/information-congestion-readiness.json
+      - name: build outcome-blind support and rank monitor
+        run: >-
+          uv run python -m orcap.analysis.information_congestion_monitor
+          --data-root input-data
+          --output-dir data/analysis/information-congestion-v1
+          --support-only
+      - name: enforce monitor blindness and claim boundary
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("data/analysis/information-congestion-v1")
+          summary = json.loads((root / "information-congestion-monitor.json").read_text())
+          if summary["gates"]["support_only"] is not True:
+              raise SystemExit("recurring monitor accessed outcomes")
+          if summary["gates"]["asymptotic_limit_identified"] is not False:
+              raise SystemExit("asymptotic claim boundary changed")
+          if summary["support"]["attempted_choices"] != 0:
+              raise SystemExit("outcome count leaked into support-only monitor")
+          PY
+      - name: publish aggregate outcome-blind monitor
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "information-congestion support monitor ${{ github.run_id }}"
+      - name: retain immutable monitor artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: information-congestion-monitor-${{ github.run_id }}
+          path: data/analysis/information-congestion-v1/
+          if-no-files-found: error
+          retention-days: 90
