@@ -286,7 +286,11 @@ def controlled_router_factorial(protocol: dict, *, calibration: dict | None = No
         (0.02, 0.05, 0.10, 0.20, 0.30),
     ):
         prices = [low_price] * int(active) + [anchor_price] * 3
-        for cutters in (1, int(active)):
+        # For K=1 the unilateral and all-active paths are the same estimand.
+        # Emit that negative-control cell once so it cannot be double weighted
+        # in plots or downstream summaries.
+        cutter_counts = (1,) if int(active) == 1 else (1, int(active))
+        for cutters in cutter_counts:
             result = finite_path_elasticity(
                 prices,
                 focal=0,

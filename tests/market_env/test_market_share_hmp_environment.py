@@ -12,6 +12,7 @@ from orcap.market_env.experiments_market_share_hmp import (
 )
 from orcap.market_env.market_share_hmp import (
     MarketShareHMPConfig,
+    controlled_router_factorial,
     correlated_signals,
     paired_intervention,
     shuffle_signal_order,
@@ -41,6 +42,18 @@ def test_k_one_is_zero_wedge_negative_control_for_every_learner():
         assert shuffled["path_wedge"] == 0
         assert coupled["arm"] == "coupled"
         assert shuffled["arm"] == "marginal_preserving_shuffle"
+
+
+def test_controlled_router_factorial_emits_each_singleton_cell_once():
+    protocol = tomllib.loads(
+        (Path(__file__).resolve().parents[2] / "config/glm52_market_share_hmp_v1.toml").read_text()
+    )
+
+    frame = controlled_router_factorial(protocol)
+    keys = ["n_active", "n_cutters", "router_eta", "cut_fraction"]
+
+    assert not frame.duplicated(keys).any()
+    assert len(frame[frame["n_active"].eq(1)]) == 15
 
 
 def test_public_price_calibration_uses_relative_glm52_quotes(tmp_path):
