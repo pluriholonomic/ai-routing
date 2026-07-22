@@ -8,7 +8,7 @@ The prospective infrastructure is fit to collect after remote CI validation.
 It does **not** yet justify an empirical HMP, algorithmic-collusion,
 market-wide-share, provider-cost, or welfare claim. The only affirmative result
 currently justified is the exact path-elasticity identity for the declared
-inverse-power/softmax rule. The full ten-seed simulation rejects the proposed
+inverse-power/softmax rule. The full ten-seed simulation does not pass the proposed
 sharp critical-memory screen and gives mixed learner-specific effects; it does
 not validate the mechanism.
 
@@ -20,8 +20,8 @@ the fixed horizon, and do not open outcomes early.
 | Claim | Required evidence | Evidence now | Verdict | Permitted language |
 |---|---|---|---|---|
 | MS1 exact path identity | Algebra plus numerical property tests | Singleton wedge is exactly zero; multi-cutter wedge increases with other-cutter share in the declared rule | Passed | The wedge is an exact property of the declared routing rule. |
-| MS2 public multiplicity | 28 days; 30 clean events in every multiplicity stratum; clustered/placebo analysis | Prospective count is zero at implementation time | Not tested | No live public multiplicity claim. |
-| MS3 owned routing | 800 covered choices per stratum; exact menus/integrity; randomized-menu analysis | 24 background assignments across two completed blocks; outcomes remain blinded | Not tested | No realized routing or causal price claim. |
+| MS2 public multiplicity | 28 days; 30 clean events in every multiplicity stratum; clustered/placebo analysis | Zero prospective natural events in the latest blinded audit | Not tested | No live public multiplicity claim. |
+| MS3 owned routing | 800 covered choices per stratum; exact menus/integrity; randomized-menu analysis | 24 covered background choices across two blocks; outcomes remain blinded | Not tested | No realized routing or causal price claim. |
 | MS4 passive incidence | MS1--MS3 plus active/anchor displacement and buyer outcomes | No released outcomes | Not tested | No incidence or welfare claim. |
 | MS5 temporal memory | MS1--MS4 plus frozen lags, future leads, clock shifts, and concentration audit | No released outcomes | Not tested | No live memory or critical-memory claim. |
 | MS6 mechanism transport | Prior empirical chain plus calibrated paired simulations and held-out threshold improvement | Full paired simulation; threshold loses on held-out seeds; prior live chain not open | Failed screen; not promoted | Simulation is a negative/mixed mechanism screen only. |
@@ -39,18 +39,19 @@ price-only rule, `h'=0`, so the unilateral-minus-path wedge is
 the local identity and finite changes, matches 200 seeded randomized central
 differences with nonzero fixed scores and common score slopes, validates
 probability conservation, and runs the singleton negative control for every
-simulated learner family. This
-does not establish that OpenRouter uses the declared exponent without a score,
+simulated learner family. This does not establish that OpenRouter uses the
+declared exponent without a score,
 nor that the rule describes realized market-wide allocation.
 
 ## Full simulation result and non-result
 
-The first full remote run used the frozen 2,500-period horizon, ten paired
+The corrected full remote run used the frozen 2,500-period horizon, ten paired
 seeds, four learner families, five active-provider counts, five memory values,
 three signal-to-noise values, and three router exponents. It produced 18,000
 world rows and 9,000 unique coupled/shuffled pairs. Public GLM-5.2 quotes from
-3,223 pre-cutoff snapshots calibrated the median active-to-anchor price ratio to
-`0.6930`; the cost at 25% of that quote remains a scenario. Missing values are
+3,263 pre-cutoff snapshots and 84,792 provider rows calibrated the median
+active-to-anchor price ratio to `0.6930`; the cost at 25% of that quote remains
+a scenario. Missing values are
 confined to the two uncensored learning-time fields when a learner did not hit
 the target; all comparisons use the frozen horizon-plus-one censoring rule.
 
@@ -95,9 +96,10 @@ controlled factorial emitted the identical `K=1` singleton path twice. That
 did not change any paired simulation estimate or the zero-wedge identity, but
 it could double-weight the control and put duplicate points in the plot. The
 generator now emits 135 unique controlled cells, has a regression test, and the
-final remote artifact is being regenerated. The original line plot also hid
-sampling uncertainty; the replacement uses seed-clustered 95% error bars and
-writes the intervals into the JSON summary.
+final remote artifact contains no duplicate controlled, simulation, or paired
+keys. The original line plot also hid sampling uncertainty; the replacement
+uses seed-clustered 95% error bars, writes the intervals into the JSON summary,
+and was visually inspected for clipping, mislabeled axes, and hidden uncertainty.
 
 ## Design failures found and corrected before deployment
 
@@ -275,30 +277,40 @@ writes the intervals into the JSON summary.
 - Before the gate, outcome columns in aggregate Parquet and inline HTML are
   null.
 - Local audit: scoped ruff and shell syntax checks passed; after the red-team
-  fixes, the repository suite passed 868 tests with one pre-existing skip.
+  fixes, the repository suite passed 870 tests with one pre-existing skip.
 
 ## Remote provenance
 
-- Full frozen simulation: GitHub Actions run `29886232930`, source revision
-  `a7911e15df6f5fd63accb3497ff22847fc3d3874`, protocol SHA-256
+- Corrected full frozen simulation: GitHub Actions run `29888439076`, source
+  revision `b2e361dd978fb794bfa4ed66d2987458be6b1a69`, protocol SHA-256
   `f70ca6ba7c8493781d92c52f8e6636cae2bea0a45b278efa50bfbef07091b30e`.
+  The artifact has 135 unique controlled cells, 18,000 unique arm rows, 9,000
+  complete paired interventions, ten seed clusters per reported interval, and
+  both promotion flags frozen to false.
 - Corrected monitor validation: run `29887996033`; all analysis, privacy,
   publication, dashboard, and artifact steps passed.
 - Paid plan smoke test: run `29888457704` correctly failed closed with zero
   assignments and zero spend because its newest public GLM-5.2 snapshot was
   older than the frozen 30-minute freshness gate.
 - First live background block: run `29889339215` froze 12 assignments across
-  six arms under the same protocol hash and a worst-case aggregate quote cap of
-  `$0.0023591` under the assignment-side one-token calculation. Paid execution
+  six arms under the same protocol hash and an aggregate one-token planning cap
+  of `$0.0023591`. Paid execution
   and the private Hugging Face checkpoint passed. The sender used an eight-token
   limit, so this number is not labeled an execution-side worst-case cap.
   Its only public execution artifact is an outcome-free receipt; provider,
   request, latency, fallback, cost, and spend outcomes remain blinded.
 - First automatic post-capture block: run `29890074239` froze a fresh 04:00 UTC
   background menu with another 12 assignments, two per arm, under the same
-  protocol hash and assignment-side aggregate quote cap. Execution and the private checkpoint
-  passed; a scan of both public artifacts found no request, provider-selection,
+  protocol hash and assignment-side aggregate quote cap. Execution and the
+  private checkpoint passed; a scan of both public artifacts found no request, provider-selection,
   cost, latency, fallback, prompt, or response outcome fields.
+- Latest blinded aggregate audit: run `29890794773`, immutable private-data
+  revision `ae24384fca139edd3b1f65b0360b1dc0db8457ae`. It joined 24 assignments to
+  24 covered choices with assignment integrity and exact-menu coverage both
+  `1.0`; every arm has four attempts. There are zero prospective natural events,
+  the empirical gate is false, and every arm/event selection, cost, latency,
+  and fallback field is null. All 24 rows are explicitly labeled
+  `legacy_eight_token_cap` for later include/exclude sensitivity.
 
 ## Manuscript boundary
 
