@@ -21,7 +21,7 @@ the fixed horizon, and do not open outcomes early.
 |---|---|---|---|---|
 | MS1 exact path identity | Algebra plus numerical property tests | Singleton wedge is exactly zero; multi-cutter wedge increases with other-cutter share in the declared rule | Passed | The wedge is an exact property of the declared routing rule. |
 | MS2 public multiplicity | 28 days; 30 clean events in every multiplicity stratum; clustered/placebo analysis | Prospective count is zero at implementation time | Not tested | No live public multiplicity claim. |
-| MS3 owned routing | 800 covered choices per stratum; exact menus/integrity; randomized-menu analysis | Prospective count is zero | Not tested | No realized routing or causal price claim. |
+| MS3 owned routing | 800 covered choices per stratum; exact menus/integrity; randomized-menu analysis | 24 background assignments across two completed blocks; outcomes remain blinded | Not tested | No realized routing or causal price claim. |
 | MS4 passive incidence | MS1--MS3 plus active/anchor displacement and buyer outcomes | No released outcomes | Not tested | No incidence or welfare claim. |
 | MS5 temporal memory | MS1--MS4 plus frozen lags, future leads, clock shifts, and concentration audit | No released outcomes | Not tested | No live memory or critical-memory claim. |
 | MS6 mechanism transport | Prior empirical chain plus calibrated paired simulations and held-out threshold improvement | Full paired simulation; threshold loses on held-out seeds; prior live chain not open | Failed screen; not promoted | Simulation is a negative/mixed mechanism screen only. |
@@ -36,8 +36,10 @@ whose log prices move along one path, differentiation gives
 For a unilateral move it is `(1 - s_i)(eta - h'_i)`. Under the declared
 price-only rule, `h'=0`, so the unilateral-minus-path wedge is
 `eta(S_C-s_i)`. It is exactly zero when `C={i}`. The implementation tests both
-the local identity and finite changes, validates probability conservation, and
-runs the singleton negative control for every simulated learner family. This
+the local identity and finite changes, matches 200 seeded randomized central
+differences with nonzero fixed scores and common score slopes, validates
+probability conservation, and runs the singleton negative control for every
+simulated learner family. This
 does not establish that OpenRouter uses the declared exponent without a score,
 nor that the rule describes realized market-wide allocation.
 
@@ -70,8 +72,8 @@ is descriptive rather than a separately confirmed hypothesis:
 | UCB, target-hit probability | `+0.0144` | `[-0.0181, 0.0470]` | Unresolved. |
 | UCB, action correlation | `+0.0193` | `[0.0105, 0.0281]` | Coupling synchronizes UCB actions in this environment. |
 | UCB, active-group share | `-0.000545` | `[-0.001056, -0.000034]` | Synchronization does not imply share gain. |
-| Heterogeneous learners, censored learning time | `+15.51` periods | `[-73.80, 104.81]` | Wrong point-estimate sign and unresolved. |
-| Heterogeneous learners, target-hit probability | `-0.0072` | `[-0.0393, 0.0248]` | No heterogeneous completion effect. |
+| Non-UCB homogeneous-family pool, censored learning time | `+15.51` periods | `[-73.80, 104.81]` | Wrong point-estimate sign and unresolved. |
+| Non-UCB homogeneous-family pool, target-hit probability | `-0.0072` | `[-0.0393, 0.0248]` | No pooled completion effect. |
 
 At memory `0.99`, the post-hoc UCB target-hit contrast is positive, but it is
 one of many learner-by-memory cells and the preregistered held-out threshold
@@ -165,6 +167,19 @@ writes the intervals into the JSON summary.
     Parquet supplied `co_cutters` as an empty NumPy/Arrow array; boolean coercion
     made the live planner fail before assignment. List-valued persisted fields now
     use explicit normalization, with a regression fixture for the empty-array case.
+17. **The full-window contamination claim exceeded the implementation.** Later
+    provider-set, health, and capture-gap changes were screened only when an
+    interval also contained a price change. Every adjacent capture interval is now
+    audited, including flat-quote intervals, with separate adversarial fixtures for
+    health, provider-set, and gap changes.
+18. **Repeated co-cutter updates could inflate exposure.** Multiplicity already
+    counted unique providers, but share mass and depth-weighted exposure summed
+    quote-update rows. Co-cutters now require the same stable-prequote condition as
+    the focal cut and contribute only their first qualifying cut in the window.
+19. **A cross-family robustness pool was mislabeled.** The simulator never mixed
+    algorithms within one market, so `heterogeneous` was not a defensible label.
+    New artifacts use `non_ucb_homogeneous_family_pool`; the first immutable
+    artifact's legacy key is interpreted only under that corrected label.
 
 ## Remaining threats that cannot be engineered away
 
@@ -266,6 +281,11 @@ writes the intervals into the JSON summary.
   `$0.0023591`. Paid execution and the private Hugging Face checkpoint passed.
   Its only public execution artifact is an outcome-free receipt; provider,
   request, latency, fallback, cost, and spend outcomes remain blinded.
+- First automatic post-capture block: run `29890074239` froze a fresh 04:00 UTC
+  background menu with another 12 assignments, two per arm, under the same
+  protocol hash and aggregate quote cap. Execution and the private checkpoint
+  passed; a scan of both public artifacts found no request, provider-selection,
+  cost, latency, fallback, prompt, or response outcome fields.
 
 ## Manuscript boundary
 

@@ -111,6 +111,48 @@ def test_path_identity_has_singleton_zero_and_multi_cutter_wedge():
     assert finite["active_group_share_change"] > 0
 
 
+def test_path_identity_matches_randomized_central_differences():
+    rng = np.random.default_rng(20260722)
+    epsilon = 1e-6
+    for _ in range(200):
+        providers = int(rng.integers(2, 10))
+        eta = float(rng.uniform(0.25, 3.0))
+        score_slope = float(rng.uniform(-0.5, 0.5))
+        prices = np.exp(rng.normal(size=providers))
+        scores = rng.normal(scale=0.7, size=providers)
+        focal = int(rng.integers(providers))
+        others = [index for index in range(providers) if index != focal]
+        cutter_count = int(rng.integers(1, providers + 1))
+        cutters = [focal, *rng.choice(others, size=cutter_count - 1, replace=False).tolist()]
+        shares = routing_shares(prices, eta=eta, scores=scores)
+        identity = elasticity_identity(
+            shares,
+            focal=focal,
+            cutters=cutters,
+            eta=eta,
+            score_slope=score_slope,
+        )
+
+        def moved(indices: list[int], direction: float) -> float:
+            moved_prices = prices.copy()
+            moved_scores = scores.copy()
+            moved_prices[indices] *= np.exp(direction * epsilon)
+            moved_scores[indices] += score_slope * direction * epsilon
+            return float(np.log(routing_shares(moved_prices, eta=eta, scores=moved_scores)[focal]))
+
+        path_difference = -(moved(cutters, 1.0) - moved(cutters, -1.0)) / (2 * epsilon)
+        unilateral_difference = -(moved([focal], 1.0) - moved([focal], -1.0)) / (
+            2 * epsilon
+        )
+        expected_wedge = (eta - score_slope) * identity["other_cutter_share"]
+
+        assert path_difference == pytest.approx(identity["path_elasticity"], rel=1e-7, abs=1e-8)
+        assert unilateral_difference == pytest.approx(
+            identity["unilateral_elasticity"], rel=1e-7, abs=1e-8
+        )
+        assert identity["path_wedge"] == pytest.approx(expected_wedge, abs=1e-12)
+
+
 def test_event_finalization_uses_future_public_captures_but_no_paid_outcome():
     base = datetime(2026, 7, 22, 3, 0, tzinfo=UTC)
     events = detect_events(

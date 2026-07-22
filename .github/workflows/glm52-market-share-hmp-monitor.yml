@@ -52,8 +52,6 @@ jobs:
               revision=revision,
               allow_patterns=[
                   "curated/glm52_hmp_*/*/*.parquet",
-                  "curated/router_route_attempts/*/*.parquet",
-                  "curated/paid_spend_ledger/*/*.parquet",
               ],
               max_workers=8,
               stale_if_error=False,

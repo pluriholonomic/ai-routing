@@ -54,6 +54,9 @@ def test_monitor_and_full_simulation_cannot_self_promote_claims():
     assert "market-share-hmp.html" in monitor
     assert "group: glm52-market-share-hmp-monitor" in monitor
     assert "cancel-in-progress: false" in monitor
+    assert '"curated/glm52_hmp_*/*/*.parquet"' in monitor
+    assert '"curated/router_route_attempts/*/*.parquet"' not in monitor
+    assert '"curated/paid_spend_ledger/*/*.parquet"' not in monitor
 
 
 def test_compaction_and_overlay_include_the_new_queue():
