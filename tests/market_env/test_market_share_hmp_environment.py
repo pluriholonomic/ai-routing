@@ -9,6 +9,7 @@ import pandas as pd
 from orcap.market_env.experiments_market_share_hmp import (
     critical_memory_screen,
     public_price_calibration,
+    seed_clustered_interval,
 )
 from orcap.market_env.market_share_hmp import (
     MarketShareHMPConfig,
@@ -54,6 +55,21 @@ def test_controlled_router_factorial_emits_each_singleton_cell_once():
 
     assert not frame.duplicated(keys).any()
     assert len(frame[frame["n_active"].eq(1)]) == 15
+
+
+def test_seed_clustered_interval_uses_seed_not_factorial_rows_as_unit():
+    frame = pd.DataFrame(
+        {
+            "seed": [0, 0, 1, 1, 2, 2],
+            "effect": [0.0, 2.0, 2.0, 4.0, 4.0, 6.0],
+        }
+    )
+
+    interval = seed_clustered_interval(frame, "effect")
+
+    assert interval["estimate"] == 3.0
+    assert interval["seed_clusters"] == 3
+    assert interval["ci95_lower"] < interval["estimate"] < interval["ci95_upper"]
 
 
 def test_public_price_calibration_uses_relative_glm52_quotes(tmp_path):

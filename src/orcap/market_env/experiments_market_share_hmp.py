@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+from scipy import stats
 
 from ..market_share_hmp import (
     INPUT_TOKENS,
@@ -146,6 +147,56 @@ def _paired(frame: pd.DataFrame) -> pd.DataFrame:
     return paired
 
 
+def seed_clustered_interval(frame: pd.DataFrame, outcome: str) -> dict:
+    """Equal-cell mean and t interval using simulation seed as the sampling unit."""
+    seed_means = frame.groupby("seed", sort=True)[outcome].mean().astype(float)
+    estimate = float(seed_means.mean()) if len(seed_means) else None
+    if len(seed_means) < 2:
+        return {
+            "estimate": estimate,
+            "ci95_lower": None,
+            "ci95_upper": None,
+            "seed_clusters": int(len(seed_means)),
+        }
+    standard_error = float(stats.sem(seed_means.to_numpy(dtype=float)))
+    radius = float(stats.t.ppf(0.975, len(seed_means) - 1) * standard_error)
+    return {
+        "estimate": estimate,
+        "ci95_lower": estimate - radius,
+        "ci95_upper": estimate + radius,
+        "seed_clusters": int(len(seed_means)),
+    }
+
+
+def _simulation_intervals(paired: pd.DataFrame) -> dict:
+    frame = paired.copy()
+    frame["elasticity_learning_rate__coupled_minus_shuffled"] = frame[
+        "elasticity_learned__coupled"
+    ].astype(float) - frame["elasticity_learned__marginal_preserving_shuffle"].astype(float)
+    outcomes = {
+        "learning_time_censored_difference": "learning_time__coupled_minus_shuffled",
+        "learning_rate_difference": "elasticity_learning_rate__coupled_minus_shuffled",
+        "action_correlation_difference": "mean_action_correlation__coupled_minus_shuffled",
+        "active_share_difference": "mean_active_group_share__coupled_minus_shuffled",
+        "buyer_price_difference": "mean_buyer_price__coupled_minus_shuffled",
+    }
+    groups = {
+        "all_multiple_active": frame[frame["n_active"].gt(1)],
+        "ucb_multiple_active": frame[frame["n_active"].gt(1) & frame["algorithm"].eq("ucb")],
+        "heterogeneous_multiple_active": frame[
+            frame["n_active"].gt(1) & frame["algorithm"].ne("ucb")
+        ],
+        "ucb_singleton_control": frame[frame["n_active"].eq(1) & frame["algorithm"].eq("ucb")],
+        "heterogeneous_singleton_control": frame[
+            frame["n_active"].eq(1) & frame["algorithm"].ne("ucb")
+        ],
+    }
+    return {
+        label: {name: seed_clustered_interval(rows, column) for name, column in outcomes.items()}
+        for label, rows in groups.items()
+    }
+
+
 def critical_memory_screen(paired: pd.DataFrame) -> dict:
     """Compare a smooth memory curve with a one-hinge threshold on held-out seeds."""
 
@@ -179,12 +230,12 @@ def critical_memory_screen(paired: pd.DataFrame) -> dict:
 
         train_x = design(train)
         test_x = design(test).reindex(columns=train_x.columns, fill_value=0.0)
-        train_y = (
-            train["learning_time__coupled_minus_shuffled"] / train["horizon"]
-        ).to_numpy(dtype=float)
-        test_y = (
-            test["learning_time__coupled_minus_shuffled"] / test["horizon"]
-        ).to_numpy(dtype=float)
+        train_y = (train["learning_time__coupled_minus_shuffled"] / train["horizon"]).to_numpy(
+            dtype=float
+        )
+        test_y = (test["learning_time__coupled_minus_shuffled"] / test["horizon"]).to_numpy(
+            dtype=float
+        )
 
         def fit_predict(left: pd.DataFrame, right: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
             coefficients = np.linalg.pinv(left.to_numpy(dtype=float)) @ train_y
@@ -216,9 +267,7 @@ def critical_memory_screen(paired: pd.DataFrame) -> dict:
             "selected_threshold": best[0],
             "smooth_holdout_mse": base_mse,
             "threshold_holdout_mse": threshold_mse,
-            "threshold_to_smooth_mse_ratio": (
-                threshold_mse / base_mse if base_mse > 0 else None
-            ),
+            "threshold_to_smooth_mse_ratio": (threshold_mse / base_mse if base_mse > 0 else None),
             "threshold_improves_holdout": bool(threshold_mse < base_mse),
             "boundary": (
                 "A selected hinge is a simulation prediction comparison, not evidence of a "
@@ -252,6 +301,7 @@ def run(
     controlled.to_parquet(out_dir / "controlled_router_factorial.parquet", index=False)
     simulations.to_parquet(out_dir / "multiagent_factorial.parquet", index=False)
     paired.to_parquet(out_dir / "paired_signal_interventions.parquet", index=False)
+    clustered_intervals = _simulation_intervals(paired)
 
     singleton_error = controlled[controlled["n_cutters"].eq(1)]["path_wedge"].abs().max()
     group = controlled[controlled["n_cutters"].eq(controlled["n_active"])]
@@ -265,11 +315,20 @@ def run(
         )
         .all()
     )
-    grouped = paired.groupby(["n_active", "algorithm"], as_index=False).agg(
-        learning_time_difference=("learning_time__coupled_minus_shuffled", "mean"),
-        action_correlation_difference=("mean_action_correlation__coupled_minus_shuffled", "mean"),
-        active_share_difference=("mean_active_group_share__coupled_minus_shuffled", "mean"),
-    )
+    plot_rows = []
+    for (active, algorithm), rows in paired.groupby(["n_active", "algorithm"]):
+        record = {"n_active": int(active), "algorithm": str(algorithm)}
+        for label, outcome in (
+            ("learning_time", "learning_time__coupled_minus_shuffled"),
+            ("action_correlation", "mean_action_correlation__coupled_minus_shuffled"),
+            ("active_share", "mean_active_group_share__coupled_minus_shuffled"),
+        ):
+            interval = seed_clustered_interval(rows, outcome)
+            record[f"{label}_estimate"] = interval["estimate"]
+            record[f"{label}_lower"] = interval["ci95_lower"]
+            record[f"{label}_upper"] = interval["ci95_upper"]
+        plot_rows.append(record)
+    grouped = pd.DataFrame(plot_rows)
 
     fig, axes = plt.subplots(2, 2, figsize=(10.5, 7.4), constrained_layout=True)
     focal = group[
@@ -280,15 +339,24 @@ def run(
     axes[0, 0].axhline(0, color="black", lw=0.8)
     axes[0, 0].set(title="A. Exact path wedge", xlabel="active cutters", ylabel="elasticity wedge")
     for algorithm, rows in grouped.groupby("algorithm"):
-        axes[0, 1].plot(
-            rows["n_active"], rows["learning_time_difference"], marker="o", label=algorithm
-        )
-        axes[1, 0].plot(
-            rows["n_active"], rows["action_correlation_difference"], marker="o", label=algorithm
-        )
-        axes[1, 1].plot(
-            rows["n_active"], rows["active_share_difference"], marker="o", label=algorithm
-        )
+        rows = rows.sort_values("n_active")
+        for axis, label in (
+            (axes[0, 1], "learning_time"),
+            (axes[1, 0], "action_correlation"),
+            (axes[1, 1], "active_share"),
+        ):
+            estimate = rows[f"{label}_estimate"].to_numpy(dtype=float)
+            lower = rows[f"{label}_lower"].fillna(rows[f"{label}_estimate"]).to_numpy(dtype=float)
+            upper = rows[f"{label}_upper"].fillna(rows[f"{label}_estimate"]).to_numpy(dtype=float)
+            axis.errorbar(
+                rows["n_active"],
+                estimate,
+                yerr=np.vstack([estimate - lower, upper - estimate]),
+                marker="o",
+                capsize=2.5,
+                linewidth=1.2,
+                label=algorithm,
+            )
     axes[0, 1].axhline(0, color="black", lw=0.8)
     axes[0, 1].set(
         title="B. Elasticity learning time",
@@ -308,7 +376,7 @@ def run(
         ylabel="coupled minus shuffled share",
     )
     axes[0, 1].legend(frameon=False, fontsize=7)
-    fig.suptitle("GLM-5.2 market-share HMP mechanism screen")
+    fig.suptitle("GLM-5.2 market-share HMP mechanism screen\n95% t intervals clustered by seed")
     fig.savefig(out_dir / "market_share_hmp_simulation.png", dpi=180)
     fig.savefig(out_dir / "market_share_hmp_simulation.pdf")
     plt.close(fig)
@@ -352,6 +420,7 @@ def run(
             if not heterogeneous.empty
             else None
         ),
+        "seed_clustered_intervals": clustered_intervals,
         "critical_memory_threshold_screen": critical_memory,
         "empirical_property_chain_passed": False,
         "mechanism_validated": False,
