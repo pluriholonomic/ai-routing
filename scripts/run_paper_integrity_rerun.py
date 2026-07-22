@@ -46,6 +46,7 @@ PAPER_PUBLIC_MODULES = [
     "h94_cross_router_pass_through",
     "wcv0_data_audit",
     "wcv6_revenue_gap",
+    "wf20_informational_congestion",
     "scorecard",
     "manuscript_vintages",
 ]
