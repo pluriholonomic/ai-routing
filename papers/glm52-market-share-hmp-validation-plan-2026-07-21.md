@@ -82,6 +82,37 @@ This is not yet an empirical result. It is a property chain. A positive result
 must establish each link in order; a later link cannot rescue an earlier
 failure.
 
+### 1.1 Prospective informational-congestion extension
+
+The common-cut identity by itself has a linear-density optimum: under equal
+baseline shares, the mechanically optimal active count is `Theta(n)`. A
+sublinear strategic-provider threshold therefore requires an additional
+learning friction. The prospective extension in
+`informational-congestion-minority-threshold-2026-07-22.md` replaces an explicit
+congestion cost with residual signal crowding.
+
+For active-provider signal covariance `Sigma_k`, define effective rank
+
+\[
+ r_k=\frac{\operatorname{tr}(\Sigma_k)^2}
+ {\operatorname{tr}(\Sigma_k^2)}
+\]
+
+and crowding `chi_k=k/r_k`. If held-out response error grows as
+`(k/n)^2 chi_k^alpha`, balancing first-order share transfer against that error
+gives the conditional prediction
+
+\[
+ k_n^*=\Theta\!\left((n r_n^\alpha)^{1/(1+\alpha)}\right)=o(n)
+\]
+
+when `r_n=o(n)`. The linear-in-crowding case gives
+`k_n^*=Theta(sqrt(n r_n))`. This is a proposed restricted-active-entry result,
+not a v1 hypothesis or result. It requires a new fixed-`n` design, training-only
+rank estimation, held-out overfit measurement, equal active-share-mass
+comparisons, and cross-model transport. The frozen v1 protocol, outcomes, and
+claim gates are unchanged.
+
 ## 2. Why GLM-5.2 is the focal market
 
 The frozen eight-day provider taxonomy contains seven GLM-5.2 active

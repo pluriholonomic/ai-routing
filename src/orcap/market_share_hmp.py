@@ -166,6 +166,109 @@ def finite_path_elasticity(
     }
 
 
+def common_cut_share_transfer(
+    baseline_group_share: float,
+    *,
+    cut_ratio: float,
+    eta: float,
+) -> dict[str, float]:
+    """Return the exact price-only share transfer from a common proportional cut.
+
+    ``cut_ratio`` is the post-cut price divided by the pre-cut price.  The
+    identity depends on the cutters' baseline share mass, not on equal provider
+    shares.  It is a declared-rule counterfactual and is not realized routing.
+    """
+
+    share = float(baseline_group_share)
+    ratio = float(cut_ratio)
+    exponent = float(eta)
+    if not math.isfinite(share) or not 0 <= share <= 1:
+        raise ValueError("baseline_group_share must lie in [0, 1]")
+    if not math.isfinite(ratio) or not 0 < ratio < 1:
+        raise ValueError("cut_ratio must lie in (0, 1)")
+    if not math.isfinite(exponent) or exponent <= 0:
+        raise ValueError("eta must be positive")
+    amplification = ratio ** (-exponent)
+    denominator = 1.0 + (amplification - 1.0) * share
+    post_share = amplification * share / denominator
+    mechanical_density = 1.0 / (1.0 + math.sqrt(amplification))
+    return {
+        "amplification": float(amplification),
+        "post_group_share": float(post_share),
+        "passive_to_active_transfer": float(post_share - share),
+        "mechanical_optimal_share_density": float(mechanical_density),
+    }
+
+
+def signal_effective_rank(covariance: Sequence[Sequence[float]]) -> float:
+    """Compute PSD covariance effective rank ``tr(Sigma)^2 / tr(Sigma^2)``."""
+
+    matrix = np.asarray(covariance, dtype=float)
+    if (
+        matrix.ndim != 2
+        or matrix.shape[0] != matrix.shape[1]
+        or matrix.shape[0] == 0
+        or np.any(~np.isfinite(matrix))
+        or not np.allclose(matrix, matrix.T, atol=1e-10, rtol=1e-10)
+    ):
+        raise ValueError("covariance must be a non-empty finite symmetric matrix")
+    eigenvalues = np.linalg.eigvalsh(matrix)
+    scale = max(float(np.max(np.abs(eigenvalues))), 1.0)
+    if float(eigenvalues.min()) < -1e-10 * scale:
+        raise ValueError("covariance must be positive semidefinite")
+    eigenvalues = np.clip(eigenvalues, 0.0, None)
+    squared_mass = float(np.square(eigenvalues).sum())
+    if squared_mass <= 0:
+        raise ValueError("covariance must have positive signal mass")
+    return float(eigenvalues.sum() ** 2 / squared_mass)
+
+
+def informational_congestion_threshold(
+    n_providers: int,
+    effective_signal_rank: float,
+    *,
+    cut_ratio: float,
+    eta: float,
+    overfit_scale: float,
+    overfit_exponent: float = 1.0,
+) -> dict[str, float]:
+    """Return the local conditional minority-threshold approximation.
+
+    This balances the first-order common-cut transfer against the prospective
+    loss law ``c (k/n)^2 (k/r)^alpha``.  It is a theorem-calibration utility,
+    not an estimator and not evidence that the loss law holds in provider data.
+    """
+
+    if not isinstance(n_providers, int) or n_providers < 2:
+        raise ValueError("n_providers must be an integer of at least two")
+    rank = float(effective_signal_rank)
+    scale = float(overfit_scale)
+    alpha = float(overfit_exponent)
+    if not math.isfinite(rank) or not 0 < rank <= n_providers:
+        raise ValueError("effective_signal_rank must lie in (0, n_providers]")
+    if not math.isfinite(scale) or scale <= 0:
+        raise ValueError("overfit_scale must be positive")
+    if not math.isfinite(alpha) or alpha <= 0:
+        raise ValueError("overfit_exponent must be positive")
+    mechanical = common_cut_share_transfer(0.5, cut_ratio=cut_ratio, eta=eta)
+    linear_gain = mechanical["amplification"] - 1.0
+    raw_threshold = (
+        linear_gain
+        * n_providers
+        * rank**alpha
+        / (scale * (2.0 + alpha))
+    ) ** (1.0 / (1.0 + alpha))
+    return {
+        "raw_active_count": float(raw_threshold),
+        "bounded_active_count": float(min(max(raw_threshold, 1.0), n_providers - 1.0)),
+        "active_density": float(raw_threshold / n_providers),
+        "mechanical_active_count": float(
+            n_providers * mechanical["mechanical_optimal_share_density"]
+        ),
+        "crowding_index_at_threshold": float(raw_threshold / rank),
+    }
+
+
 def _number(value: Any) -> float | None:
     try:
         result = float(value)

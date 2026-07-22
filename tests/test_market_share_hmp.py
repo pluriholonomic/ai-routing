@@ -18,10 +18,13 @@ from orcap.market_share_hmp import (
     MODEL_ID,
     build_paid_assignments,
     build_wave_plans,
+    common_cut_share_transfer,
     detect_events,
     elasticity_identity,
     finite_path_elasticity,
+    informational_congestion_threshold,
     routing_shares,
+    signal_effective_rank,
 )
 
 
@@ -111,6 +114,52 @@ def test_path_identity_has_singleton_zero_and_multi_cutter_wedge():
     assert finite["active_group_share_change"] > 0
 
 
+def test_common_cut_transfer_matches_direct_router_and_has_interior_maximum():
+    eta = 1.6482780609377246
+    ratio = 0.9
+    baseline = 0.3
+    identity = common_cut_share_transfer(baseline, cut_ratio=ratio, eta=eta)
+    direct = routing_shares([ratio, 1.0], eta=eta)[0]
+    assert identity["post_group_share"] == pytest.approx(
+        direct * baseline / (direct * baseline + (1 - direct) * (1 - baseline))
+    )
+    density = identity["mechanical_optimal_share_density"]
+    center = common_cut_share_transfer(density, cut_ratio=ratio, eta=eta)
+    left = common_cut_share_transfer(density - 0.01, cut_ratio=ratio, eta=eta)
+    right = common_cut_share_transfer(density + 0.01, cut_ratio=ratio, eta=eta)
+    assert center["passive_to_active_transfer"] > left["passive_to_active_transfer"]
+    assert center["passive_to_active_transfer"] > right["passive_to_active_transfer"]
+
+
+def test_signal_effective_rank_separates_independent_and_common_signals():
+    independent = signal_effective_rank(np.eye(8))
+    common = signal_effective_rank(np.ones((8, 8)))
+    equicorrelated = signal_effective_rank(0.2 * np.eye(8) + 0.8 * np.ones((8, 8)))
+    assert independent == pytest.approx(8.0)
+    assert common == pytest.approx(1.0)
+    assert 1.0 < equicorrelated < 8.0
+
+
+def test_informational_threshold_is_sublinear_under_sublinear_signal_rank():
+    small = informational_congestion_threshold(
+        100,
+        10,
+        cut_ratio=0.9,
+        eta=1.6482780609377246,
+        overfit_scale=1.0,
+    )
+    large = informational_congestion_threshold(
+        10_000,
+        100,
+        cut_ratio=0.9,
+        eta=1.6482780609377246,
+        overfit_scale=1.0,
+    )
+    assert large["raw_active_count"] > small["raw_active_count"]
+    assert large["active_density"] < small["active_density"]
+    assert large["raw_active_count"] < large["mechanical_active_count"]
+
+
 def test_path_identity_matches_randomized_central_differences():
     rng = np.random.default_rng(20260722)
     epsilon = 1e-6
@@ -133,12 +182,27 @@ def test_path_identity_matches_randomized_central_differences():
             score_slope=score_slope,
         )
 
-        def moved(indices: list[int], direction: float) -> float:
-            moved_prices = prices.copy()
-            moved_scores = scores.copy()
+        def moved(
+            indices: list[int],
+            direction: float,
+            *,
+            base_prices: np.ndarray = prices,
+            base_scores: np.ndarray = scores,
+            slope: float = score_slope,
+            exponent: float = eta,
+            focal_index: int = focal,
+        ) -> float:
+            moved_prices = base_prices.copy()
+            moved_scores = base_scores.copy()
             moved_prices[indices] *= np.exp(direction * epsilon)
-            moved_scores[indices] += score_slope * direction * epsilon
-            return float(np.log(routing_shares(moved_prices, eta=eta, scores=moved_scores)[focal]))
+            moved_scores[indices] += slope * direction * epsilon
+            return float(
+                np.log(
+                    routing_shares(
+                        moved_prices, eta=exponent, scores=moved_scores
+                    )[focal_index]
+                )
+            )
 
         path_difference = -(moved(cutters, 1.0) - moved(cutters, -1.0)) / (2 * epsilon)
         unilateral_difference = -(moved([focal], 1.0) - moved([focal], -1.0)) / (
