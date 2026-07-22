@@ -86,9 +86,10 @@ def build_inputs(
     quality: pd.DataFrame,
     *,
     prospective_start: str,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], pd.DataFrame]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], pd.DataFrame, dict[str, int]]:
+    coverage = {"eligible_default_broad_choices": 0, "menu_covered_choices": 0}
     if candidates.empty or assignments.empty:
-        return [], [], pd.DataFrame()
+        return [], [], pd.DataFrame(), coverage
     attempts_keep = pd.DataFrame()
     if not attempts.empty:
         keep = [
@@ -146,7 +147,9 @@ def build_inputs(
                 }
             )
         block = joined[joined["block_id"].astype(str) == block_id]
-        for row in block[block["policy"] == "default_broad"].to_dict("records"):
+        broad_rows = block[block["policy"] == "default_broad"].to_dict("records")
+        coverage["eligible_default_broad_choices"] += len(broad_rows)
+        for row in broad_rows:
             selected = provider_key(row.get("selected_provider"))
             if row.get("outcome") != "succeeded" or selected not in providers:
                 continue
@@ -161,6 +164,7 @@ def build_inputs(
                     "selected_index": providers.index(selected),
                 }
             )
+            coverage["menu_covered_choices"] += 1
         for row in block[block["policy"].astype(str).str.startswith("pinned_")].to_dict("records"):
             observed = pd.to_datetime(row.get("observed_at"), utc=True, errors="coerce")
             requested = provider_key(row.get("requested_provider"))
@@ -193,7 +197,7 @@ def build_inputs(
                         "source": "score_memory_quality_bank",
                     }
                 )
-    return observations, quality_events, pd.DataFrame(price_rows)
+    return observations, quality_events, pd.DataFrame(price_rows), coverage
 
 
 def _quality_aggregate(events: list[dict[str, Any]]) -> pd.DataFrame:
@@ -316,7 +320,7 @@ def run(
 ) -> dict[str, Any]:
     config, raw = _load_config(config_path)
     candidates, assignments, attempts, quality = _frames(data_root)
-    observations, quality_events, prices = build_inputs(
+    observations, quality_events, prices, coverage = build_inputs(
         candidates,
         assignments,
         attempts,
@@ -334,6 +338,8 @@ def run(
         minimum_blocks=int(gates["minimum_blocks"]),
         minimum_days=float(gates["minimum_days"]),
         minimum_providers=int(gates["minimum_providers"]),
+        eligible_choices=int(coverage["eligible_default_broad_choices"]),
+        minimum_menu_coverage=float(gates["minimum_menu_coverage"]),
     )
     summary.update(
         {
@@ -383,7 +389,8 @@ th{{background:#eef2f5}}img{{width:100%;height:auto}}
 .boundary{{border-left:4px solid #b66a00;padding:10px;background:#fff8ed}}
 </style></head><body><h1>Owned routed share × quality × memory</h1>
 <p>Status: <b>{html.escape(summary["support_status"])}</b>;
-choices: {summary["covered_choices"]}; blocks: {summary["blocks"]};
+menu-covered default-broad choices: {summary["covered_choices"]} /
+{summary["eligible_default_broad_choices"]}; blocks: {summary["blocks"]};
 days: {summary["duration_days"]:.2f}; price events: {summary["price_events"]};
 quality events: {summary["quality_events"]}.</p>{image_html}
 <h2>Future-fold model comparison</h2>{model_html}

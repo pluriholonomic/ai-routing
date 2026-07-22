@@ -425,6 +425,8 @@ def support_summary(
     minimum_blocks: int = 100,
     minimum_days: float = 28.0,
     minimum_providers: int = 3,
+    eligible_choices: int | None = None,
+    minimum_menu_coverage: float = 0.90,
 ) -> dict[str, Any]:
     blocks = {row["block_id"] for row in panel}
     providers = {row["providers"][int(row["selected_index"])] for row in panel if row["providers"]}
@@ -435,6 +437,8 @@ def support_summary(
         else 0.0
     )
     price_events = 0
+    eligible = len(panel) if eligible_choices is None else int(eligible_choices)
+    menu_coverage = float(len(panel) / eligible) if eligible > 0 else None
     prior: dict[str, float] = {}
     seen_blocks: set[str] = set()
     for row in sorted(panel, key=lambda item: (item["observed_at"], item["block_id"])):
@@ -451,6 +455,10 @@ def support_summary(
         (len(blocks) < minimum_blocks, "blocks"),
         (days < minimum_days, "duration"),
         (len(providers) < minimum_providers, "selected_providers"),
+        (
+            menu_coverage is not None and menu_coverage < minimum_menu_coverage,
+            "menu_coverage",
+        ),
         (price_events < 30, "price_events"),
         (len(quality_events) < 30, "quality_events"),
     ):
@@ -466,6 +474,8 @@ def support_summary(
         "support_status": "ready" if not failures else "accruing",
         "support_failures": failures,
         "covered_choices": len(panel),
+        "eligible_default_broad_choices": eligible,
+        "menu_coverage_rate": menu_coverage,
         "blocks": len(blocks),
         "duration_days": days,
         "selected_providers": len(providers),

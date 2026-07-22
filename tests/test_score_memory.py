@@ -83,6 +83,21 @@ def test_support_gate_stays_accruing_on_short_panel():
     assert {"choices", "blocks", "duration", "quality_events"}.issubset(summary["support_failures"])
 
 
+def test_support_gate_measures_coverage_only_within_default_broad_eligibility():
+    panel = build_history_panel(_observations(2), config=MemoryConfig(lag_blocks=(1,)))
+    summary = support_summary(
+        panel,
+        [],
+        pd.DataFrame(),
+        eligible_choices=5,
+        minimum_menu_coverage=0.90,
+    )
+    assert summary["eligible_default_broad_choices"] == 5
+    assert summary["covered_choices"] == 4
+    assert summary["menu_coverage_rate"] == 0.8
+    assert "menu_coverage" in summary["support_failures"]
+
+
 def _write(table: pa.Table, root, name: str):
     path = root / "curated" / name / "dt=2026-07-22" / "run.parquet"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -190,6 +205,9 @@ def test_monitor_writes_only_aggregate_release(tmp_path):
     output = tmp_path / "analysis"
     summary = run_monitor(tmp_path, output, source_revision="test")
     assert summary["support_status"] == "accruing"
+    assert summary["eligible_default_broad_choices"] == 1
+    assert summary["covered_choices"] == 1
+    assert summary["menu_coverage_rate"] == 1.0
     assert (output / "score_memory_model_comparison.parquet").is_file()
     assert (output / "score_memory_quality_aggregate.parquet").is_file()
     assert (output / "score_memory_policy_aggregate.parquet").is_file()
