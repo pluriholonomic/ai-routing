@@ -112,6 +112,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: price-event-plan-${{ github.run_id }}
+      - name: refresh authoritative spend after acquiring execution lease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: ./scripts/refresh_paid_spend_ledger.sh 3 plan-data event
       - name: recover prior attempts from a retried execution job
         env:
           GH_TOKEN: ${{ github.token }}
@@ -224,6 +229,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: price-event-w1-plan-${{ github.run_id }}
+      - name: refresh authoritative spend after acquiring execution lease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: ./scripts/refresh_paid_spend_ledger.sh 3 plan-data event
       - name: verify uploaded W1 plan and execute exactly once
         env:
           OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
@@ -327,6 +337,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: price-event-w2-plan-${{ github.run_id }}
+      - name: refresh authoritative spend after acquiring execution lease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: ./scripts/refresh_paid_spend_ledger.sh 3 plan-data event
       - name: verify uploaded W2 plan and execute exactly once
         env:
           OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
