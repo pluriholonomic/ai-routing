@@ -452,7 +452,9 @@ def run(
         released=empirical_gate,
     )
 
-    simulation_summary_path = out_dir / "simulation" / "market_share_hmp_simulation_summary.json"
+    simulation_summary_path = (
+        out_dir / "simulation-monitor" / "market_share_hmp_simulation_summary.json"
+    )
     simulation = (
         json.loads(simulation_summary_path.read_text(encoding="utf-8"))
         if simulation_summary_path.is_file()

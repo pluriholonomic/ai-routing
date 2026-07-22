@@ -67,7 +67,7 @@ jobs:
           uv run python -m orcap.market_env.experiments_market_share_hmp
           --seeds 1
           --horizon 400
-          --out data/analysis/glm52-market-share-hmp-v1/simulation
+          --out data/analysis/glm52-market-share-hmp-v1/simulation-monitor
       - name: build aggregate support and result panel
         run: >-
           uv run python -m orcap.analysis.market_share_hmp_monitor

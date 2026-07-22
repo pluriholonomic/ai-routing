@@ -94,6 +94,10 @@ rows. `paired_signal_interventions.parquet` contains coupled-minus-shuffled
 paired-seed contrasts. These tables cannot identify a deployed provider's
 algorithm, costs, communication, intent, or live collusion.
 
+The weekly ten-seed bundle lives under `simulation/`. The daily one-seed smoke
+test lives under `simulation-monitor/`; it supplies only the MS1 implementation
+check and cannot overwrite or promote the full bundle.
+
 ## Keys and joins
 
 - Event versions: `event_id`; retain the highest event-status stage and latest

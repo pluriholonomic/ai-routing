@@ -34,7 +34,7 @@ def test_monitor_withholds_empirical_claims_before_support(tmp_path):
         "glm52_hmp_events",
     )
     out = tmp_path / "analysis"
-    simulation = out / "simulation"
+    simulation = out / "simulation-monitor"
     simulation.mkdir(parents=True)
     (simulation / "market_share_hmp_simulation_summary.json").write_text(
         json.dumps({"exact_singleton_zero_wedge_passed": True})
