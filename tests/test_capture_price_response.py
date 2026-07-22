@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 import pyarrow.parquet as pq
 import pytest
 
-from orcap.capture_price_response import execute_bundle, reconstruct_spend
+from orcap.capture_price_response import _send_assignment, execute_bundle, reconstruct_spend
 from orcap.price_experiments import build_response_assignments, plan_manifest
 
 
@@ -180,3 +180,32 @@ def test_plan_bundle_contains_no_payload_or_secret_fields():
     present = {str(key).lower() for key in keys(_bundle())}
     for forbidden in ("messages", "prompt_nonce", "completion", "api_key", "authorization"):
         assert forbidden not in present
+
+
+def test_sender_honors_the_immutable_assignment_output_cap(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_PRICE_EXPERIMENT_KEY", "test-only")
+    assignment = copy.deepcopy(_bundle()["assignments"][0])
+    assignment["max_output_tokens"] = 1
+    observed = {}
+
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"provider": "a", "usage": {"completion_tokens": 1}}
+
+    class Client:
+        @staticmethod
+        def post(_url, *, headers, json):
+            observed["headers"] = headers
+            observed["body"] = json
+            return Response()
+
+    completion, _generation, error, status = _send_assignment(Client(), assignment)
+
+    assert completion is not None
+    assert error is None
+    assert status == 200
+    assert observed["body"]["max_tokens"] == 1
+    assert "test-only" not in str(observed["body"])

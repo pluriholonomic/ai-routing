@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from orcap.analysis.market_share_hmp_monitor import gate_outcomes, run
+from orcap.analysis.market_share_hmp_monitor import _attempt_panel, gate_outcomes, run
 
 
 def _write(frame: pd.DataFrame, root: Path, name: str) -> None:
@@ -82,3 +82,36 @@ def test_gate_outcomes_is_one_way_at_the_support_boundary():
     open_arms, open_events = gate_outcomes(arms, events, released=True)
     assert open_arms.loc[0, "active_selection_rate"] == 2 / 3
     assert open_events.loc[0, "active_selection_rate"] == 0.75
+
+
+def test_first_two_background_blocks_are_frozen_as_legacy_cap_stratum(tmp_path):
+    rows = []
+    for event_id in (
+        "mshmp-background-20260722T0300Z",
+        "mshmp-background-20260722T0400Z",
+        "mshmp-background-20260722T0500Z",
+    ):
+        rows.append(
+            {
+                "study_id": "openrouter-glm52-market-share-hmp-v1",
+                "metadata_json": json.dumps(
+                    {"task_id": event_id, "block_id": event_id, "event_id": event_id}
+                ),
+            }
+        )
+    _write(pd.DataFrame(rows), tmp_path, "glm52_hmp_attempts")
+
+    panel = _attempt_panel(tmp_path).set_index("registered_event_id")
+
+    assert (
+        panel.loc["mshmp-background-20260722T0300Z", "execution_cap_stratum"]
+        == "legacy_eight_token_cap"
+    )
+    assert (
+        panel.loc["mshmp-background-20260722T0400Z", "execution_cap_stratum"]
+        == "legacy_eight_token_cap"
+    )
+    assert (
+        panel.loc["mshmp-background-20260722T0500Z", "execution_cap_stratum"]
+        == "one_token_cap"
+    )

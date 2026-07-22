@@ -180,6 +180,18 @@ writes the intervals into the JSON summary.
     algorithms within one market, so `heterogeneous` was not a defensible label.
     New artifacts use `non_ucb_homogeneous_family_pool`; the first immutable
     artifact's legacy key is interpreted only under that corrected label.
+20. **The shared sender overrode the frozen one-token cap.** Assignments and
+    quote-cap arithmetic used one output token, but the first two blocks were
+    sent with the generic eight-token `short_chat` limit. The requests remain
+    balanced routing probes because this affected every arm, but `$0.0023591`
+    is not a true worst-case execution cap for those blocks. The sender now
+    honors the immutable assignment field; the first 24 assignments are a
+    frozen legacy-cap stratum with required include/exclude sensitivity.
+21. **“Identical prompts” was too literal.** Every task uses the same neutral
+    semantic template and token-length class, but has an inert fixed-length
+    nonce and fresh session identifier. This protects against cache/session
+    carryover. The correct description is matched fixed-template probes, not
+    byte-identical requests.
 
 ## Remaining threats that cannot be engineered away
 
@@ -262,9 +274,8 @@ writes the intervals into the JSON summary.
   ID, or secret fields.
 - Before the gate, outcome columns in aggregate Parquet and inline HTML are
   null.
-- Local audit: scoped ruff and shell syntax checks passed; after the remote-only
-  failure fixes, the repository suite passed 860 tests with one pre-existing
-  skip.
+- Local audit: scoped ruff and shell syntax checks passed; after the red-team
+  fixes, the repository suite passed 868 tests with one pre-existing skip.
 
 ## Remote provenance
 
@@ -278,12 +289,14 @@ writes the intervals into the JSON summary.
   older than the frozen 30-minute freshness gate.
 - First live background block: run `29889339215` froze 12 assignments across
   six arms under the same protocol hash and a worst-case aggregate quote cap of
-  `$0.0023591`. Paid execution and the private Hugging Face checkpoint passed.
+  `$0.0023591` under the assignment-side one-token calculation. Paid execution
+  and the private Hugging Face checkpoint passed. The sender used an eight-token
+  limit, so this number is not labeled an execution-side worst-case cap.
   Its only public execution artifact is an outcome-free receipt; provider,
   request, latency, fallback, cost, and spend outcomes remain blinded.
 - First automatic post-capture block: run `29890074239` froze a fresh 04:00 UTC
   background menu with another 12 assignments, two per arm, under the same
-  protocol hash and aggregate quote cap. Execution and the private checkpoint
+  protocol hash and assignment-side aggregate quote cap. Execution and the private checkpoint
   passed; a scan of both public artifacts found no request, provider-selection,
   cost, latency, fallback, prompt, or response outcome fields.
 

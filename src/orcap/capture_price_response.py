@@ -303,7 +303,10 @@ def _send_assignment(
     body: dict[str, Any] = {
         "model": assignment["model_id"],
         "messages": [{"role": "user", "content": _shape_prompt(shape, nonce)}],
-        "max_tokens": shape.max_output_tokens,
+        # The immutable assignment owns the execution cap. Falling back to the
+        # shape default is retained only for legacy plans that predate the
+        # explicit field.
+        "max_tokens": int(assignment.get("max_output_tokens") or shape.max_output_tokens),
         "temperature": 0,
         "usage": {"include": True},
         "session_id": _session_id(assignment),

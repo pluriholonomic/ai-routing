@@ -22,6 +22,12 @@ from ..market_share_hmp import STUDY_ID, provider_key
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = ROOT / "config" / "glm52_market_share_hmp_v1.toml"
 DEFAULT_OUT = ROOT / "data" / "analysis" / "glm52-market-share-hmp-v1"
+LEGACY_EIGHT_TOKEN_EVENTS = frozenset(
+    {
+        "mshmp-background-20260722T0300Z",
+        "mshmp-background-20260722T0400Z",
+    }
+)
 
 
 def _read(root: Path, name: str) -> pd.DataFrame:
@@ -83,6 +89,11 @@ def _attempt_panel(root: Path) -> pd.DataFrame:
     attempts["block_id"] = metadata.map(lambda row: row.get("block_id"))
     attempts["registered_event_id"] = metadata.map(lambda row: row.get("event_id"))
     attempts["wave_id"] = metadata.map(lambda row: row.get("wave_id"))
+    attempts["execution_cap_stratum"] = np.where(
+        attempts["registered_event_id"].astype(str).isin(LEGACY_EIGHT_TOKEN_EVENTS),
+        "legacy_eight_token_cap",
+        "one_token_cap",
+    )
     return attempts
 
 
@@ -128,6 +139,7 @@ def _event_support(
 def _arm_summary(panel: pd.DataFrame, protocol: dict[str, Any]) -> pd.DataFrame:
     columns = [
         "sample_kind",
+        "execution_cap_stratum",
         "policy",
         "attempts",
         "successful",
@@ -161,36 +173,46 @@ def _arm_summary(panel: pd.DataFrame, protocol: dict[str, Any]) -> pd.DataFrame:
         kind_successful = successful[successful["sample_kind"].eq(sample_kind)]
         if kind_panel.empty:
             continue
-        for policy in policies:
-            attempted = kind_panel[kind_panel["policy"].astype(str).eq(policy)]
-            group = kind_successful[kind_successful["policy"].astype(str).eq(policy)]
-            active_count = int(group["selected_key"].isin(active).sum())
-            anchor_count = int(group["selected_key"].isin(anchors).sum())
-            low, high = _binomial_interval(active_count, len(group))
-            rows.append(
-                {
-                    "sample_kind": sample_kind,
-                    "policy": policy,
-                    "attempts": int(len(attempted)),
-                    "successful": int(len(group)),
-                    "active_selections": active_count,
-                    "anchor_selections": anchor_count,
-                    "active_selection_rate": (
-                        active_count / len(group) if len(group) else np.nan
-                    ),
-                    "active_rate_ci_low": low,
-                    "active_rate_ci_high": high,
-                    "mean_cost_usd": pd.to_numeric(
-                        group.get("cost_usd"), errors="coerce"
-                    ).mean(),
-                    "mean_latency_ms": pd.to_numeric(
-                        group.get("latency_ms"), errors="coerce"
-                    ).mean(),
-                    "fallback_rate": group.get(
-                        "fallback_triggered", pd.Series(dtype=float)
-                    ).mean(),
-                }
-            )
+        for cap_stratum in sorted(kind_panel["execution_cap_stratum"].astype(str).unique()):
+            stratum_panel = kind_panel[
+                kind_panel["execution_cap_stratum"].astype(str).eq(cap_stratum)
+            ]
+            stratum_successful = kind_successful[
+                kind_successful["execution_cap_stratum"].astype(str).eq(cap_stratum)
+            ]
+            for policy in policies:
+                attempted = stratum_panel[stratum_panel["policy"].astype(str).eq(policy)]
+                group = stratum_successful[
+                    stratum_successful["policy"].astype(str).eq(policy)
+                ]
+                active_count = int(group["selected_key"].isin(active).sum())
+                anchor_count = int(group["selected_key"].isin(anchors).sum())
+                low, high = _binomial_interval(active_count, len(group))
+                rows.append(
+                    {
+                        "sample_kind": sample_kind,
+                        "execution_cap_stratum": cap_stratum,
+                        "policy": policy,
+                        "attempts": int(len(attempted)),
+                        "successful": int(len(group)),
+                        "active_selections": active_count,
+                        "anchor_selections": anchor_count,
+                        "active_selection_rate": (
+                            active_count / len(group) if len(group) else np.nan
+                        ),
+                        "active_rate_ci_low": low,
+                        "active_rate_ci_high": high,
+                        "mean_cost_usd": pd.to_numeric(
+                            group.get("cost_usd"), errors="coerce"
+                        ).mean(),
+                        "mean_latency_ms": pd.to_numeric(
+                            group.get("latency_ms"), errors="coerce"
+                        ).mean(),
+                        "fallback_rate": group.get(
+                            "fallback_triggered", pd.Series(dtype=float)
+                        ).mean(),
+                    }
+                )
     return pd.DataFrame(rows, columns=columns)
 
 

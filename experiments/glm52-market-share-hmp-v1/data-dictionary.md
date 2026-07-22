@@ -85,8 +85,10 @@ strata, plus whether each frozen support threshold is reached.
 
 ### `arm_summary.parquet`
 
-Attempt counts by randomized menu arm. Selection, cost, latency, and fallback
-outcomes are replaced with nulls until the complete support gate passes.
+Attempt counts by randomized menu arm and execution-cap stratum. The exact
+first two background event IDs are labeled `legacy_eight_token_cap`; all later
+blocks are `one_token_cap`. Selection, cost, latency, and fallback outcomes are
+replaced with nulls until the complete support gate passes.
 
 ### `event_aggregate.parquet`
 
