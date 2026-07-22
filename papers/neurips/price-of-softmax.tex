@@ -24,8 +24,8 @@
 \setlist{nosep,leftmargin=*}
 \setlength{\emergencystretch}{2em}
 
-\title{Price and Score in Strategic Routing Markets:\\
-A Property-Tested Multi-Agent Environment}
+\title{Property-Testing Strategic AI Routing Markets:\\
+An Audited Multi-Agent Environment}
 \author{Tarun Chitra\\Gauntlet\\\texttt{tarun@gauntlet.xyz}}
 \date{}
 
@@ -33,23 +33,26 @@ A Property-Tested Multi-Agent Environment}
 \maketitle
 
 \begin{abstract}
-Inference routers allocate token demand among strategic providers using public
-prices and hidden service scores.  We introduce a request-level multi-agent
-environment in which providers choose quotes, admission, and availability
-against pluggable routers, with exact settlement, capacity, fallback, common
-random numbers, and provider-private feedback.  A property ladder separates
-software invariants, held-out moments, simulator causality, strategic robustness,
-and live transport.  The first calibration task decomposes price and score:
-22,330 public-menu snapshots imply 1.40--10.98 percentage points of mechanical
-share from benchmark undercutting, while a prospective owned-choice panel for
-the latent score remains support-gated.  Separately, two synthetic learner
-benchmarks test failure modes without explaining the public share surface.
-Marginal-preserving signal coupling raises buyer price by
-0.118 in a focal UCB/UCB game but by $-0.00047$ across heterogeneous learners.
-A hardened score reduces one-shot quote and identity manipulation, yet leaves
-9.68 times more normalized post-UCB exploitability in its first learning screen.
-The result is an executable standard for testing price--score mechanisms, not a
-claim that simulated agents reproduce live providers.
+Inference routers allocate token demand among strategic providers with
+different capacity, cost, quality, and learning rules.  We introduce a
+request-level multi-agent environment with exact settlement, capacity, fallback,
+common random numbers, provider-private feedback, pluggable routers, and
+adversarial deviation oracles.  A property ladder separates software invariants,
+intervention fidelity, held-out market moments, strategic robustness, and live
+transport.  On 3.18 million public endpoint observations, three GLM-5.2 active
+undercutters receive 18.62 percentage points of inverse-price shadow share from
+passive quotes, yet GLM effective rank is linear-compatible and 90\% of non-GLM
+markets have no active undercutter.  Thus the proposed asymptotic regime split
+fails its empirical property test.  A fixed-$n$ information-congestion benchmark
+recovers the theoretical optimizer to exponent error below 0.006, while its
+paired bandit intervention moves action correlation without moving allocation.
+A second game recomputes bounded best responses for ten provider technologies
+under 108 router rules: welfare-, revenue-, quality-, user-, and
+provider-oriented optima diverge, and pair deviations remain profitable despite
+zero unilateral grid regret.  An owned price-sort intervention changes
+cheapest-provider selection by 80 points but remains preregistration-gated.
+The result is an executable refusal standard for mechanism claims, not a claim
+that simulated agents reproduce live providers or welfare.
 \end{abstract}
 
 \section{Introduction}
@@ -95,22 +98,23 @@ coalitions, identity splitting, fading quotes, and sequential response oracles
 audit strategic robustness.  The memory router is an adversarial benchmark with
 a declared transition law; it is not calibrated from the public price panel.
 
-Two tasks are intentionally orthogonal.  E0 measures a contemporaneous
-price--score manipulation surface.  E1 asks whether particular learners fail
-under correlated signals and reward memory inside a synthetic game.  Neither
-task supplies the missing transition equation for the other.  They can be joined
-only after owned routing outcomes show that lagged price or quality histories
-predict a future score beyond the current menu and after a causal design
-separates memory from unobserved eligibility.
+Four tasks are intentionally separated.  E0 measures a contemporaneous
+price--score manipulation surface.  E1 asks whether particular learners react
+to correlated signal order inside a synthetic game.  E2 audits a hardened score
+against deviations and adaptive learning.  E3 tests an information-congestion
+planner and a heterogeneous-provider objective frontier.  Agreement across
+tasks is not transport: each task has its own nuisance-preservation and external
+support gate.
 
-Our evaluation has four main findings.
+Our evaluation has five main findings.
 
 \begin{enumerate}
 \item Public menus identify a price-manipulation surface but not realized flow.
-Across seven models, resetting active quotes to model-author benchmarks removes
-1.40--10.98 percentage points of conditional shadow share.  A prospective paid
-panel estimates the non-price score and its interaction with undercutting; it is
-still accruing, so no score result is imputed.
+The immutable panel contains 3,182,780 endpoint observations and 3,274
+snapshots.  For GLM-5.2, resetting three active quotes to the benchmark removes
+18.62 percentage points of conditional shadow share.  Its rank slope is
+linear-compatible; non-GLM active repricing is sparse.  Neither proposed
+asymptotic regime is empirically established.
 \item In a separate synthetic benchmark, an exact signal-order intervention validates a narrow
 Hansen--Misra--Pai-style mechanism \citep{hansenmisrapai2021}.  In a focal
 two-UCB prisoner's-dilemma game, preserving common signal order increases
@@ -125,11 +129,17 @@ Across 4,878 historical menus it reduces mean maximum quote-attack gain from
 UCB screen ends at profiles with normalized residual exploitability 3.929 versus
 0.406 under inverse-square routing.  Protecting a rule from one-step attacks can
 make its learning dynamics harder.
-\item Public and owned data sharply limit external interpretation.  A residual-
-coupling statistic reaches an unadjusted $p=0.04998$, but one provider pair
-accounts for 87.3\% of paired events, two later mechanism legs are power-gated,
-and the multiplicity family is incomplete.  We do not identify collusion,
-communication, or provider algorithm.
+\item A conditional information-congestion benchmark has
+$k^*\asymp n^{(1+\alpha\beta)/(1+\alpha)}$ when signal effective rank scales as
+$n^\beta$.  Its integer optimizer is reproduced, but the paired bandit
+allocation effect is null.  Public rank diagnostics also reject the motivating
+GLM-minority/non-GLM-linear split.
+\item A heterogeneous structural game makes mechanism objectives explicit.
+Across 108 policies, the welfare-selected rule attains welfare 208.44 and router
+revenue 4.88; the revenue-selected rule attains revenue 7.78 but welfare 83.99
+and negative user utility.  Zero unilateral grid regret does not eliminate
+profitable bounded pair deviations.  These are declared scenarios, not live
+estimates or evidence of collusion.
 \end{enumerate}
 
 The contribution is methodological and executable.  Existing multi-agent
@@ -266,63 +276,46 @@ Level 5 is required for a live mechanism or welfare claim.
 
 \subsection{Current market properties}
 
-The latest hosted aggregate revision spans 7--21 July 2026.  In its frozen
-provider-regime analysis, 366 training provider-model pairs produce 358 evaluable
-holdout pairs.  Overall regime persistence is 0.944.  Anchor, premium, and static
-discount regimes persist at 1.000, 0.992, and 0.976; active undercutting persists
-in 5 of 21 pairs (0.238).  The regimes describe quote paths, not cost or intent.
+The immutable hosted revision
+\texttt{f4023bdad64b6ad468741a5a3b1f3afb7af40dd0} spans 7--22 July 2026 and
+contains 3,182,780 endpoint observations, 3,274 five-minute snapshots, 321 model
+identifiers, and 72 provider labels.  Free routes are excluded from price-share
+analysis, leaving 71 paid markets with stable menu support.  A clean integrity
+run completes 29 registered public modules with zero failures and never queries
+prospective owned outcomes.
 
-An active-undercutter response screen contains 1,052 paired timing events in 11
-provider-model clusters.  The registered response-minus-shifted-placebo
-difference is 0.0019 with cluster interval $[-0.0438,0.0410]$ and one-sided exact
-$p=0.468$.  The current owned delegated-selection match contains 81 anchor and
-92 premium selections, with no active or static selections.  This is support for
-our workload, not market share.  Zero provider-model cells have a valid capacity-
-utilization measure, and dumping is not identified.
+GLM-5.2 has three pre-holdout active undercutters---Novita, StreamLake, and
+Inceptron---in a median 25-provider menu.  Their observed inverse-price shadow
+share is 27.61\%; resetting their quotes to the author/menu benchmark gives
+8.99\%, a passive-to-active transfer of 18.62 percentage points.  This is a
+deterministic rule counterfactual, not realized flow.  Its nested effective-rank
+slope is 0.967 with block-bootstrap interval $[0.516,1.219]$ at one hour and is
+linear-compatible at six and 24 hours as well.  Across 70 non-GLM markets, 90\%
+have zero active undercutters and the median active density is zero.  The only
+non-GLM three-provider rank ladder loses its dominant training factor in the
+holdout.  The attractive GLM-$o(n)$/non-GLM-$\Omega(n)$ contrast therefore fails
+level 3.
 
-An independent elasticity audit rejects the claim that the public inverse-square
-formula is realized allocation ($z=10.06$).  Consequently, the environment does
-not use public shadow shares as a live calibration target.  It uses them only to
-define explicit counterfactual router plugins.
-
-The price--score decomposition makes that distinction constructive.  At a
-fixed 1,000-input/256-output-token shape and point exponent $1.6483$, 22,330
-snapshots across seven models produce benchmark-reset active-share effects from
-1.40 to 10.98 percentage points.  GLM-5.2's 27.3\% median equivalent discount
-produces 10.98 excess shadow-share points and 5.40 points of anchor loss.  The
-full menu, not the cut alone, determines the effect.
-
-The level-5 companion is an assignment-first GLM-5.2 campaign.  Conditional
-multinomial choice estimates the relative $\alpha_i$ in
-\cref{eq:price-score}, its price-equivalent discount, mean probability mass
-reallocated beyond price, and whole-block out-of-sample information.  It also
-compares explicit price sorting with default routing.  The prospective cutoff
-is 21 July 22:00 UTC; four earlier observed choices are excluded.  Diagnostic
-support requires 40 choices, 20 blocks, and three selected providers;
-publication requires 800 choices, 100 blocks, seven days, and 90\% menu
-coverage.  At this freeze it has zero eligible choices.  A simulator may use the
-public surface now, but may not claim live score calibration until that gate.
+The level-5 companion is an assignment-first GLM-5.2 campaign.  Thirty-six
+covered default choices over 18 blocks estimate a public-price exponent of
+1.735 with profile interval $[0.31,3.16]$.  The focal active pair is selected
+2/36 times versus 13.60\% predicted shadow share.  In 15 complete paired blocks,
+default routing selects the cheapest provider 0\% of the time and explicit
+price sorting selects it 80\% of the time; the block-bootstrap contrast is
+$[60,100]$ percentage points.  This is a direct action-interface effect for one
+account.  The registered gate remains 800 choices, 100 blocks, seven days, and
+90\% candidate coverage.  The latent-score fit has only 30 choices in 15 blocks
+and is not run.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.96\textwidth]{../../data/analysis/undercutting-incidence-v1/wf19_cross_model_elasticity.pdf}
-\caption{Level-3 price calibration.  Benchmark resets identify deterministic
-share transfers under a declared inverse-power router, not realized flow.  The
-prospective owned-choice panel is the separate level-5 bridge for the latent
-score and remains support-gated.}
+\includegraphics[width=0.96\textwidth]{../../analysis/wf20_informational_congestion.pdf}
+\caption{Level-3 public-market property test.  GLM-5.2 has a small active set
+and large public-rule shadow transfer, but its rank slope is linear-compatible.
+Non-GLM activity is sparse and its only low-rank ladder fails temporal
+transport.  The slopes are finite-menu diagnostics, not asymptotic estimates or
+realized shares.}
 \label{fig:price-score}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.96\textwidth]{../../data/analysis/undercutting-incidence-v1/wf19_model_comparison_timeseries.pdf}
-\caption{Level-3 temporal calibration.  Shared axes compare hourly benchmark
-discounts, deterministic excess undercutter shadow share, and price-rule arc
-elasticity across seven models.  The environment can replay these public menu
-regimes, but level-5 scoring and realized-flow claims remain separately gated.
-Free endpoints are excluded because inverse-power shares are undefined at a
-zero price.}
-\label{fig:price-score-time}
 \end{figure*}
 
 \subsection{Intervention fidelity}
@@ -413,21 +406,15 @@ design impression.
 
 \subsection{Failed external transport audit for E1}
 
-This audit does not connect E1 to E0's market-share accounting.  It asks whether
-four necessary properties of the synthetic signal mechanism are even visible in
-the external aggregate panel.  The ordered family is: (SC1) excess residual quote coupling;
-(SC2) preperiod routing signal-to-noise gradient; (SC3) coupled-versus-independent
-elasticity wedge; and (SC4) forward transition toward premium states.  The latest
-aggregate monitor has 766 completion-price events, seven mechanism days, 19
-provider-pair/model clusters, and 70 covered delegated choices.
-
-SC1's observed residual covariance is 0.02023, exceeding the mean of 2,000
-clock-preserving circular shifts by 0.02560.  Its one-sided $p=0.04998$ is nominal,
-but the maximum provider-pair event share is 0.873 against a frozen cap of 0.20.
-SC2 and SC3 are power-gated.  SC4's descriptive premium-transition association
-has $p=0.129$.  The Holm family is incomplete and no claim promotes.  This is not
-semantic caution: one more day moved SC1 across 0.05 while worsening pair
-concentration.  A fixed property gate prevents optional causal language.
+This audit does not connect E1 to E0's market-share accounting.  The current
+assignment-first HMP monitor contains 120 assignments, attempts, and covered
+choices with complete menu coverage and assignment integrity.  It contains no
+qualifying public multiplicity event.  Consequently only the exact price-path
+identity passes; routing-SNR, elasticity-wedge, buyer-harm, and familywise
+inference gates do not run.  The score-memory monitor has 26 choices in 13 blocks
+over 0.55 days and also remains accruing.  No signal-coupling, memory,
+communication, or collusion claim transports.  A fixed property gate prevents
+the simulator's focal UCB result from becoming optional live-market language.
 
 \subsection{E2: static defense versus adaptive learning}
 
@@ -458,6 +445,89 @@ The design lesson is concrete.  A one-sided trust region can prevent a provider
 from suddenly gaining traffic by undercutting, yet introduce committed state that
 learners estimate slowly.  Static strategy-proofness on a grid does not imply low
 learning regret or fast convergence in a nonstationary repeated game.
+
+\subsection{E3: information congestion and objective frontiers}
+
+E3 asks two questions that E0--E2 leave open: how many providers should adapt to
+correlated information, and which router objective should select among their
+best responses?  Let $\Sigma_n$ be the covariance matrix of provider signals and
+define effective rank
+\begin{equation}
+r_n=\frac{(\operatorname{tr}\Sigma_n)^2}
+{\operatorname{tr}(\Sigma_n^2)}.
+\end{equation}
+For $k$ adaptive providers, declare the planner benchmark
+\begin{equation}
+V_n(k)=\frac{bk}{n}-c\left(\frac{k}{n}\right)^2
+\left(\frac{k}{r_n}\right)^\alpha,
+\qquad b,c,\alpha>0.
+\label{eq:congestion}
+\end{equation}
+The benefit is local allocation improvement; the loss is a scenario for
+common-mode overreaction.  It is not identified from quote covariance.
+
+\begin{theorem}[Conditional information-congestion threshold]
+Before clipping to $[0,n]$, the unique continuous maximizer of
+\cref{eq:congestion} is
+\begin{equation}
+k_n^\circ=\left(\frac{b n r_n^\alpha}{c(2+\alpha)}\right)^{1/(1+\alpha)}.
+\end{equation}
+The integer optimum is adjacent.  If $r_n\asymp n^\beta$, then
+\begin{equation}
+k_n^*=\Theta\!\left(n^{(1+\alpha\beta)/(1+\alpha)}\right).
+\label{eq:kstar-scaling}
+\end{equation}
+Thus the efficient adaptive fraction vanishes for $\beta<1$ and can remain
+constant for $\beta=1$.
+\label{thm:congestion}
+\end{theorem}
+
+SM3 holds $n$ fixed within every comparison.  Across
+$\beta=0,.25,.5,.75,1$, fitted integer-optimum exponents differ from
+\cref{eq:kstar-scaling} by at most 0.006.  A paired bandit intervention then
+preserves every provider's marginal signal multiset while changing common
+order.  It can change action correlation, but its active-share effects are
+$-0.00116$, $-0.00086$, and $-0.00038$ for $\beta=0,.5,1$, with all
+seed-clustered intervals containing zero.  The environment therefore validates
+the optimizer and rejects the declared behavioral microfoundation.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.96\textwidth]{../../analysis/sm3_informational_congestion.pdf}
+\caption{E3 information-congestion benchmark.  Panels A--B recover the
+conditional optimizer.  Panels C--D show the paired behavioral falsification:
+action correlation can move without a distinguishable active-share response.
+Numerical theorem recovery is not mechanism transport.}
+\label{fig:sm3}
+\end{figure*}
+
+SM4 declares ten technologies: an author, two anchor resellers, two
+reserved-capacity providers, three spot-dependent startups, and two
+custom-quality providers.  Providers play bounded cyclic price best responses
+against 108 router rules spanning price exponent, quality and reliability
+weights, exploration, correlated-group caps, and take rates.  Every outcome
+reconciles welfare, user utility, provider profit, and router fees; 104 rules
+converge.
+
+The inverse-square price-only baseline has welfare 137.29, router revenue 5.99,
+quality-adjusted successes 111.52, ten viable providers, and served-share HHI
+0.125.  The welfare-, quality-, and user-selected rule has welfare 208.44,
+quality-adjusted successes 149.96, revenue 4.88, eight viable providers, and HHI
+0.281.  The revenue-selected rule has revenue 7.78 but welfare 83.99 and
+negative user utility.  Selected rules have zero unilateral grid regret.
+Nevertheless, the largest bounded same-type pair deviation gains 1.87 under the
+welfare rule and 8.88 under the revenue rule.  These are susceptibility tests,
+not evidence of coordinated conduct.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.96\textwidth]{../../analysis/sm4_multiobjective_router_game.pdf}
+\caption{E3 heterogeneous-provider objective frontier.  Rules selected for
+welfare, router revenue, delivered quality, user utility, provider profit, and
+viability occupy different regions.  Technologies, demand, and value are
+declared scenarios; the figure is not a live-market welfare estimate.}
+\label{fig:sm4}
+\end{figure*}
 
 \section{Mechanism Evaluation Without Welfare Theater}
 \label{sec:mechanism}
@@ -499,18 +569,25 @@ chosen before the repeated pricing game.  A mechanism improvement must survive
 best responses and two-provider coalitions for each technology mixture, not just
 reallocate a frozen menu.
 
-The current replay candidate uses price exponent 1.25 and exploration 0.10.  On
-18,947 held-out hourly menus it lowers a quote-coupling proxy by 49.3\%, raises
-displayed price by 2.08\%, and changes public reliability by 0.0059 percentage
-points.  Provider behavior is fixed.  The result is sufficient to choose a
-prospective randomized arm, not to deploy the rule or claim welfare.
+The simulator suggests a mechanism stack rather than a scalar score.  First,
+use execution-contingent capacity commitments instead of advertised capacity or
+provider identity.  Second, bound aggregate attempt probability assigned to
+providers with correlated quote innovations while preserving an operator-neutral
+exploration floor.  Third, estimate quality and reliability out of sample and
+pay explicit SLA credits.  Fourth, separate router fees from selected spend so
+the revenue objective is not silently inserted into the user score.  Finally,
+publish a small Pareto menu of user-cost, welfare, revenue, and quality policies
+rather than pretending their weights are common knowledge.
 
-The next experiment randomizes production delegation, price-ordered fallback,
-and the frozen candidate score within model--prompt--time blocks.  Primary
-outcomes are attempted-request spend, completion, end-to-end latency, and blinded
-task fidelity.  Capacity commitments require a separate provider-facing trial.
-A scalar welfare statement is promoted only over a preregistered box of user
-values and provider costs.
+Technology stress tests show why robustness must precede deployment.  The
+welfare-selected rule falls from 208.44 to worst-case welfare 147.65 under
+reserved-capacity shortfall, reliability shocks, spot-cost spikes, and quality
+compression.  The revenue and provider-viability selections have worst-case
+welfare below 80.  The next live experiment should therefore randomize default
+delegation, explicit price sorting, and one predeclared score within
+model--prompt--time blocks; measure spend, completion, latency, and blinded task
+fidelity; and report objective-specific outcomes over a preregistered cost/value
+box.  Capacity commitments require a separate provider-facing trial.
 
 \section{Related Work}
 
@@ -538,7 +615,10 @@ workload distribution.  Public enforcement is aggregated.  Provider cost,
 market-wide demand, user value, private rebates, and deliverable capacity are
 unobserved.  UCB, epsilon-greedy, Q-learning, and static policies span only a
 small subset of strategic behavior.  Grid exploitability is not unrestricted
-dynamic exploitability.  The hardened-rule screen is mixed and not confirmatory.
+dynamic exploitability.  The information-congestion loss is a declared
+scenario, not identified by effective rank; its bandit allocation transport is
+null.  SM4 technologies are stress cases rather than fitted provider types.  The
+hardened-rule and owned-routing screens are mixed or accruing.
 
 Paid probes are assignment-first, minimal-token, budget-capped, and remotely
 rate-limited.  Public artifacts remove request-level rows.  The research does not
@@ -546,16 +626,17 @@ send adversarial load, infer prompt contents, or identify provider employees.
 Provider labels are descriptive regimes, not allegations.  We do not claim
 collusion, communication, dumping, or literal front-running.
 
-The central finding is that routing-market simulation needs a refusal mechanism
-and an explicit price--score boundary.  Public menus calibrate strategic
-price-induced transfers; owned choices are required for hidden scoring; neither
-licenses cost, welfare, conduct, or score-memory claims by itself.  The focal
-UCB result is real inside its separate synthetic game and fails across heterogeneous agents.
-The hardened router resists one-step manipulation and fails its first learning
-gate.  The public quote signal is nominal and fails concentration and family
-completion.  A property ladder makes those boundaries executable.  That is what
-turns a strategic simulator from a storytelling device into a scientific
-instrument.
+The central finding is that routing-market simulation needs a refusal mechanism.
+Public menus reveal a large price-induced shadow-share surface but falsify the
+proposed GLM/non-GLM scaling story.  The conditional congestion optimizer is
+easy to reproduce numerically; its behavioral channel fails.  A hardened router
+resists one-step manipulation and fails its first learning gate.  Objective-
+selected equilibria disagree sharply even before model uncertainty, and
+unilateral stability does not remove pairwise susceptibility.  Owned choices
+are required for hidden scoring and are still gated.  The property ladder makes
+each failure executable.  That separation---not a simulated welfare number or a
+conduct label---is what turns a strategic routing environment from a
+storytelling device into a scientific instrument.
 
 \appendix
 
@@ -573,6 +654,14 @@ epoch capital cost on both sides. \hfill$\square$
 For each $i$, $\widetilde Z_{\cdot i}$ is a permutation of $Z_{\cdot i}$.
 Summation is invariant to permutation. \hfill$\square$
 
+\paragraph{Proof of \cref{thm:congestion}.}
+Equation~\eqref{eq:congestion} equals
+$bk/n-c k^{2+\alpha}/(n^2r_n^\alpha)$.  Its derivative vanishes only at the
+displayed $k_n^\circ$, and its second derivative is strictly negative for
+$k>0$.  Strict concavity places the integer optimum at an adjacent integer.
+Substituting $r_n\asymp n^\beta$ gives \cref{eq:kstar-scaling}.
+\hfill$\square$
+
 \section{Reproducibility and Evidence Ledger}
 
 The RL wrapper is \path{src/orcap/market_env/rl_env.py}; its tests verify
@@ -587,19 +676,26 @@ column multisets and paired interventions.  Adversarial tests cover quote
 monotonicity, share caps, commitment state, identity grouping, unilateral grids,
 and coalition enumeration.
 
-The WF18 hosted evidence is GitHub Actions run 29834114219, code revision
-\texttt{4e89018}, and dataset revision \texttt{e4174d08}.  The adaptive screen is
-run 29780088479, code revision \texttt{b7908e09}, and dataset revision
-\texttt{0a7c6bef}.  Aggregate manuscript inputs are recorded in
-\texttt{papers/neurips/hosted-evidence.json}; the figure is generated by the
-adjacent build script.  The hosted WF18 job hydrates one immutable snapshot,
-runs WF16 and WF18, executes the two-seed simulator, validates privacy boundaries,
-removes owned request rows, publishes aggregates to Hugging Face, refreshes a
-private dashboard, and preserves an immutable artifact.
-The cross-model price surface and prospective scoring protocol are frozen in
-\texttt{papers/price-score-evidence-2026-07-21.json}.  The score cell is
-explicitly accruing and contributes no fitted live parameter to the simulations
-in this paper.
+The current public input is immutable Hugging Face revision
+\texttt{f4023bdad64b6ad468741a5a3b1f3afb7af40dd0}.  A clean integrity run
+executes 29 registered public modules with zero failures and explicitly excludes
+prospective owned outcomes.  WF20 produces the paid-market census, nested-rank
+curves, block bootstrap, and benchmark-reset shadow shares.  The current owned
+figures come only from aggregate monitor artifacts; request-level outcomes are
+not inspected or published before their gates.
+
+SM3 is generated by
+\path{src/orcap/analysis/sm3_informational_congestion.py}; tests cover effective
+rank, analytic and integer optima, fixed-$n$ scaling, marginal-preserving paired
+signals, and seed-clustered intervals.  SM4 is generated by
+\path{src/orcap/analysis/sm4_multiobjective_router_game.py}; tests cover
+fixed-provider menus, capacity redistribution, welfare accounting, bounded best
+responses, objective selection, technology stress, pair deviations, and JSON
+serialization.  The older E1 and E2 bundles retain their recorded code, input,
+seed, and artifact hashes in \path{papers/neurips/hosted-evidence.json}.  No
+public shadow share, latent score, provider technology, cost, or value is fitted
+into SM3 or SM4.  The full boundary is recorded in the dated
+information-congestion evidence audit adjacent to the venue folders.
 
 \section{Environment Card}
 
