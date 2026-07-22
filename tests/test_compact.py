@@ -10,6 +10,7 @@ from orcap.compact import (
     compact_local,
     consolidate_table_day,
     deduplicate_endpoint_records,
+    deduplicate_exact_records,
     fold_pricing_changes,
 )
 
@@ -98,6 +99,18 @@ def test_endpoint_source_record_dedup_rejects_normalization_conflict():
         deduplicate_endpoint_records(pa.Table.from_pylist([first, conflicting]))
 
 
+def test_exact_record_dedup_removes_only_identical_checkpoint_rows():
+    first = {"study_id": "s", "task_id": "a", "tags": ["x", "y"], "cost": 0.1}
+    conflicting = first | {"cost": 0.2}
+
+    result, audit = deduplicate_exact_records(
+        pa.Table.from_pylist([first, first, conflicting])
+    )
+
+    assert result.to_pylist() == [first, conflicting]
+    assert audit == {"physical_rows": 3, "duplicate_rows_removed": 1}
+
+
 def test_pricing_fold_collapses_availability_variants_with_identical_quote():
     first = _row("20260101T000000Z") | {"status": 0}
     second = first | {"status": -2}
@@ -144,6 +157,20 @@ def test_endpoint_consolidation_is_idempotent_under_buffer_overlap(tmp_path):
     pq.write_table(pa.Table.from_pylist([first, second]), day / "buffered-part.parquet")
     out, _ = consolidate_table_day(day)
     assert pq.ParquetFile(out).read().num_rows == 2
+
+
+def test_generic_consolidation_is_idempotent_under_artifact_overlap(tmp_path):
+    import pyarrow.parquet as pq
+
+    day = tmp_path / "curated" / "paid_spend_ledger" / "dt=2026-07-16"
+    day.mkdir(parents=True)
+    row = {"study_id": "s", "task_id": "a", "cost_usd": 0.001}
+    pq.write_table(pa.Table.from_pylist([row]), day / "part-0.parquet")
+    pq.write_table(pa.Table.from_pylist([row]), day / "buffered-part.parquet")
+
+    out, _ = consolidate_table_day(day)
+
+    assert pq.ParquetFile(out).read().to_pylist() == [row]
 
 
 def test_compaction_requires_prior_state_when_history_exists(tmp_path):

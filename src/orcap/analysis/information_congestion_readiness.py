@@ -27,7 +27,30 @@ def read_table(root: Path, name: str) -> pd.DataFrame:
             frames.append(pq.ParquetFile(path).read().to_pandas())
         except (OSError, pa.ArrowInvalid):
             continue
-    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    return deduplicate_exact_rows(
+        pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    )
+
+
+def deduplicate_exact_rows(frame: pd.DataFrame) -> pd.DataFrame:
+    """Collapse identical checkpoint copies without hiding conflicting IDs."""
+    if frame.empty:
+        return frame.copy()
+    seen: set[str] = set()
+    keep: list[int] = []
+    for position, row in enumerate(frame.to_dict("records")):
+        payload = json.dumps(
+            row,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+            allow_nan=True,
+        )
+        if payload in seen:
+            continue
+        seen.add(payload)
+        keep.append(position)
+    return frame.iloc[keep].reset_index(drop=True)
 
 
 def task_id_from_metadata(value: Any) -> str | None:
@@ -100,9 +123,9 @@ def reconciliation(
     study_id: str,
     require_paid: bool,
 ) -> dict[str, Any]:
-    selected_assignments = assignments.copy()
-    selected_attempts = attempts.copy()
-    selected_spend = spend.copy()
+    selected_assignments = deduplicate_exact_rows(assignments)
+    selected_attempts = deduplicate_exact_rows(attempts)
+    selected_spend = deduplicate_exact_rows(spend)
     for frame in (selected_assignments, selected_attempts, selected_spend):
         if not frame.empty and "study_id" in frame:
             frame.drop(frame[~frame["study_id"].astype(str).eq(study_id)].index, inplace=True)

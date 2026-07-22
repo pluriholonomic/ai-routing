@@ -91,6 +91,8 @@ def test_paid_price_workflows_are_plan_first_trigger_scoped_and_fail_closed():
     assert "needs.plan.outputs.has_tasks == 'true'" in events
     assert "plan_w1:" in events and "execute_w1:" in events
     assert "plan_w2:" in events and "execute_w2:" in events
+    assert events.count("refresh authoritative spend after acquiring execution lease") == 3
+    assert events.count("refresh_paid_spend_ledger.sh 3 plan-data event") == 3
     assert "--wave-id w1" in events and "--max-wait-seconds 1800" in events
     assert "--wave-id w2" in events and "--max-wait-seconds 3600" in events
     assert events.index("upload W1 plan before requests") < events.index(
@@ -119,6 +121,8 @@ def test_price_workflows_are_assembled_analyzed_and_preregistered():
     )
     assert "paid-price-response.yml price-event-probes.yml" in price_assembler
     assert 'WORKFLOWS="$WORKFLOWS capture.yml capture-backstop.yml"' in price_assembler
+    assert '[ "$MODE" = "event" ] && [ "$wf" = "price-event-probes.yml" ]' in price_assembler
+    assert (root / "scripts/refresh_paid_spend_ledger.sh").is_file()
     response = (root / ".github/workflows/paid-price-response.yml").read_text()
     events = (root / ".github/workflows/price-event-probes.yml").read_text()
     assert "assemble_price_artifacts.sh 26 input-data paid" in response

@@ -20,6 +20,7 @@ from orcap.analysis.information_congestion_monitor import (
 from orcap.analysis.information_congestion_readiness import (
     assignment_support,
     capture_continuity,
+    deduplicate_exact_rows,
     privacy_gate,
     reconciliation,
 )
@@ -285,6 +286,33 @@ def test_reconciliation_fails_closed_on_duplicates_or_missing_spend():
         require_paid=True,
     )
     assert repaired["healthy"] is True
+
+
+def test_reconciliation_ignores_exact_checkpoint_overlap_but_rejects_conflicts():
+    assignment = {"study_id": "s", "task_id": "a", "run_id": "run-a"}
+    attempt = {"study_id": "s", "metadata_json": json.dumps({"task_id": "a"})}
+    spend = {"study_id": "s", "task_id": "a"}
+
+    assert len(deduplicate_exact_rows(pd.DataFrame([assignment, assignment]))) == 1
+    repeated = reconciliation(
+        pd.DataFrame([assignment, assignment]),
+        pd.DataFrame([attempt, attempt]),
+        pd.DataFrame([spend, spend]),
+        study_id="s",
+        require_paid=True,
+    )
+    assert repeated["healthy"] is True
+    assert repeated["duplicate_assignments"] == 0
+
+    conflicting = reconciliation(
+        pd.DataFrame([assignment, assignment | {"run_id": "run-b"}]),
+        pd.DataFrame([attempt]),
+        pd.DataFrame([spend]),
+        study_id="s",
+        require_paid=True,
+    )
+    assert conflicting["healthy"] is False
+    assert conflicting["duplicate_assignments"] == 1
 
 
 def test_privacy_gate_rejects_payload_columns_and_retained_rows():

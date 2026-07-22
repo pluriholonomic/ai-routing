@@ -55,6 +55,22 @@ ENDPOINT_LISTING_KEY = [
 ]
 ENDPOINT_SOURCE_RECORD_KEY = [*ENDPOINT_LISTING_KEY, "record_json"]
 
+ARTIFACT_OVERLAP_TABLES = {"paid_spend_ledger", "router_route_attempts"}
+ARTIFACT_OVERLAP_PREFIXES = (
+    "adaptive_router_",
+    "glm52_hmp_",
+    "glm52_routing_",
+    "ic_",
+    "market_measurement_",
+    "price_event_",
+    "price_response_",
+    "score_memory_",
+)
+
+
+def _artifact_overlap_table(name: str) -> bool:
+    return name in ARTIFACT_OVERLAP_TABLES or name.startswith(ARTIFACT_OVERLAP_PREFIXES)
+
 
 def yesterday_utc() -> str:
     return (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -128,6 +144,41 @@ def deduplicate_endpoint_records(table: pa.Table) -> tuple[pa.Table, dict[str, i
     return deduplicated, audit
 
 
+def deduplicate_exact_records(table: pa.Table) -> tuple[pa.Table, dict[str, int]]:
+    """Remove byte-equivalent logical rows from artifact overlap.
+
+    Paid execution artifacts deliberately carry their prior checkpoint so a
+    retried job can reconstruct spend and at-most-once reservations.  When
+    several such artifacts are assembled for the Hub, the same logical row can
+    therefore occur in both an earlier checkpoint and a later one.  Collapse
+    only rows whose complete normalized payload is identical; rows sharing an
+    identifier but disagreeing on any field remain visible to downstream
+    integrity checks.
+    """
+    if not table.num_rows:
+        return table, {"physical_rows": 0, "duplicate_rows_removed": 0}
+
+    seen: set[str] = set()
+    keep: list[int] = []
+    for index, row in enumerate(table.to_pylist()):
+        payload = json.dumps(
+            row,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+            allow_nan=True,
+        )
+        if payload in seen:
+            continue
+        seen.add(payload)
+        keep.append(index)
+    deduplicated = table.take(pa.array(keep, type=pa.int64()))
+    return deduplicated, {
+        "physical_rows": table.num_rows,
+        "duplicate_rows_removed": table.num_rows - deduplicated.num_rows,
+    }
+
+
 def canonicalize_pricing_endpoints(table: pa.Table) -> pa.Table:
     """Return one price record per listing/time, rejecting ambiguous quotes."""
     if "endpoint_fingerprint" not in table.column_names:  # pre-fingerprint captures
@@ -178,6 +229,9 @@ def consolidate_table_day(table_dir: Path) -> tuple[Path | None, list[Path]]:
     if table_dir.parent.name == "endpoints_snapshots":
         merged, audit = deduplicate_endpoint_records(merged)
         log.info("endpoint consolidation deduplication: %s", audit)
+    elif _artifact_overlap_table(table_dir.parent.name):
+        merged, audit = deduplicate_exact_records(merged)
+        log.info("exact-row consolidation deduplication: %s", audit)
     pq.write_table(merged, out, compression="zstd")
     return out, per_run
 
@@ -216,6 +270,11 @@ def bundle_curated_partitions(
         merged = pa.concat_tables(tables, promote_options="permissive")
         if table_dir.parent.name == "endpoints_snapshots":
             merged, audit = deduplicate_endpoint_records(merged)
+        elif _artifact_overlap_table(table_dir.parent.name):
+            merged, audit = deduplicate_exact_records(merged)
+        else:
+            audit = None
+        if audit is not None:
             duplicate_rows_removed[f"{table_dir.parent.name}/{table_dir.name}"] = audit[
                 "duplicate_rows_removed"
             ]
@@ -234,7 +293,14 @@ def bundle_curated_partitions(
         "bundle_name": bundle_name,
         "partitions": row_counts,
         "source_files_removed": files_removed,
-        "endpoint_duplicate_rows_removed": duplicate_rows_removed,
+        "duplicate_rows_removed": duplicate_rows_removed,
+        # Retain the old summary key for consumers written before exact-row
+        # deduplication was extended to every curated table.
+        "endpoint_duplicate_rows_removed": {
+            key: value
+            for key, value in duplicate_rows_removed.items()
+            if key.startswith("endpoints_snapshots/")
+        },
     }
     log.info("artifact bundle summary: %s", summary)
     return summary

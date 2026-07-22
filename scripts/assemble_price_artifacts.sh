@@ -62,10 +62,14 @@ for wf in $WORKFLOWS; do
       count=$((count + 1))
     fi
   done < <(
-    if { [ "$MODE" = "hmp" ] && [ "$wf" = "glm52-market-share-hmp.yml" ]; } || { [ "$MODE" = "ic" ] && [ "$wf" = "information-congestion.yml" ]; }; then
+    if { [ "$MODE" = "hmp" ] && [ "$wf" = "glm52-market-share-hmp.yml" ]; } ||
+      { [ "$MODE" = "ic" ] && [ "$wf" = "information-congestion.yml" ]; } ||
+      { [ "$MODE" = "event" ] && [ "$wf" = "price-event-probes.yml" ]; }; then
       # All statuses retain the outcome-free pre-request assignment artifact.
       # Ingest it as an at-most-once reservation; request-level execution
-      # artifacts are never published by this public repository.
+      # artifacts are never published by the HMP/IC workflows. Event workflows
+      # also expose redacted execution checkpoints before the full delayed-wave
+      # run completes, closing the gap between serialized execute jobs.
       gh run list --workflow "$wf" --limit "$LIMIT" \
         --json databaseId,createdAt \
         --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId"
