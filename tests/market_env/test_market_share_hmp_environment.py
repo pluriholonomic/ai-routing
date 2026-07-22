@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from orcap.market_env.experiments_market_share_hmp import (
+    _simulation_intervals,
     critical_memory_screen,
     public_price_calibration,
     seed_clustered_interval,
@@ -70,6 +71,33 @@ def test_seed_clustered_interval_uses_seed_not_factorial_rows_as_unit():
     assert interval["estimate"] == 3.0
     assert interval["seed_clusters"] == 3
     assert interval["ci95_lower"] < interval["estimate"] < interval["ci95_upper"]
+
+
+def test_cross_family_pool_is_not_mislabeled_as_a_heterogeneous_market():
+    rows = []
+    for algorithm in ("ucb", "thompson"):
+        for active in (1, 2):
+            for seed in (0, 1):
+                row = {
+                    "n_active": active,
+                    "algorithm": algorithm,
+                    "seed": seed,
+                    "learning_time__coupled_minus_shuffled": 0.0,
+                    "elasticity_learned__coupled": True,
+                    "elasticity_learned__marginal_preserving_shuffle": True,
+                }
+                for outcome in (
+                    "mean_action_correlation",
+                    "mean_active_group_share",
+                    "mean_buyer_price",
+                ):
+                    row[f"{outcome}__coupled_minus_shuffled"] = 0.0
+                rows.append(row)
+
+    intervals = _simulation_intervals(pd.DataFrame(rows))
+
+    assert "non_ucb_homogeneous_family_pool_multiple_active" in intervals
+    assert not any("heterogeneous" in key for key in intervals)
 
 
 def test_public_price_calibration_uses_relative_glm52_quotes(tmp_path):

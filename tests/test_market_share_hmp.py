@@ -218,6 +218,104 @@ def test_public_derank_contaminates_the_full_frozen_window():
     assert "public_derank" in events[0]["exclusion_reason"]
 
 
+def test_flat_quote_health_change_contaminates_the_full_frozen_window():
+    base = datetime(2026, 7, 22, 3, 0, tzinfo=UTC)
+    frame = _snapshot_frame(base)
+    changed = frame["run_ts"].eq(_run(base, 40)) & frame["provider_name"].eq("Together")
+    frame.loc[changed, "status"] = "degraded"
+    after = frame["run_ts"].map(lambda value: value >= _run(base, 40))
+    provider = frame["provider_name"].eq("Together")
+    frame.loc[after & provider, "status"] = "degraded"
+
+    events = detect_events(
+        frame,
+        active_providers=["Novita", "StreamLake", "Inceptron"],
+        author_providers=["Z.AI"],
+        eta=1.6482780609377246,
+        minimum_cut_fraction=0.02,
+        comove_window_minutes=15,
+        maximum_snapshot_gap_minutes=12,
+        minimum_post_captures=2,
+        now=base + timedelta(minutes=75),
+    )
+
+    assert events[0]["clean_event"] is False
+    assert "public_health_changed" in events[0]["exclusion_reason"]
+
+
+def test_flat_quote_provider_set_change_contaminates_the_full_frozen_window():
+    base = datetime(2026, 7, 22, 3, 0, tzinfo=UTC)
+    frame = _snapshot_frame(base)
+    after = frame["run_ts"].map(lambda value: value >= _run(base, 40))
+    frame = frame[~(after & frame["provider_name"].eq("Together"))].copy()
+
+    events = detect_events(
+        frame,
+        active_providers=["Novita", "StreamLake", "Inceptron"],
+        author_providers=["Z.AI"],
+        eta=1.6482780609377246,
+        minimum_cut_fraction=0.02,
+        comove_window_minutes=15,
+        maximum_snapshot_gap_minutes=12,
+        minimum_post_captures=2,
+        now=base + timedelta(minutes=75),
+    )
+
+    assert events[0]["clean_event"] is False
+    assert "provider_set_changed" in events[0]["exclusion_reason"]
+    assert "public_health_changed" not in events[0]["exclusion_reason"]
+
+
+def test_flat_quote_snapshot_gap_contaminates_the_full_frozen_window():
+    base = datetime(2026, 7, 22, 3, 0, tzinfo=UTC)
+    frame = _snapshot_frame(base)
+    missing = frame["run_ts"].isin([_run(base, 35), _run(base, 40)])
+    frame = frame[~missing].copy()
+
+    events = detect_events(
+        frame,
+        active_providers=["Novita", "StreamLake", "Inceptron"],
+        author_providers=["Z.AI"],
+        eta=1.6482780609377246,
+        minimum_cut_fraction=0.02,
+        comove_window_minutes=15,
+        maximum_snapshot_gap_minutes=12,
+        minimum_post_captures=2,
+        now=base + timedelta(minutes=75),
+    )
+
+    assert events[0]["clean_event"] is False
+    assert "snapshot_gap" in events[0]["exclusion_reason"]
+
+
+def test_repeated_updates_by_one_co_cutter_count_once():
+    base = datetime(2026, 7, 22, 3, 0, tzinfo=UTC)
+    frame = _snapshot_frame(base)
+    # StreamLake already cuts at minute 15 in the fixture. Add a second cut
+    # inside Novita's 15-minute co-move window.
+    second = frame["run_ts"].map(lambda value: value >= _run(base, 20))
+    provider = frame["provider_name"].eq("StreamLake")
+    frame.loc[second & provider, ["price_prompt", "price_completion"]] = 0.90e-6
+
+    events = detect_events(
+        frame,
+        active_providers=["Novita", "StreamLake", "Inceptron"],
+        author_providers=["Z.AI"],
+        eta=1.6482780609377246,
+        minimum_cut_fraction=0.02,
+        comove_window_minutes=15,
+        maximum_snapshot_gap_minutes=12,
+        minimum_post_captures=2,
+        minimum_unchanged_pre_captures=1,
+        now=base + timedelta(minutes=75),
+    )
+
+    assert events[0]["multiplicity"] == "pair"
+    assert events[0]["co_cutter_count"] == 1
+    assert events[0]["co_cutters"] == ["StreamLake"]
+    assert events[0]["co_cutter_share_mass"] == pytest.approx(1 / 6)
+
+
 def test_six_menu_arms_are_randomized_complete_and_exact():
     wave = {
         "event_id": "event-1",

@@ -314,12 +314,24 @@ def detect_events(
     authors = {provider_key(value) for value in author_providers}
     runs = sorted(collapsed["run_ts"].unique(), key=parse_time)
     transitions: list[dict[str, Any]] = []
+    interval_audits: list[dict[str, Any]] = []
     for transition_index, (old_run, new_run) in enumerate(zip(runs[:-1], runs[1:], strict=True)):
         before = collapsed[collapsed["run_ts"].eq(old_run)].copy()
         after = collapsed[collapsed["run_ts"].eq(new_run)].copy()
         gap = (parse_time(new_run) - parse_time(old_run)).total_seconds() / 60.0
         same_set = set(before["provider_key"]) == set(after["provider_key"])
-        health_change = _health_changed(before, after) if same_set else True
+        health_change = _health_changed(before, after) if same_set else False
+        # Audit every adjacent capture interval, including intervals with no
+        # price change.  Provider-set, health, and capture-gap contamination
+        # must not disappear merely because quotes happened to be flat.
+        interval_audits.append(
+            {
+                "detected_at": parse_time(new_run),
+                "same_provider_set": same_set,
+                "health_change": health_change,
+                "gap_minutes": gap,
+            }
+        )
         joined = before.merge(after, on="provider_key", suffixes=("_old", "_new"))
         joined["relative_change"] = joined["quote_usd_new"] / joined["quote_usd_old"] - 1.0
         for row in joined.to_dict("records"):
@@ -382,14 +394,25 @@ def detect_events(
         multiplicity_complete = observed_through >= end
         post_runs = [run for run in runs if focal["detected_at"] < parse_time(run) <= end]
         enough_post = len(post_runs) >= minimum_post_captures
-        co = [
+        co_candidates = [
             item
             for item in transitions
             if item["provider_key"] in active
             and item["material_cut"]
+            and item["prior_unchanged"]
             and item["provider_key"] != focal["provider_key"]
             and focal["detected_at"] <= item["detected_at"] <= end
         ]
+        # Multiplicity is a provider count, not a quote-update count. Retain
+        # the first qualifying cut from each co-cutter so repeated updates by
+        # one provider cannot inflate the exposure estimand.
+        co_by_provider: dict[str, dict[str, Any]] = {}
+        for item in sorted(
+            co_candidates,
+            key=lambda candidate: (candidate["detected_at"], candidate["provider_key"]),
+        ):
+            co_by_provider.setdefault(item["provider_key"], item)
+        co = list(co_by_provider.values())
         before = focal["before"]
         prices = before["quote_usd"].astype(float).to_numpy()
         shares = routing_shares(prices, eta=eta)
@@ -414,13 +437,18 @@ def detect_events(
             for item in transitions
             if focal["detected_at"] <= item["detected_at"] <= contamination_observed_end
         ]
+        window_audits = [
+            item
+            for item in interval_audits
+            if focal["detected_at"] <= item["detected_at"] <= contamination_observed_end
+        ]
         author_change = any(item["provider_key"] in authors for item in window_transitions)
         reasons = []
-        if any(not item["same_provider_set"] for item in window_transitions):
+        if any(not item["same_provider_set"] for item in window_audits):
             reasons.append("provider_set_changed")
-        if any(item["health_change"] for item in window_transitions):
+        if any(item["health_change"] for item in window_audits):
             reasons.append("public_health_changed")
-        if any(item["gap_minutes"] > maximum_snapshot_gap_minutes for item in window_transitions):
+        if any(item["gap_minutes"] > maximum_snapshot_gap_minutes for item in window_audits):
             reasons.append("snapshot_gap")
         if author_change:
             reasons.append("author_price_changed")

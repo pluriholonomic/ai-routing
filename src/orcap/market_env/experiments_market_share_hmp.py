@@ -183,11 +183,11 @@ def _simulation_intervals(paired: pd.DataFrame) -> dict:
     groups = {
         "all_multiple_active": frame[frame["n_active"].gt(1)],
         "ucb_multiple_active": frame[frame["n_active"].gt(1) & frame["algorithm"].eq("ucb")],
-        "heterogeneous_multiple_active": frame[
+        "non_ucb_homogeneous_family_pool_multiple_active": frame[
             frame["n_active"].gt(1) & frame["algorithm"].ne("ucb")
         ],
         "ucb_singleton_control": frame[frame["n_active"].eq(1) & frame["algorithm"].eq("ucb")],
-        "heterogeneous_singleton_control": frame[
+        "non_ucb_homogeneous_family_pool_singleton_control": frame[
             frame["n_active"].eq(1) & frame["algorithm"].ne("ucb")
         ],
     }
@@ -382,7 +382,7 @@ def run(
     plt.close(fig)
 
     ucb = paired[paired["algorithm"].eq("ucb") & paired["n_active"].gt(1)]
-    heterogeneous = paired[paired["algorithm"].ne("ucb") & paired["n_active"].gt(1)]
+    non_ucb_pool = paired[paired["algorithm"].ne("ucb") & paired["n_active"].gt(1)]
     summary = {
         "study_id": protocol["study"]["study_id"],
         "protocol_sha256": hashlib.sha256(payload).hexdigest(),
@@ -405,19 +405,19 @@ def run(
             if not ucb.empty
             else None
         ),
-        "heterogeneous_mean_learning_time_coupled_minus_shuffled": (
-            float(heterogeneous["learning_time__coupled_minus_shuffled"].mean())
-            if not heterogeneous.empty
+        "non_ucb_homogeneous_family_pool_mean_learning_time_coupled_minus_shuffled": (
+            float(non_ucb_pool["learning_time__coupled_minus_shuffled"].mean())
+            if not non_ucb_pool.empty
             else None
         ),
-        "heterogeneous_coupled_learning_rate": (
-            float(heterogeneous["elasticity_learned__coupled"].mean())
-            if not heterogeneous.empty
+        "non_ucb_homogeneous_family_pool_coupled_learning_rate": (
+            float(non_ucb_pool["elasticity_learned__coupled"].mean())
+            if not non_ucb_pool.empty
             else None
         ),
-        "heterogeneous_shuffled_learning_rate": (
-            float(heterogeneous["elasticity_learned__marginal_preserving_shuffle"].mean())
-            if not heterogeneous.empty
+        "non_ucb_homogeneous_family_pool_shuffled_learning_rate": (
+            float(non_ucb_pool["elasticity_learned__marginal_preserving_shuffle"].mean())
+            if not non_ucb_pool.empty
             else None
         ),
         "seed_clustered_intervals": clustered_intervals,
