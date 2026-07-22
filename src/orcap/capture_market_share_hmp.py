@@ -303,9 +303,9 @@ def _background_wave(
         "plan_version": PLAN_VERSION,
         "wave_id": "background",
         "target_at": bucket.isoformat().replace("+00:00", "Z"),
-        "latest_at": (
-            bucket + timedelta(minutes=int(background["latest_offset_minutes"]))
-        ).isoformat().replace("+00:00", "Z"),
+        "latest_at": (bucket + timedelta(minutes=int(background["latest_offset_minutes"])))
+        .isoformat()
+        .replace("+00:00", "Z"),
         "model_id": MODEL_ID,
         "focal_provider": focal,
         "multiplicity": "background",
@@ -376,9 +376,11 @@ def build_plan_bundle(
         event_order = existing_events.copy()
         event_order["_row_order"] = range(len(event_order))
         priority = {"provisional": 0, "multiplicity_finalized": 1, "final": 2}
-        event_order["_status_priority"] = event_order.get(
-            "event_status", pd.Series("final", index=event_order.index)
-        ).map(priority).fillna(0)
+        event_order["_status_priority"] = (
+            event_order.get("event_status", pd.Series("final", index=event_order.index))
+            .map(priority)
+            .fillna(0)
+        )
         event_order = event_order.sort_values(
             ["event_id", "_status_priority", "_row_order"], kind="stable"
         )
@@ -415,9 +417,9 @@ def build_plan_bundle(
     available = set()
     if not snapshots.empty and {"model_id", "provider_name"}.issubset(snapshots.columns):
         available = set(
-            snapshots.loc[
-                snapshots["model_id"].astype(str).eq(MODEL_ID), "provider_name"
-            ].map(provider_key)
+            snapshots.loc[snapshots["model_id"].astype(str).eq(MODEL_ID), "provider_name"].map(
+                provider_key
+            )
         )
     background_wave = _background_wave(
         now,
@@ -465,11 +467,21 @@ def build_plan_bundle(
 
     candidates: list[dict[str, Any]] = []
     assignments: list[dict[str, Any]] = []
+    selected_is_background = bool(
+        selected_wave is not None and str(selected_wave.get("multiplicity")) == "background"
+    )
+    # A natural event needs a fresh historical snapshot for event-time state.
+    # A background block freezes its exact live menu below, so an older public
+    # panel is diagnostic rather than a reason to discard an otherwise current
+    # randomized menu measurement.
+    public_context_healthy = bool(source_fresh or selected_is_background)
     source_failures: list[Any] = (
-        [] if source_fresh else [{"model_id": MODEL_ID, "reason": "stale_public_snapshot"}]
+        []
+        if public_context_healthy
+        else [{"model_id": MODEL_ID, "reason": "stale_public_snapshot"}]
     )
     assignment_details: dict[str, Any] = {}
-    if selected_wave is not None and source_fresh:
+    if selected_wave is not None and public_context_healthy:
         replicates = int(
             protocol["background"]["replicates_per_arm"]
             if str(selected_wave.get("multiplicity")) == "background"
@@ -507,7 +519,7 @@ def build_plan_bundle(
         for assignment in assignments:
             assignment["protocol_sha256"] = protocol_sha256
         assignments = [row for row in assignments if row["task_id"] not in spent_tasks]
-    source_healthy = bool(source_fresh and not source_failures)
+    source_healthy = bool(public_context_healthy and not source_failures)
     summary = {
         "study_id": STUDY_ID,
         "plan_version": PLAN_VERSION,
@@ -516,6 +528,7 @@ def build_plan_bundle(
         "protocol_sha256": protocol_sha256,
         "created_at": now.isoformat(),
         "source_healthy": source_healthy,
+        "public_snapshot_fresh": source_fresh,
         "source_failures": source_failures,
         "new_events": len(new_events),
         "new_clean_events": sum(bool(row["clean_event"]) for row in new_events),

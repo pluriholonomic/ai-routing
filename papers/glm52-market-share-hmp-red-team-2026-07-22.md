@@ -148,6 +148,19 @@ writes the intervals into the JSON summary.
     and its plot connected factorial means without intervals. The cell is now
     unique, and simulation panels use seed-clustered 95% t intervals. Neither
     defect changed the 9,000 unique paired intervention cells.
+14. **Public Actions artifact leaked the private-data boundary.** The repository
+    is public, while the first worker draft retained all of `plan-data/` after
+    execution. That directory would have included request-level selected-provider
+    outcomes. Before the first paid request, the worker was changed to checkpoint
+    those rows directly to the access-controlled Hugging Face dataset (anonymous
+    access returns HTTP 401) and retain only an outcome-free receipt in GitHub.
+    The pre-request assignment artifact remains public because it contains no
+    realized routing outcome.
+15. **“Exactly once” was too strong.** No external inference API call and remote
+    ledger write are atomic. The executable guarantee is at-most-once: the public
+    assignment is the reservation, GitHub run attempts above one cannot execute,
+    and a crash can create missing outcomes but not an intentional retry. The
+    manuscript and code comments must not call this exactly-once execution.
 
 ## Remaining threats that cannot be engineered away
 

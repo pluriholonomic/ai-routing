@@ -53,6 +53,9 @@ The immutable randomized assignment written before a paid call. Primary key is
 the exact provider allowlist/order controls, price caps, seed, manifest hash, and
 protocol hash. Presence of an assignment reserves the task even if execution
 crashes, which gives at-most-once rather than retry-until-observed semantics.
+The outcome-free plan and an outcome-free execution receipt may be retained as
+GitHub Actions artifacts. They never contain a selected provider, request
+reference, attempt row, cost, latency, fallback, or spend-ledger row.
 
 ## Outcome and budget tables
 
@@ -62,12 +65,16 @@ Redacted outcomes for this study only. It stores requested policy, selected and
 completion provider metadata returned for the project's own request, success or
 error status, fallback, cost, token counts, latency, and manifest identifiers.
 It does not identify market-wide OpenRouter flow or request ordering.
+These rows are checkpointed directly to the access-controlled Hugging Face
+dataset and are never retained as artifacts by the public GitHub repository.
 
 ### `paid_spend_ledger`
 
 The shared append-only paid-study spend checkpoint. HMP rows are isolated by
 study ID and task ID. CI applies per-run, per-day, and campaign quote-cap gates
 before execution.
+The ledger follows the same private-Hugging-Face-only storage boundary as
+attempt rows.
 
 ## Published aggregate tables
 

@@ -556,7 +556,12 @@ a queue, not a burst of workflow dispatches.
 4. `glm52-hmp-monitor.yml` refreshes assignment integrity, support, precision,
    concentration, and aggregate plots. It must not expose request payloads.
 
-### Exact-once protocol
+### At-most-once reservation protocol
+
+An external inference request and a remote ledger commit cannot be atomic. The
+assignment is therefore the durable reservation and GitHub reruns do not repeat
+paid execution. A crash can produce a missing outcome; assignment integrity
+must expose that attrition and block release.
 
 - event ID is a hash of model, focal provider, first qualifying timestamp,
   pre-event quote, and source revision;
@@ -663,7 +668,7 @@ are synchronized.
 - build synthetic fixtures for singleton, pair, multiple, event reversal,
   derank contamination, duplicate queue entries, and missing menu;
 - add property tests for share conservation, finite-change identities,
-  assignment integrity, exact-once spend, redaction, and coupled/decoupled
+  assignment integrity, at-most-once reservation, redaction, and coupled/decoupled
   marginal equality; and
 - run a zero-spend remote dry run.
 

@@ -332,3 +332,29 @@ def test_hourly_background_block_is_separate_and_lower_priority(monkeypatch, tmp
     assert bundle["summary"]["planned_tasks"] == 12
     assert all("mshmp-background-" in row["event_id"] for row in bundle["assignments"])
     assert bundle["event_registry"] == []
+
+
+def test_background_block_uses_live_frozen_menu_when_public_panel_is_stale(monkeypatch, tmp_path):
+    base = datetime(2026, 7, 22, 3, 0, tzinfo=UTC)
+    frame = _snapshot_frame(base)
+    frame.loc[:, ["price_prompt", "price_completion"]] = 1e-6
+    path = tmp_path / "curated" / "endpoints_snapshots" / "dt=2026-07-22"
+    path.mkdir(parents=True)
+    frame.to_parquet(path / "snapshots.parquet", index=False)
+    monkeypatch.setattr(
+        "orcap.capture_market_share_hmp.freeze_candidates",
+        lambda *_args, **_kwargs: (_candidates(), []),
+    )
+
+    bundle = build_plan_bundle(
+        object(),
+        data_root=tmp_path,
+        run_id="run-stale-background",
+        seed=29,
+        now=base + timedelta(minutes=120),
+    )
+
+    assert bundle["summary"]["public_snapshot_fresh"] is False
+    assert bundle["summary"]["source_healthy"] is True
+    assert bundle["summary"]["selected_wave"]["multiplicity"] == "background"
+    assert bundle["summary"]["planned_tasks"] == 12
