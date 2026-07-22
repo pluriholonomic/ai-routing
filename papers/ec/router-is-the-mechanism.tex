@@ -28,8 +28,8 @@
 
 \begin{document}
 
-\title{Information Congestion in AI Inference Routing:\\
-Market-Share Elasticity and Mechanism Design}
+\title{Contestable Demand and Costly Entry in AI Inference Routing:\\
+Price Elasticity, Adaptive Learning, and Platform Design}
 
 \author{Tarun Chitra}
 \affiliation{\institution{Gauntlet}\city{New York}\country{USA}}
@@ -38,20 +38,20 @@ Market-Share Elasticity and Mechanism Design}
 \begin{abstract}
 Open-weight models create a real-time market for partly substitutable execution:
 harnesses originate token demand, routers buy execution, and providers sell
-perishable compute.  We ask when price-sensitive routing makes adaptive pricing
-an information externality.  If $k$ providers respond to signals of effective
-rank $r_n\asymp n^\beta$, a simple congestion model has
-$k^*\asymp n^{(1+\gamma\beta)/(1+\gamma)}$: the efficient adaptive set is a
-vanishing fraction when $\beta<1$ and a constant fraction when $\beta=1$.
-Public quotes show a large mechanism surface but do not identify the regime.
-For GLM-5.2, three active undercutters in a 25-provider menu receive 18.62
-percentage points of inverse-price shadow share from passive quotes; its rank
-slope is 0.967 (block-bootstrap interval $[0.516,1.219]$), hence linear-
-compatible.  Non-GLM active repricing is sparse.  Paid rule interventions are
-promising but still accruing.  A heterogeneous-provider game then shows that
-welfare-, revenue-, quality-, and viability-optimal router rules diverge.  We
-derive score and capacity bounds and propose covariance-aware exposure caps.
-All empirical claims are property tests; none identifies collusion or welfare.
+perishable compute.  The market has two margins that price-only models conflate:
+providers pay to enter and certify capacity, then learn how aggressively to
+price for contestable router demand while also serving bilateral contracts.  We
+derive group market-share elasticity, a costly-entry equilibrium, and the exact
+correlated-experiment bias that slows identification of own-price returns.  Free
+entry generally differs from welfare-optimal entry; a capacity-contingent levy
+or credit decentralizes the planner's count, while a separate covariance charge
+targets correlated adaptive exposure.  Public and owned-request data provide
+property tests rather than conduct identification: GLM-5.2 has a large
+inverse-price shadow-transfer surface, but current effective-rank evidence is
+linear-compatible and paid estimates remain account-specific.  Structural
+screens show that welfare, router revenue, quality, and provider viability can
+select different mechanisms.  We do not claim live collusion, dumping, or a
+point-identified welfare loss.
 \end{abstract}
 
 \maketitle
@@ -76,7 +76,10 @@ verified from price alone.  The router is therefore not merely an aggregator.
 It is a delegated buyer, a multi-attribute scoring mechanism, and a reliability
 intermediary.
 
-This distinction matters empirically.  A public price is an invitation to route,
+This distinction matters empirically.  Entry itself is costly: a provider must
+acquire or reserve accelerators, implement the model, integrate and monitor an
+endpoint, and build a reliability history before it can contest routed demand.
+A public price is an invitation to route,
 not a firm capacity commitment.  A documented score is not necessarily the
 allocation law after private eligibility, quality, and fallback.  Provider cost
 depends on whether capacity is owned, reserved, or bought in a spot market; the
@@ -106,34 +109,28 @@ a sharper intervention: in 15 complete blocks, explicitly requesting price
 sorting raises cheapest-provider selection by 80 points relative to default
 routing.  The preregistered duration and choice gates have not passed.
 
-We make five mechanism-design contributions.
+We make three mechanism-design contributions.
 
 \begin{enumerate}[leftmargin=*,nosep]
-\item We formulate separate user, router, provider, and planner objectives for
-inference routing.  The formulation makes explicit why price-only, router-
-revenue, and welfare objectives need not agree.
-\item We give a conditional information-congestion theorem.  When provider
-signals have sublinear effective rank, the efficient number of adaptive pricers
-is sublinear even though each price cut can win share locally; with linear rank,
-the efficient set is a constant fraction.
-\item We prove a score--price equivalence and elasticity decomposition.  A
-provider's relative non-price score is a price-equivalent subsidy or penalty;
-its interaction with the price rule determines the return to undercutting.
-\item For entropy-regularized routing, we prove an exact regret identity: using
-a price-only score instead of the full generalized execution cost loses exactly
-a scaled KL divergence.  A uniform score-error bound then gives a robust
-approximation guarantee.
-\item We prove a hidden-capacity impossibility result.  Two economies with the
-same public menu can require opposite efficient allocations.  Every quote-only
-router incurs at least half the cost gap in one of them.  Execution-contingent
-capacity certificates are therefore an informational requirement, not merely a
-feature request.
+\item We separate provider entry, adaptive pricing, and routed exposure.  For an
+inverse-power benchmark we derive group share and profit elasticities, costly
+free entry with public and bilateral demand, the planner's reliability--fixed-
+cost trade-off, and a levy or credit that decentralizes efficient entry.
+\item We derive the exact rival-price term omitted by an own-price learner and a
+finite-sample learning bound governed by residual price variation.  This gives
+microfoundations for why overlapping experiments can make market-share returns
+hard to learn.  A reduced-form critical-adaptation result is retained only as a
+conditional corollary, not as an entry theorem.
+\item We characterize the router's multidimensional information problem.  A
+score--price equivalence, an exact entropy-regularized regret identity, and a
+hidden-capacity impossibility result motivate two separate instruments:
+capacity-contingent entry credits or levies and covariance-aware exposure fees.
 \end{enumerate}
 
-Finally, we evaluate the theorem and mechanism in two structural simulations.
-The fixed-$n$ integer grid recovers the predicted scaling exponents to within
-0.006, but a marginal-preserving bandit intervention changes action correlation
-without materially changing allocation.  A heterogeneous-provider game
+Finally, we evaluate the mechanism with an analytical scenario grid and a
+structural simulation.  The grid separates costly entry, group elasticity,
+learning time, and adaptive exposure without treating its parameters as data.  A
+heterogeneous-provider game
 recomputes bounded best responses under 108 router rules.  It exposes a large
 conflict between router revenue and welfare and profitable pairwise joint
 deviations even when unilateral grid regret is zero.  These are design screens,
@@ -182,6 +179,36 @@ W &= V+R+\sum_i U_i-\text{pure transfers},
 where $\phi_i$ includes penalties or collateral losses.  A router may maximize
 revenue $R$, a user-facing generalized cost, or a constrained combination.  We
 never infer which objective is deployed from public prices.
+
+\subsection{Timing and the three extensive margins}
+
+The economic timing is not a one-shot pricing game.  At date 0, a potential
+provider pays an integration and capacity cost $F_i$ and chooses verifiable
+capacity $K_i$.  At date 1 it chooses exposure to bilateral or committed demand
+and to contestable router demand.  At date 2 it posts a public price and decides
+whether to pay an adaptation cost $A_i$ to run pricing experiments.  At date 3
+the router scores eligible providers, attempts one or more endpoints, and
+settles payments, SLA credits, and capacity penalties.
+
+We therefore distinguish four counts.  $n_{FE}$ is the free-entry count of
+capacity-certified providers; $k_{AE}\le n_{FE}$ is the equilibrium number that
+pay to adapt their public prices; $k_L$ is the number whose provider-specific
+price effect can be learned at a declared precision; and $k_W$ is the planner's
+desired exposure to correlated adaptive flow.  These objects need not coincide.
+In particular, an exposure cap on correlated repricers is not an entry cap, and
+more endpoint labels need not imply more independent delivered capacity.
+
+Let $D^R$ denote public router demand and let $B_i$ be provider $i$'s net
+contribution from bilateral or committed contracts.  In the separable,
+capacity-slack benchmark,
+\begin{equation}
+ \Pi_i=D^R(p_i-c_i)s_i(p)+B_i-F_i-A_i\1\{i\text{ adapts}\}.
+ \label{eq:providerprofit}
+\end{equation}
+Bilateral business changes entry through $B_i$ but not the public-price
+first-order condition.  That separation fails when capacity binds, when a
+contract keys its allocation to the public quote, or when public reliability
+affects bilateral renewal.  These are empirically distinct channels.
 
 \subsection{Information ladder}
 
@@ -243,7 +270,141 @@ The result explains why the routing exponent controls price incentives
 $a=2$ into a structural market model.  Private eligibility and quality change
 both $s_i$ and the derivative providers face.
 
-\subsection{Information congestion and the critical adaptive set}
+\begin{proposition}[Group elasticity and the return to a common cut]
+\label{prop:groupelasticity}
+Let $G$ be a set of providers with aggregate share $S_G=\sum_{i\in G}s_i$.
+Decrease every price in $G$ proportionally by writing
+$p_i(x)=p_i e^{-x}$ for $i\in G$.  Under \eqref{eq:inversepower},
+\begin{equation}
+ Z_G:=\frac{\partial\log S_G}{\partial x}=a(1-S_G).
+ \label{eq:groupelasticity}
+\end{equation}
+If within-group price ratios and score terms are fixed, group revenue grows
+locally under the cut if and only if $Z_G>1$.  If providers in $G$ have common
+price $p$ and cost $c$, group profit grows if and only if
+$Z_G>p/(p-c)$.
+\end{proposition}
+
+This is the relevant elasticity for a set of active undercutters.  A minority
+can have $Z_G\approx a$, while its return falls mechanically as it captures
+share.  The cutoff $S_G<1-1/a$ characterizes revenue gain, not profit gain;
+fixed entry cost and marginal cost remain necessary for a conduct claim.
+
+\subsection{Costly entry and contestable demand}
+\label{sec:entry}
+
+Costly entry changes the interpretation of a thick public menu.  Consider a
+symmetric benchmark with public demand $D^R$, marginal cost $c$, entry cost
+$F$, bilateral contribution $B$, and at most $N$ capacity-certified entrants.
+Assume $a(n-1)>n$ so the interior pricing equilibrium exists.  At its symmetric
+price, each provider's public operating profit is
+\begin{equation}
+ \pi^R(n)=\frac{D^R c}{a(n-1)-n}.
+ \label{eq:publicprofit}
+\end{equation}
+It decreases with $n$ for $a>1$: an entrant creates price competition and
+business stealing even before any congestion externality is introduced.
+
+For a transparent planner benchmark, suppose each independent capacity unit
+succeeds with probability $q$, attempts are serial, a delivery is worth $v$,
+and no more than the $n$ certified units are tried.  Then
+\begin{align}
+ Q(n)&=1-(1-q)^n, & A(n)&=\frac{1-(1-q)^n}{q},\\
+ W(n)&=D\{vQ(n)-cA(n)\}-nF.
+ \label{eq:entrywelfare}
+\end{align}
+Transfers and $B$ are excluded from welfare; real surplus created by a
+bilateral workload belongs in $D$ and $v$, not in a transfer term.
+
+\begin{theorem}[Free entry, welfare entry, and implementation]
+\label{thm:entry}
+In the symmetric benchmark, the free-entry count is the largest feasible $n$
+for which
+\begin{equation}
+ \pi^R(n)+B-F\ge0,
+ \label{eq:freeentry}
+\end{equation}
+with the candidate cap $N$ binding when $B\ge F$.  The welfare entry count is
+any integer maximizer of \eqref{eq:entrywelfare}.  Neither count generally
+orders the other: business stealing can produce excess entry, while unpriced
+reliability or capacity benefits can produce insufficient entry.  For any
+interior target $n_W$ and decreasing $\pi^R$, the per-certified-capacity net
+levy
+\begin{equation}
+ \tau^*=\pi^R(n_W)+B-F
+ \label{eq:entrylevy}
+\end{equation}
+decentralizes $n_W$ under the convention that entry at zero net profit occurs.
+A negative $\tau^*$ is an entry credit.
+\end{theorem}
+
+The result is deliberately conditional.  It does not say that observed entry
+is excessive, because $F$, $B$, $q$, capacity correlation, and total demand are
+not observed.  It does say why one instrument cannot target both entry and
+pricing.  A capacity credit or levy acts on $n_{FE}$; a covariance or exposure
+charge acts on $k_{AE}$ and routed share.
+
+\begin{proposition}[When bilateral contracts do and do not affect public bids]
+\label{prop:bilateral}
+Under \eqref{eq:providerprofit}, if $B_i$ is independent of $p_i$ and public
+load does not bind capacity, the provider's public-price first-order condition
+is unchanged by $B_i$.  Bilateral profit can nevertheless change entry and the
+absolute value of learning the public-price effect.  If capacity binds with
+shadow cost $\nu_i$, the public pricing condition is obtained by replacing
+$c_i$ with $c_i+\nu_i$; a bilateral load shock can then move the public quote
+through $\nu_i$.
+\end{proposition}
+
+Thus low public-price sensitivity can reflect low signal-to-noise in the public
+channel, a small share of contestable demand, or a side contract that changes
+capacity scarcity.  Price panels alone cannot distinguish these explanations.
+
+\subsection{Correlated experiments and the time to learn share elasticity}
+\label{sec:learning}
+
+Let $X_{it}=\Delta\log p_{it}$ and hold the eligible menu locally fixed.  A
+first-order expansion of \eqref{eq:inversepower} gives the exact decomposition
+\begin{equation}
+ \Delta\log s_{it}=-a(1-s_{it})X_{it}
+ +a\sum_{j\ne i}s_{jt}X_{jt}+u_{it},
+ \label{eq:rivaldecomposition}
+\end{equation}
+where $u_{it}$ collects score, eligibility, and higher-order changes.  An
+own-price regression that omits rival experiments therefore has coefficient
+\begin{equation}
+ -a(1-s_i)+a\sum_{j\ne i}s_j
+ \frac{\operatorname{Cov}(X_i,X_j)}{\operatorname{Var}(X_i)}
+ +\frac{\operatorname{Cov}(X_i,u_i)}{\operatorname{Var}(X_i)}.
+ \label{eq:ovb}
+\end{equation}
+Common-direction experiments attenuate the magnitude of the apparent own-price
+elasticity even without communication.  This is the market-share analogue of
+the correlated-learning channel in Hansen--Misra--Pai
+\cite{hansenmisrapai2021}.
+
+\begin{proposition}[Residual-variation learning bound]
+\label{prop:learning}
+Suppose the residual in \eqref{eq:rivaldecomposition} is conditionally
+sub-Gaussian with variance proxy $\sigma^2$, rival price changes are observed,
+and $A$ provider-action effects are estimated.  There is a universal constant
+$C$ such that estimating all own effects to error $\epsilon$ with probability
+$1-\delta$ requires, up to regularity constants,
+\begin{equation}
+ T\ \ge\ C\frac{\sigma^2}{\epsilon^2
+ \operatorname{Var}(X_i\mid X_{-i})}\log\frac{A}{\delta}.
+ \label{eq:learningbound}
+\end{equation}
+As common-signal overlap drives residual price variation toward zero, the
+required horizon diverges.  With perfect collinearity, provider-specific effects
+are not identified from the price path.
+\end{proposition}
+
+The bound supplies a temporal mechanism missing from a static signal-rank
+story.  More memory is useful only when it preserves independent excitation;
+long memory applied to nearly collinear experiments accumulates common-mode
+history without identifying who caused the share change.
+
+\subsection{Conditional adaptive exposure, not provider entry}
 
 The elasticity result is individual: it says how one provider's share changes
 with its own quote.  It does not say how many providers should adapt to the same
@@ -259,7 +420,9 @@ signals; it does not imply communication.
 
 \begin{assumption}[Reduced-form information congestion]
 \label{ass:congestion}
-If $k\in[0,n]$ providers adapt, their gross allocation benefit is $bk/n$ and
+If $k\in[0,n]$ providers adapt, $\lambda_n\in[0,1]$ is the contestable share of
+demand and $f_A\ge0$ is a per-provider adaptation cost in the same normalization.
+Their net local benefit is $(b\lambda_n-f_A)k/n$ and
 their social congestion loss is
 \begin{equation}
 C_n(k)=c\left(\frac{k}{n}\right)^2
@@ -267,7 +430,8 @@ C_n(k)=c\left(\frac{k}{n}\right)^2
 \qquad b,c,\gamma>0.
 \label{eq:congestioncost}
 \end{equation}
-The planner's reduced-form value is $V_n(k)=bk/n-C_n(k)$.
+The planner's reduced-form value is
+$V_n(k)=(b\lambda_n-f_A)k/n-C_n(k)$.
 \end{assumption}
 
 The first term is the local market-share opportunity.  The second encodes a
@@ -278,31 +442,37 @@ form is an assumption, not an implication of inverse-power routing.
 \begin{theorem}[Critical adaptive set]
 \label{thm:congestion}
 Under Assumption~\ref{ass:congestion}, the unique continuous interior optimum,
-before clipping to $[0,n]$, is
+before clipping to $[0,n]$, is zero when $b\lambda_n\le f_A$ and otherwise is
 \begin{equation}
 k_n^\circ=
-\left(\frac{b n r_n^\gamma}{c(2+\gamma)}\right)^{1/(1+\gamma)}.
+\left(\frac{(b\lambda_n-f_A)n r_n^\gamma}
+{c(2+\gamma)}\right)^{1/(1+\gamma)}.
 \label{eq:kstar}
 \end{equation}
 The integer optimum is one of $\lfloor k_n^\circ\rfloor$ and
-$\lceil k_n^\circ\rceil$.  If $r_n\asymp n^\beta$ for
-$\beta\in[0,1]$, then
+$\lceil k_n^\circ\rceil$.  If $f_A=0$, $r_n\asymp n^\beta$, and
+$\lambda_n\asymp n^{-\delta}$ for $\beta,\delta\in[0,1]$, then
 \begin{equation}
-k_n^*=\Theta\!\left(n^{(1+\gamma\beta)/(1+\gamma)}\right).
+k_n^*=\Theta\!\left(n^{(1+\gamma\beta-\delta)/(1+\gamma)}\right).
 \label{eq:kstarscaling}
 \end{equation}
-Consequently, $k_n^*/n\to0$ when $\beta<1$, while $k_n^*=\Theta(n)$
-when $\beta=1$.
+Consequently, $k_n^*/n\to0$ whenever $\gamma(1-\beta)+\delta>0$; a
+constant adaptive fraction requires both linear signal rank and non-vanishing
+contestable demand in this reduced form.
 \end{theorem}
 
 The theorem separates two statements that are easy to conflate.  A provider
 can have a large local return to undercutting while the efficient adaptive set
 is a vanishing fraction.  Conversely, a common pricing response is not costly
 when it reflects linearly growing independent information.  The sufficient
-statistic is signal rank relative to market size, not the count of low quotes.
+statistics are signal rank, contestable demand, and adaptation cost---not the
+count of low quotes.  This theorem remains a reduced-form exposure result; it
+does not derive the congestion loss from provider primitives and does not
+determine $n_{FE}$.
 
 \begin{corollary}[Robust exposure cap]
-Let $\Omega$ be a declared uncertainty set for $(b,c,\gamma,r_n)$.  The cap
+Let $\Omega$ be a declared uncertainty set for
+$(b,c,\gamma,r_n,\lambda_n,f_A)$.  The cap
 \begin{equation}
 \bar k_n=\min_{\omega\in\Omega}\lfloor k_n^\circ(\omega)\rfloor
 \end{equation}
@@ -562,7 +732,7 @@ within-block price-sort arm separately estimates how explicitly changing the
 routing rule affects cheapest-provider selection.  Diagnostic estimates require
 40 covered prospective choices, 20 blocks, and three selected providers;
 paper-strength interpretation requires 800 choices, 100 blocks, seven days, and
-90\% candidate coverage.  The current aggregate has 36 covered default choices
+90\% candidate coverage.  The earlier focal freeze has 36 covered default choices
 in 18 blocks over 0.647 days.  Its public-price exponent is 1.735 with profile
 interval $[0.31,3.16]$.  The focal active pair is selected 2/36 times, versus a
 13.60\% frozen-rule prediction; the observed 5.56\% share has Wilson interval
@@ -575,6 +745,18 @@ selects the cheapest provider 0\% of the time and explicit price sorting does so
 $[60,100]$.  This owned-request effect shows that rule choice matters and that
 default routing is not price-only.  It does not reveal the proprietary score or
 market-wide flow, and remains accruing under the registered gate.
+
+A later immutable cross-model owned-choice aggregate
+(revision \texttt{cda71b210f849d4b952ed48407ca1b633138480f}) contains 429
+observations, 423 covered choices, and 13 model--request-shape cells.  Three
+short-chat cells clear the diagnostic support gate: DeepSeek V4 Pro has
+$\widehat a=1.256$ (profile interval $[0.88,1.62]$), Xiaomi MiMo V2.5 Pro has
+$1.927$ ($[1.26,2.68]$), and GLM-5.2 has $1.932$ ($[0.81,3.06]$).  The pooled
+estimate is 1.452 ($[1.15,1.75]$), while the likelihood-ratio test of
+heterogeneity has $p=0.164$.  Only GLM has provisional within-provider price
+movement; StepFun's equal-price menu leaves the exponent unidentified.  These
+are reduced-form owned-choice slopes conditional on our menus and workload,
+not estimates of market-wide demand or a proprietary routing formula.
 
 \begin{figure*}
 \centering
@@ -693,6 +875,34 @@ current composite residual, not a state variable with an estimated transition.
 \section{An Auditable Router Design}
 \label{sec:design}
 
+\subsection{Two margins require two instruments}
+
+The entry theorem and learning bound rule out a single undifferentiated
+``provider fee.''  The first instrument is a capacity-contingent entry levy or
+credit.  It is assessed per independently deliverable capacity unit, released
+only after service, and calibrated to the reliability value and fixed-cost
+externality.  Its target is $n_{FE}$.  The second instrument is a time-varying
+exposure charge on the covariance contribution of an adaptive price path.  One
+implementable score penalty is
+\begin{equation}
+ \psi_{it}=\rho\,x_{it}\sum_{j\ne i}x_{jt}
+ \widehat{\operatorname{Cov}}(X_i,X_j),
+ \label{eq:covfee}
+\end{equation}
+where $x_{it}$ is routed exposure and the covariance is estimated on a frozen
+window with shrinkage.  Its target is correlated allocation, not the number of
+firms.  A robust version maximizes \eqref{eq:covfee} over a confidence set and
+publishes the sensitivity to the shrinkage rule.
+
+Charging endpoint identities is not Sybil robust.  A provider can split one
+capacity pool across labels, dilute a per-label covariance statistic, and collect
+multiple exploration grants.  Eligibility for entry credits and covariance
+budgets must therefore aggregate identities that share a capacity certificate,
+payment owner, failure domain, or jointly binding SLA.  If none of these links is
+verifiable, the router can guarantee only label-level diversification, not
+economic-provider diversification.  This is a mechanism boundary, not a
+clustering problem that public names can solve.
+
 \subsection{Score, commitments, and exploration}
 
 Theorems~\ref{thm:kl}--\ref{thm:impossibility} suggest a concrete design.
@@ -704,9 +914,12 @@ latency, failure, and quality predictions estimated out of sample.
 finite slots, collateral, or SLA credits.  Publish how retries enter score and
 payment.
 \item Use bounded exploration so new or small providers can generate evidence;
-cap concentration and common-mode exposure.
+cap concentration and common-mode exposure after aggregating shared capacity
+identities.
 \item Charge the router through a fee separated from selected spend, while
 reporting both user generalized cost and router revenue.
+\item Apply capacity-contingent entry credits or levies separately from
+covariance-aware adaptive-exposure charges.
 \end{enumerate}
 
 The score need not collapse every objective into one undocumented number.  The
@@ -799,16 +1012,29 @@ estimated equilibrium or evidence of collusion.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{../../analysis/sm3_informational_congestion.pdf}
-\Description{The top panels show the critical adaptive count and density as
-market size and signal-rank exponent vary.  The bottom panels show coupled-minus-
-shuffled action correlation and active share in a fixed-provider bandit screen.}
-\caption{Conditional theorem check and negative control.  Integer optima recover
-the predicted $k^*$ exponent to within 0.006.  The declared bandit intervention
-can move action correlation but has no distinguishable active-share effect;
-seed-clustered intervals include zero.}
-\label{fig:congestionsim}
+\includegraphics[width=\textwidth]{../../analysis/contestable_entry_mechanism.pdf}
+\Description{Four panels show free-entry and welfare entry counts as bilateral
+profit changes, group cut elasticity as share grows, required learning horizon
+as experiment correlation rises, and adaptive density under different signal
+rank and contestability regimes.}
+\caption{Analytical mechanism scenarios.  Bilateral profit can expand free entry
+without changing the welfare count; a group's return to cutting price falls as
+it captures share; correlated experiments sharply increase the observations
+needed to learn provider-specific effects; and declining contestable demand can
+produce a zero-adaptation region.  Parameters are declared scenarios, not live
+estimates.}
+\label{fig:entrymechanism}
 \end{figure*}
+
+In the declared baseline, free entry is 21 providers at zero bilateral
+contribution and reaches the 40-candidate cap under the high bilateral scenario,
+while the welfare count is five.  These values demonstrate excess entry, not an
+estimate of the live market.  Under inverse-square routing, a coordinated group
+cut raises group revenue only below 50\% share.  In the learning scenario, high
+experiment correlation raises the required horizon to 18,260 observations, and
+the contestability grid contains both zero-adaptation and minority-adaptation
+regions.  Each statement is reproduced from closed-form expressions and tested
+against numerical enumeration.
 
 \subsection{The policy-frontier experiment}
 
@@ -854,13 +1080,22 @@ State-contingent commitment prices are more appropriate than a fixed share.
 \item \emph{Model authors and anchor adopters}: an author quote can coordinate
 expectations, while identical third-party quotes may reflect default menus rather
 than common costs.  The router should not treat an anchor as a cost certificate.
+\item \emph{Potential entrants}: firms outside the displayed menu face model
+implementation, integration, monitoring, reputation, and capacity costs.  Their
+choice depends on expected public contribution margin plus bilateral contracts,
+not simply the current spread between displayed prices.
 \end{itemize}
 
 Free entry is not automatically efficient.  An entrant adds a redundant delivery
 path but diverts requests and may increase retry or monitoring costs, echoing the
 classic business-stealing result \cite{mankiw1986freeentry}.  Capacity-certified
 entry is preferable to counting endpoint labels: it rewards incremental delivered
-capacity rather than duplicated menus.
+capacity rather than duplicated menus.  Theorem~\ref{thm:entry} also allows the
+opposite wedge.  If reliability spillovers are valuable but entrants cannot
+appropriate them, entry can be insufficient.  Conversely, a lucrative bilateral
+book can keep many public endpoints listed even when another label contributes
+little incremental resilience.  These cases call for credits or levies tied to
+delivered capacity, not a universal entry tax.
 
 \section{Related Work}
 
@@ -914,16 +1149,20 @@ compatible and non-GLM active repricing is sparse, so neither proposed asymptoti
 regime is empirically established.
 
 The design response is not to declare a better exponent.  It is to expose the
-missing contracting and information dimensions.  The critical-set theorem says
-when correlated adaptation can require a minority exposure cap; the data say
-that premise is not yet established.  Generalized scoring has an exact regret
-interpretation, approximate scores have a robust guarantee, and hidden capacity
-creates a formal impossibility for quote-only routing.  Execution-contingent
-prices, covariance-aware caps, verified quality, bounded exploration, and fee
-separation turn those results into testable mechanisms.  The next empirical
-step is a randomized policy frontier with delivered outcomes and declared value
-bands.  Until then, the honest output is a set of feasible mechanisms, not one
-estimated welfare optimum.
+missing entry, contracting, and information dimensions.  The entry theorem
+separates capacity creation from business stealing; the learning bound separates
+the number of repricers from the independent variation needed to identify their
+returns; and the critical-set theorem conditionally maps signal rank and
+contestable demand into adaptive exposure.  The data do not yet identify the
+premises needed to calibrate any of those objects as live welfare quantities.
+Generalized scoring has an exact regret interpretation, approximate scores have
+a robust guarantee, and hidden capacity creates a formal impossibility for
+quote-only routing.  Capacity-contingent entry credits or levies,
+covariance-aware exposure charges, verified quality, bounded exploration, and
+fee separation turn those results into testable mechanisms.  The next empirical
+step is a randomized policy frontier plus a provider-facing capacity-entry trial.
+Until then, the honest output is a set of feasible mechanisms, not one estimated
+welfare optimum.
 
 \appendix
 
@@ -940,18 +1179,60 @@ $1-a(p_i-c_i)(1-s_i)/p_i=0$, yielding the Lerner expression.  At a
 symmetric profile $s_i=1/n$; solving for $p$ gives the formula.  A finite positive
 solution requires $a(n-1)>n$. \hfill$\square$
 
+\paragraph{Proof of Proposition~\ref{prop:groupelasticity}.}
+Let $A_G=\sum_{i\in G}p_i^{-a}$ and
+$A_{-G}=\sum_{j\notin G}p_j^{-a}$.  After the common cut,
+$S_G(x)=e^{ax}A_G/(e^{ax}A_G+A_{-G})$, so differentiation gives
+$\partial\log S_G/\partial x=a(1-S_G)$.  Fixed within-group ratios imply
+$R_G(x)=e^{-x}R_G(0)S_G(x)/S_G(0)$, whose log derivative is $Z_G-1$.
+With common $p,c$, group profit is proportional to
+$S_G(x)(pe^{-x}-c)$, whose log derivative at zero is
+$Z_G-p/(p-c)$. \hfill$\square$
+
+\paragraph{Proof of Theorem~\ref{thm:entry}.}
+At the symmetric price in the first proposition,
+$p^*-c=cn/[a(n-1)-n]$.  Multiplying by symmetric share $1/n$ and
+public demand $D^R$ gives \eqref{eq:publicprofit}.  Its denominator is
+$(a-1)n-a$, so it strictly decreases in $n$ for $a>1$.  The zero-profit
+condition therefore gives the largest entrant count in \eqref{eq:freeentry},
+subject to $N$.  Welfare entry maximizes the finite sequence in
+\eqref{eq:entrywelfare}.  The counts have no universal order: when $q=1$,
+delivery value saturates after one capacity unit while $B\ge F$ can induce all
+$N$ candidates to enter; conversely, sufficiently high private $F-B$ can block
+entry even when the planner's reliability gain exceeds real fixed cost.  With
+the levy \eqref{eq:entrylevy}, net profit is zero at $n_W$, positive below it,
+and negative above it by monotonicity. \hfill$\square$
+
+\paragraph{Proof of Proposition~\ref{prop:bilateral}.}
+When capacity is slack and $B_i$ is separable, differentiating
+\eqref{eq:providerprofit} with respect to $p_i$ eliminates $B_i$, $F_i$, and
+$A_i$.  When capacity binds, the Lagrangian subtracts $\nu_i$ times public plus
+bilateral load net of capacity; its public-load derivative adds $\nu_i$ to
+marginal cost. \hfill$\square$
+
+\paragraph{Proof of Proposition~\ref{prop:learning}.}
+Partialling $X_i$ against $X_{-i}$ leaves design variance
+$\operatorname{Var}(X_i\mid X_{-i})$.  Standard sub-Gaussian least-squares
+concentration bounds coefficient error by a constant times
+$\sigma\sqrt{\log(A/\delta)/{T\operatorname{Var}(X_i\mid X_{-i})}}$.
+Requiring this quantity to be at most $\epsilon$ and rearranging proves
+\eqref{eq:learningbound}.  If the conditional variance is zero, the design
+matrix does not identify the provider-specific coefficient. \hfill$\square$
+
 \paragraph{Proof of Theorem~\ref{thm:congestion}.}
 Substituting \eqref{eq:congestioncost} gives
 \[
-V_n(k)=\frac{bk}{n}
+V_n(k)=\frac{(b\lambda_n-f_A)k}{n}
 -\frac{c k^{2+\gamma}}{n^2r_n^\gamma}.
 \]
-For $k>0$ the second derivative is strictly negative.  The first-order
-condition is
-$b/n=c(2+\gamma)k^{1+\gamma}/(n^2r_n^\gamma)$, which yields
-\eqref{eq:kstar}.  Strict concavity implies that the integer maximizer is one
-of the adjacent integers.  Substituting $r_n\asymp n^\beta$ gives
-\eqref{eq:kstarscaling}; dividing by $n$ proves the density statements.
+For $k>0$ the second derivative is strictly negative.  If
+$b\lambda_n\le f_A$, the value is non-increasing from zero.  Otherwise the
+first-order condition is
+$(b\lambda_n-f_A)/n=c(2+\gamma)k^{1+\gamma}/(n^2r_n^\gamma)$,
+which yields \eqref{eq:kstar}.  Strict concavity gives the adjacent-integer
+claim.  With $f_A=0$, substituting $r_n\asymp n^\beta$ and
+$\lambda_n\asymp n^{-\delta}$ gives \eqref{eq:kstarscaling}; dividing by $n$
+gives the density condition.
 \hfill$\square$
 
 \paragraph{Proof of Proposition~\ref{prop:scoreprice}.}
@@ -995,17 +1276,23 @@ is at least $\Delta/2$.  If $x\in\{0,1\}$, the larger is $\Delta$.
 
 \section{Evidence and Claim Ledger}
 
-The critical-set result is a theorem conditional on
-Assumption~\ref{ass:congestion}; SM3 validates its numerical scaling but its
-bandit allocation effect includes zero.  WF20 uses 3,274 public snapshots and
+The costly-entry theorem is a transparent benchmark, not an estimate: fixed
+cost, bilateral contribution, capacity correlation, and reliability value are
+not observed.  The critical-set result is conditional on
+Assumption~\ref{ass:congestion}; its congestion cost is not derived from the
+entry game.  The analytical scenarios validate algebra and comparative statics,
+not live entry or adaptive density.  WF20 uses 3,274 public snapshots and
 identifies a finite-menu rank diagnostic plus a deterministic shadow rule.  It
 does not identify asymptotic rank, realized share, $k^*$, provider learning, or
 welfare.  GLM-5.2 is linear-compatible, and the non-GLM census does not support
 linear-density active pricing.
 
 The paid GLM panel identifies an owned-account effect of explicit price sorting
-in 15 complete blocks.  It does not identify market-wide share, and its latent
-score, duration, and choice gates remain open.  H91 and H92 establish a within--
+in 15 complete blocks.  The later cross-model aggregate identifies three
+diagnostic price-only choice slopes but does not reject their equality, and only
+GLM has provisional within-provider price movement.  Neither panel identifies
+market-wide share; the latent-score, duration, and choice gates remain open.
+H91 and H92 establish a within--
 between difference and an accounting identity, not causal residual demand.
 WCV6 is a bounded sensitivity analysis.  H81 identifies a narrow fallback
 decomposition, not a general router policy.  Residual QoS tests and zero valid
@@ -1014,7 +1301,8 @@ utilization cells do not identify technology rent, dumping, or marginal cost.
 SM4 is a declared structural game.  Its objective frontier, unilateral grid
 regret, technology stresses, and pairwise deviation gains are simulator objects.
 No result in this paper identifies router score memory, provider learning memory,
-communication, collusion, a provider algorithm, or live welfare.
+communication, collusion, a provider algorithm, bilateral contract terms,
+free-entry count, or live welfare.
 
 \section{Reproducibility}
 
@@ -1022,11 +1310,13 @@ The public manuscript panel is reproduced by
 \url{scripts/run_paper_integrity_rerun.py}.  On the immutable revision
 reported above, all 29 registered modules complete with zero failures and no
 prospective owned outcomes queried.  WF20 produces the rank and shadow-transfer
-figure.  SM3 produces the fixed-$n$ theorem check and signal-order negative
-control; SM4 produces the heterogeneous-provider objective frontier and
-technology stress panel.  Unit tests cover rank algebra, fixed-provider menus,
-welfare accounting, capacity redistribution, objective selection, JSON
-serialization, and bounded best responses.  The detailed claim audit is
+figure.  The contestable-entry module produces Figure~\ref{fig:entrymechanism}
+from declared analytical scenarios; SM4 produces the heterogeneous-provider
+objective frontier and technology stress panel.  Unit tests cover the entry
+equilibrium, planner count, implementing levy, group elasticity, omitted-rival
+bias, learning horizon, rank algebra, fixed-provider menus, welfare accounting,
+capacity redistribution, objective selection, JSON serialization, and bounded
+best responses.  The detailed claim audit is
 \url{papers/information-congestion-evidence-audit-2026-07-22.md}.
 
 \bibliographystyle{ACM-Reference-Format}
