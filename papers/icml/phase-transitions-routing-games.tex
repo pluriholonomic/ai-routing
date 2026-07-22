@@ -48,6 +48,8 @@ experiment changes action correlation without changing allocation.  Finally,
 surface but reject the proposed GLM-minority/non-GLM-linear empirical split.
 The contribution is a finite-time learning theory with falsifiable transport
 tests, not a claim of live-provider collusion or router memory.
+All market-level bounds condition on costly provider entry: $n$ counts
+capacity-certified entrants, not costless endpoint labels.
 \end{abstract}
 
 \section{Introduction}
@@ -609,6 +611,23 @@ state, offer cancellable multi-period quote commitments, use
 execution-contingent capacity rather than fundraising or provider identity as a
 proxy, and charge fees separately from selected spend.
 
+\paragraph{Costly entry is upstream of memory.}
+A potential provider first pays capacity and integration cost $F_i$, then
+chooses whether to serve contestable router demand $D^R$ and bilateral demand.
+Writing bilateral contribution as $B_i$, adaptation cost as $A_i$, and public
+share as $s_i$, its separable payoff is
+\[
+ D^R(p_i-c_i)s_i+B_i-F_i-A_i\mathbf 1\{i\text{ learns}\}.
+\]
+Thus the $n$ in the responsive-set theorem is the endogenous set of entrants,
+not the number of potential firms.  When capacity is slack and $B_i$ is
+independent of the public quote, bilateral profit changes entry and the absolute
+value of learning but not the action comparison that defines $M^*$.  When
+bilateral load binds capacity, its shadow cost changes the public low-price
+payoff and therefore shifts both the rational and learning boundaries.  Entry,
+adaptation, and learnability are three different extensive margins; this paper's
+theorems condition on the first.
+
 \paragraph{Objective-conditioned equilibrium screen.}
 A separate structural game declares ten provider technologies: an author, two
 anchor resellers, two reserved-capacity providers, three spot-dependent
@@ -661,10 +680,12 @@ finite-time bounds, a conditional planner theorem, controlled mechanisms, and
 frozen property tests---not observed market share, a GLM/non-GLM asymptotic
 contrast, provider intent, tacit collusion, communication, or live-router
 causality.
+They also do not estimate fixed entry cost, bilateral contribution, or the
+capacity shadow cost that would map the candidate population into $n$.
 
 \section{Conclusion}
 
-Platform memory creates three separable objects: whether persistent cutting is
+Platform memory creates three separable objects conditional on entry: whether persistent cutting is
 valuable, whether a learner can obtain fresh support in finite time, and how
 many providers should respond to correlated information.  The first is a
 rational boundary; the second is exponential in memory; the third depends on
@@ -674,8 +695,8 @@ cap targets cross-sectional exposure but requires realized-outcome calibration.
 The public market currently shows large mechanical share transfer and sharply
 sparse adaptation, yet it supports neither proposed asymptotic regime.  The
 joint lesson is methodological: separate individual elasticity, finite-time
-learnability, and social information congestion, then demand a transport test
-at each link before calling a learning rule a market mechanism.
+learnability, costly entry, and social information congestion, then demand a
+transport test at each link before calling a learning rule a market mechanism.
 
 \appendix
 \section{Proofs}
