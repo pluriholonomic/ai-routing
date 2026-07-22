@@ -31,10 +31,12 @@ jobs:
           import os
           import shutil
           from huggingface_hub import HfApi
-          from orcap.hf_snapshot_retry import snapshot_download_retry
+          from orcap.hf_snapshot_retry import hub_call_retry, snapshot_download_retry
 
-          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(
-              "t4run/openrouter-market-history"
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          revision = str(hub_call_retry(
+              lambda: api.dataset_info("t4run/openrouter-market-history"),
+              label="dataset revision",
           ).sha)
           snapshot = snapshot_download_retry(
               "t4run/openrouter-market-history",

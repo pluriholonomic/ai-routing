@@ -4,6 +4,32 @@ import pytest
 import orcap.hf_snapshot_retry as retry
 
 
+def test_hub_call_retry_recovers_and_returns_value():
+    calls = 0
+    sleeps = []
+
+    def operation():
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            raise OSError("rate limited")
+        return {"sha": "revision"}
+
+    assert retry.hub_call_retry(operation, label="dataset info", sleep=sleeps.append) == {
+        "sha": "revision"
+    }
+    assert calls == 3
+    assert sleeps == [1, 2]
+
+
+def test_hub_call_retry_fails_closed_after_bound():
+    def operation():
+        raise OSError("still rate limited")
+
+    with pytest.raises(OSError, match="still rate limited"):
+        retry.hub_call_retry(operation, attempts=2, sleep=lambda _: None)
+
+
 def test_file_exists_retry_recovers_from_read_timeout():
     calls = 0
     sleeps = []

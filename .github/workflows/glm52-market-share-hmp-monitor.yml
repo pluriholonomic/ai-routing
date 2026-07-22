@@ -37,10 +37,13 @@ jobs:
           import shutil
           from pathlib import Path
           from huggingface_hub import HfApi
-          from orcap.hf_snapshot_retry import snapshot_download_retry
+          from orcap.hf_snapshot_retry import hub_call_retry, snapshot_download_retry
 
           repo = "t4run/openrouter-market-history"
-          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          revision = str(hub_call_retry(
+              lambda: api.dataset_info(repo), label="dataset revision"
+          ).sha)
           snapshot = snapshot_download_retry(
               repo,
               repo_type="dataset",
@@ -132,13 +135,18 @@ jobs:
           uv run python - <<'PY'
           import os
           from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import hub_call_retry
 
-          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
-              path_or_fileobj="data/analysis/glm52-market-share-hmp-v1/market-share-hmp.html",
-              path_in_repo="market-share-hmp.html",
-              repo_id="t4run/openrouter-memo",
-              repo_type="space",
-              commit_message="market-share HMP dashboard refresh",
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          hub_call_retry(
+              lambda: api.upload_file(
+                  path_or_fileobj="data/analysis/glm52-market-share-hmp-v1/market-share-hmp.html",
+                  path_in_repo="market-share-hmp.html",
+                  repo_id="t4run/openrouter-memo",
+                  repo_type="space",
+                  commit_message="market-share HMP dashboard refresh",
+              ),
+              label="dashboard upload",
           )
           PY
       - name: preserve immutable aggregate artifact

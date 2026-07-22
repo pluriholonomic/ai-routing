@@ -13,6 +13,32 @@ from huggingface_hub.errors import HfHubHTTPError
 RETRYABLE_ERRORS = (HfHubHTTPError, httpx.TransportError, OSError)
 
 
+def hub_call_retry(
+    call: Callable[[], Any],
+    *,
+    label: str = "Hub API",
+    attempts: int = 6,
+    sleep: Callable[[float], None] = time.sleep,
+) -> Any:
+    """Retry one idempotent Hub metadata or upload call and fail closed."""
+    if attempts < 1:
+        raise ValueError("attempts must be positive")
+    for attempt in range(1, attempts + 1):
+        try:
+            return call()
+        except RETRYABLE_ERRORS as exc:
+            if attempt == attempts:
+                raise
+            delay = min(2 ** (attempt - 1), 30)
+            print(
+                f"{label} attempt {attempt}/{attempts} failed "
+                f"({type(exc).__name__}); retrying in {delay}s",
+                flush=True,
+            )
+            sleep(delay)
+    raise AssertionError("unreachable")
+
+
 def file_exists_retry(
     api: Any,
     *args: Any,

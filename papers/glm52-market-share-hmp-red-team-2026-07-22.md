@@ -4,12 +4,13 @@ Date: 2026-07-22 UTC.
 
 ## Verdict
 
-The prospective infrastructure is fit to begin collection after remote CI
-validation. It does **not** yet justify an empirical HMP, algorithmic-collusion,
+The prospective infrastructure is fit to collect after remote CI validation.
+It does **not** yet justify an empirical HMP, algorithmic-collusion,
 market-wide-share, provider-cost, or welfare claim. The only affirmative result
 currently justified is the exact path-elasticity identity for the declared
-inverse-power/softmax rule. The reduced one-seed simulation is a diagnostic and
-is mixed, so it is not evidence for the mechanism.
+inverse-power/softmax rule. The full ten-seed simulation rejects the proposed
+sharp critical-memory screen and gives mixed learner-specific effects; it does
+not validate the mechanism.
 
 This is the right stopping point for inference: deploy the fixed design, accrue
 the fixed horizon, and do not open outcomes early.
@@ -23,7 +24,7 @@ the fixed horizon, and do not open outcomes early.
 | MS3 owned routing | 800 covered choices per stratum; exact menus/integrity; randomized-menu analysis | Prospective count is zero | Not tested | No realized routing or causal price claim. |
 | MS4 passive incidence | MS1--MS3 plus active/anchor displacement and buyer outcomes | No released outcomes | Not tested | No incidence or welfare claim. |
 | MS5 temporal memory | MS1--MS4 plus frozen lags, future leads, clock shifts, and concentration audit | No released outcomes | Not tested | No live memory or critical-memory claim. |
-| MS6 mechanism transport | Prior empirical chain plus calibrated paired simulations and held-out threshold improvement | Reduced simulation only; empirical chain false by construction | Not promoted | Simulation is a mechanism screen only. |
+| MS6 mechanism transport | Prior empirical chain plus calibrated paired simulations and held-out threshold improvement | Full paired simulation; threshold loses on held-out seeds; prior live chain not open | Failed screen; not promoted | Simulation is a negative/mixed mechanism screen only. |
 
 ## Why MS1 is justified
 
@@ -40,22 +41,53 @@ runs the singleton negative control for every simulated learner family. This
 does not establish that OpenRouter uses the declared exponent without a score,
 nor that the rule describes realized market-wide allocation.
 
-## Diagnostic simulation result and non-result
+## Full simulation result and non-result
 
-The reduced run used one seed and a 400-period horizon. It generated 1,800
-world rows and 900 coupled/shuffled pairs across the expanded memory grid.
-The exact singleton wedge passed and the declared-rule group wedge was
-monotone. For UCB agents, coupled-minus-shuffled censored learning time averaged
-`-13.66` periods, but the fraction reaching the target was `0.550` in the
-coupled arm and `0.556` in the shuffled arm. Heterogeneous learners had a
-`-15.04` period difference and completion rates `0.557` versus `0.493`.
+The first full remote run used the frozen 2,500-period horizon, ten paired
+seeds, four learner families, five active-provider counts, five memory values,
+three signal-to-noise values, and three router exponents. It produced 18,000
+world rows and 9,000 unique coupled/shuffled pairs. Public GLM-5.2 quotes from
+3,223 pre-cutoff snapshots calibrated the median active-to-anchor price ratio to
+`0.6930`; the cost at 25% of that quote remains a scenario. Missing values are
+confined to the two uncensored learning-time fields when a learner did not hit
+the target; all comparisons use the frozen horizon-plus-one censoring rule.
 
-Those signs are not a coherent confirmatory result: one seed gives no sampling
-uncertainty, the UCB completion-rate ordering runs against a simple positive
-story, and the critical-memory comparison correctly reports insufficient seed
-support. No mechanism claim follows. The scheduled full run uses ten paired
-seeds and evaluates a threshold/hinge model selected on training seeds against a
-smooth memory curve on held-out seeds, including the `K=1` negative control.
+The preregistered sharp-memory prediction failed. A hinge selected on seeds
+0--5 at memory `0.95` had held-out MSE `0.112694`, versus `0.112626` for the
+smooth curve (ratio `1.00060`). The singleton control also did not improve
+(ratio `1.00041`). There is therefore no simulated critical-memory result.
+
+Equal-cell estimates below first average within each seed and use a two-sided
+95% t interval across the ten seed clusters. These secondary intervals are not
+familywise-adjusted across learner families and outcomes, so exclusion of zero
+is descriptive rather than a separately confirmed hypothesis:
+
+| Population, coupled minus shuffled | Estimate | 95% interval | Interpretation |
+|---|---:|---:|---|
+| All multiple-active learners, censored learning time | `+3.12` periods | `[-60.53, 66.77]` | No average learning-speed effect. |
+| All multiple-active learners, target-hit probability | `-0.0018` | `[-0.0232, 0.0196]` | No completion-rate effect. |
+| UCB, censored learning time | `-34.03` periods | `[-121.53, 53.46]` | Faster point estimate, unresolved. |
+| UCB, target-hit probability | `+0.0144` | `[-0.0181, 0.0470]` | Unresolved. |
+| UCB, action correlation | `+0.0193` | `[0.0105, 0.0281]` | Coupling synchronizes UCB actions in this environment. |
+| UCB, active-group share | `-0.000545` | `[-0.001056, -0.000034]` | Synchronization does not imply share gain. |
+| Heterogeneous learners, censored learning time | `+15.51` periods | `[-73.80, 104.81]` | Wrong point-estimate sign and unresolved. |
+| Heterogeneous learners, target-hit probability | `-0.0072` | `[-0.0393, 0.0248]` | No heterogeneous completion effect. |
+
+At memory `0.99`, the post-hoc UCB target-hit contrast is positive, but it is
+one of many learner-by-memory cells and the preregistered held-out threshold
+test failed. It is a hypothesis for a later frozen replication, not a result.
+The action-correlation result is causal for the simulated signal-order
+intervention only. It neither identifies deployed provider algorithms nor
+demonstrates collusion.
+
+The artifact audit found one presentation/data-shape defect: the deterministic
+controlled factorial emitted the identical `K=1` singleton path twice. That
+did not change any paired simulation estimate or the zero-wedge identity, but
+it could double-weight the control and put duplicate points in the plot. The
+generator now emits 135 unique controlled cells, has a regression test, and the
+final remote artifact is being regenerated. The original line plot also hid
+sampling uncertainty; the replacement uses seed-clustered 95% error bars and
+writes the intervals into the JSON summary.
 
 ## Design failures found and corrected before deployment
 
@@ -99,6 +131,15 @@ smooth memory curve on held-out seeds, including the `K=1` negative control.
     run selects a hinge on training seeds and scores it against a smooth curve on
     held-out seeds. This remains a simulation comparison, not proof of a phase
     transition.
+12. **Transient publication loss.** An automatic monitor reached Hugging Face's
+    strict `/whoami` rate limit and failed after completing its analysis. Identity,
+    repository creation, and upload now use bounded exponential retries; a fresh
+    end-to-end monitor run passed publication and artifact preservation.
+13. **Duplicate singleton control and uncertainty-free plot.** The controlled
+    factorial emitted `K=1` twice because unilateral and all-active paths coincide,
+    and its plot connected factorial means without intervals. The cell is now
+    unique, and simulation panels use seed-clustered 95% t intervals. Neither
+    defect changed the 9,000 unique paired intervention cells.
 
 ## Remaining threats that cannot be engineered away
 
@@ -145,6 +186,9 @@ smooth memory curve on held-out seeds, including the `K=1` negative control.
 - Agents have two price actions, a stylized demand process, scenario costs, and
   simplified quality/capacity. They are mechanism probes, not fitted replicas
   of named providers.
+- Ten seeds are enough to reveal that current intervals are wide; they are not a
+  high-powered basis for small learner-family effects. Factorial rows sharing a
+  seed are not independent replications, which is why intervals cluster on seed.
 - The elasticity learning time is an observer-side recovery statistic, not
   proof that a provider internally estimates that elasticity.
 - A held-out hinge improvement supports a sharp simulation nonlinearity only.
@@ -163,8 +207,21 @@ smooth memory curve on held-out seeds, including the `K=1` negative control.
   ID, or secret fields.
 - Before the gate, outcome columns in aggregate Parquet and inline HTML are
   null.
-- Local audit: scoped ruff and shell syntax checks passed; the repository suite
-  passed 853 tests with one pre-existing skip.
+- Local audit: scoped ruff and shell syntax checks passed; after the remote-only
+  failure fixes, the repository suite passed 856 tests with one pre-existing
+  skip.
+
+## Remote provenance
+
+- Full frozen simulation: GitHub Actions run `29886232930`, source revision
+  `a7911e15df6f5fd63accb3497ff22847fc3d3874`, protocol SHA-256
+  `f70ca6ba7c8493781d92c52f8e6636cae2bea0a45b278efa50bfbef07091b30e`.
+- Corrected monitor validation: run `29887996033`; all analysis, privacy,
+  publication, dashboard, and artifact steps passed.
+- Paid plan smoke test: run `29888457704` correctly failed closed with zero
+  assignments and zero spend because its newest public GLM-5.2 snapshot was
+  older than the frozen 30-minute freshness gate. The next successful public
+  capture, not an outcome, is the condition for execution.
 
 ## Manuscript boundary
 
