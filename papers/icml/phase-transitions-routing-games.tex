@@ -21,8 +21,8 @@
 \newcommand{\Prb}{\mathbb{P}}
 \newcommand{\SNR}{\operatorname{SNR}}
 
-\title{Critical Memory in Stateful Pricing Learners:\\
-Exponential Late-Credit Gaps}
+\title{Critical Memory and Information Congestion\\
+in Stateful Pricing Learners}
 \author{Anonymous Authors}
 \date{}
 
@@ -30,41 +30,47 @@ Exponential Late-Credit Gaps}
 \maketitle
 
 \begin{abstract}
-A stateful allocation rule can make a profitable price cut hard to learn
-without making it unprofitable.  We study a buyer that temporarily penalizes a
-seller after a cut.  The resulting MDP has two boundaries: a rational memory
-threshold above which staying high is optimal and a finite-time threshold above
-which fresh evidence for a profitable persistent cut is exponentially rare.
-After downstream values become usable, a learner cutting with conditional
-probability at most $q$ sees a fresh length-$M$ path within $T$ steps with
-probability at most $Tq^M$.  A path-equivalent commitment option reduces path
-proposal time to linear while preserving feasible primitive paths and optimal
-value.  In a frozen numerical game, primitive Q-learning chooses the rational
-action in 1/20 seeds at $M=7$, versus 19/20 with the option; paired regret falls
-by 0.0643 (95\% interval $[0.0493,0.0755]$).  All seeds cover every state--action
-pair, but failed learners stop revisiting deep cut states; ordered batch Bellman
-sweeps recover the optimum in 20/20.  The option overcuts beyond the rational
-boundary.  The result isolates a temporal credit mechanism, not live-provider
-collusion.
+A stateful router can make a profitable price cut hard to learn without making
+it unprofitable.  We separate three boundaries.  A rational threshold determines
+whether a persistent cut is valuable.  A finite-time threshold follows because
+a learner cutting with conditional probability at most $q$ sees a fresh
+length-$M$ path within $T$ steps with probability at most $Tq^M$.  Across $n$
+providers, the expected responsive set is therefore at most
+$T\sum_i q_i^{M_i}$.  Combining this bound with signals of effective rank
+$r_n\asymp n^\beta$ yields a conditional efficient adaptive set
+$k^*\asymp n^{(1+\alpha\beta)/(1+\alpha)}$ and an explicit memory level that
+caps finite-horizon exposure near $k^*$.  A path-equivalent commitment option
+reduces proposal time to linear while preserving primitive paths and optimal
+value.  In a frozen MDP it changes correct Q-learning from 1/20 to 19/20 seeds
+at $M=7$, but overcuts beyond the rational boundary.  A fixed-$n$ bandit
+experiment changes action correlation without changing allocation.  Finally,
+3.18 million public endpoint observations show a large GLM-5.2 shadow-share
+surface but reject the proposed GLM-minority/non-GLM-linear empirical split.
+The contribution is a finite-time learning theory with falsifiable transport
+tests, not a claim of live-provider collusion or router memory.
 \end{abstract}
 
 \section{Introduction}
 
-Independent pricing algorithms can coordinate through market feedback even
-without communication.  Existing results emphasize reward signal quality,
-parallel experimentation, and the scoring rule faced by each learner
-\citep{hansen2021,calvano2020}.  A different friction appears when a platform
-itself remembers actions.  A price cut can pay poorly today, yet become
-profitable only after enough consecutive cuts erase a ranking penalty.  No
-single experiment reveals the long-run return.
+Independent pricing algorithms interact through market feedback even without
+communication.  Existing results emphasize reward signal quality, parallel
+experimentation, and the scoring rule faced by each learner
+\citep{hansen2021,calvano2020}.  A different friction appears when the platform
+remembers actions.  A price cut can pay poorly today yet become profitable only
+after enough consecutive cuts erase a ranking penalty.  No isolated experiment
+reveals that long-run return.  At the same time, many providers may respond to
+the same low-dimensional signal.  Temporal credit and cross-sectional signal
+rank jointly determine how many sellers can learn to adapt within a market
+horizon.
 
-AI inference routing is one possible application, but current routing data do
-not identify this state.  Public menus measure contemporaneous prices; owned
-choices can eventually identify a current reduced-form score.  Neither shows
-that the score remembers earlier prices or quality.  No paid probe randomizes a
-memory rule.  We therefore use no market-share estimate as evidence for the
-temporal mechanism in this paper.  The object here is the learning problem
-conditional on a declared history-dependent allocation rule.
+AI inference routing is a useful application because a router aggregates token
+demand and selects among providers serving the same open-weight model.  Public
+menus expose contemporaneous quotes; private eligibility, non-price scores,
+fallback, and capacity remain hidden.  Current data therefore reveal the
+mechanical market-share surface of a declared price rule, not the live memory
+state.  We use the public panel as a property test: it can falsify proposed
+cross-sectional regimes, while the controlled environment isolates temporal
+credit.  No paid probe currently randomizes a memory rule.
 
 This distinction matters for both algorithmic-collusion and mechanism-design
 claims.  A high learned price can arise because high pricing is an equilibrium,
@@ -74,7 +80,7 @@ interventions.  More exploration addresses the last mechanism only at an
 exponential cost; changing the action interface can solve it but may induce
 overcommitment.
 
-Our contributions are fourfold.
+Our contributions are sixfold.
 \begin{enumerate}
   \item We derive an exact \emph{rational} boundary $M^*$ for persistent
   cutting under a finite-memory penalty.  It separates environments where the
@@ -84,6 +90,15 @@ Our contributions are fourfold.
   conditional probability at most $Tq^M$ of producing a fresh length-$M$ path
   within $T$ steps.  Combining this bound with ordinary reward estimation
   separates late temporal credit from reward SNR.
+  \item We lift the path bound to a market of $n$ providers.  It bounds the
+  finite-horizon responsive count and, under inverse-power routing, the local
+  total-variation reallocation caused by newly learned quote changes.
+  \item We combine this learning bound with an information-congestion planner.
+  If provider signals have effective rank $r_n\asymp n^\beta$, the efficient
+  adaptive set scales as
+  $n^{(1+\alpha\beta)/(1+\alpha)}$.  A logarithmic memory rule can implement
+  its expected exposure cap, but only when persistent adaptation remains on
+  the rational side of the first boundary.
   \item We show that a length-$(M+1)$ commitment option preserves the optimal
   value and feasible primitive paths while replacing exponential path-proposal
   time by a linear term.  This is an interface result, not a change in provider
@@ -93,6 +108,12 @@ Our contributions are fourfold.
   rational boundary.  A frozen trace replay separates early discovery from late
   credit starvation.  State observability, cross-market severity, and a
   conventional multi-step return each fail prespecified tests.
+  \item We add two transport falsifications.  A fixed-$n$ bandit intervention
+  moves simulated action correlation but not active share.  In public data,
+  GLM-5.2 has three active undercutters in a 25-provider menu and a large
+  inverse-price shadow transfer, yet its effective-rank slope is
+  linear-compatible; 90\% of non-GLM markets have no active undercutter.  Thus
+  the attractive GLM-$o(n)$/non-GLM-$\Omega(n)$ contrast is not a finding.
 \end{enumerate}
 
 \section{Stateful pricing game and economic boundary}
@@ -213,6 +234,114 @@ downstream learning can be exponential in $M$.  This conditional statement is
 not, by itself, an explanation of the Q-learning result; the trace audit below
 tests whether late support is actually absent.
 
+\section{From memory to market-share response}
+
+The preceding result concerns one learner.  We now hold the calendar horizon
+fixed and ask how many providers can become newly responsive.  Provider $i$
+has memory $M_i$ and satisfies \cref{eq:qcap} with cap $q_i$ after its own
+readiness stopping time.  Let $I_i(T)$ indicate that it completes a fresh
+qualifying path within the next $T$ periods and let
+$K_T=\sum_{i=1}^n I_i(T)$.
+
+\begin{proposition}[Finite-horizon responsive set]
+Without independence across providers,
+\begin{align}
+ \E[K_T\mid\mathcal F_\sigma]
+ &\le \sum_{i=1}^n \min\{1,Tq_i^{M_i}\},\notag\\
+ \Prb(K_T\ge k\mid\mathcal F_\sigma)
+ &\le \frac{\sum_i\min\{1,Tq_i^{M_i}\}}{k}.
+ \label{eq:responsive-count}
+\end{align}
+\label{prop:responsive}
+\end{proposition}
+
+The bound is agnostic about whether provider signals are independent,
+correlated, or identical.  It says that memory can make the realized adaptive
+set sparse even when each provider would benefit from a sufficiently persistent
+change.
+
+To connect this count to allocation, consider the declared inverse-power rule
+$s_i(p)=p_i^{-a}/\sum_j p_j^{-a}$.  Suppose a newly responsive provider changes
+log price locally by $d_i$, with $|d_i|\le\Delta$, and a nonresponsive provider
+does not move.  Let $Ds(p)[d]$ denote the first-order share change.
+
+\begin{proposition}[Local routed-share response]
+Conditional on the baseline menu,
+\begin{equation}
+ \E\!\left[\frac12\lVert Ds(p)[d]\rVert_1\right]
+ \le a\Delta\sum_{i=1}^n s_i(1-s_i)
+       \min\{1,Tq_i^{M_i}\}.
+ \label{eq:share-response}
+\end{equation}
+Thus the mechanical own-price elasticity $a(1-s_i)$ and the probability of
+learning a fresh response enter multiplicatively.  The bound is local and does
+not assert that the public rule is the realized router.
+\label{prop:share-response}
+\end{proposition}
+
+The number of responsive providers need not equal the efficient number.  Let
+$\Sigma_n$ be the covariance of the signals used by potentially adaptive
+providers and define effective rank
+\begin{equation}
+ r_n=\frac{(\operatorname{tr}\Sigma_n)^2}
+ {\operatorname{tr}(\Sigma_n^2)}\in[1,n].
+ \label{eq:effective-rank}
+\end{equation}
+Consider the conditional planner objective
+\begin{equation}
+ V_n(k)=\frac{bk}{n}
+ -c\left(\frac{k}{n}\right)^2
+       \left(\frac{k}{r_n}\right)^\alpha,
+ \qquad b,c,\alpha>0.
+ \label{eq:information-congestion}
+\end{equation}
+The benefit is the local allocation opportunity; the loss is a declared
+reduced form for common-mode overreaction.  It is not implied by
+\cref{eq:share-response}.
+
+\begin{theorem}[Information-congestion boundary]
+The unique continuous interior maximizer of \cref{eq:information-congestion},
+before clipping to $[0,n]$, is
+\begin{equation}
+ k_n^\circ=\left(
+ \frac{b n r_n^\alpha}{c(2+\alpha)}
+ \right)^{1/(1+\alpha)}.
+ \label{eq:information-kstar}
+\end{equation}
+The integer optimum is adjacent to $k_n^\circ$.  If
+$r_n\asymp n^\beta$, then
+\begin{equation}
+ k_n^*=\Theta\!\left(
+ n^{(1+\alpha\beta)/(1+\alpha)}
+ \right).
+ \label{eq:information-scaling}
+\end{equation}
+Hence $k_n^*=o(n)$ for $\beta<1$ and $k_n^*=\Theta(n)$ for $\beta=1$.
+\label{thm:information}
+\end{theorem}
+
+\begin{corollary}[Memory required for an exposure cap]
+If $M_i=M$ and $q_i=q$, then any
+\begin{equation}
+ M\ge
+ \frac{\log(Tn/k_n^*)}{\log(1/q)}
+ \label{eq:memory-cap}
+\end{equation}
+ensures $\E[K_T]\le k_n^*$ whenever the right-hand side is positive.  Writing
+$k_n^*=\Theta(n^\zeta)$, the required memory grows as
+$[(1-\zeta)\log n+\log T+O(1)]/\log(1/q)$.  A sublinear efficient adaptive set
+therefore requires logarithmically increasing temporal selectivity under this
+homogeneous implementation; a linear set does not.
+\label{cor:memory-cap}
+\end{corollary}
+
+This corollary is a mechanism identity, not a policy recommendation.  Memory
+suppresses response by making evidence difficult to realize; it may exclude the
+wrong providers, and it can push a profitable cut past the rational boundary.
+A router should prefer direct covariance-aware exposure caps when signal groups
+are observable.  The memory formula is useful because it makes the hidden cost
+of history-dependent scoring explicit.
+
 \section{A path-equivalent intervention}
 
 Augment the primitive MDP with a \texttt{commit-low} option that executes
@@ -279,14 +408,33 @@ deterministic empirical transition table from visited pairs.  Batch Bellman
 sweeps then test whether coverage is sufficient when update order is repaired.
 The checkpoints are diagnostics, not preregistered readiness estimates.
 
-\paragraph{External-market non-entry statement.}
-The repository also contains public-menu shadow-share accounting and a
-prospective owned-choice score estimator.  Neither artifact enters the payoffs,
-memory length, transition law, or result selection in this paper.  A
-contemporaneous score wedge cannot identify $M$; price persistence cannot show
-that the buyer stores price history; and no existing probe randomizes memory.
-Connecting this theorem to inference routing is therefore a future transport
-test, not an empirical contribution of this draft.
+\paragraph{Cross-sectional simulation.}
+SM3 holds total provider count fixed and evaluates
+\cref{thm:information} on an integer grid for
+$\beta\in\{0,.25,.5,.75,1\}$.  This is a numerical theorem check.  A separate
+paired bandit experiment preserves each learner's marginal signal sequence but
+changes common signal order, then measures action correlation and active share.
+Seed-clustered intervals are frozen before interpretation.  This second stage
+is the transport test: signal coupling must move allocation, not merely the
+correlation statistic used to construct it.
+
+\paragraph{Public-market property tests.}
+The public panel is frozen at immutable revision
+\texttt{f4023bdad64b6ad468741a5a3b1f3afb7af40dd0}.  It contains 3,182,780
+endpoint observations over 3,274 five-minute snapshots from 7--22 July 2026.
+Free model routes are excluded.  Active undercutters are classified before a
+temporal split by at least two price changes and a median quote below the
+author/menu benchmark.  We estimate effective rank for nested active sets and
+block-bootstrap the log-rank slope over calendar blocks.  We also reset active
+quotes to the benchmark and recompute inverse-price shadow shares.  These
+objects do not enter the MDP payoffs, $M$, transition law, or result selection.
+A contemporaneous rank or score wedge cannot identify router memory.
+
+The owned GLM-5.2 intervention compares default routing with an explicit
+price-sort request within complete randomized blocks.  Only assignment-level
+aggregates are used here.  The preregistered confirmatory gate requires 800
+choices, 100 blocks, seven days, and 90\% candidate coverage; current estimates
+are labeled accruing.
 
 \section{Results}
 
@@ -338,6 +486,76 @@ interval $[0,0.0113]$.  The supported result is option-specific temporal
 abstraction in the controlled MDP, not a claim that any longer return solves
 delayed credit.
 
+\paragraph{The cross-sectional theorem transports algebraically, not
+behaviorally.}
+For $\beta=0,.25,.5,.75,1$, the analytic exponents in
+\cref{eq:information-scaling} are $.5,.625,.75,.875,1$.  Integer optima across
+the registered $n$ grid recover $.498,.620,.745,.876,1.005$; the maximum error
+is 0.006.  This verifies the discrete implementation, not the congestion loss.
+In the paired bandit intervention, the active-share effects are $-0.00116$,
+$-0.00086$, and $-0.00038$ for rank exponents $0,.5,1$; all seed-clustered
+intervals include zero.  Action correlation can move without a distinguishable
+allocation effect.  This negative control rejects the claim that common signal
+order alone operationalizes \cref{thm:information} in the declared learner.
+
+\begin{figure*}[t]
+ \centering
+ \includegraphics[width=0.96\textwidth]{../../analysis/sm3_informational_congestion.pdf}
+ \caption{Fixed-$n$ information-congestion check and behavioral falsification.
+ Panels A--B recover the conditional optimizer in
+ \cref{thm:information}.  Panels C--D show that the marginal-preserving signal
+ intervention can alter simulated action correlation while its active-share
+ effect remains economically and statistically indistinguishable from zero.
+ Theory recovery is not evidence that the declared bandit generates the loss.}
+ \label{fig:sm3}
+\end{figure*}
+
+\section{Public-market property tests}
+
+The empirical exercise asks which proposed cross-sectional regimes remain
+compatible with the frozen data.  It does not estimate $M$, provider learning
+algorithms, realized market share, or $k_n^*$.
+
+\paragraph{GLM-5.2 has a large shadow-share surface but no sublinear-rank
+result.}
+The frozen classifier selects Novita, StreamLake, and Inceptron: three active
+undercutters in a median menu of 25.  Under the public inverse-price surface,
+their post-split shadow share is 27.61\%; resetting only those quotes to the
+benchmark gives 8.99\%, a passive-to-active transfer of 18.62 percentage
+points.  This is a deterministic rule counterfactual.  At a one-hour innovation
+horizon, the nested-set effective-rank slope is $0.967$ with block-bootstrap
+95\% interval $[0.516,1.219]$; at six and 24 hours the point estimates are
+$1.098$ and $1.121$.  GLM-5.2 is therefore linear-compatible at every horizon,
+not evidence for $k^*=o(n)$.
+
+\paragraph{Non-GLM repricing is sparse, not linear-density.}
+Across 70 paid non-GLM markets, 90\% have zero active undercutters and the median
+active density is zero.  The cross-market log-count slope on menu size is
+$0.219$ with model-bootstrap interval $[0.068,0.378]$.  Only
+\texttt{openai/gpt-oss-120b} supports a three-provider rank ladder; its strong
+training factor loses roughly half or more of its explained variance in the
+holdout.  These finite markets do not support $k=\Omega(n)$.
+
+\paragraph{The direct rule effect is promising but accruing.}
+In 15 complete owned-request blocks, default routing selects the cheapest
+provider 0\% of the time and explicit price sorting selects it 80\% of the time;
+the block-bootstrap difference is $[60,100]$ percentage points.  The public
+price exponent fitted to 36 default choices is 1.735 with profile interval
+$[0.31,3.16]$.  These estimates show that the action interface can materially
+change allocation for one account.  They do not pass the registered duration,
+sample-size, or coverage gates and do not reveal historical memory.
+
+\begin{figure*}[t]
+ \centering
+ \includegraphics[width=0.96\textwidth]{../../analysis/wf20_informational_congestion.pdf}
+ \caption{Frozen public-market property test.  GLM-5.2 has a small active set
+ and large public-rule shadow transfer, but its nested effective rank is
+ linear-compatible.  Non-GLM activity is sparse and its only low-rank ladder
+ fails temporal transport.  The slopes are finite-menu diagnostics, not
+ asymptotic estimates or realized route shares.}
+ \label{fig:wf20}
+\end{figure*}
+
 \section{Implications for stateful platform design}
 
 The two boundaries separate three regimes.
@@ -361,6 +579,14 @@ quote schedule only when a deviation audit predicts that persistent cutting
 raises provider value and buyer surplus.  The theorem supplies a testable
 screen, not a universally optimal policy.
 
+When signal groups are observable, a direct exposure cap is preferable to
+manufacturing a long memory barrier.  The router can bound aggregate attempt
+probability assigned to providers with correlated quote innovations, preserve a
+small exploration floor, and expose a cancellable multi-period action that lets
+learners reveal persistent intent.  The cap targets cross-sectional congestion;
+the option targets temporal credit.  Deploying either alone confounds the two
+problems.
+
 \paragraph{Illustrative inference-routing application.}
 The target score must also match the economic objective.  A user-cost router
 scores payment, latency, and failure; a welfare router substitutes resource cost
@@ -382,6 +608,20 @@ expose the score
 state, offer cancellable multi-period quote commitments, use
 execution-contingent capacity rather than fundraising or provider identity as a
 proxy, and charge fees separately from selected spend.
+
+\paragraph{Objective-conditioned equilibrium screen.}
+A separate structural game declares ten provider technologies: an author, two
+anchor resellers, two reserved-capacity providers, three spot-dependent
+startups, and two custom-quality providers.  It recomputes bounded cyclic best
+responses under 108 router rules.  In simulation units, the inverse-square
+price-only baseline yields welfare 137.29 and router fee revenue 5.99.  The
+welfare-selected rule yields welfare 208.44 and revenue 4.88, whereas the
+revenue-selected rule yields revenue 7.78, welfare 83.99, and negative user
+utility.  Objective-selected rules have zero unilateral grid regret but retain
+profitable bounded pair deviations.  Thus a learning intervention must be
+evaluated separately for welfare, router revenue, delivered quality, user
+utility, provider profit, and viability.  The technologies are declared stress
+scenarios, not estimates for named providers.
 
 \section{Related work}
 
@@ -412,24 +652,30 @@ checkpoint is post hoc and does not identify when a Q-value becomes usable.
 The controlled experiment fixes rivals, uses two prices, and studies tabular Q.
 Twenty seeds identify Monte Carlo variability, not uncertainty in live-market
 parameters.  Cross-profile severe-trap transport fails, and no paid probe
-randomizes a memory rule.  We therefore claim a theorem, a controlled mechanism,
-and a reproducible numerical counterfactual---not observed market share,
-provider intent, tacit collusion, communication, or live-router causality.
+randomizes a memory rule.  The information-congestion result additionally
+assumes the form of the common-mode loss; effective rank alone cannot identify
+its coefficient or welfare meaning.  SM3's behavioral stage is null.  WF20 has
+only two GLM rank points, a short temporal panel, public shadow shares rather
+than realized flow, and a sparse non-GLM comparison.  We therefore claim
+finite-time bounds, a conditional planner theorem, controlled mechanisms, and
+frozen property tests---not observed market share, a GLM/non-GLM asymptotic
+contrast, provider intent, tacit collusion, communication, or live-router
+causality.
 
 \section{Conclusion}
 
-Platform memory creates two distinct thresholds.  The rational threshold says
-whether persistent cutting is valuable; the finite-time threshold says whether
-a bounded ordered-credit learner can obtain fresh support after its downstream
-values become usable.  Between them, high learned prices can persist despite a
-profitable low-price path, with late path time exponential in memory and only
-logarithmic improvement from longer training.  Complete state--action coverage
-is insufficient for the online learner, while ordered batch backups on those
-same transitions recover the optimum.  A path-equivalent option also collapses
-that gap but overcorrects when cutting is no longer rational.  Learning-aware
-marketplace design must therefore optimize
-both incentives and representations, then audit deviations on either side of
-the boundary.
+Platform memory creates three separable objects: whether persistent cutting is
+valuable, whether a learner can obtain fresh support in finite time, and how
+many providers should respond to correlated information.  The first is a
+rational boundary; the second is exponential in memory; the third depends on
+signal rank and the declared congestion loss.  A path-equivalent option repairs
+late credit but overcorrects beyond the rational boundary.  A covariance-aware
+cap targets cross-sectional exposure but requires realized-outcome calibration.
+The public market currently shows large mechanical share transfer and sharply
+sparse adaptation, yet it supports neither proposed asymptotic regime.  The
+joint lesson is methodological: separate individual elasticity, finite-time
+learnability, and social information congestion, then demand a transport test
+at each link before calling a learning rule a market mechanism.
 
 \appendix
 \section{Proofs}
@@ -461,6 +707,43 @@ $E_M=0$ and $E_k=1+qE_{k+1}+(1-q)E_0$ solve to
 $E_0=(1-q^M)/[(1-q)q^M]$.
 \end{proof}
 
+\begin{proof}[Proof of \cref{prop:responsive}]
+Apply \cref{thm:critical} to each provider and truncate the resulting upper
+bound at one.  Linearity of conditional expectation does not require
+cross-provider independence.  Markov's inequality gives the tail bound.
+\end{proof}
+
+\begin{proof}[Proof of \cref{prop:share-response}]
+For inverse-power routing,
+\[
+ \frac{\partial s_i}{\partial\log p_i}=-a s_i(1-s_i),
+ \qquad
+ \frac{\partial s_j}{\partial\log p_i}=a s_i s_j\quad(j\ne i).
+\]
+Hence the $i$th Jacobian column has $\ell_1$ norm
+$2a s_i(1-s_i)$.  The triangle inequality bounds the local total variation by
+$a\sum_i s_i(1-s_i)|d_i|I_i(T)$.  Use $|d_i|\le\Delta$, take conditional
+expectations, and apply \cref{prop:responsive} provider by provider.
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:information}]
+Substituting \cref{eq:information-congestion} gives
+\[
+ V_n(k)=\frac{bk}{n}-\frac{c k^{2+\alpha}}{n^2r_n^\alpha}.
+\]
+Its derivative vanishes only at \cref{eq:information-kstar}; the second
+derivative is strictly negative for $k>0$.  Strict concavity places the integer
+maximizer at an adjacent integer.  Substituting $r_n\asymp n^\beta$ gives
+\cref{eq:information-scaling}.
+\end{proof}
+
+\begin{proof}[Proof of \cref{cor:memory-cap}]
+Under homogeneous $(M,q)$, \cref{prop:responsive} gives
+$\E[K_T]\le nTq^M$ in the nontrivial region.  Solving
+$nTq^M\le k_n^*$ for $M$ gives \cref{eq:memory-cap}.  Substitute
+$k_n^*=\Theta(n^\zeta)$ and collect logarithms.
+\end{proof}
+
 \begin{proof}[Proof of \cref{thm:option}]
 The augmented action set contains every primitive action, so its optimal value
 is weakly larger.  Replace each option in any augmented policy by its defining
@@ -474,8 +757,8 @@ transitions gives $M+q_o^{-1}$.
 \section{Reproducibility}
 
 The theory functions and unit tests are in
-\texttt{src/orcap/market\_env/critical\_memory.py} and
-\texttt{tests/market\_env/test\_critical\_memory.py}.  The figure is generated
+\path{src/orcap/market_env/critical_memory.py} and
+\path{tests/market_env/test_critical_memory.py}.  The figure is generated
 directly from the frozen E-SIM6 parquet.  Clean bundles are E-SIM5
 \texttt{3e5a55405e}, E-SIM6 \texttt{93265b9b03}, E-SIM7
 \texttt{bd74ab2eb7}, E-SIM8 \texttt{4d84b9b3a2}, and E-SIM9
@@ -483,13 +766,24 @@ directly from the frozen E-SIM6 parquet.  Clean bundles are E-SIM5
 input-artifact hashes.  Exact Bellman residuals, path equivalence, paper
 numbers, and the new finite-time identities are enforced by tests.
 The post-hoc trace artifact
-\texttt{credit-propagation-diagnostic.json} is generated by the adjacent
+\path{credit-propagation-diagnostic.json} is generated by the adjacent
 replay script.  It is admitted only after all 20 Q-tables match the frozen
 E-SIM6 artifact; separate tests reconcile seed-level actions, early hits, and
 late depth counts.
-The separate price--score evidence ledger is not an input to this paper's
-payoffs, memory length, transition law, or confirmatory gates.  This exclusion
-is intentional and is checked in the manuscript evidence audit.
+SM3 is generated by
+\path{src/orcap/analysis/sm3_informational_congestion.py}; its unit tests
+check effective-rank algebra, the continuous optimizer, integer adjacency,
+fixed-$n$ scaling, paired signal marginals, and seed-clustered intervals.  WF20
+is generated from immutable public-data revision
+\texttt{f4023bdad64b6ad468741a5a3b1f3afb7af40dd0}; its outputs include the
+model census, nested rank curves, block bootstrap, and benchmark-reset shadow
+shares.  A clean public integrity run completes 29 registered modules with zero
+failures and does not query prospective owned outcomes.  SM4 separately checks
+welfare accounting, fixed-provider menus, capacity redistribution, bounded
+best responses, objective selection, and JSON serialization.  None of WF20 or
+SM4 enters this paper's MDP payoffs, memory length, transition law, or
+confirmatory gates.  The detailed boundary is in
+the dated information-congestion evidence audit adjacent to the venue folders.
 
 \bibliographystyle{plainnat}
 \begingroup
