@@ -1,0 +1,104 @@
+[study]
+study_id = "openrouter-glm52-market-share-hmp-v1"
+model_id = "z-ai/glm-5.2"
+plan_version = "glm52-market-share-hmp-plan-v1"
+prospective_start_utc = "2026-07-22T03:00:00Z"
+campaign_end_utc = "2026-08-26T03:00:00Z"
+calibration_end_utc = "2026-07-22T03:00:00Z"
+frozen_eta = 1.6482780609377246
+eta_sensitivity = [1.26, 1.6482780609377246, 2.04]
+
+[events]
+minimum_cut_fraction = 0.02
+maximum_snapshot_gap_minutes = 12
+comove_window_minutes = 15
+comove_window_sensitivity_minutes = [5, 15, 30, 60]
+contamination_window_minutes = 60
+minimum_post_captures = 2
+minimum_unchanged_pre_captures = 2
+minimum_rate_limit_spike_count = 3
+maximum_rate_limit_incidence = 0.10
+minimum_derankable_error_count = 3
+maximum_capacity_ceiling_change_fraction = 0.20
+minimum_anchor_providers = 2
+waves_minutes = [0, 15, 60, 240, 1440]
+wave_tolerance_minutes = [10, 20, 45, 90, 180]
+replicates_per_arm = 4
+maximum_tasks_per_run = 24
+
+[providers]
+active = [
+  "Alibaba",
+  "AtlasCloud",
+  "Baidu",
+  "Inceptron",
+  "Io Net",
+  "Novita",
+  "StreamLake",
+]
+anchors = [
+  "AkashML",
+  "Ambient",
+  "Cloudflare",
+  "DigitalOcean",
+  "Friendli",
+  "Parasail",
+  "Phala",
+  "Together",
+  "Venice",
+  "WandB",
+]
+author = ["Z.AI", "Z.ai"]
+
+[arms]
+names = [
+  "broad_default",
+  "broad_price_sort",
+  "singleton_with_anchors",
+  "pair_with_anchors",
+  "active_group_with_anchors",
+  "anchor_only",
+]
+
+[background]
+enabled = true
+cadence_minutes = 60
+replicates_per_arm = 2
+latest_offset_minutes = 59
+
+[budget]
+pilot_usd = 5.0
+maximum_run_usd = 1.0
+maximum_day_usd = 5.0
+maximum_campaign_usd = 50.0
+
+[support]
+pilot_days = 7
+confirmatory_days = 28
+minimum_events_per_multiplicity = 30
+minimum_choices_per_multiplicity = 800
+minimum_provider_pair_clusters = 10
+minimum_selected_active_providers = 3
+minimum_menu_coverage = 0.90
+minimum_assignment_integrity = 1.0
+maximum_pair_share = 0.20
+minimum_quality_tasks_per_stratum = 100
+
+[simulation]
+horizon = 2500
+burn_in = 500
+demand_per_period = 120
+active_counts = [1, 2, 3, 5, 7]
+signal_to_noise = [1.0, 2.0, 4.0]
+reward_memory = [0.0, 0.5, 0.8, 0.95, 0.99]
+router_etas = [1.26, 1.6482780609377246, 2.04]
+algorithms = ["ucb", "thompson", "epsilon", "q_learning"]
+seeds = 10
+learning_relative_error = 0.10
+
+[claims]
+market_wide_share_identified = false
+provider_algorithm_identified = false
+provider_cost_identified = false
+collusion_identified = false
+communication_identified = false

@@ -1,0 +1,171 @@
+name: glm52-market-share-hmp
+
+# One outcome-free detector/queue scan follows each public capture. The queue is
+# reconstructed from HF plus recent immutable artifacts, so a replaced pending
+# schedule does not erase an event or delayed wave.
+on:
+  workflow_run:
+    workflows: ["capture"]
+    types: [completed]
+  schedule:
+    - cron: "11 * * * *"
+  workflow_dispatch:
+    inputs:
+      execute_paid:
+        description: "Execute a due immutable paid block after all gates"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  # Serialize detection, assignment upload, and execution. A replaced pending
+  # schedule is harmless because each scan reconstructs all unregistered
+  # public transitions from the persistent queue.
+  group: glm52-market-share-hmp-queue
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: >-
+      ${{ github.event_name != 'workflow_run' ||
+          github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      has_tasks: ${{ steps.gate.outputs.has_tasks }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate authoritative queue, menus, and spend
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from datetime import UTC, datetime, timedelta
+          from pathlib import Path
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          today = datetime.now(UTC).date()
+          source_days = [today - timedelta(days=offset) for offset in range(3)]
+          public_patterns = [
+              f"curated/{table}/dt={day.isoformat()}/*.parquet"
+              for day in source_days
+              for table in ("endpoints_snapshots", "congestion_intraday")
+          ]
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=public_patterns + [
+                  "curated/paid_spend_ledger/*/*.parquet",
+                  "curated/glm52_hmp_events/*/*.parquet",
+                  "curated/glm52_hmp_wave_plans/*/*.parquet",
+                  "curated/glm52_hmp_assignments/*/*.parquet",
+                  "curated/glm52_hmp_run_ledger/*/*.parquet",
+                  "curated/glm52_hmp_public_panel/*/*.parquet",
+              ],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          Path("input-data").mkdir(parents=True, exist_ok=True)
+          PY
+      - name: overlay uncompacted captures and HMP queue checkpoints
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_price_artifacts.sh 48 input-data hmp
+      - name: stage the authoritative spend ledger into the execution bundle
+        run: |
+          mkdir -p plan-data/curated
+          if [ -d input-data/curated/paid_spend_ledger ]; then
+            cp -R input-data/curated/paid_spend_ledger plan-data/curated/
+          fi
+      - name: finalize public events and freeze one due randomized block
+        env:
+          ORCAP_GLM52_HMP_RUN_ID: github-${{ github.run_id }}
+          ORCAP_GLM52_HMP_SEED: ${{ github.run_id }}
+        run: >-
+          uv run python -m orcap.capture_market_share_hmp plan
+          --data-root input-data
+          --output-root plan-data
+          --bundle glm52-hmp-plan.json
+      - name: upload assignment-first immutable plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: glm52-hmp-plan-${{ github.run_id }}
+          path: |
+            glm52-hmp-plan.json
+            plan-data/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: true
+      - name: validate event, protocol, assignment, and claim manifests
+        run: >-
+          uv run python -m orcap.capture_market_share_hmp validate-plan
+          --bundle glm52-hmp-plan.json
+      - name: publish outcome-free task gate
+        id: gate
+        run: echo "has_tasks=$(jq -r '.summary.planned_tasks > 0' glm52-hmp-plan.json)" >> "$GITHUB_OUTPUT"
+
+  execute:
+    needs: plan
+    if: >-
+      ${{ needs.plan.outputs.has_tasks == 'true' &&
+          vars.ORCAP_GLM52_HMP_ENABLED == 'true' &&
+          vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
+          (github.event_name == 'schedule' ||
+           github.event_name == 'workflow_run' ||
+           github.event.inputs.execute_paid == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: glm52-hmp-plan-${{ github.run_id }}
+      - name: recover spend checkpoint from a retried execution job
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p prior-execution plan-data/curated/paid_spend_ledger
+          gh run download "${{ github.run_id }}" \
+            --pattern "glm52-hmp-execution-${{ github.run_id }}-*" \
+            --dir prior-execution || true
+          find prior-execution -type d -name paid_spend_ledger -print0 | \
+            while IFS= read -r -d '' ledger; do
+              cp -R "$ledger"/. plan-data/curated/paid_spend_ledger/
+            done
+      - name: verify immutable plan and execute due tasks once
+        env:
+          OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
+          ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
+          ORCAP_PRICE_CAMPAIGN_START_UTC: ${{ vars.ORCAP_GLM52_HMP_START_UTC }}
+          ORCAP_PRICE_CAMPAIGN_END_UTC: ${{ vars.ORCAP_GLM52_HMP_END_UTC }}
+          ORCAP_PRICE_MAX_RUN_USD: ${{ vars.ORCAP_GLM52_HMP_MAX_RUN_USD || '1.00' }}
+          ORCAP_PRICE_MAX_DAY_USD: ${{ vars.ORCAP_GLM52_HMP_MAX_DAY_USD || '5.00' }}
+          ORCAP_PRICE_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_GLM52_HMP_MAX_CAMPAIGN_USD || '50.00' }}
+        run: >-
+          uv run python -m orcap.capture_market_share_hmp execute
+          --data-root plan-data
+          --bundle glm52-hmp-plan.json
+      - name: preserve redacted attempts and spend ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glm52-hmp-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: plan-data/
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0

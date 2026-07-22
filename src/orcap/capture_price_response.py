@@ -372,6 +372,7 @@ def _attempt(
             "block_id": assignment["block_id"],
             "policy_order": assignment["policy_order"],
             "manifest_sha256": manifest_sha256,
+            "protocol_sha256": assignment.get("protocol_sha256"),
             "event_id": assignment.get("event_id"),
             "wave_id": assignment.get("wave_id"),
             "max_price_prompt_per_mtok": assignment["max_price_prompt_per_mtok"],

@@ -1,0 +1,78 @@
+name: glm52-market-share-hmp-simulation
+
+on:
+  schedule:
+    - cron: "17 8 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: glm52-market-share-hmp-simulation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: freeze one public calibration revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(
+              "t4run/openrouter-market-history"
+          ).sha)
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              revision=revision,
+              allow_patterns=["curated/endpoints_snapshots/*/*.parquet"],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: run frozen full controlled-router and multi-agent factorial
+        run: >-
+          uv run python -m orcap.market_env.experiments_market_share_hmp
+          --data-root input-data
+          --source-revision "${{ steps.source.outputs.revision }}"
+          --out data/analysis/glm52-market-share-hmp-v1/simulation
+      - name: validate non-promotion boundary
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("data/analysis/glm52-market-share-hmp-v1/simulation/market_share_hmp_simulation_summary.json")
+          summary = json.loads(path.read_text())
+          if summary["empirical_property_chain_passed"] or summary["mechanism_validated"]:
+              raise SystemExit("simulation cannot self-promote the empirical mechanism")
+          PY
+      - name: publish aggregate simulation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "market-share HMP simulation ${{ github.run_id }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: glm52-market-share-hmp-simulation-${{ github.run_id }}
+          path: data/analysis/glm52-market-share-hmp-v1/simulation/
+          if-no-files-found: error
+          retention-days: 90

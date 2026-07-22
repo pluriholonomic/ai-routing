@@ -1,0 +1,151 @@
+name: glm52-market-share-hmp-monitor
+
+on:
+  schedule:
+    - cron: "31 6 * * *"
+  workflow_run:
+    workflows: ["glm52-market-share-hmp", "compact"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: glm52-market-share-hmp-monitor
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: freeze and hydrate one immutable data revision
+        id: source
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          repo = "t4run/openrouter-market-history"
+          revision = str(HfApi(token=os.environ["HF_TOKEN"]).dataset_info(repo).sha)
+          snapshot = snapshot_download_retry(
+              repo,
+              repo_type="dataset",
+              revision=revision,
+              allow_patterns=[
+                  "curated/glm52_hmp_*/*/*.parquet",
+                  "curated/router_route_attempts/*/*.parquet",
+                  "curated/paid_spend_ledger/*/*.parquet",
+              ],
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          Path("source-revision.txt").write_text(revision + "\n", encoding="utf-8")
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"revision={revision}\n")
+          PY
+      - name: overlay uncompacted HMP artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_price_artifacts.sh 72 input-data hmp
+      - name: run reduced-seed controlled and multi-agent monitor
+        run: >-
+          uv run python -m orcap.market_env.experiments_market_share_hmp
+          --seeds 1
+          --horizon 400
+          --out data/analysis/glm52-market-share-hmp-v1/simulation
+      - name: build aggregate support and result panel
+        run: >-
+          uv run python -m orcap.analysis.market_share_hmp_monitor
+          --data-root input-data
+          --source-revision "${{ steps.source.outputs.revision }}"
+          --out data/analysis/glm52-market-share-hmp-v1
+      - name: enforce privacy and claim boundaries
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+
+          root = Path("data/analysis/glm52-market-share-hmp-v1")
+          summary = json.loads((root / "market_share_hmp_summary.json").read_text())
+          for key in (
+              "market_wide_share_identified", "provider_algorithm_identified",
+              "provider_cost_identified", "collusion_identified", "communication_identified",
+          ):
+              if summary[key] is not False:
+                  raise SystemExit(f"claim boundary changed: {key}")
+          required = [
+              "support_by_multiplicity.parquet", "arm_summary.parquet",
+              "event_aggregate.parquet", "market_share_hmp_summary.json",
+              "market_share_hmp_monitor.png", "market_share_hmp_monitor.pdf",
+              "glm52_public_relative_price_paths.png",
+              "glm52_public_relative_price_paths.pdf",
+              "market-share-hmp.html",
+          ]
+          missing = [name for name in required if not (root / name).is_file()]
+          if missing:
+              raise SystemExit(f"missing aggregate outputs: {missing}")
+          forbidden = {"prompt", "messages", "response_text", "request_ref", "task_id"}
+          for path in root.glob("*.parquet"):
+              frame = pd.read_parquet(path)
+              overlap = forbidden.intersection(frame.columns)
+              if overlap:
+                  raise SystemExit(f"private columns in {path}: {sorted(overlap)}")
+          if not summary["empirical_support_gate_passed"]:
+              arms = pd.read_parquet(root / "arm_summary.parquet")
+              events = pd.read_parquet(root / "event_aggregate.parquet")
+              hidden = [
+                  column for column in (
+                      "successful", "active_selections", "anchor_selections",
+                      "active_selection_rate", "active_rate_ci_low", "active_rate_ci_high",
+                      "mean_cost_usd", "mean_latency_ms", "fallback_rate",
+                  ) if column in arms and arms[column].notna().any()
+              ]
+              if "active_selection_rate" in events and events["active_selection_rate"].notna().any():
+                  hidden.append("event_active_selection_rate")
+              if hidden:
+                  raise SystemExit(f"outcomes opened before support gate: {hidden}")
+          PY
+      - name: publish aggregate monitor outputs
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run orcap push --message "GLM-5.2 market-share HMP monitor ${{ github.run_id }}"
+      - name: publish private dashboard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="data/analysis/glm52-market-share-hmp-v1/market-share-hmp.html",
+              path_in_repo="market-share-hmp.html",
+              repo_id="t4run/openrouter-memo",
+              repo_type="space",
+              commit_message="market-share HMP dashboard refresh",
+          )
+          PY
+      - name: preserve immutable aggregate artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glm52-market-share-hmp-monitor-${{ github.run_id }}
+          path: data/analysis/glm52-market-share-hmp-v1/
+          if-no-files-found: error
+          retention-days: 90

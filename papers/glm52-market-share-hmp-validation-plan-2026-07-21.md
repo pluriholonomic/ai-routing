@@ -1,11 +1,24 @@
 # GLM-5.2 market-share HMP validation plan
 
-Status: prospective design. This document does not promote a result. It extends
+Status: preregistered and implemented for prospective collection. Phase 0 is
+complete; the live pilot and fixed-duration confirmatory gates necessarily
+accrue in calendar time. This document does not promote a result. It extends
 `marketshare-quality-memory-validation-plan-2026-07-21.md` with the experiment
 needed to test whether *multiple active price experimenters* create an
 Hansen--Misra--Pai-style market-share learning channel.
 
 Date: 2026-07-21 America/New_York / 2026-07-22 UTC.
+
+Implementation note: the outcome-free detector and single paid dispatcher are
+two jobs in one serialized `glm52-market-share-hmp.yml` workflow. Keeping the
+provisional event write, immutable assignment upload, and execution under one
+workflow-level concurrency lock removes the plan/execute race that separate
+workflows would introduce. Monitoring and the full simulation remain separate
+workflows. The event ledger is staged: provisional at the cut, multiplicity
+finalized after 15 minutes, and confirmatory-clean only after the frozen
+60-minute contamination window. Outcomes remain blinded in published monitor
+artifacts until every duration, support, integrity, coverage, and concentration
+gate passes.
 
 ## 1. The conjecture we should actually test
 
@@ -302,6 +315,13 @@ pins are operational controls only and never enter delegated-share estimates.
 Fresh sessions, request hashes, and arm order prevent persistence and clock
 confounding.
 
+Because an event trigger cannot observe a request before an unanticipated cut,
+run a separate HMP-specific hourly background block with two replicates of the
+same six arms and a deterministically rotating focal provider. The latest
+strictly prior background block is the pre-event owned-routing measurement.
+These rows are not pooled with the pre-existing GLM campaign, and a due natural
+event always has queue priority.
+
 These arms separate three objects:
 
 - broad default versus broad price-sort estimates the non-price scoring wedge;
@@ -402,15 +422,17 @@ cost heterogeneity, capacity, and quality dispersion on a frozen grid.
 
 ### 8.3 Causal HMP intervention
 
-For each seed, create two worlds with identical marginal rewards for every
-provider:
+For each seed, create two worlds with identical marginal exogenous shock
+sequences for every provider:
 
-- **coupled:** reward signals retain their common time ordering; and
-- **decoupled:** each provider's reward series is independently permuted in
+- **coupled:** exogenous reward shocks retain their common time ordering; and
+- **decoupled:** each provider's exogenous shock series is independently permuted in
   time within the same public-state strata.
 
-The intervention preserves marginal reward distributions and breaks only
-common signal ordering. This is the simulation analogue of the HMP comparison.
+The intervention preserves marginal exogenous-shock distributions and breaks
+only common shock ordering. Once actions diverge, endogenous realized rewards
+need not have identical marginals. This is the simulation analogue of the HMP
+comparison, not an equality claim about realized reward paths.
 
 ### 8.4 Primary simulation estimands
 
