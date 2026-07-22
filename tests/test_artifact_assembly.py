@@ -62,3 +62,56 @@ exit 2
     ).read_text() == "row"
     assert not (destination / "plan-data").exists()
     assert not (destination / "price-plan.json").exists()
+
+
+def test_artifact_assemblers_retry_github_api_calls():
+    root = Path(__file__).parents[1]
+    retry = (root / "scripts/gh_retry.sh").read_text(encoding="utf-8")
+    assert "GH_RETRY_MAX_ATTEMPTS" in retry
+    assert "sleep" in retry
+    for name in ("assemble_artifacts.sh", "assemble_price_artifacts.sh"):
+        text = (root / "scripts" / name).read_text(encoding="utf-8")
+        assert 'source "$SCRIPT_DIR/gh_retry.sh"' in text
+        assert "gh_retry run list" in text
+        assert "gh_retry run download" in text
+
+
+def test_gh_retry_recovers_from_transient_failure(tmp_path):
+    root = Path(__file__).parents[1]
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    counter = tmp_path / "counter"
+    fake = bin_dir / "gh"
+    fake.write_text(
+        """#!/bin/sh
+if [ ! -f "$GH_RETRY_COUNTER" ]; then
+  printf 1 > "$GH_RETRY_COUNTER"
+  echo transient >&2
+  exit 1
+fi
+echo recovered
+"""
+    )
+    fake.chmod(0o755)
+    env = os.environ | {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "GH_RETRY_COUNTER": str(counter),
+        "GH_RETRY_MAX_ATTEMPTS": "2",
+        "GH_RETRY_INITIAL_SECONDS": "0",
+        "GH_RETRY_MAX_SECONDS": "0",
+    }
+    completed = subprocess.run(
+        [
+            "bash",
+            "-c",
+            'source scripts/gh_retry.sh; gh_retry run list --workflow capture.yml',
+        ],
+        cwd=root,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0
+    assert completed.stdout.strip() == "recovered"
+    assert "attempt 1/2 failed" in completed.stderr

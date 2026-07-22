@@ -2,6 +2,9 @@
 # Merge buffered capture/gpu workflow artifacts into a local data dir.
 # CI-only (GNU date, gh CLI with GH_TOKEN). Usage: assemble_artifacts.sh [hours-back] [dest]
 set -euo pipefail
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=gh_retry.sh
+source "$SCRIPT_DIR/gh_retry.sh"
 HOURS=${1:-26}
 DEST=${2:-data}
 SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
@@ -22,17 +25,17 @@ for wf in capture.yml capture-backstop.yml capacity-policy-probes.yml enforcemen
   if [ "$wf" = "glm52-market-share-hmp.yml" ] || [ "$wf" = "information-congestion.yml" ]; then
     # A failed paid runner still contains its outcome-free immutable assignment.
     # Request-level outcomes go directly to private HF, never a public artifact.
-    run_ids=$(gh run list --workflow "$wf" --limit "$limit" \
+    run_ids=$(gh_retry run list --workflow "$wf" --limit "$limit" \
       --json databaseId,createdAt \
       --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId")
   else
-    run_ids=$(gh run list --workflow "$wf" --status success --limit "$limit" \
+    run_ids=$(gh_retry run list --workflow "$wf" --status success --limit "$limit" \
       --json databaseId,createdAt \
       --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId")
   fi
   for id in $run_ids; do
     tmp="/tmp/art-$id"
-    if gh run download "$id" --dir "$tmp" 2>/dev/null; then
+    if gh_retry run download "$id" --dir "$tmp"; then
       # Most artifact roots hold a data/ tree directly. Plan-first paid jobs
       # upload both a JSON bundle and plan-data/, so unwrap that directory into
       # the canonical data root instead of publishing plan-data/curated/*.
