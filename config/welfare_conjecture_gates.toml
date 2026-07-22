@@ -25,3 +25,34 @@ min_sign_concordance = 0.90
 routing_elasticity = -1.19
 end_user_elasticities = [-0.05, -0.07]
 cost_ratios = [0.10, 0.30, 0.50, 0.70, 0.90]
+
+[revenue_gap]
+# A bounded unilateral deviation set. Boundary optima are reported as
+# unidentified beyond the grid, never as global revenue-maximizing prices.
+price_multiple_min = 0.25
+price_multiple_max = 4.0
+grid_points = 161
+bootstrap_draws = 1000
+seed = 20260716
+
+[revenue_stationarity]
+# Equivalence around the zero-cost gross-revenue FOC epsilon_share = -1.
+# Dynamic promotion additionally requires enough time variation to distinguish
+# an own-price response from a cross-sectional equilibrium correlation.
+equivalence_margin = 0.25
+alpha = 0.05
+min_panel_days = 30
+min_listed_price_change_events = 200
+min_varying_entity_share = 0.25
+min_within_price_variance_share = 0.02
+listed_price_change_threshold = 0.01
+
+[revenue_identity]
+# H92 is exact algebra plus a within-market exchangeability falsification.
+# Equivalence is for the public price-times-token revenue-share coefficient,
+# not for provider billing, profit, or a causal demand derivative.
+equivalence_margin = 0.25
+alpha = 0.05
+identity_tolerance = 1e-10
+permutation_draws = 999
+seed = 20260716

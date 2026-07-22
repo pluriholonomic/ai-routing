@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from orcap.analysis.bm_common import load_gates
 from orcap.analysis.h91_revenue_stationarity import (
     cluster_sign_flip_score_test,
     fit_two_way_fe,
@@ -11,6 +12,13 @@ from orcap.analysis.h91_revenue_stationarity import (
     revenue_foc_test,
     within_between_decomposition,
 )
+
+
+def test_registered_revenue_analysis_gates_are_packaged() -> None:
+    gates = load_gates()
+    assert gates["revenue_stationarity"]["min_panel_days"] == 30
+    assert gates["revenue_identity"]["permutation_draws"] == 999
+    assert gates["revenue_gap"]["grid_points"] == 161
 
 
 def test_revenue_foc_equivalence_test_accepts_precise_unit_elasticity() -> None:
