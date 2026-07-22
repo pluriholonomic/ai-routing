@@ -1,0 +1,11 @@
+{
+  "experiment_id": "contestable-entry-mechanism-v1",
+  "evidence_status": "analytical_benchmarks_and_deterministic_sensitivity",
+  "free_entry_at_zero_bilateral_profit": 21,
+  "free_entry_at_high_bilateral_profit": 40,
+  "welfare_entry": 5,
+  "inverse_square_revenue_threshold_group_share": 0.5,
+  "maximum_learning_horizon": 18260,
+  "adaptive_zero_region_present": true,
+  "claim_boundary": "The panels evaluate declared analytical primitives. Bilateral profit, entry cost, availability, covariance, contestability, and signal rank are scenarios, not live provider estimates."
+}

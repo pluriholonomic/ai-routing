@@ -1,0 +1,22 @@
+{
+  "cells": 13,
+  "claim_boundary": "Model-specific price-only slopes are reduced-form owned-choice estimates. A cell without within-provider repricing cannot separate price sensitivity from provider/model score levels. These estimates are not market-wide share, demand elasticity, or the proprietary router rule.",
+  "covered_choices": 423,
+  "heterogeneity": {
+    "cells": 3,
+    "degrees_of_freedom": 2,
+    "lr_statistic": 3.6112118526425547,
+    "p_value": 0.16437482736176715,
+    "pooled_eta": 1.4515590567346521,
+    "pooled_profile_ci_high": 1.75,
+    "pooled_profile_ci_low": 1.1500000000000001
+  },
+  "observations": 429,
+  "partial_pooling": {
+    "between_cell_sd": 0.13725401003022317,
+    "cells": 3,
+    "global_mean": 1.4871274372363874
+  },
+  "source_revision": "cda71b210f849d4b952ed48407ca1b633138480f",
+  "study_id": "model-specific-router-exponent-v1"
+}
