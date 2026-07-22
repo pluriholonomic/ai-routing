@@ -2,6 +2,9 @@
 # Overlay only the small inputs needed by paid price planning.
 # Usage: assemble_price_artifacts.sh [hours-back] [dest] [paid|event|glm52|hmp|ic|score-memory-routing|score-memory-quality|score-memory]
 set -euo pipefail
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=gh_retry.sh
+source "$SCRIPT_DIR/gh_retry.sh"
 
 HOURS=${1:-26}
 DEST=${2:-input-data}
@@ -49,7 +52,7 @@ for wf in $WORKFLOWS; do
   while IFS= read -r id; do
     [ -n "$id" ] || continue
     tmp="/tmp/price-art-$id"
-    if gh run download "$id" --dir "$tmp" 2>/dev/null; then
+    if gh_retry run download "$id" --dir "$tmp"; then
       for directory in "$tmp"/*/; do
         [ -d "$directory" ] || continue
         if [ -d "${directory}plan-data" ]; then
@@ -70,11 +73,11 @@ for wf in $WORKFLOWS; do
       # artifacts are never published by the HMP/IC workflows. Event workflows
       # also expose redacted execution checkpoints before the full delayed-wave
       # run completes, closing the gap between serialized execute jobs.
-      gh run list --workflow "$wf" --limit "$LIMIT" \
+      gh_retry run list --workflow "$wf" --limit "$LIMIT" \
         --json databaseId,createdAt \
         --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId"
     else
-      gh run list --workflow "$wf" --status success --limit "$LIMIT" \
+      gh_retry run list --workflow "$wf" --status success --limit "$LIMIT" \
         --json databaseId,createdAt \
         --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId"
     fi
