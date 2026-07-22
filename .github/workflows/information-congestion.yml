@@ -1,0 +1,211 @@
+name: information-congestion
+
+# Prospective plan-first randomized menu experiment. Scheduled runs always
+# produce assignment-only plans; paid execution is separately and fail-closed
+# behind the global and study feature flags.
+on:
+  workflow_run:
+    workflows: ["capture", "capture-backstop"]
+    types: [completed]
+  schedule:
+    - cron: "31 * * * *"
+  workflow_dispatch:
+    inputs:
+      execute_paid:
+        description: "Execute the uploaded plan after all gates"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: information-congestion-plan-queue
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: >-
+      ${{ github.event_name != 'workflow_run' ||
+          github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      has_tasks: ${{ steps.gate.outputs.has_tasks }}
+      source_healthy: ${{ steps.gate.outputs.source_healthy }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate authoritative public history, plans, and spend
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from datetime import UTC, datetime, timedelta
+          from pathlib import Path
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          today = datetime.now(UTC).date()
+          days = [today - timedelta(days=offset) for offset in range(60)]
+          patterns = [
+              f"curated/endpoints_snapshots/dt={day.isoformat()}/*.parquet"
+              for day in days
+          ]
+          patterns += [
+              "curated/paid_spend_ledger/*/*.parquet",
+              "curated/ic_*/*/*.parquet",
+          ]
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=patterns,
+              max_workers=8,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          Path("input-data").mkdir(parents=True, exist_ok=True)
+          PY
+      - name: overlay uncompacted public captures and assignment reservations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/assemble_price_artifacts.sh 72 input-data ic
+      - name: freeze randomized n-k-overlap plan
+        env:
+          ORCAP_IC_RUN_ID: github-${{ github.run_id }}
+          ORCAP_IC_SEED: ${{ github.run_id }}
+        run: >-
+          uv run python -m orcap.capture_information_congestion plan
+          --data-root input-data
+          --output-root plan-data
+          --bundle information-congestion-plan.json
+      - name: upload immutable assignment-only plan before requests
+        uses: actions/upload-artifact@v4
+        with:
+          name: information-congestion-plan-${{ github.run_id }}
+          path: |
+            information-congestion-plan.json
+            plan-data/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: true
+      - name: validate protocol, manifest, assignments, and claim boundary
+        run: >-
+          uv run python -m orcap.capture_information_congestion validate-plan
+          --bundle information-congestion-plan.json
+      - name: publish outcome-free execution gates
+        id: gate
+        run: |
+          echo "has_tasks=$(jq -r '.summary.planned_tasks > 0' information-congestion-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "source_healthy=$(jq -r '.summary.source_healthy' information-congestion-plan.json)" >> "$GITHUB_OUTPUT"
+
+  execute:
+    needs: plan
+    if: >-
+      ${{ needs.plan.outputs.has_tasks == 'true' &&
+          needs.plan.outputs.source_healthy == 'true' &&
+          github.run_attempt == 1 &&
+          vars.ORCAP_INFORMATION_CONGESTION_ENABLED == 'true' &&
+          vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
+          (github.event_name == 'schedule' ||
+           github.event_name == 'workflow_run' ||
+           github.event.inputs.execute_paid == 'true') }}
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: information-congestion-plan-${{ github.run_id }}
+      - name: hydrate private spend checkpoint
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=["curated/paid_spend_ledger/*/*.parquet"],
+              max_workers=4,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "plan-data", dirs_exist_ok=True)
+          PY
+      - name: verify immutable plan and execute exactly once
+        id: paid
+        env:
+          OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
+          ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
+          ORCAP_PRICE_CAMPAIGN_START_UTC: ${{ vars.ORCAP_INFORMATION_CONGESTION_START_UTC || '2026-07-23T00:00:00Z' }}
+          ORCAP_PRICE_CAMPAIGN_END_UTC: ${{ vars.ORCAP_INFORMATION_CONGESTION_END_UTC || '2026-09-15T00:00:00Z' }}
+          ORCAP_PRICE_MAX_RUN_USD: ${{ vars.ORCAP_INFORMATION_CONGESTION_MAX_RUN_USD || '2.00' }}
+          ORCAP_PRICE_MAX_DAY_USD: ${{ vars.ORCAP_INFORMATION_CONGESTION_MAX_DAY_USD || '20.00' }}
+          ORCAP_PRICE_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_INFORMATION_CONGESTION_MAX_CAMPAIGN_USD || '500.00' }}
+        run: >-
+          uv run python -m orcap.capture_information_congestion execute
+          --data-root plan-data
+          --bundle information-congestion-plan.json
+      - name: checkpoint request-level outcomes only to private Hugging Face
+        id: private_checkpoint
+        if: always()
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          from orcap.hf_store import push
+
+          push(Path("plan-data"), message="private information-congestion execution ${{ github.run_id }}")
+          PY
+      - name: write outcome-free public execution receipt
+        if: always()
+        env:
+          EXECUTION_OUTCOME: ${{ steps.paid.outcome }}
+          CHECKPOINT_OUTCOME: ${{ steps.private_checkpoint.outcome }}
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          bundle = json.loads(Path("information-congestion-plan.json").read_text())
+          receipt = {
+              "format": "orcap-information-congestion-public-execution-v1",
+              "study_id": bundle["summary"]["study_id"],
+              "run_id": bundle["summary"]["run_id"],
+              "protocol_sha256": bundle["summary"]["protocol_sha256"],
+              "manifest_sha256": bundle["manifest"]["manifest_sha256"],
+              "planned_tasks": bundle["summary"]["planned_tasks"],
+              "execution_step_outcome": os.environ["EXECUTION_OUTCOME"],
+              "private_checkpoint_outcome": os.environ["CHECKPOINT_OUTCOME"],
+              "contains_request_level_outcomes": False,
+          }
+          Path("information-congestion-public-execution.json").write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + "\n"
+          )
+          PY
+      - name: retain outcome-free public receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: information-congestion-execution-${{ github.run_id }}-${{ github.run_attempt }}
+          path: information-congestion-public-execution.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0

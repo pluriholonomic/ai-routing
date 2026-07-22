@@ -1,0 +1,159 @@
+name: information-congestion-quality
+
+on:
+  schedule:
+    - cron: "47 0,6,12,18 * * *"
+  workflow_dispatch:
+    inputs:
+      execute_paid:
+        description: "Execute the frozen quality plan after all gates"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: information-congestion-quality-plan-queue
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: hydrate quality balance and authoritative spend ledger
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          import shutil
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              allow_patterns=[
+                  "curated/ic_quality/*/*.parquet",
+                  "curated/paid_spend_ledger/*/*.parquet",
+              ],
+              max_workers=4,
+              stale_if_error=False,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          PY
+      - name: stage spend history into immutable execution directory
+        run: |
+          mkdir -p plan-data/curated
+          if [ -d input-data/curated/paid_spend_ledger ]; then
+            cp -R input-data/curated/paid_spend_ledger plan-data/curated/
+          fi
+      - name: freeze balanced model provider and benchmark assignments
+        env:
+          ORCAP_IC_QUALITY_RUN_ID: github-${{ github.run_id }}
+          ORCAP_IC_QUALITY_SEED: ${{ github.run_id }}
+        run: >-
+          uv run python -m orcap.capture_information_congestion_quality plan
+          --data-root input-data
+          --output-root plan-data
+          --bundle information-congestion-quality-plan.json
+      - name: upload immutable assignment-only quality plan before requests
+        uses: actions/upload-artifact@v4
+        with:
+          name: information-congestion-quality-plan-${{ github.run_id }}
+          path: |
+            information-congestion-quality-plan.json
+            plan-data/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: true
+      - name: validate source manifest task count and no-payload boundary
+        run: >-
+          uv run python -m orcap.capture_information_congestion_quality validate-plan
+          --bundle information-congestion-quality-plan.json
+          --require-tasks
+
+  execute:
+    needs: plan
+    if: >-
+      ${{ github.run_attempt == 1 &&
+          vars.ORCAP_PAID_PRICE_STUDIES_ENABLED == 'true' &&
+          vars.ORCAP_INFORMATION_CONGESTION_QUALITY_ENABLED == 'true' &&
+          (github.event_name == 'schedule' ||
+           github.event.inputs.execute_paid == 'true') }}
+    concurrency:
+      group: randomized-routing-probes
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: information-congestion-quality-plan-${{ github.run_id }}
+      - name: verify immutable quality plan and execute exactly once
+        env:
+          OPENROUTER_PRICE_EXPERIMENT_KEY: ${{ secrets.OPENROUTER_PRICE_EXPERIMENT_KEY }}
+          ORCAP_PAID_PRICE_STUDIES_ENABLED: ${{ vars.ORCAP_PAID_PRICE_STUDIES_ENABLED }}
+          ORCAP_INFORMATION_CONGESTION_QUALITY_ENABLED: ${{ vars.ORCAP_INFORMATION_CONGESTION_QUALITY_ENABLED }}
+          ORCAP_INFORMATION_CONGESTION_START_UTC: ${{ vars.ORCAP_INFORMATION_CONGESTION_START_UTC || '2026-07-23T00:00:00Z' }}
+          ORCAP_INFORMATION_CONGESTION_END_UTC: ${{ vars.ORCAP_INFORMATION_CONGESTION_END_UTC || '2026-09-15T00:00:00Z' }}
+          ORCAP_INFORMATION_CONGESTION_QUALITY_MAX_RUN_USD: ${{ vars.ORCAP_INFORMATION_CONGESTION_QUALITY_MAX_RUN_USD || '0.50' }}
+          ORCAP_INFORMATION_CONGESTION_QUALITY_MAX_DAY_USD: ${{ vars.ORCAP_INFORMATION_CONGESTION_QUALITY_MAX_DAY_USD || '3.00' }}
+          ORCAP_INFORMATION_CONGESTION_QUALITY_MAX_CAMPAIGN_USD: ${{ vars.ORCAP_INFORMATION_CONGESTION_QUALITY_MAX_CAMPAIGN_USD || '75.00' }}
+        run: >-
+          uv run python -m orcap.capture_information_congestion_quality execute
+          --data-root plan-data
+          --bundle information-congestion-quality-plan.json
+      - name: checkpoint redacted quality grades and spend only to private Hugging Face
+        if: always()
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          from orcap.hf_store import push
+
+          push(Path("plan-data"), message="private information-congestion quality ${{ github.run_id }}")
+          PY
+      - name: retain outcome-free quality receipt
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          bundle = json.loads(Path("information-congestion-quality-plan.json").read_text())
+          receipt = {
+              "format": "orcap-information-congestion-quality-receipt-v1",
+              "study_id": bundle["summary"]["study_id"],
+              "run_id": bundle["summary"]["run_id"],
+              "protocol_sha256": bundle["summary"]["protocol_sha256"],
+              "manifest_sha256": bundle["manifest"]["manifest_sha256"],
+              "planned_tasks": bundle["summary"]["planned_tasks"],
+              "contains_request_level_outcomes": False,
+          }
+          Path("information-congestion-quality-receipt.json").write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + "\n"
+          )
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: information-congestion-quality-receipt-${{ github.run_id }}
+          path: information-congestion-quality-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0

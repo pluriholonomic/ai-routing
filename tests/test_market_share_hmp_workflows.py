@@ -64,6 +64,9 @@ def test_compaction_and_overlay_include_the_new_queue():
     overlay = (ROOT / "scripts/assemble_price_artifacts.sh").read_text()
     assert "glm52-market-share-hmp.yml" in assembly
     assert 'if [ "$MODE" = "hmp" ]' in overlay
-    assert 'WORKFLOWS="capture.yml glm52-market-share-hmp.yml"' in overlay
+    assert (
+        'WORKFLOWS="capture.yml capture-backstop.yml glm52-market-share-hmp.yml"'
+        in overlay
+    )
     assert "request-level execution" in overlay.lower()
     assert "request-level outcomes" in assembly.lower()

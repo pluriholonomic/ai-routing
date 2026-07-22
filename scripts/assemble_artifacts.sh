@@ -7,19 +7,19 @@ DEST=${2:-data}
 SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
 mkdir -p "$DEST"
 count=0
-for wf in capture.yml capacity-policy-probes.yml enforcement-policy-probes.yml decomposition-probes.yml decomposition-replication.yml route-calibration.yml paid-price-response.yml price-event-probes.yml market-measurement.yml glm52-routing.yml glm52-market-share-hmp.yml score-memory-routing.yml score-memory-quality.yml adaptive-router.yml evals.yml gpu.yml hf-router.yml hf-policy-probes.yml livepeer.yml probes.yml router-catalogs.yml watchers.yml; do
+for wf in capture.yml capture-backstop.yml capacity-policy-probes.yml enforcement-policy-probes.yml decomposition-probes.yml decomposition-replication.yml route-calibration.yml paid-price-response.yml price-event-probes.yml market-measurement.yml glm52-routing.yml glm52-market-share-hmp.yml information-congestion.yml information-congestion-quality.yml score-memory-routing.yml score-memory-quality.yml adaptive-router.yml evals.yml gpu.yml hf-router.yml hf-policy-probes.yml livepeer.yml probes.yml router-catalogs.yml watchers.yml; do
   limit=40
   # The GLM panel produces four immutable runs per hour; 120 covers the full
   # 26-hour assembly window without silently dropping pre-compaction blocks.
-  if [ "$wf" = "glm52-routing.yml" ] || [ "$wf" = "score-memory-routing.yml" ] || [ "$wf" = "glm52-market-share-hmp.yml" ]; then
+  if [ "$wf" = "glm52-routing.yml" ] || [ "$wf" = "score-memory-routing.yml" ] || [ "$wf" = "glm52-market-share-hmp.yml" ] || [ "$wf" = "information-congestion.yml" ]; then
     limit=120
   fi
   # The HMP detector follows every five-minute public capture (up to 12/hour),
   # so a 26-hour compaction window needs more than the GLM hourly campaigns.
-  if [ "$wf" = "glm52-market-share-hmp.yml" ]; then
+  if [ "$wf" = "glm52-market-share-hmp.yml" ] || [ "$wf" = "information-congestion.yml" ]; then
     limit=400
   fi
-  if [ "$wf" = "glm52-market-share-hmp.yml" ]; then
+  if [ "$wf" = "glm52-market-share-hmp.yml" ] || [ "$wf" = "information-congestion.yml" ]; then
     # A failed paid runner still contains its outcome-free immutable assignment.
     # Request-level outcomes go directly to private HF, never a public artifact.
     run_ids=$(gh run list --workflow "$wf" --limit "$limit" \

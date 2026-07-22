@@ -23,6 +23,11 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert WORKFLOWS["adaptive-router.yml"] == 540
     assert WORKFLOWS["glm52-routing.yml"] == 90
     assert WORKFLOWS["glm52-routing-monitor.yml"] == 180
+    assert WORKFLOWS["capture-backstop.yml"] == 300
+    assert WORKFLOWS["glm52-market-share-hmp.yml"] == 180
+    assert WORKFLOWS["information-congestion.yml"] == 180
+    assert WORKFLOWS["information-congestion-quality.yml"] == 540
+    assert WORKFLOWS["information-congestion-monitor.yml"] == 1800
     assert WORKFLOWS["adaptive-router-monitor.yml"] == 1800
     assert WORKFLOWS["adaptive-router-counterfactual.yml"] == 1800
     assert WORKFLOWS["hmp-signal-coupling-monitor.yml"] == 1800
@@ -30,6 +35,9 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert "analysis/router_exponent_estimates" in HF_PRICE_TABLES
     assert "analysis/undercutting-incidence-v1" in HF_PRICE_TABLES
     assert "analysis/glm52-routing-v1" in HF_PRICE_TABLES
+    assert "curated/endpoints_snapshots" in HF_PRICE_TABLES
+    assert "curated/ic_run_ledger" in HF_PRICE_TABLES
+    assert "curated/ic_assignments" in HF_PRICE_TABLES
 
 
 def test_confirmatory_probe_workflows_share_concurrency_lock():
@@ -76,7 +84,7 @@ def test_paid_price_workflows_are_plan_first_trigger_scoped_and_fail_closed():
     for workflow in (response, events):
         assert "2026-07-20T04:00:00Z" in workflow
         assert "2026-07-27T04:00:00Z" in workflow
-    assert 'workflows: ["capture"]' in events
+    assert 'workflows: ["capture", "capture-backstop"]' in events
     assert "github.event.workflow_run.conclusion == 'success'" in events
     assert "github.event_name == 'workflow_run'" in events
     assert "github.event_name == 'schedule' &&" not in events
@@ -110,7 +118,7 @@ def test_price_workflows_are_assembled_analyzed_and_preregistered():
         encoding="utf-8"
     )
     assert "paid-price-response.yml price-event-probes.yml" in price_assembler
-    assert 'WORKFLOWS="$WORKFLOWS capture.yml"' in price_assembler
+    assert 'WORKFLOWS="$WORKFLOWS capture.yml capture-backstop.yml"' in price_assembler
     response = (root / ".github/workflows/paid-price-response.yml").read_text()
     events = (root / ".github/workflows/price-event-probes.yml").read_text()
     assert "assemble_price_artifacts.sh 26 input-data paid" in response

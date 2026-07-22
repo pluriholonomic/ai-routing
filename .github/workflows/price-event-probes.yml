@@ -6,7 +6,7 @@ name: price-event-probes
 # Manual runs remain no-spend and every paid job retains the global gate.
 on:
   workflow_run:
-    workflows: ["capture"]
+    workflows: ["capture", "capture-backstop"]
     types: [completed]
   schedule:
     - cron: "43 * * * *"

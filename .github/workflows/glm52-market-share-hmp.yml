@@ -5,7 +5,7 @@ name: glm52-market-share-hmp
 # schedule does not erase an event or delayed wave.
 on:
   workflow_run:
-    workflows: ["capture"]
+    workflows: ["capture", "capture-backstop"]
     types: [completed]
   schedule:
     - cron: "11 * * * *"

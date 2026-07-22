@@ -31,18 +31,24 @@ backfills what little model-level history the Wayback Machine has (back to 2023-
 - [`docs/capacity-certified-routing-mechanism.md`](docs/capacity-certified-routing-mechanism.md) — pre-registered RFQ-style routing mechanism, propositions, and empirical calibration gates.
 - [`docs/controlled-routing-study.md`](docs/controlled-routing-study.md) — payload-free model-epoch randomized study protocol and H50 causal estimator for the proposed mechanism.
 - [`docs/livepeer-gateway-data.md`](docs/livepeer-gateway-data.md) — aggregate public decentralized-Gateway routing control, its privacy boundary, and H51 gate.
+- [`experiments/information-congestion-v1/preregistration.md`](experiments/information-congestion-v1/preregistration.md) — prospective finite-range `k*/n` experiment, quality bank, integrity gates, and claim boundary.
+- [`experiments/information-congestion-v1/execution-status-2026-07-22.md`](experiments/information-congestion-v1/execution-status-2026-07-22.md) — immutable-data audit and no-spend shadow validation.
 
 ## Cadence
 
 | workflow | schedule | what |
 |---|---|---|
 | `capture` | every 15 min, 3 samples at 5-min spacing | `/api/v1` models + providers + per-model endpoints (per-provider pricing, uptime/latency/throughput rolling windows). 5 min is the finest granularity OpenRouter exposes (`uptime_last_5m`), so sampling faster buys nothing. |
+| `capture-backstop` | every 2 hours, 23 samples at 5-min spacing | independent redundant endpoint panel; overlaps the primary collector to repair skipped GitHub cron slots without changing scientific cadence |
 | `scrape` | daily 03:17 UTC | undocumented `/api/frontend/v1` chart APIs: model activity (31-day trailing), app leaderboards, endpoint stats, daily uptime, effective (transacted) pricing, perf comparisons, weekly rankings |
 | `compact` | nightly 01:43 UTC | consolidates pricing-critical endpoint snapshots and derives SCD-2 `pricing_changes` + `pricing_current` |
 | `route-simulation-monitor` | hourly | evaluates the latest 26 hours of 15-minute public-quote routing simulations; publishes only after its coverage gate |
 | `hf-router` | hourly, 4 samples at 15-min spacing | public Hugging Face Inference Providers model/provider price and performance surface; no inference requests |
 | `livepeer-gateway` | hourly, 11 samples at 5-min spacing | aggregate public decentralized-Gateway swap/reuse messages by region; no stream, session, client, or orchestrator identifiers |
 | `hmp-signal-coupling-monitor` | weekly and after compaction | fixed-rule WF-18 public quote-coupling, owned-routing SNR, elasticity-wedge, forward-state, and adversarial-simulation diagnostics; never identifies communication, intent, or a provider algorithm |
+| `information-congestion` | hourly after public capture | freezes randomized eligible menus over `n`, responsive exposure `k`, signal overlap, and router rule; paid execution is separately feature-gated |
+| `information-congestion-quality` | every 6 hours | rotates exact-pin benchmark probes across least-measured frozen models/providers; paid execution is separately feature-gated and capped at $75 |
+| `information-congestion-monitor` | daily | outcome-blind support, effective-rank, public-shock, privacy, and readiness audit; private outcomes are opened only by the one-time release workflow |
 
 ## Data layout (HF dataset repo)
 
@@ -166,5 +172,6 @@ uv run orcap discover                 # Playwright sniff to re-find moved endpoi
 - The `/api/frontend/v1/*` endpoints are undocumented and move without notice; when
   the daily scrape starts returning zeros, run `orcap discover` and update paths in
   `scrape_charts.py`.
-- GitHub cron can lag minutes under load; `run_ts` in the data is authoritative,
-  gaps are by design tolerable.
+- GitHub cron can lag under load; `run_ts` is authoritative. Descriptive panels
+  report the realized gaps, while preregistered paid studies fail closed when
+  their coverage or maximum-gap gates are missed.

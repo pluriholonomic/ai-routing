@@ -1,0 +1,45 @@
+name: capture-backstop
+
+# GitHub has occasionally skipped one or two hourly capture cron slots. This
+# independent two-hour, 23-snapshot run overlaps the primary collector so one
+# delayed scheduler does not create an unrecoverable public-price gap.
+on:
+  schedule:
+    - cron: "17 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: "snapshots this run"
+        default: "23"
+
+concurrency:
+  group: capture-backstop
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 125
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --no-dev
+      - name: capture redundant five-minute snapshots
+        run: >-
+          uv run orcap capture
+          --samples "${{ github.event.inputs.samples || '23' }}"
+          --interval-seconds 300
+      - name: validate capture source health
+        run: uv run orcap quality --profile capture
+      - name: buffer redundant output for nightly compaction
+        uses: actions/upload-artifact@v4
+        with:
+          name: capture-backstop-${{ github.run_id }}
+          path: data/
+          retention-days: 7
+          compression-level: 0
