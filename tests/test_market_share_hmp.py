@@ -255,6 +255,28 @@ def test_six_menu_arms_are_randomized_complete_and_exact():
     assert all(row["session_group"].startswith("fresh|") for row in assignments)
 
 
+def test_assignment_builder_accepts_arrow_style_empty_co_cutter_array():
+    wave = {
+        "event_id": "background",
+        "wave_id": "background",
+        "focal_provider": "Novita",
+        "co_cutters": np.array([], dtype=object),
+    }
+
+    assignments, details = build_paid_assignments(
+        _candidates(),
+        wave,
+        active_providers=["Novita", "StreamLake", "Inceptron"],
+        anchor_providers=["Together", "Ambient"],
+        replicates_per_arm=2,
+        run_id="run-array",
+        seed=31,
+    )
+
+    assert len(assignments) == 12
+    assert details["pair_provider_key"] in {"streamlake", "inceptron"}
+
+
 def test_uploaded_assignment_is_an_at_most_once_reservation():
     spent = pd.DataFrame(
         [{"study_id": "openrouter-glm52-market-share-hmp-v1", "task_id": "attempted"}]

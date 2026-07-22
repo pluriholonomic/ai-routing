@@ -365,9 +365,7 @@ def detect_events(
         (
             item
             for item in transitions
-            if item["provider_key"] in active
-            and item["material_cut"]
-            and item["prior_unchanged"]
+            if item["provider_key"] in active and item["material_cut"] and item["prior_unchanged"]
         ),
         key=lambda item: (item["detected_at"], item["provider_key"]),
     )
@@ -568,6 +566,17 @@ def _task_cap(cap: Mapping[str, float]) -> float:
     )
 
 
+def _list_value(value: Any) -> list[Any]:
+    """Normalize Arrow/Pandas list scalars without NumPy truth evaluation."""
+    if value is None:
+        return []
+    if hasattr(value, "tolist"):
+        value = value.tolist()
+    if isinstance(value, str):
+        return [value]
+    return list(value)
+
+
 def build_paid_assignments(
     candidate_rows: Sequence[Mapping[str, Any]],
     wave: Mapping[str, Any],
@@ -584,7 +593,7 @@ def build_paid_assignments(
     active_keys = [provider_key(item) for item in active_providers if provider_key(item) in by_key]
     anchor_keys = [provider_key(item) for item in anchor_providers if provider_key(item) in by_key]
     focal_key = provider_key(wave.get("focal_provider"))
-    co_keys = [provider_key(item) for item in wave.get("co_cutters") or []]
+    co_keys = [provider_key(item) for item in _list_value(wave.get("co_cutters"))]
     co_keys = [item for item in co_keys if item in by_key and item != focal_key]
     if focal_key not in by_key or len(anchor_keys) < 2 or len(active_keys) < 2:
         return [], {
