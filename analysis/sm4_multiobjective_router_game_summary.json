@@ -1,0 +1,249 @@
+{
+  "experiment_id": "sm4-multiobjective-router-game-v1",
+  "evidence_status": "heterogeneous_structural_game_screen",
+  "provider_types": {
+    "anchor_reseller": 2,
+    "author_anchor": 1,
+    "custom_quality": 2,
+    "reserved_capacity": 2,
+    "spot_startup": 3
+  },
+  "candidate_rules": 108,
+  "converged_rules": 104,
+  "maximum_accounting_gap": 5.684341886080802e-14,
+  "baseline_inverse_square": {
+    "rule_id": "eta=2|q=0|r=0|mix=0|cap=1",
+    "welfare": 137.2890243798616,
+    "router_revenue": 5.985257093978771,
+    "quality_adjusted_successes": 111.52193549441492,
+    "user_utility": 93.42657085122475,
+    "provider_profit": 37.877196434658075,
+    "viable_providers": 10,
+    "served_hhi": 0.12469891405310622,
+    "maximum_unilateral_regret": 0.0
+  },
+  "selected_rule_by_objective": [
+    {
+      "objective": "global_welfare",
+      "rule_id": "eta=4|q=0|r=3|mix=0|cap=1",
+      "welfare": 208.44383937804568,
+      "router_revenue": 4.878944110465739,
+      "quality_adjusted_successes": 149.96342194407683,
+      "user_utility": 192.18914141745734,
+      "provider_profit": 11.375753850122615,
+      "viable_providers": 8,
+      "served_hhi": 0.28069197343655805,
+      "maximum_unilateral_regret": 0.0
+    },
+    {
+      "objective": "router_revenue",
+      "rule_id": "eta=0.5|q=4|r=0|mix=0.15|cap=0.5",
+      "welfare": 83.98754909491637,
+      "router_revenue": 7.7848022996456425,
+      "quality_adjusted_successes": 77.44690072247643,
+      "user_utility": -10.938219295033113,
+      "provider_profit": 87.14096609030382,
+      "viable_providers": 10,
+      "served_hhi": 0.10801289949849487,
+      "maximum_unilateral_regret": 0.0
+    },
+    {
+      "objective": "delivered_quality",
+      "rule_id": "eta=4|q=0|r=3|mix=0|cap=1",
+      "welfare": 208.44383937804568,
+      "router_revenue": 4.878944110465739,
+      "quality_adjusted_successes": 149.96342194407683,
+      "user_utility": 192.18914141745734,
+      "provider_profit": 11.375753850122615,
+      "viable_providers": 8,
+      "served_hhi": 0.28069197343655805,
+      "maximum_unilateral_regret": 0.0
+    },
+    {
+      "objective": "provider_viability",
+      "rule_id": "eta=0.5|q=0|r=0|mix=0.15|cap=0.5",
+      "welfare": 82.3957051261236,
+      "router_revenue": 7.784763551773084,
+      "quality_adjusted_successes": 76.1351517058257,
+      "user_utility": -13.853991666087234,
+      "provider_profit": 88.46493324043772,
+      "viable_providers": 10,
+      "served_hhi": 0.10371559190584737,
+      "maximum_unilateral_regret": 0.0
+    },
+    {
+      "objective": "user_utility",
+      "rule_id": "eta=4|q=0|r=3|mix=0|cap=1",
+      "welfare": 208.44383937804568,
+      "router_revenue": 4.878944110465739,
+      "quality_adjusted_successes": 149.96342194407683,
+      "user_utility": 192.18914141745734,
+      "provider_profit": 11.375753850122615,
+      "viable_providers": 8,
+      "served_hhi": 0.28069197343655805,
+      "maximum_unilateral_regret": 0.0
+    },
+    {
+      "objective": "aggregate_provider_profit",
+      "rule_id": "eta=0.5|q=0|r=0|mix=0.15|cap=0.5",
+      "welfare": 82.3957051261236,
+      "router_revenue": 7.784763551773084,
+      "quality_adjusted_successes": 76.1351517058257,
+      "user_utility": -13.853991666087234,
+      "provider_profit": 88.46493324043772,
+      "viable_providers": 10,
+      "served_hhi": 0.10371559190584737,
+      "maximum_unilateral_regret": 0.0
+    }
+  ],
+  "selected_rule_technology_stress": [
+    {
+      "rule_id": "eta=0.5|q=0|r=0|mix=0.15|cap=0.5",
+      "scenarios": 5,
+      "worst_case_welfare": 77.57105517756862,
+      "best_case_welfare": 82.3957051261236,
+      "worst_case_router_revenue": 7.784763551773084,
+      "worst_case_quality_adjusted_successes": 74.57085829103511,
+      "worst_case_viable_providers": 10,
+      "maximum_stress_unilateral_regret": 0.0
+    },
+    {
+      "rule_id": "eta=0.5|q=4|r=0|mix=0.15|cap=0.5",
+      "scenarios": 5,
+      "worst_case_welfare": 79.93952063509992,
+      "best_case_welfare": 83.98754909491637,
+      "worst_case_router_revenue": 7.729677171453114,
+      "worst_case_quality_adjusted_successes": 76.02928755488875,
+      "worst_case_viable_providers": 10,
+      "maximum_stress_unilateral_regret": 0.0
+    },
+    {
+      "rule_id": "eta=4|q=0|r=3|mix=0|cap=1",
+      "scenarios": 5,
+      "worst_case_welfare": 147.65156058859063,
+      "best_case_welfare": 208.44383937804568,
+      "worst_case_router_revenue": 4.878944110465739,
+      "worst_case_quality_adjusted_successes": 119.78067380758445,
+      "worst_case_viable_providers": 8,
+      "maximum_stress_unilateral_regret": 0.0
+    }
+  ],
+  "pairwise_coalition_susceptibility": {
+    "global_welfare": {
+      "maximum_pairwise_joint_deviation_gain": 1.870734451912858,
+      "maximizing_pair": [
+        "reserved_a",
+        "reserved_b"
+      ],
+      "maximizing_multipliers": [
+        1.15,
+        1.15
+      ],
+      "grid": [
+        0.7,
+        0.85,
+        1.0,
+        1.15,
+        1.3
+      ],
+      "boundary": "A positive bounded joint-deviation gain is mechanism susceptibility, not evidence of communication, agreement, or live collusion."
+    },
+    "router_revenue": {
+      "maximum_pairwise_joint_deviation_gain": 8.879366745293368,
+      "maximizing_pair": [
+        "custom_a",
+        "custom_b"
+      ],
+      "maximizing_multipliers": [
+        1.3,
+        1.3
+      ],
+      "grid": [
+        0.7,
+        0.85,
+        1.0,
+        1.15,
+        1.3
+      ],
+      "boundary": "A positive bounded joint-deviation gain is mechanism susceptibility, not evidence of communication, agreement, or live collusion."
+    },
+    "delivered_quality": {
+      "maximum_pairwise_joint_deviation_gain": 1.870734451912858,
+      "maximizing_pair": [
+        "reserved_a",
+        "reserved_b"
+      ],
+      "maximizing_multipliers": [
+        1.15,
+        1.15
+      ],
+      "grid": [
+        0.7,
+        0.85,
+        1.0,
+        1.15,
+        1.3
+      ],
+      "boundary": "A positive bounded joint-deviation gain is mechanism susceptibility, not evidence of communication, agreement, or live collusion."
+    },
+    "provider_viability": {
+      "maximum_pairwise_joint_deviation_gain": 6.509333501407198,
+      "maximizing_pair": [
+        "custom_a",
+        "custom_b"
+      ],
+      "maximizing_multipliers": [
+        1.3,
+        1.3
+      ],
+      "grid": [
+        0.7,
+        0.85,
+        1.0,
+        1.15,
+        1.3
+      ],
+      "boundary": "A positive bounded joint-deviation gain is mechanism susceptibility, not evidence of communication, agreement, or live collusion."
+    },
+    "user_utility": {
+      "maximum_pairwise_joint_deviation_gain": 1.870734451912858,
+      "maximizing_pair": [
+        "reserved_a",
+        "reserved_b"
+      ],
+      "maximizing_multipliers": [
+        1.15,
+        1.15
+      ],
+      "grid": [
+        0.7,
+        0.85,
+        1.0,
+        1.15,
+        1.3
+      ],
+      "boundary": "A positive bounded joint-deviation gain is mechanism susceptibility, not evidence of communication, agreement, or live collusion."
+    },
+    "aggregate_provider_profit": {
+      "maximum_pairwise_joint_deviation_gain": 6.509333501407198,
+      "maximizing_pair": [
+        "custom_a",
+        "custom_b"
+      ],
+      "maximizing_multipliers": [
+        1.3,
+        1.3
+      ],
+      "grid": [
+        0.7,
+        0.85,
+        1.0,
+        1.15,
+        1.3
+      ],
+      "boundary": "A positive bounded joint-deviation gain is mechanism susceptibility, not evidence of communication, agreement, or live collusion."
+    }
+  },
+  "game_result": "The rule maximizing one agent's objective generally differs from the welfare rule once quality, reliability, capacity, fixed investment, and demand elasticity are present. Approximate unilateral regret and bounded pairwise coalition regret are reported for every selected rule.",
+  "claim_boundary": "Technologies and demand are declared scenarios, not cost or quality estimates for named live providers. Grid best responses establish only an approximate bounded equilibrium. Coalition gains show susceptibility, not conduct. Policy ranking is not a deployment recommendation without calibration and a randomized live trial."
+}
