@@ -48,9 +48,22 @@ fi
 
 mkdir -p "$DEST"
 count=0
+artifact_run_index=$(mktemp)
+artifact_index_available=false
+trap 'rm -f "$artifact_run_index" "${artifact_run_index}.unsorted"' EXIT
+if gh_build_artifact_run_index "$artifact_run_index" "$SINCE"; then
+  artifact_index_available=true
+  echo "indexed $(wc -l <"$artifact_run_index") artifact-bearing runs since $SINCE"
+else
+  echo "repository artifact index unavailable; falling back to per-run probes" >&2
+fi
 for wf in $WORKFLOWS; do
   while IFS= read -r id; do
     [ -n "$id" ] || continue
+    if [ "$artifact_index_available" = true ] &&
+      ! gh_run_has_indexed_artifact "$artifact_run_index" "$id"; then
+      continue
+    fi
     tmp="/tmp/price-art-$id"
     if gh_retry run download "$id" --dir "$tmp"; then
       for directory in "$tmp"/*/; do
