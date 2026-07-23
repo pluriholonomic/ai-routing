@@ -35,7 +35,10 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Artifact assembly is bounded by fast-failing expected no-artifact runs,
+    # but a full 26-hour capture overlay can still take longer than 45 minutes
+    # under GitHub artifact latency.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

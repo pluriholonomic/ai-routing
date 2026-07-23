@@ -20,7 +20,10 @@ permissions:
 jobs:
   evaluate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The same 26-hour artifact overlay used by nightly compaction precedes the
+    # simulation. Keep this above compaction's observed transfer tail while the
+    # shared downloader fast-fails runs that legitimately have no artifact.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

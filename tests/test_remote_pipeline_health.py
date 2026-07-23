@@ -36,6 +36,8 @@ def test_confirmatory_probe_workflows_are_remotely_monitored():
     assert "analysis/undercutting-incidence-v1" in HF_PRICE_TABLES
     assert "analysis/glm52-routing-v1" in HF_PRICE_TABLES
     assert "curated/endpoints_snapshots" in HF_PRICE_TABLES
+    assert "derived/pricing_changes" in HF_PRICE_TABLES
+    assert "curated/pricing_changes" not in HF_PRICE_TABLES
     assert "curated/ic_run_ledger" in HF_PRICE_TABLES
     assert "curated/ic_assignments" in HF_PRICE_TABLES
 
@@ -276,6 +278,20 @@ def test_remote_health_rejects_only_skipped_or_cancelled_runs():
     assert result["healthy"] is False
     assert result["ignored_terminal_runs"] == 2
     assert "no actionable runs" in result["reason"]
+
+
+def test_pipeline_workflows_do_not_self_starve_during_artifact_overlay():
+    root = Path(__file__).parents[1]
+    workflows = root / ".github" / "workflows"
+    price_tests = (workflows / "price-tests-online.yml").read_text(encoding="utf-8")
+    compact = (workflows / "compact.yml").read_text(encoding="utf-8")
+    route_sim = (workflows / "route-simulation-monitor.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "price-tests-online-skipped-" in price_tests
+    assert "cancel-in-progress: false" in price_tests
+    assert "timeout-minutes: 75" in compact
+    assert "timeout-minutes: 75" in route_sim
 
 
 def test_remote_health_rejects_stale_success():

@@ -9,8 +9,14 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: price-tests-online
-  cancel-in-progress: true
+  # A failed/cancelled compact emits a workflow_run event whose job is
+  # intentionally skipped. Give that event a unique group so it cannot cancel
+  # a useful scheduled analysis before the job-level condition is evaluated.
+  group: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && format('price-tests-online-skipped-{0}', github.run_id) || 'price-tests-online' }}
+  # Queue a newer useful refresh. Cancelling during HF hydration discards the
+  # pinned input and previously caused the scheduled analyzer to receive a
+  # runner shutdown signal before producing any output.
+  cancel-in-progress: false
 
 permissions:
   contents: read
