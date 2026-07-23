@@ -54,7 +54,7 @@ WORKFLOWS = {
 HF_MAX_AGE_MINUTES = 1800
 HF_PRICE_TABLES = {
     "curated/endpoints_snapshots": 1800,
-    "curated/pricing_changes": 1800,
+    "derived/pricing_changes": 1800,
     "curated/price_response_assignments": 1800,
     "curated/price_event_wave_plans": 1800,
     "analysis/router_exponent_estimates": 720,
