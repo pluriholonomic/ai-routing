@@ -294,6 +294,31 @@ def test_pipeline_workflows_do_not_self_starve_during_artifact_overlay():
     assert "timeout-minutes: 75" in route_sim
 
 
+def test_price_tests_hydrate_one_pinned_snapshot_and_publish_outputs_only():
+    root = Path(__file__).parents[1]
+    workflow = (
+        root / ".github/workflows/price-tests-online.yml"
+    ).read_text(encoding="utf-8")
+    assert "resolve one immutable dataset revision" in workflow
+    assert "ORCAP_HF_REVISION" in workflow
+    assert "snapshot_download_retry" in workflow
+    for table in (
+        "curated/endpoints_snapshots",
+        "curated/effective_pricing_daily",
+        "curated/router_public_quote_snapshots",
+        "curated/router_route_attempts",
+        "curated/routing_simulation",
+        "derived/pricing_changes",
+    ):
+        assert table in workflow
+    assert "analysis/provider-type-validation-v1/wf16_provider_type_labels.parquet" in workflow
+    assert "ORCAP_ANALYSIS_SOURCE: local" in workflow
+    assert "ORCAP_DATA_DIR: input-data" in workflow
+    assert "--output-dir pushdata/analysis/price-tests-online" in workflow
+    assert "ORCAP_DATA_DIR: pushdata" in workflow
+    assert "path: pushdata/analysis/price-tests-online/" in workflow
+
+
 def test_daily_compaction_includes_source_run_ledger():
     root = Path(__file__).parents[1]
     workflow = (root / ".github/workflows/compact.yml").read_text(encoding="utf-8")

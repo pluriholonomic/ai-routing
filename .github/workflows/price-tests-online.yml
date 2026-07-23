@@ -32,16 +32,84 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --no-dev
-      - name: run revision-pinned public and owned-probe price tests
+      - name: resolve one immutable dataset revision
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          ORCAP_ANALYSIS_SOURCE: hf
+        run: |
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          from orcap.hf_snapshot_retry import hub_call_retry
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          revision = str(
+              hub_call_retry(
+                  lambda: api.dataset_info(
+                      "t4run/openrouter-market-history"
+                  ).sha,
+                  label="price-test dataset revision",
+              )
+              or ""
+          ).strip()
+          if not revision:
+              raise RuntimeError("could not resolve immutable price-test dataset revision")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.write(f"ORCAP_HF_REVISION={revision}\n")
+          PY
+      - name: hydrate revision-pinned price-test inputs once
+        timeout-minutes: 30
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_XET_HIGH_PERFORMANCE: "1"
+        run: |
+          uv run python - <<'PY'
+          import os
+          import shutil
+          from orcap.hf_snapshot_retry import snapshot_download_retry
+
+          tables = [
+              "curated/congestion_intraday",
+              "curated/direct_prices_daily",
+              "curated/effective_pricing_daily",
+              "curated/endpoint_stats_daily",
+              "curated/endpoints_snapshots",
+              "curated/event_bursts_congestion",
+              "curated/models_snapshots",
+              "curated/price_event_candidates",
+              "curated/price_event_registry",
+              "curated/router_public_quote_snapshots",
+              "curated/router_route_attempts",
+              "curated/routing_simulation",
+              "derived/pricing_changes",
+          ]
+          patterns = [f"{table}/*/*.parquet" for table in tables]
+          patterns.extend(
+              [
+                  "analysis/provider-type-validation-v1/wf16_provider_type_labels.parquet",
+                  "analysis/provider-type-validation-v1/wf16_summary.json",
+              ]
+          )
+          snapshot = snapshot_download_retry(
+              "t4run/openrouter-market-history",
+              repo_type="dataset",
+              revision=os.environ["ORCAP_HF_REVISION"],
+              cache_dir=".hf-cache",
+              allow_patterns=patterns,
+              max_workers=32,
+          )
+          shutil.copytree(snapshot, "input-data", dirs_exist_ok=True)
+          PY
+      - name: run revision-pinned public and owned-probe price tests
+        env:
+          ORCAP_ANALYSIS_SOURCE: local
+          ORCAP_DATA_DIR: input-data
         run: >-
           uv run python -m orcap.analysis.price_tests_online
-          --output-dir data/analysis/price-tests-online
+          --output-dir pushdata/analysis/price-tests-online
       - name: publish aggregate monitoring outputs
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ORCAP_DATA_DIR: pushdata
         run: >-
           uv run orcap push
           --message "online price tests ${{ github.run_id }}"
@@ -50,7 +118,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: price-tests-online-${{ github.run_id }}
-          path: data/analysis/price-tests-online/
+          path: pushdata/analysis/price-tests-online/
           if-no-files-found: warn
           retention-days: 14
       - name: publish price-test dashboard to private HF Space
@@ -62,7 +130,7 @@ jobs:
           from huggingface_hub import HfApi
 
           HfApi(token=os.environ["HF_TOKEN"]).upload_file(
-              path_or_fileobj="data/analysis/price-tests-online/price-tests.html",
+              path_or_fileobj="pushdata/analysis/price-tests-online/price-tests.html",
               path_in_repo="price-tests.html",
               repo_id="t4run/openrouter-memo",
               repo_type="space",
