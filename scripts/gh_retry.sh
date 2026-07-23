@@ -40,3 +40,38 @@ gh_retry() {
     fi
   done
 }
+
+# Build a newline-delimited set of workflow-run IDs that currently own at
+# least one non-expired repository artifact. Artifact assemblers otherwise
+# issue one `gh run download` request for every candidate run, including the
+# many plan-first runs that intentionally publish no artifact. One paginated
+# repository index is substantially cheaper than hundreds of known-empty
+# download probes.
+gh_build_artifact_run_index() {
+  local output_path=$1
+  local since=$2
+  local repository=${GITHUB_REPOSITORY:-}
+  local unsorted
+
+  : >"$output_path"
+  if [ -z "$repository" ]; then
+    return 1
+  fi
+
+  unsorted="${output_path}.unsorted"
+  if ! gh_retry api --paginate \
+    "repos/${repository}/actions/artifacts?per_page=100" \
+    --jq ".artifacts[] | select(.expired == false and .created_at > \"$since\") | .workflow_run.id" \
+    >"$unsorted"; then
+    rm -f "$unsorted"
+    return 1
+  fi
+  sort -u "$unsorted" >"$output_path"
+  rm -f "$unsorted"
+}
+
+gh_run_has_indexed_artifact() {
+  local index_path=$1
+  local run_id=$2
+  grep -Fqx "$run_id" "$index_path"
+}

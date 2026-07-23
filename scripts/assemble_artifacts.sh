@@ -10,6 +10,15 @@ DEST=${2:-data}
 SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
 mkdir -p "$DEST"
 count=0
+artifact_run_index=$(mktemp)
+artifact_index_available=false
+trap 'rm -f "$artifact_run_index" "${artifact_run_index}.unsorted"' EXIT
+if gh_build_artifact_run_index "$artifact_run_index" "$SINCE"; then
+  artifact_index_available=true
+  echo "indexed $(wc -l <"$artifact_run_index") artifact-bearing runs since $SINCE"
+else
+  echo "repository artifact index unavailable; falling back to per-run probes" >&2
+fi
 for wf in capture.yml capture-backstop.yml capacity-policy-probes.yml enforcement-policy-probes.yml decomposition-probes.yml decomposition-replication.yml route-calibration.yml paid-price-response.yml price-event-probes.yml market-measurement.yml glm52-routing.yml glm52-market-share-hmp.yml information-congestion.yml information-congestion-quality.yml score-memory-routing.yml score-memory-quality.yml adaptive-router.yml evals.yml gpu.yml hf-router.yml hf-policy-probes.yml livepeer.yml probes.yml router-catalogs.yml watchers.yml; do
   limit=40
   # The GLM panel produces four immutable runs per hour; 120 covers the full
@@ -34,6 +43,10 @@ for wf in capture.yml capture-backstop.yml capacity-policy-probes.yml enforcemen
       --jq ".[] | select(.createdAt > \"$SINCE\") | .databaseId")
   fi
   for id in $run_ids; do
+    if [ "$artifact_index_available" = true ] &&
+      ! gh_run_has_indexed_artifact "$artifact_run_index" "$id"; then
+      continue
+    fi
     tmp="/tmp/art-$id"
     if gh_retry run download "$id" --dir "$tmp"; then
       # Most artifact roots hold a data/ tree directly. Plan-first paid jobs

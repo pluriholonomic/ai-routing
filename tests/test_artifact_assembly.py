@@ -69,9 +69,13 @@ def test_artifact_assemblers_retry_github_api_calls():
     retry = (root / "scripts/gh_retry.sh").read_text(encoding="utf-8")
     assert "GH_RETRY_MAX_ATTEMPTS" in retry
     assert "sleep" in retry
+    assert "gh_build_artifact_run_index" in retry
+    assert "gh_run_has_indexed_artifact" in retry
     for name in ("assemble_artifacts.sh", "assemble_price_artifacts.sh"):
         text = (root / "scripts" / name).read_text(encoding="utf-8")
         assert 'source "$SCRIPT_DIR/gh_retry.sh"' in text
+        assert "gh_build_artifact_run_index" in text
+        assert "gh_run_has_indexed_artifact" in text
         assert "gh_retry run list" in text
         assert "gh_retry run download" in text
 
@@ -157,3 +161,44 @@ exit 1
     assert completed.returncode == 1
     assert counter.read_text() == "1"
     assert "not retryable" in completed.stderr
+
+
+def test_artifact_run_index_filters_to_repository_artifacts(tmp_path):
+    root = Path(__file__).parents[1]
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "gh"
+    fake.write_text(
+        """#!/bin/sh
+if [ "$1" = "api" ]; then
+  printf '303\\n101\\n303\\n'
+  exit 0
+fi
+exit 2
+"""
+    )
+    fake.chmod(0o755)
+    index = tmp_path / "artifact-runs"
+    env = os.environ | {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "GITHUB_REPOSITORY": "owner/repo",
+    }
+    completed = subprocess.run(
+        [
+            "bash",
+            "-c",
+            (
+                f"source scripts/gh_retry.sh; "
+                f"gh_build_artifact_run_index {index} 2026-07-22T00:00:00Z; "
+                f"gh_run_has_indexed_artifact {index} 101; "
+                f"! gh_run_has_indexed_artifact {index} 202"
+            ),
+        ],
+        cwd=root,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert index.read_text().splitlines() == ["101", "303"]
