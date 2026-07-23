@@ -28,6 +28,13 @@ gh_retry() {
         printf 'gh error is not retryable; skipping this run\n' >&2
         return "$status"
         ;;
+      *"API rate limit exceeded for installation"*)
+        # Installation limits reset outside these short-lived planning jobs.
+        # Exponential retries only consume the job timeout and then prevent the
+        # fail-closed no-data plan from being written.
+        printf 'GitHub installation rate limit is not retryable in this job\n' >&2
+        return "$status"
+        ;;
     esac
     if [ "$attempt" -ge "$max_attempts" ]; then
       return "$status"

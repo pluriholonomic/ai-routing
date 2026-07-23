@@ -163,6 +163,48 @@ exit 1
     assert "not retryable" in completed.stderr
 
 
+def test_gh_retry_does_not_exhaust_job_on_installation_rate_limit(tmp_path):
+    root = Path(__file__).parents[1]
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    counter = tmp_path / "counter"
+    fake = bin_dir / "gh"
+    fake.write_text(
+        """#!/bin/sh
+count=0
+if [ -f "$GH_RETRY_COUNTER" ]; then
+  count=$(cat "$GH_RETRY_COUNTER")
+fi
+count=$((count + 1))
+printf '%s' "$count" > "$GH_RETRY_COUNTER"
+echo "API rate limit exceeded for installation" >&2
+exit 1
+"""
+    )
+    fake.chmod(0o755)
+    env = os.environ | {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "GH_RETRY_COUNTER": str(counter),
+        "GH_RETRY_MAX_ATTEMPTS": "6",
+        "GH_RETRY_INITIAL_SECONDS": "30",
+    }
+    completed = subprocess.run(
+        [
+            "bash",
+            "-c",
+            "source scripts/gh_retry.sh; gh_retry api repos/owner/repo/actions/artifacts",
+        ],
+        cwd=root,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 1
+    assert counter.read_text() == "1"
+    assert "not retryable in this job" in completed.stderr
+
+
 def test_artifact_run_index_filters_to_repository_artifacts(tmp_path):
     root = Path(__file__).parents[1]
     bin_dir = tmp_path / "bin"
