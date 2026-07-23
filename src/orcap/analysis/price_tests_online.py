@@ -5,6 +5,9 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import subprocess
+import sys
+import tempfile
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,6 +28,20 @@ from . import (
 )
 
 STUDY_ID = "openrouter-online-price-tests-v1"
+
+
+def _runners() -> dict[str, Callable[[Path], dict[str, Any]]]:
+    return {
+        "h2": h2_dispersion.run,
+        "h13": h13_venue_basis.run,
+        "bm1": bm1_pricing_technology.run,
+        "h42": h42_routing_mev.run,
+        "h46": h46_rolling_routing_elasticity.run,
+        "h93": h93_cross_router_price_policy.run,
+        "h94": h94_cross_router_pass_through.run,
+        "sync": _synchronization_monitor,
+        "wf19": wf19_undercutting_incidence.run,
+    }
 
 
 def _status(result: dict[str, Any]) -> str:
@@ -103,24 +120,64 @@ def _synchronization_monitor(output_dir: Path) -> dict[str, Any]:
     return result
 
 
-def run(output_dir: Path) -> dict[str, Any]:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    runners: dict[str, Callable[[Path], dict[str, Any]]] = {
-        "h2": h2_dispersion.run,
-        "h13": h13_venue_basis.run,
-        "bm1": bm1_pricing_technology.run,
-        "h42": h42_routing_mev.run,
-        "h46": h46_rolling_routing_elasticity.run,
-        "h93": h93_cross_router_price_policy.run,
-        "h94": h94_cross_router_pass_through.run,
-        "sync": _synchronization_monitor,
-        "wf19": wf19_undercutting_incidence.run,
-    }
+def _run_module(name: str, output_dir: Path) -> dict[str, Any]:
+    runner = _runners().get(name)
+    if runner is None:
+        raise ValueError(f"unknown price-test module: {name}")
     with data.pinned_analysis_source() as source:
-        results = {
-            name: _run_safely(runner, output_dir / name)
-            for name, runner in runners.items()
-        }
+        result = _run_safely(runner, output_dir / name)
+    return {"analysis_source": source, "result": result}
+
+
+def _run_modules_in_process(output_dir: Path) -> dict[str, dict[str, Any]]:
+    return {
+        name: _run_safely(runner, output_dir / name)
+        for name, runner in _runners().items()
+    }
+
+
+def _run_modules_isolated(output_dir: Path) -> dict[str, dict[str, Any]]:
+    """Run each hypothesis in a fresh process to bound peak runner memory."""
+    results: dict[str, dict[str, Any]] = {}
+    with tempfile.TemporaryDirectory(prefix="orcap-price-tests-") as temp_dir:
+        temp = Path(temp_dir)
+        for name in _runners():
+            result_file = temp / f"{name}.json"
+            print(f"[price-tests] starting isolated module {name}", flush=True)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "orcap.analysis.price_tests_online",
+                    "--output-dir",
+                    str(output_dir),
+                    "--module",
+                    name,
+                    "--result-file",
+                    str(result_file),
+                ],
+                check=False,
+            )
+            if completed.returncode != 0:
+                raise RuntimeError(
+                    f"isolated price-test module {name} exited "
+                    f"{completed.returncode}"
+                )
+            if not result_file.is_file():
+                raise RuntimeError(
+                    f"isolated price-test module {name} produced no result file"
+                )
+            payload = json.loads(result_file.read_text(encoding="utf-8"))
+            results[name] = payload["result"]
+            print(f"[price-tests] completed isolated module {name}", flush=True)
+    return results
+
+
+def _assemble(
+    output_dir: Path,
+    source: dict[str, str | None],
+    results: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
     mapping = [
         ("P1", "routing price elasticity", "h46"),
         ("P2", "within-model posted-price dispersion", "h2"),
@@ -187,13 +244,50 @@ text-align:left}th{background:#f4f6f8}.boundary{border-left:4px solid #c78317;pa
     return summary
 
 
+def run(output_dir: Path, *, isolate_modules: bool = False) -> dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with data.pinned_analysis_source() as source:
+        if isolate_modules:
+            results = _run_modules_isolated(output_dir)
+        else:
+            results = _run_modules_in_process(output_dir)
+    return _assemble(output_dir, source, results)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output-dir", type=Path, default=Path("data/analysis/price-tests-online")
     )
+    parser.add_argument(
+        "--isolate-modules",
+        action="store_true",
+        help="run every hypothesis in a fresh process to bound peak memory",
+    )
+    parser.add_argument("--module", choices=tuple(_runners()))
+    parser.add_argument("--result-file", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
-    print(json.dumps(run(args.output_dir), indent=2, sort_keys=True, default=str))
+    if args.module:
+        payload = _run_module(args.module, args.output_dir)
+        if args.result_file:
+            args.result_file.parent.mkdir(parents=True, exist_ok=True)
+            args.result_file.write_text(
+                json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
+                encoding="utf-8",
+            )
+        else:
+            print(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    if args.result_file:
+        parser.error("--result-file requires --module")
+    print(
+        json.dumps(
+            run(args.output_dir, isolate_modules=args.isolate_modules),
+            indent=2,
+            sort_keys=True,
+            default=str,
+        )
+    )
 
 
 if __name__ == "__main__":
