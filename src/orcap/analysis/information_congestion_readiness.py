@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -36,21 +37,55 @@ def deduplicate_exact_rows(frame: pd.DataFrame) -> pd.DataFrame:
     """Collapse identical checkpoint copies without hiding conflicting IDs."""
     if frame.empty:
         return frame.copy()
-    seen: set[str] = set()
-    keep: list[int] = []
-    for position, row in enumerate(frame.to_dict("records")):
-        payload = json.dumps(
-            row,
+    comparable = frame.copy(deep=False)
+    replaced = False
+    for column in frame.select_dtypes(include=["object"]).columns:
+        sample = frame[column].head(128)
+        if any(_is_unhashable(value) for value in sample):
+            if not replaced:
+                comparable = frame.copy()
+                replaced = True
+            comparable[column] = frame[column].map(_freeze_unhashable)
+    try:
+        duplicated = comparable.duplicated(keep="first")
+    except TypeError:
+        # A sparse list/dict column may not appear in the bounded sample.
+        # Canonicalize every object column once, then use pandas' vectorized
+        # row hashing instead of serializing millions of scalar rows to JSON.
+        comparable = frame.copy()
+        for column in frame.select_dtypes(include=["object"]).columns:
+            comparable[column] = frame[column].map(_freeze_unhashable)
+        duplicated = comparable.duplicated(keep="first")
+    return frame.loc[~duplicated].reset_index(drop=True)
+
+
+@dataclass(frozen=True)
+class _FrozenUnhashable:
+    value_type: str
+    payload: str
+
+
+def _is_unhashable(value: Any) -> bool:
+    try:
+        hash(value)
+    except TypeError:
+        return True
+    return False
+
+
+def _freeze_unhashable(value: Any) -> Any:
+    if not _is_unhashable(value):
+        return value
+    return _FrozenUnhashable(
+        value_type=f"{type(value).__module__}.{type(value).__qualname__}",
+        payload=json.dumps(
+            value,
             sort_keys=True,
             separators=(",", ":"),
             default=str,
             allow_nan=True,
-        )
-        if payload in seen:
-            continue
-        seen.add(payload)
-        keep.append(position)
-    return frame.iloc[keep].reset_index(drop=True)
+        ),
+    )
 
 
 def task_id_from_metadata(value: Any) -> str | None:

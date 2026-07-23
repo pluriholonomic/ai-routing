@@ -315,6 +315,21 @@ def test_reconciliation_ignores_exact_checkpoint_overlap_but_rejects_conflicts()
     assert conflicting["duplicate_assignments"] == 1
 
 
+def test_exact_row_deduplication_handles_nested_columns_without_hiding_conflicts():
+    shared = {
+        "run_ts": "20260723T000000Z",
+        "supported_parameters": ["tools", "reasoning"],
+        "metadata": {"arm": "visible", "order": [1, 2]},
+    }
+    conflict = shared | {"metadata": {"arm": "blinded", "order": [1, 2]}}
+    frame = pd.DataFrame([shared, shared, conflict])
+
+    result = deduplicate_exact_rows(frame)
+
+    assert len(result) == 2
+    assert result["metadata"].tolist() == [shared["metadata"], conflict["metadata"]]
+
+
 def test_privacy_gate_rejects_payload_columns_and_retained_rows():
     assert privacy_gate({"safe": pd.DataFrame([{"payload_retained": False}])})["healthy"]
     unsafe = privacy_gate(
