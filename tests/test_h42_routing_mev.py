@@ -156,6 +156,43 @@ def test_h42_attaches_rolling_flow_and_computes_event_effect():
     assert effects.iloc[0]["delta_request_share_30m"] > 0.45
 
 
+def test_h42_event_linked_congestion_avoids_cross_event_cartesian():
+    first = build_event_panel(_event(2.0, 0.9), _snapshots(0.9))
+    second = first.copy()
+    second["event_id"] = "second-event"
+    second["event_ts"] = pd.Timestamp("2026-07-09T13:00:00Z")
+    panel = pd.concat([first, second], ignore_index=True)
+    congestion = pd.DataFrame(
+        [
+            {
+                "event_id": event_id,
+                "run_ts": run_ts,
+                "model_permaslug": "m",
+                "provider_name": provider,
+                "request_count_30m": count,
+            }
+            for event_id, run_ts, count in (
+                (first.iloc[0]["event_id"], "20260709T120500Z", 10),
+                ("second-event", "20260709T130500Z", 20),
+            )
+            for provider in ("a", "b")
+        ]
+    )
+    intraday = attach_intraday(panel, congestion)
+    assert len(intraday) == 4
+    assert set(
+        intraday.loc[
+            intraday["event_id"] == first.iloc[0]["event_id"],
+            "request_count_30m",
+        ]
+    ) == {10.0}
+    assert set(
+        intraday.loc[
+            intraday["event_id"] == "second-event", "request_count_30m"
+        ]
+    ) == {20.0}
+
+
 def test_event_burst_manifest_marks_post_only_high_frequency_window(tmp_path):
     path = write_event_burst_manifest({"m"}, TS, "2026-07-09", 235, tmp_path)
     assert path is not None
