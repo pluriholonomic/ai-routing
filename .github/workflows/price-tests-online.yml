@@ -105,6 +105,7 @@ jobs:
           ORCAP_DATA_DIR: input-data
         run: >-
           uv run python -m orcap.analysis.price_tests_online
+          --isolate-modules
           --output-dir pushdata/analysis/price-tests-online
       - name: publish aggregate monitoring outputs
         env:
