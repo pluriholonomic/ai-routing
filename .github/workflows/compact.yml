@@ -90,4 +90,3 @@ jobs:
           --dt "${{ github.event.inputs.dt }}"
           --shard-index "${{ matrix.shard }}"
           --shard-count 8
-          --exclude-table source_runs

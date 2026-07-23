@@ -294,6 +294,12 @@ def test_pipeline_workflows_do_not_self_starve_during_artifact_overlay():
     assert "timeout-minutes: 75" in route_sim
 
 
+def test_daily_compaction_includes_source_run_ledger():
+    root = Path(__file__).parents[1]
+    workflow = (root / ".github/workflows/compact.yml").read_text(encoding="utf-8")
+    assert "--exclude-table source_runs" not in workflow
+
+
 def test_remote_health_rejects_stale_success():
     result = evaluate_workflow(
         "capture.yml", [_run(minutes_ago=151)], now=NOW, max_age_minutes=150
