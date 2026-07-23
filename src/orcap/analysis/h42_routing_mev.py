@@ -226,31 +226,71 @@ def event_model_slugs(events: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def load_congestion(model_slugs: pd.DataFrame) -> pd.DataFrame:
+def _sql_string(value: object) -> str:
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def load_congestion(
+    events: pd.DataFrame, model_slugs: pd.DataFrame
+) -> pd.DataFrame:
     """Load only flow-proxy rows for models with price events.
 
     Congestion counts are 30-minute rolling statistics.  The resulting panel
     is intentionally named ``request_share_30m`` rather than minute fills.
+    Event windows are joined in DuckDB before materialization. This is
+    algebraically identical to the later event-time filter, but avoids a
+    model-wide event-by-tick Cartesian product in pandas.
     """
-    if model_slugs.empty:
+    if events.empty or model_slugs.empty:
         return pd.DataFrame()
-    quoted = ", ".join(
-        "'" + str(x).replace("'", "''") + "'"
-        for x in sorted(model_slugs["model_permaslug"].dropna().unique())
+    windows = (
+        events.loc[:, ["event_id", "event_ts", "model_id"]]
+        .merge(model_slugs, on="model_id", how="left")
+        .dropna(subset=["event_id", "event_ts", "model_permaslug"])
+        .drop_duplicates("event_id")
     )
-    if not quoted:
+    if windows.empty:
         return pd.DataFrame()
+    values = []
+    for row in windows.itertuples(index=False):
+        start = (row.event_ts - pd.Timedelta(minutes=INTRADAY_PRE_MINUTES)).strftime(
+            "%Y%m%dT%H%M%SZ"
+        )
+        end = (row.event_ts + pd.Timedelta(minutes=INTRADAY_POST_MINUTES)).strftime(
+            "%Y%m%dT%H%M%SZ"
+        )
+        values.append(
+            "("
+            + ", ".join(
+                (
+                    _sql_string(row.event_id),
+                    _sql_string(row.model_permaslug),
+                    _sql_string(start),
+                    _sql_string(end),
+                )
+            )
+            + ")"
+        )
+    event_values = ",\n".join(values)
     frames = []
     for table in ("congestion_intraday", "event_bursts_congestion"):
         try:
             frame = data.q(
                 f"""
-                select run_ts, model_permaslug, provider_name, endpoint_uuid,
-                       request_count_30m, success_30m, rate_limited_30m,
-                       derankable_error_30m, capacity_ceiling_rpm, recent_peak_rpm,
-                       p90_latency_ms, is_deranked
-                from read_parquet('{data.table_glob(table)}')
-                where model_permaslug in ({quoted})
+                with event_windows(
+                  event_id, model_permaslug, window_start, window_end
+                ) as (
+                  values {event_values}
+                )
+                select e.event_id, f.run_ts, f.model_permaslug, f.provider_name,
+                       f.endpoint_uuid, f.request_count_30m, f.success_30m,
+                       f.rate_limited_30m, f.derankable_error_30m,
+                       f.capacity_ceiling_rpm, f.recent_peak_rpm,
+                       f.p90_latency_ms, f.is_deranked
+                from read_parquet('{data.table_glob(table)}') f
+                inner join event_windows e
+                  on f.model_permaslug = e.model_permaslug
+                 and f.run_ts between e.window_start and e.window_end
                 """
             ).df()
             if not frame.empty:
@@ -267,7 +307,14 @@ def load_congestion(model_slugs: pd.DataFrame) -> pd.DataFrame:
     return (
         out.sort_values("source_priority")
         .drop_duplicates(
-            ["run_ts", "model_permaslug", "provider_name", "endpoint_uuid"], keep="last"
+            [
+                "event_id",
+                "run_ts",
+                "model_permaslug",
+                "provider_name",
+                "endpoint_uuid",
+            ],
+            keep="last",
         )
         .drop(columns="source_priority")
     )
@@ -444,7 +491,14 @@ def attach_intraday(panel: pd.DataFrame, congestion: pd.DataFrame) -> pd.DataFra
     for col in required:
         if col not in c:
             c[col] = np.nan
-    merged = p.merge(c[required], on=["model_permaslug", "provider_name"], how="inner")
+    merge_keys = ["model_permaslug", "provider_name"]
+    congestion_columns = required
+    if "event_id" in c:
+        # Current loaders pre-link rows to exact event windows in DuckDB. The
+        # fallback keeps this pure function compatible with historical fixtures.
+        merge_keys = ["event_id", *merge_keys]
+        congestion_columns = ["event_id", *required]
+    merged = p.merge(c[congestion_columns], on=merge_keys, how="inner")
     if merged.empty:
         return _empty_intraday()
     merged["tick_ts"] = _ts(merged["run_ts"])
@@ -676,7 +730,7 @@ def run(out_dir: Path = DEFAULT_OUT) -> dict:
     panel = build_event_panel(events, snapshots, model_slugs)
     save(panel, out_dir, "h42_routing_event_panel")
 
-    congestion = load_congestion(model_slugs)
+    congestion = load_congestion(events, model_slugs)
     intraday = attach_intraday(panel, congestion)
     if not intraday.empty:
         save(intraday, out_dir, "h42_routing_event_intraday")
